@@ -50,14 +50,11 @@ async def get_admin_dashboard_analytics(
         role_stats = calculate_role_stats(all_users)
         recent_created_users = format_recent_users(all_users)
 
-        chart_labels = generate_chart_labels()
-        thirty_days_ago = utcnow() - timedelta(days=30)
-        # Compare in naive space for get_effective_start_date, then filter with aware conversion
-        chart_start_date = get_effective_start_date(
-            thirty_days_ago.replace(tzinfo=None) if thirty_days_ago.tzinfo else thirty_days_ago,
-            start_date,
-        )
-        recent_users = filter_array_by_date(all_users, chart_start_date, end_date)
+        chart_end_date = end_date or utcnow().replace(tzinfo=None)
+        chart_start_date = start_date or (chart_end_date - timedelta(days=29))
+
+        chart_labels = generate_chart_labels(chart_start_date, chart_end_date)
+        recent_users = filter_array_by_date(all_users, chart_start_date, chart_end_date)
 
         chart_data = populate_chart_data(recent_users, chart_labels)
 

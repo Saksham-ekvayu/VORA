@@ -65,14 +65,18 @@ const getThemeColors = (isDark) => ({
 });
 
 const transformChartData = (data) => {
-  return data.labels.map((date, index) => ({
+  const labels = Array.isArray(data?.labels) ? data.labels : [];
+  const totals = Array.isArray(data?.total) ? data.total : [];
+  const length = Math.min(labels.length, totals.length);
+
+  return labels.slice(0, length).map((date, index) => ({
     date: new Date(date).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "2-digit",
     }),
     fullDate: date,
-    total: data.total[index],
+    total: Number(totals[index]) || 0,
   }));
 };
 
@@ -81,6 +85,14 @@ const UserRegistrationChart = ({ data }) => {
   const isDark = theme === "dark";
 
   const chartData = transformChartData(data);
+
+  if (!chartData.length) {
+    return (
+      <div className="flex h-77.5 items-center justify-center rounded border border-dashed border-border bg-background/75 text-sm text-muted-foreground">
+        No profile registration data available.
+      </div>
+    );
+  }
 
   // If date range is large, filter out dates with 0 registrations to make chart cleaner
   // We keep the first and last dates to preserve the visual timeline bounds
@@ -94,8 +106,8 @@ const UserRegistrationChart = ({ data }) => {
 
   const colors = getThemeColors(isDark);
 
-  // Calculate totals for summary
-  const grandTotal = data.total.reduce((a, b) => a + b, 0);
+  const totals = Array.isArray(data?.total) ? data.total : [];
+  const grandTotal = totals.reduce((a, b) => a + Number(b || 0), 0);
 
   return (
     <ResponsiveContainer width="100%" height={310} minWidth={0} minHeight={0}>
