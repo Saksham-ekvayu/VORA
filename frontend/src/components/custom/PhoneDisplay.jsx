@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
  */
 export default function PhoneDisplay({ value, className }) {
   if (!value)
-    return <span className={cn("text-muted-foreground", className)}>-</span>;
+    return <span className={cn("text-muted-foreground", className)}>N/A</span>;
 
   const phoneWithPlus = value.startsWith("+") ? value : `+${value}`;
   const phoneNumber = (() => {

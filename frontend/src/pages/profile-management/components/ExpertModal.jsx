@@ -75,8 +75,10 @@ export default function ExpertModal({
     const nameError = validateName(formData.name);
     if (nameError) newErrors.name = nameError;
 
-    const phoneError = validatePhone(formData.phone);
-    if (phoneError) newErrors.phone = phoneError;
+    if (formData.phone) {
+      const phoneError = validatePhone(formData.phone);
+      if (phoneError) newErrors.phone = phoneError;
+    }
 
     if (!handleValidationError(newErrors)) {
       modalState.setErrors(newErrors);
@@ -173,9 +175,7 @@ export default function ExpertModal({
 
             {/* Phone Field */}
             <div className="space-y-1.5">
-              <Label htmlFor="expert-phone">
-                Phone Number <span className="required">*</span>
-              </Label>
+              <Label htmlFor="expert-phone">Phone Number</Label>
               <PhoneInputField
                 id="expert-phone"
                 value={formData.phone}

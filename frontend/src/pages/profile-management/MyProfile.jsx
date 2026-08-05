@@ -347,7 +347,9 @@ function MyProfile() {
                   Phone Number
                 </p>
                 <p className="text-base font-semibold text-foreground border-b border-transparent group-hover:border-primary/20 py-1">
-                  +{profileData.phone}
+                  {renderAddressField(
+                    profileData.phone ? `+${profileData.phone}` : ""
+                  )}
                 </p>
               </div>
               <div className="group col-span-3">
