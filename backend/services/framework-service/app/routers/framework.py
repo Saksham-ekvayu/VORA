@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -40,8 +39,6 @@ from app.schemas.framework import (
     UpdateControlWeightageBody,
 )
 from app.services import data_formatter
-from app.services.ai_service import AiServiceError, ai_service
-from app.services.ai_websocket_service import ai_websocket_service
 
 router = APIRouter(tags=["framework"])
 
@@ -88,16 +85,6 @@ async def _validate_upload(file: UploadFile | None) -> tuple[bytes | None, str |
     if len(content) > MAX_FILE_SIZE:
         return None, "File size too large. Maximum size is 10MB"
     return content, None
-
-
-async def _load_user(user_id) -> User | None:
-    if not user_id:
-        return None
-    try:
-        async with session_scope() as session:
-            return await session.get(User, str(user_id))
-    except Exception:
-        return None
 
 
 def _apply_ai_status_filter(stmt, ai_status: str | None):
@@ -431,19 +418,6 @@ async def approve_framework(id: str, user: User = Depends(current_user)):
         }
         framework_id = str(framework.id)
 
-    try:
-        response = await ai_service.update_framework_approval_status(
-            framework_id,
-            {
-                "status": approval_payload["status"],
-                "timestamp": approval_payload["date"],
-                "reason": None,
-            },
-        )
-        print("✅ Framework approve successfully from AI service", response)
-    except AiServiceError as exc:
-        print("❌ Failed to approve framework from AI service", exc)
-
     return success(
         {"framework": {"id": framework_id, "approval": approval_payload}},
         "Framework approved successfully",
@@ -763,12 +737,6 @@ async def delete_framework(id: str, user: User = Depends(current_user)):
         framework_id = framework.id
         await session.delete(framework)
 
-    try:
-        response = await ai_service.delete_framework(str(id))
-        print("✅ Framework deleted successfully from AI service", response)
-    except AiServiceError as exc:
-        print("❌ Failed to delete framework from AI service", exc)
-
     return success({"id": str(framework_id)}, "Framework deleted successfully")
 
 
@@ -948,54 +916,7 @@ async def delete_framework_file(
             "updatedAt": framework.updatedAt,
         }
 
-    try:
-        response = await ai_service.delete_framework_file(str(frameworkId), fileId)
-        print("✅ Framework file deleted successfully from AI service", response)
-    except AiServiceError as exc:
-        print("❌ Failed to delete framework file from AI service", exc)
-
     return success(response_data, "Framework retrieved successfully")
-
-
-@router.post("/{frameworkId}/files/{fileId}/ai-upload")
-async def upload_framework_to_ai(frameworkId: str, fileId: str):
-    async with session_scope() as session:
-        framework = await session.get(Framework, str(frameworkId))
-        if not framework:
-            return error("Framework not found", 404)
-
-        versions = framework_helper.parse_file_versions(framework)
-        file_version = next((v for v in versions if str(v.fileId) == fileId), None)
-        if not file_version:
-            return error("File version not found", 404)
-
-        actual_path = file_storage.resolve_actual_file_path(
-            file_version.fileUrl, str(framework.uploadedBy)
-        )
-        if not actual_path or not file_storage.file_exists(actual_path):
-            return error("File on disk not found", 404)
-
-        # Keep ORM object for AI payload mapping (dict-aware in ai_service)
-        framework_for_ai = framework
-
-    asyncio.create_task(_safe_start_extraction(str(frameworkId), fileId))
-
-    response = None
-    try:
-        response = await ai_service.upload_framework(framework_for_ai, actual_path)
-        print("✅ Framework upload successfully from AI service", response)
-    except AiServiceError as exc:
-        print("❌ Failed to upload framework from AI service", exc)
-
-    return success(response, "Successfully uploaded framework to AI")
-
-
-async def _safe_start_extraction(framework_id: str, file_id: str) -> None:
-    try:
-        await ai_websocket_service.start_extraction(framework_id, file_id)
-    except Exception as exc:  # noqa: BLE001
-        print(f"[AI WS] startExtraction error: {exc}")
-
 
 # ─── Control CRUD ─────────────────────────────────────────────────────────────
 
@@ -1083,22 +1004,6 @@ async def add_framework_control(
 
         control_payload = new_control.model_dump(mode="json")
 
-    try:
-        response = await ai_service.add_framework_control(
-            str(id),
-            fileVersion,
-            {
-                "sectionId": str(body.sectionId) if body and getattr(body, "sectionId", None) else None,
-                "newSection": body.newSection,
-                "name": body.name,
-                "description": body.description,
-                "deployment_points": [dp.model_dump() for dp in body.deployment_points],
-            },
-        )
-        print("✅ Framework control add successfully from AI service", response)
-    except AiServiceError as exc:
-        print("❌ Failed to add framework control from AI service", exc)
-
     return success(
         {
             "control": control_payload,
@@ -1167,24 +1072,6 @@ async def update_framework_control(
         await session.flush()
 
         control_payload = target_control.model_dump(mode="json")
-        control_name = target_control.name
-        control_description = target_control.description
-        control_dps = [dp.model_dump() for dp in target_control.deployment_points]
-
-    try:
-        response = await ai_service.update_framework_control(
-            str(id),
-            fileVersion,
-            controlId,
-            {
-                "name": control_name,
-                "description": control_description,
-                "deployment_points": control_dps,
-            },
-        )
-        print("✅ Framework control updated successfully from AI service", response)
-    except AiServiceError as exc:
-        print("❌ Failed to update framework control from AI service", exc)
 
     return success(
         {"control": control_payload, "fileVersion": fileVersion},
@@ -1300,13 +1187,7 @@ async def delete_framework_control(
         framework.fileVersions = framework_helper.dump_file_versions(versions)
         framework.updatedAt = _now()
         await session.flush()
-
-    try:
-        response = await ai_service.delete_framework_control(str(id), fileVersion, controlId)
-        print("✅ Framework control deleted successfully from AI service", response)
-    except AiServiceError as exc:
-        print("❌ Failed to delete framework control from AI service", exc)
-
+        
     return success(
         {"controlId": controlId, "fileVersion": fileVersion},
         f"Control {controlId} deleted successfully from version {fileVersion}",
