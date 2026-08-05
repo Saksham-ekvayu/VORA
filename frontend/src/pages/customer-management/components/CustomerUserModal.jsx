@@ -14,7 +14,7 @@ import { useErrorHandler } from "@/hooks/useErrorHandler";
 import {
   validateEmail,
   validateName,
-  validatePhone,
+  validateOptionalPhone,
 } from "@/utils/formValidation";
 import {
   DropdownMenu,
@@ -28,21 +28,14 @@ import {
   ROLE_AUDITOR,
   ROLE_CUSTOMER_ADMIN,
   ROLE_INTERNAL_EXPERT,
+  getRoleLabel,
 } from "@/utils/commonUtils";
 
-const getRoleDisplayLabel = (role) => {
-  if (role === ROLE_CUSTOMER_ADMIN) return "Admin";
-  if (role === ROLE_AUDITOR) return "Auditor";
-  if (role === ROLE_INTERNAL_EXPERT) return "Internal-Expert";
-  if (role === ROLE_USER) return "User";
-  return "Select a role";
-};
-
 const ROLES = [
-  { value: ROLE_CUSTOMER_ADMIN, label: "Admin" },
-  { value: ROLE_AUDITOR, label: "Auditor" },
-  { value: ROLE_INTERNAL_EXPERT, label: "Internal-Expert" },
-  { value: ROLE_USER, label: "User" },
+  { value: ROLE_CUSTOMER_ADMIN, label: getRoleLabel(ROLE_CUSTOMER_ADMIN) },
+  { value: ROLE_AUDITOR, label: getRoleLabel(ROLE_AUDITOR) },
+  { value: ROLE_INTERNAL_EXPERT, label: getRoleLabel(ROLE_INTERNAL_EXPERT) },
+  { value: ROLE_USER, label: getRoleLabel(ROLE_USER) },
 ];
 
 /**
@@ -113,7 +106,7 @@ export default function CustomerUserModal({
     const emailError = validateEmail(formData.email);
     if (emailError) newErrors.email = emailError;
 
-    const phoneError = validatePhone(formData.phone);
+    const phoneError = validateOptionalPhone(formData.phone);
     if (phoneError) newErrors.phone = phoneError;
 
     if (!formData.role) {
@@ -178,7 +171,7 @@ export default function CustomerUserModal({
             <div className="grid grid-cols-1 gap-4 py-2">
               <div className="space-y-1.5">
                 <Label htmlFor="customer-name">
-                  User Full Name <span className="required">*</span>
+                  Full Name <span className="required">*</span>
                 </Label>
                 <Input
                   id="customer-name"
@@ -196,16 +189,16 @@ export default function CustomerUserModal({
 
               <div className="space-y-1.5">
                 <Label htmlFor="customer-email">
-                  User Email <span className="required">*</span>
+                  Email <span className="required">*</span>
                 </Label>
                 <Input
                   id="customer-email"
                   type="email"
                   className={cn(
                     modalState.errors.email &&
-                      "border-red-500 focus-visible:ring-red-500/20",
+                    "border-red-500 focus-visible:ring-red-500/20",
                     mode === "update" &&
-                      "bg-muted/50 opacity-60 cursor-not-allowed"
+                    "bg-muted/50 opacity-60 cursor-not-allowed"
                   )}
                   value={formData.email}
                   onChange={(e) => handleChange("email", e.target.value)}
@@ -216,7 +209,7 @@ export default function CustomerUserModal({
 
               <div className="space-y-1.5">
                 <Label htmlFor="customer-phone">
-                  User Phone Number <span className="required">*</span>
+                  Phone Number
                 </Label>
                 <PhoneInputField
                   id="customer-phone"
@@ -238,10 +231,10 @@ export default function CustomerUserModal({
                       className={cn(
                         "w-full justify-between font-normal bg-background border-input text-foreground hover:bg-accent hover:text-accent-foreground",
                         modalState.errors.role &&
-                          "border-red-500 focus:ring-red-500/20"
+                        "border-red-500 focus:ring-red-500/20"
                       )}
                     >
-                      {getRoleDisplayLabel(formData.role)}
+                      {formData.role ? getRoleLabel(formData.role) : "Select a role"}
                       <ChevronDown className="h-4 w-4 opacity-50" />
                     </Button>
                   </DropdownMenuTrigger>
