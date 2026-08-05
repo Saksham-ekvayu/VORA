@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from sqlalchemy import select
 from vora_shared.database import session_scope
+from vora_shared import messages as msg
 from vora_shared.models import FrameworkAccess, FrameworkCategory
 
 
@@ -111,7 +112,9 @@ async def get_expert_approved_framework_codes(expert_id) -> list[str]:
 
 async def request_access(expert_id, framework_category_id) -> FrameworkAccess:
     if not await is_valid_framework_category_id(framework_category_id):
-        raise FrameworkAuthorizationError("Invalid framework category ID")
+        raise FrameworkAuthorizationError(
+            msg.MESSAGES.get("INVALID_OBJECT_ID", "Invalid framework category ID")
+        )
 
     expert_id_str = str(expert_id)
     category_id_str = str(framework_category_id)
@@ -119,7 +122,9 @@ async def request_access(expert_id, framework_category_id) -> FrameworkAccess:
     async with session_scope() as session:
         category = await session.get(FrameworkCategory, category_id_str)
         if not category:
-            raise FrameworkAuthorizationError("Framework category not found")
+            raise FrameworkAuthorizationError(
+                msg.MESSAGES.get("FRAMEWORK_CATEGORY_NOT_FOUND", "Framework category not found")
+            )
 
         existing_access = (
             await session.execute(
@@ -132,9 +137,17 @@ async def request_access(expert_id, framework_category_id) -> FrameworkAccess:
 
         if existing_access:
             if existing_access.status == "approved":
-                raise FrameworkAuthorizationError("You already have approved access to this framework")
+                raise FrameworkAuthorizationError(
+                    msg.MESSAGES.get(
+                        "ALREADY_HAS_ACCESS", "You already have approved access to this framework"
+                    )
+                )
             if existing_access.status == "pending":
-                raise FrameworkAuthorizationError("You already have a pending request for this framework")
+                raise FrameworkAuthorizationError(
+                    msg.MESSAGES.get(
+                        "ACCESS_ALREADY_PROCESSED", "You already have a pending request for this framework"
+                    )
+                )
             if existing_access.status in ("rejected", "revoked"):
                 existing_access.status = "pending"
                 existing_access.requestedBy = "expert"

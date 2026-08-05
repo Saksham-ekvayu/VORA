@@ -9,7 +9,7 @@ from pathlib import Path
 from vora_shared.auth import AuthenticatedUser, authenticate
 from app.helpers import framework_helper
 from app.helpers.report_helper import generate_framework_report_pdf
-from vora_shared import data_format, file_storage
+from vora_shared import data_format, messages as msg, file_storage
 from app.schemas.framework import (
     AddControlBody,
     AssignFrameworkToCustomerBody,
@@ -21,7 +21,7 @@ from app.services import authorization
 from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile
 from sqlalchemy import String, cast, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
-from vora_shared import data_format, file_storage
+from vora_shared import data_format, messages as msg, file_storage
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
 from vora_shared.models import Customer, FrameworkAssignment, FrameworkCategory, User
@@ -277,7 +277,7 @@ async def get_framework_by_id(id: str, ctx: AuthenticatedUser = Depends(authenti
     async with session_scope() as session:
         framework = await session.get(Framework, str(id))
         if not framework:
-            return error("Framework not found", 404)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
 
         uploaded_by_user = (
             await session.get(User, str(framework.uploadedBy)) if framework.uploadedBy else None
@@ -324,7 +324,7 @@ async def get_framework_by_id(id: str, ctx: AuthenticatedUser = Depends(authenti
             "updatedAt": framework.updatedAt,
         }
 
-    return success(response_data, "Framework retrieved successfully")
+    return success(response_data, msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_RETRIEVED_SUCCESSFULLY"])
 
 
 @router.get("/{id}/download-report")
@@ -334,7 +334,7 @@ async def download_framework_report(id: str, ctx: AuthenticatedUser = Depends(au
     async with session_scope() as session:
         framework = await session.get(Framework, str(id))
         if not framework:
-            return error("Framework not found", 404)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
 
         approved_by_id = framework_helper.approval_by(framework)
         approved_by_user = await session.get(User, str(approved_by_id)) if approved_by_id else None
@@ -357,23 +357,23 @@ async def approve_framework(id: str, ctx: AuthenticatedUser = Depends(authentica
     async with session_scope() as session:
         framework = await session.get(Framework, str(id))
         if not framework:
-            return error("Framework not found", 404)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
 
         if str(framework.uploadedBy) != str(user.id):
-            return error("Only the user who uploaded the framework can approve it.", 403)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["ONLY_THE_USER_WHO_UPLOADED_THE_FRAMEWORK"], 403)
 
         if framework_helper.approval_status(framework) == "approved":
-            return error("Framework is already approved", 400)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_IS_ALREADY_APPROVED"], 400)
 
         current = framework_helper.get_current_file_version_data(framework)
         if not current or not current.aiExtraction:
-            return error("Framework must be uploaded to AI before approval", 400)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_MUST_BE_UPLOADED_TO_AI_BEFORE"], 400)
 
         ai_status = current.aiExtraction.status
         if ai_status == "processing":
-            return error("Framework AI processing is in progress. Please wait for completion", 409)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_AI_PROCESSING_IS_IN_PROGRESS_P"], 409)
         if ai_status == "failed":
-            return error("Framework AI processing failed", 409)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_AI_PROCESSING_FAILED"], 409)
 
         invalid_control = framework_helper.find_invalid_control_weightage(current)
         if invalid_control:
@@ -398,7 +398,7 @@ async def approve_framework(id: str, ctx: AuthenticatedUser = Depends(authentica
         framework_id = str(framework.id)
 
     return success(
-        {"framework": {"id": framework_id, "approval": approval_payload}},
+        {"framework": {"id": framework_id, msg.FRAMEWORK_SERVICE_MESSAGES["APPROVAL"]: approval_payload}},
         "Framework approved successfully",
     )
 
@@ -414,10 +414,10 @@ async def reject_framework(
     async with session_scope() as session:
         framework = await session.get(Framework, str(id))
         if not framework:
-            return error("Framework not found", 404)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
 
         if framework_helper.approval_status(framework) == "rejected":
-            return error("Framework is already rejected", 400)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_IS_ALREADY_REJECTED"], 400)
 
         approval = Approval(
             status="rejected",
@@ -441,7 +441,7 @@ async def reject_framework(
             }
         }
 
-    return success(response_payload, "Framework rejected successfully")
+    return success(response_payload, msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_REJECTED_SUCCESSFULLY"])
 
 
 # ─── Assignment ───────────────────────────────────────────────────────────────
@@ -456,7 +456,7 @@ async def assign_framework_to_customer(
 
     if not body.customerId or not body.tenantId or not body.frameworkIds:
         return error(
-            "customerId, tenantId, and frameworkIds (non-empty array) are required fields.",
+            msg.FRAMEWORK_SERVICE_MESSAGES["CUSTOMERID_TENANTID_AND_FRAMEWORKIDS_NON"],
             400,
         )
 
@@ -470,18 +470,18 @@ async def assign_framework_to_customer(
             )
         ).scalar_one_or_none()
         if not customer:
-            return error("Customer organization not found.", 404)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["CUSTOMER_ORGANIZATION_NOT_FOUND"], 404)
         if not customer.isActive:
-            return error("Customer organization is not active.", 404)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["CUSTOMER_ORGANIZATION_IS_NOT_ACTIVE"], 404)
 
         framework_ids = [str(fid) for fid in body.frameworkIds]
         frameworks = list(
             (await session.execute(select(Framework).where(Framework.id.in_(framework_ids)))).scalars().all()
         )
         if not frameworks:
-            return error("Frameworks not found", 404)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORKS_NOT_FOUND"], 404)
         if len(frameworks) != len(framework_ids):
-            return error("One or more provided framework IDs are invalid.", 400)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["ONE_OR_MORE_PROVIDED_FRAMEWORK_IDS_ARE_I"], 400)
 
         unapproved = [f for f in frameworks if framework_helper.approval_status(f) != "approved"]
         if unapproved:
@@ -525,7 +525,7 @@ async def assign_framework_to_customer(
     return success(
         {
             "customerId": str(body.customerId),
-            "tenantId": str(body.tenantId),
+            msg.FRAMEWORK_SERVICE_MESSAGES["TENANTID"]: str(body.tenantId),
             "frameworkIds": body.frameworkIds,
             "assignedBy": str(user.id) if user and getattr(user, "id", None) else None,
         },
@@ -557,13 +557,13 @@ async def upload_framework(
         return error(err_msg, 400)
 
     if not framework_category_id:
-        return error("Invalid framework category ID format", 400)
+        return error(msg.FRAMEWORK_SERVICE_MESSAGES["INVALID_FRAMEWORK_CATEGORY_ID_FORMAT"], 400)
 
     path_info = file_storage.generate_framework_file_path(
         file.filename, str(user.id), framework_version or "1.0.0"
     )
     if not file_storage.save_file(content, path_info.absolute_path):
-        return error("Failed to save file", 500)
+        return error(msg.FRAMEWORK_SERVICE_MESSAGES["FAILED_TO_SAVE_FILE"], 500)
 
     file_hash = file_storage.calculate_bytes_hash(content)
     file_id = new_id()
@@ -618,7 +618,7 @@ async def upload_framework(
             409,
         )
 
-    return success(response_data, "Framework created successfully")
+    return success(response_data, msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_CREATED_SUCCESSFULLY"])
 
 
 @router.put("/{id}")
@@ -635,10 +635,10 @@ async def update_framework(
     async with session_scope() as session:
         framework = await session.get(Framework, str(id))
         if not framework:
-            return error("Framework not found", 404)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
 
         if str(framework.uploadedBy) != str(user.id):
-            return error("You don't have permission to update this framework", 403)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["YOU_DON_T_HAVE_PERMISSION_TO_UPDATE_THIS"], 403)
 
         versions = framework_helper.parse_file_versions(framework)
         file_hash = file_storage.calculate_bytes_hash(content)
@@ -654,7 +654,7 @@ async def update_framework(
             file.filename, str(user.id), framework.frameworkVersion
         )
         if not file_storage.save_file(content, path_info.absolute_path):
-            return error("Failed to save file", 500)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FAILED_TO_SAVE_FILE"], 500)
 
         new_version = framework_helper.get_next_version(framework.currentFileVersion)
         versions.append(
@@ -692,7 +692,7 @@ async def update_framework(
             "updatedAt": framework.updatedAt,
         }
 
-    return success(response_data, "Framework updated successfully")
+    return success(response_data, msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_UPDATED_SUCCESSFULLY"])
 
 
 @router.delete("/{id}")
@@ -702,13 +702,13 @@ async def delete_framework(id: str, ctx: AuthenticatedUser = Depends(authenticat
     async with session_scope() as session:
         framework = await session.get(Framework, str(id))
         if not framework:
-            return error("Framework not found", 404)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
 
         if str(framework.uploadedBy) != str(user.id):
-            return error("You don't have permission to delete this framework", 403)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["YOU_DON_T_HAVE_PERMISSION_TO_DELETE_THIS"], 403)
 
         if framework_helper.approval_status(framework) == "approved":
-            return error("Cannot delete approved framework", 403)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["CANNOT_DELETE_APPROVED_FRAMEWORK"], 403)
 
         versions = framework_helper.parse_file_versions(framework)
         for version in versions:
@@ -718,7 +718,9 @@ async def delete_framework(id: str, ctx: AuthenticatedUser = Depends(authenticat
         framework_id = framework.id
         await session.delete(framework)
 
-    return success({"id": str(framework_id)}, "Framework deleted successfully")
+    return success(
+        {"id": str(framework_id)}, msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_DELETED_SUCCESSFULLY"]
+    )
 
 
 # ─── Files ────────────────────────────────────────────────────────────────────
@@ -731,10 +733,10 @@ async def get_framework_files(frameworkId: str, ctx: AuthenticatedUser = Depends
     async with session_scope() as session:
         framework = await session.get(Framework, str(frameworkId))
         if not framework:
-            return error("Framework not found", 404)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
 
         if str(framework.uploadedBy) != str(user.id):
-            return error("You don't have permission to access these files", 403)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["YOU_DON_T_HAVE_PERMISSION_TO_ACCESS_THES"], 403)
 
         versions = framework_helper.parse_file_versions(framework)
         files = [
@@ -758,7 +760,7 @@ async def get_framework_files(frameworkId: str, ctx: AuthenticatedUser = Depends
             "files": files,
         }
 
-    return success(response_data, "Framework files retrieved successfully")
+    return success(response_data, msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_FILES_RETRIEVED_SUCCESSFULLY"])
 
 
 @router.get("/{frameworkId}/files/{fileId}")
@@ -770,15 +772,15 @@ async def get_framework_file_by_id(
     async with session_scope() as session:
         framework = await session.get(Framework, str(frameworkId))
         if not framework:
-            return error("Framework not found", 404)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
 
         if str(framework.uploadedBy) != str(user.id):
-            return error("You don't have permission to access this file", 403)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["YOU_DON_T_HAVE_PERMISSION_TO_ACCESS_THIS"], 403)
 
         versions = framework_helper.parse_file_versions(framework)
         file_version = next((v for v in versions if str(v.fileId) == fileId), None)
         if not file_version:
-            return error("File not found", 404)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FILE_NOT_FOUND"], 404)
 
         response_data = {
             "frameworkId": str(framework.id),
@@ -799,7 +801,7 @@ async def get_framework_file_by_id(
             },
         }
 
-    return success(response_data, "Framework file retrieved successfully")
+    return success(response_data, msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_FILE_RETRIEVED_SUCCESSFULLY"])
 
 
 @router.get("/{frameworkId}/files/{fileId}/download")
@@ -807,16 +809,16 @@ async def download_framework_file(frameworkId: str, fileId: str):
     async with session_scope() as session:
         framework = await session.get(Framework, str(frameworkId))
         if not framework:
-            return error("Framework not found", 404)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
 
         versions = framework_helper.parse_file_versions(framework)
         file_version = next((v for v in versions if str(v.fileId) == fileId), None)
         if not file_version:
-            return error("File not found", 404)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FILE_NOT_FOUND"], 404)
 
         file_bytes = file_storage.read_file(file_version.fileUrl)
         if file_bytes is None:
-            return error("File not found on disk", 404)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FILE_NOT_FOUND_ON_DISK"], 404)
 
         content_type = file_storage.CONTENT_TYPES.get(file_version.fileType, "application/octet-stream")
         original_name = file_version.originalFileName
@@ -840,16 +842,16 @@ async def preview_framework_file(
     async with session_scope() as session:
         framework = await session.get(Framework, str(frameworkId))
         if not framework:
-            return error("Framework not found", 404)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
 
         versions = framework_helper.parse_file_versions(framework)
         file_version = next((v for v in versions if str(v.fileId) == fileId), None)
         if not file_version:
-            return error("File version not found", 404)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FILE_VERSION_NOT_FOUND"], 404)
 
         actual_path = file_storage.resolve_actual_file_path(file_version.fileUrl, str(user.id))
         if not actual_path or not file_storage.file_exists(actual_path):
-            return error("File on disk not found", 404)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FILE_ON_DISK_NOT_FOUND"], 404)
 
         file_bytes = file_storage.read_file(actual_path)
         ext = (file_version.fileType or "").lower()
@@ -872,18 +874,18 @@ async def delete_framework_file(
     async with session_scope() as session:
         framework = await session.get(Framework, str(frameworkId))
         if not framework:
-            return error("Framework not found", 404)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
 
         if str(framework.uploadedBy) != str(user.id):
-            return error("You don't have permission to delete this file", 403)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["YOU_DON_T_HAVE_PERMISSION_TO_DELETE_THIS"], 403)
 
         if framework_helper.approval_status(framework) == "approved":
-            return error("Cannot delete files from approved framework", 403)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["CANNOT_DELETE_FILES_FROM_APPROVED_FRAMEW"], 403)
 
         versions = framework_helper.parse_file_versions(framework)
         idx = next((i for i, v in enumerate(versions) if str(v.fileId) == fileId), None)
         if idx is None:
-            return error("File not found", 404)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FILE_NOT_FOUND"], 404)
 
         file_version = versions[idx]
         file_storage.delete_file(file_version.fileUrl)
@@ -915,7 +917,7 @@ async def delete_framework_file(
             "updatedAt": framework.updatedAt,
         }
 
-    return success(response_data, "Framework retrieved successfully")
+    return success(response_data, msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_RETRIEVED_SUCCESSFULLY"])
 
 
 # ─── Control CRUD ─────────────────────────────────────────────────────────────
@@ -931,18 +933,18 @@ async def add_framework_control(
     user = ctx.user
 
     if (not body.sectionId and not body.newSection) or not body.name:
-        return error("sectionId or newSection, and name are required", 400)
+        return error(msg.FRAMEWORK_SERVICE_MESSAGES["SECTIONID_OR_NEWSECTION_AND_NAME_ARE_REQ"], 400)
 
     async with session_scope() as session:
         framework = await session.get(Framework, str(id))
         if not framework:
-            return error("Framework not found", 404)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
 
         if str(framework.uploadedBy) != str(user.id):
-            return error("You don't have permission to modify this framework", 403)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["YOU_DON_T_HAVE_PERMISSION_TO_MODIFY_THIS"], 403)
 
         if framework_helper.approval_status(framework) == "approved":
-            return error("Cannot edit controls in approved frameworks", 403)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["CANNOT_EDIT_CONTROLS_IN_APPROVED_FRAMEWO"], 403)
 
         versions = framework_helper.parse_file_versions(framework)
         file_version_doc = next((fv for fv in versions if fv.fileVersion == fileVersion), None)
@@ -950,7 +952,7 @@ async def add_framework_control(
             return error(f"Version {fileVersion} not found in this framework", 404)
 
         if not file_version_doc.aiExtraction:
-            return error("AI Extraction data not found for this version", 400)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["AI_EXTRACTION_DATA_NOT_FOUND_FOR_THIS_VE"], 400)
 
         if not file_version_doc.aiExtraction.controls:
             file_version_doc.aiExtraction.controls = Controls()
@@ -1007,7 +1009,7 @@ async def add_framework_control(
     return success(
         {
             "control": control_payload,
-            "sectionId": section_id_to_use,
+            msg.FRAMEWORK_SERVICE_MESSAGES["SECTIONID"]: section_id_to_use,
             "fileVersion": fileVersion,
         },
         f"Control added successfully to section {section_id_to_use} in version {fileVersion}",
@@ -1025,18 +1027,18 @@ async def update_framework_control(
     user = ctx.user
 
     if not body.name and body.description is None and body.deployment_points is None:
-        return error("At least one of name, description, or deployment_points must be provided", 400)
+        return error(msg.FRAMEWORK_SERVICE_MESSAGES["AT_LEAST_ONE_OF_NAME_DESCRIPTION_OR_DEPL"], 400)
 
     async with session_scope() as session:
         framework = await session.get(Framework, str(id))
         if not framework:
-            return error("Framework not found", 404)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
 
         if str(framework.uploadedBy) != str(user.id):
-            return error("You don't have permission to modify this framework", 403)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["YOU_DON_T_HAVE_PERMISSION_TO_MODIFY_THIS"], 403)
 
         if framework_helper.approval_status(framework) == "approved":
-            return error("Cannot edit controls in approved frameworks", 403)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["CANNOT_EDIT_CONTROLS_IN_APPROVED_FRAMEWO"], 403)
 
         versions = framework_helper.parse_file_versions(framework)
         file_version_doc = next((fv for fv in versions if fv.fileVersion == fileVersion), None)
@@ -1072,7 +1074,7 @@ async def update_framework_control(
         control_payload = target_control.model_dump(mode="json")
 
     return success(
-        {"control": control_payload, "fileVersion": fileVersion},
+        {"control": control_payload, msg.FRAMEWORK_SERVICE_MESSAGES["FILEVERSION"]: fileVersion},
         f"Control {controlId} updated successfully in version {fileVersion}",
     )
 
@@ -1088,18 +1090,18 @@ async def update_framework_control_weightage(
     user = ctx.user
 
     if body.weightage is None or body.weightage < 0:
-        return error("Valid weightage must be provided", 400)
+        return error(msg.FRAMEWORK_SERVICE_MESSAGES["VALID_WEIGHTAGE_MUST_BE_PROVIDED"], 400)
 
     async with session_scope() as session:
         framework = await session.get(Framework, str(id))
         if not framework:
-            return error("Framework not found", 404)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
 
         if str(framework.uploadedBy) != str(user.id):
-            return error("You don't have permission to modify this framework", 403)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["YOU_DON_T_HAVE_PERMISSION_TO_MODIFY_THIS"], 403)
 
         if framework_helper.approval_status(framework) == "approved":
-            return error("Cannot edit controls in approved frameworks", 403)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["CANNOT_EDIT_CONTROLS_IN_APPROVED_FRAMEWO"], 403)
 
         versions = framework_helper.parse_file_versions(framework)
         file_version_doc = next((fv for fv in versions if fv.fileVersion == fileVersion), None)
@@ -1128,7 +1130,7 @@ async def update_framework_control_weightage(
         control_payload = target_control.model_dump(mode="json")
 
     return success(
-        {"control": control_payload, "fileVersion": fileVersion},
+        {"control": control_payload, msg.FRAMEWORK_SERVICE_MESSAGES["FILEVERSION"]: fileVersion},
         "Control weightage updated successfully",
     )
 
@@ -1145,13 +1147,13 @@ async def delete_framework_control(
     async with session_scope() as session:
         framework = await session.get(Framework, str(id))
         if not framework:
-            return error("Framework not found", 404)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
 
         if str(framework.uploadedBy) != str(user.id):
-            return error("You don't have permission to modify this framework", 403)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["YOU_DON_T_HAVE_PERMISSION_TO_MODIFY_THIS"], 403)
 
         if framework_helper.approval_status(framework) == "approved":
-            return error("Cannot delete controls from approved frameworks", 403)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["CANNOT_DELETE_CONTROLS_FROM_APPROVED_FRA"], 403)
 
         versions = framework_helper.parse_file_versions(framework)
         file_version_doc = next((fv for fv in versions if fv.fileVersion == fileVersion), None)
@@ -1185,6 +1187,6 @@ async def delete_framework_control(
         await session.flush()
 
     return success(
-        {"controlId": controlId, "fileVersion": fileVersion},
+        {"controlId": controlId, msg.FRAMEWORK_SERVICE_MESSAGES["FILEVERSION"]: fileVersion},
         f"Control {controlId} deleted successfully from version {fileVersion}",
     )

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from vora_shared.auth import AuthenticatedUser, authenticate
-from vora_shared import data_format
+from vora_shared import data_format, messages as msg
 from app.services import authorization
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, or_, select
@@ -31,9 +31,9 @@ async def request_framework_access(
     async with session_scope() as session:
         category = await session.get(FrameworkCategory, str(framework_category_id))
         if not category:
-            return error("Framework category not found", 404)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_CATEGORY_NOT_FOUND"], 404)
         if not category.isActive:
-            return error("Framework category is not active", 400)
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_CATEGORY_IS_NOT_ACTIVE"], 400)
 
     try:
         access_request = await authorization.request_access(user.id, framework_category_id)
@@ -42,7 +42,11 @@ async def request_framework_access(
 
     return success(
         {
-            "id": str(access_request.id) if access_request and getattr(access_request, "id", None) else None,
+            msg.FRAMEWORK_SERVICE_MESSAGES["ID"]: (
+                str(access_request.id)
+                if access_request and getattr(access_request, msg.FRAMEWORK_SERVICE_MESSAGES["ID"], None)
+                else None
+            ),
             "frameworkCategoryId": (
                 str(access_request.frameworkCategoryId)
                 if access_request and getattr(access_request, "frameworkCategoryId", None)
