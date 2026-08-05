@@ -1,0 +1,107 @@
+{
+  "success": true,
+  "message": "Assigned frameworks retrieved successfully",
+  "data": [
+    {
+      "id": "6a45e7c98e4d1c3683610bf3",
+      "tenantId": "tenant_5208bb38cd55a4ed",
+      "frameworkId": "6a450b765794915b4aefb240",
+      "frameworkCode": "iso9001",
+      "frameworkName": "Quality Management Framework",
+      "frameworkVersion": "ISO9001:2008",
+      "frameworkCategoryId": "6a450ad86cca7c75d9cbd18b",
+      "customer": {
+        "id": "6a450bc2eac029fd7aedd863",
+        "tenantId": null,
+        "name": null,
+        "email": null,
+        "phone": null,
+        "isActive": true,
+        "avatar": "/uploads/customer-tenant_5208bb38cd55a4ed/avatar/1783486123251-5c92c731.jpg"
+      },
+      "status": "assigned",
+      "assignment": {
+        "assignedBy": {
+          "id": "6a450a78b0650be22883c5ee",
+          "name": "Ekvayu Tech Private Limited",
+          "email": "saksham@ekvayu.com",
+          "role": "admin",
+          "avatar": null
+        },
+        "assignedAt": "2026-07-06T12:44:07.121Z"
+      },
+      "revocation": {
+        "revokedBy": {
+          "id": "6a450a78b0650be22883c5ee",
+          "name": "Ekvayu Tech Private Limited",
+          "email": "saksham@ekvayu.com",
+          "role": "admin",
+          "avatar": null
+        },
+        "revokedAt": "2026-07-06T12:39:53.901Z"
+      },
+      "finalization": {
+        "isFinalized": true,
+        "finalizedBy": {
+          "id": "6a450c5eeac029fd7aedd86a",
+          "name": null,
+          "email": null,
+          "role": null,
+          "avatar": null
+        },
+        "finalizedAt": "2026-07-06T12:45:22.738Z"
+      },
+      "assignedAt": "2026-07-02T04:23:37.687Z"
+    },
+    {
+      "id": "6a45e7c98e4d1c3683610be4",
+      "tenantId": "tenant_5208bb38cd55a4ed",
+      "frameworkId": "6a450b565794915b4aefb234",
+      "frameworkCode": "iso27001",
+      "frameworkName": "Information Security Management System",
+      "frameworkVersion": "ISO27001:2022",
+      "frameworkCategoryId": "6a450ad36cca7c75d9cbd189",
+      "customer": {
+        "id": "6a450bc2eac029fd7aedd863",
+        "tenantId": null,
+        "name": null,
+        "email": null,
+        "phone": null,
+        "isActive": true,
+        "avatar": "/uploads/customer-tenant_5208bb38cd55a4ed/avatar/1783486123251-5c92c731.jpg"
+      },
+      "status": "assigned",
+      "assignment": {
+        "assignedBy": {
+          "id": "6a450a78b0650be22883c5ee",
+          "name": "Ekvayu Tech Private Limited",
+          "email": "saksham@ekvayu.com",
+          "role": "admin",
+          "avatar": null
+        },
+        "assignedAt": "2026-07-02T04:23:37.616Z"
+      },
+      "revocation": null,
+      "finalization": {
+        "isFinalized": true,
+        "finalizedBy": {
+          "id": "6a450c5eeac029fd7aedd86a",
+          "name": null,
+          "email": null,
+          "role": null,
+          "avatar": null
+        },
+        "finalizedAt": "2026-07-02T04:25:36.220Z"
+      },
+      "assignedAt": "2026-07-02T04:23:37.616Z"
+    }
+  ],
+  "pagination": {
+    "currentPage": 1,
+    "totalPages": 1,
+    "totalItems": 2,
+    "itemsPerPage": 12,
+    "hasNextPage": false,
+    "hasPrevPage": false
+  }
+}

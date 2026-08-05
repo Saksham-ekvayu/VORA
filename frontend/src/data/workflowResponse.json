@@ -1,0 +1,111 @@
+{
+  "success": true,
+  "message": "Workflows retrieved successfully",
+  "data": [
+    {
+      "id": "workflow_01",
+      "frameworkId": "6a45e7c98e4d1c3683610bf3",
+      "framework": {
+        "id": "6a45e7c98e4d1c3683610bf3",
+        "frameworkName": "Quality Management Framework",
+        "frameworkVersion": "ISO9001:2008"
+      },
+      "assigned-framework": {
+        "levels": 2,
+        "approvalConfig": [
+          {
+            "level": 1,
+            "auditor": {
+              "id": "6a450c5eeac029fd7aedd86a",
+              "name": "Lakshit Saini",
+              "email": "lakshit@ekvayu.com",
+              "role": "auditor",
+              "avatar": null,
+              "designation": "Level 1 Auditor"
+            }
+          },
+          {
+            "level": 2,
+            "auditor": {
+              "id": "6a4510f9eac029fd7aedd872",
+              "name": "Saksham Kamboj",
+              "email": "saksham@ekvayu.com",
+              "role": "auditor",
+              "avatar": null,
+              "designation": "Level 2 Auditor"
+            }
+          }
+        ]
+      },
+      "deployment-framework": {
+        "levels": 1,
+        "approvalConfig": [
+          {
+            "level": 1,
+            "auditor": {
+              "id": "6a450c5eeac029fd7aedd86a",
+              "name": "Lakshit Saini",
+              "email": "lakshit@ekvayu.com",
+              "role": "auditor",
+              "avatar": null,
+              "designation": "Deployment Auditor"
+            }
+          }
+        ]
+      },
+      "createdAt": "2026-07-06T12:44:07.121Z",
+      "updatedAt": "2026-07-06T12:20:07.121Z"
+    },
+    {
+      "id": "workflow_02",
+      "frameworkId": "6a45e7c98e4d1c3683610be4",
+      "framework": {
+        "id": "6a45e7c98e4d1c3683610be4",
+        "frameworkName": "Information Security Management System",
+        "frameworkVersion": "ISO27001:2022"
+      },
+      "assigned-framework": {
+        "levels": 1,
+        "approvalConfig": [
+          {
+            "level": 1,
+            "auditor": {
+              "id": "6a450c5eeac029fd7aedd86a",
+              "name": "Lakshit Saini",
+              "email": "lakshit@ekvayu.com",
+              "role": "auditor",
+              "avatar": null,
+              "designation": "Level 1 Auditor"
+            }
+          }
+        ]
+      },
+      "deployment-framework": {
+        "levels": 1,
+        "approvalConfig": [
+          {
+            "level": 1,
+            "auditor": {
+              "id": "6a4510f9eac029fd7aedd872",
+              "name": "Saksham Kamboj",
+              "email": "saksham@ekvayu.com",
+              "role": "auditor",
+              "avatar": null,
+              "designation": "Deployment Auditor"
+            }
+          }
+        ]
+      },
+      "createdAt": "2026-07-06T12:44:07.121Z",
+      "updatedAt": "2026-07-06T12:10:07.121Z"
+    }
+  ],
+  "pagination": {
+    "currentPage": 1,
+    "totalPages": 1,
+    "totalItems": 2,
+    "itemsPerPage": 10,
+    "hasNextPage": false,
+    "hasPrevPage": false
+  }
+}

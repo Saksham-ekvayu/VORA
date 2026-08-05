@@ -1,0 +1,211 @@
+{
+  "stats": {
+    "totalProfiles": 4,
+    "deploymentFrameworks": 2,
+    "assignedFrameworks": 2,
+    "controlsConfigured": 23,
+    "controlsTotal": 54
+  },
+  "profilesByRole": [
+    {
+      "role": "User",
+      "count": 1
+    },
+    {
+      "role": "Auditor",
+      "count": 2
+    },
+    {
+      "role": "Internal-Expert",
+      "count": 1
+    }
+  ],
+  "pipeline": {
+    "aiExtracted": 2,
+    "reviewRequested": 1,
+    "approved": 1,
+    "live": 1,
+    "pending": 1
+  },
+  "setupProgress": {
+    "configured": 23,
+    "total": 54,
+    "percentage": 42,
+    "frameworkCode": "ISO27001:2022",
+    "sections": 11,
+    "iamControls": 10
+  },
+  "setupProgressByFramework": [
+    {
+      "id": "fw-001",
+      "frameworkName": "ISO27001",
+      "frameworkVersion": "ISO27001:2022",
+      "configured": 23,
+      "total": 54,
+      "percentage": 42,
+      "frameworkCode": "ISO27001:2022",
+      "sections": 11,
+      "iamControls": 10
+    },
+    {
+      "id": "fw-002",
+      "frameworkName": "ISO9001",
+      "frameworkVersion": "ISO9001:2008",
+      "configured": 18,
+      "total": 40,
+      "percentage": 45,
+      "frameworkCode": "ISO9001:2008",
+      "sections": 8,
+      "iamControls": 6
+    },
+    {
+      "id": "fw-003",
+      "frameworkName": "NIST CSF",
+      "frameworkVersion": "v1.1",
+      "configured": 10,
+      "total": 35,
+      "percentage": 28,
+      "frameworkCode": "NIST CSF v1.1",
+      "sections": 5,
+      "iamControls": 4
+    },
+    {
+      "id": "fw-004",
+      "frameworkName": "21 CFR",
+      "frameworkVersion": "Part 11",
+      "configured": 5,
+      "total": 30,
+      "percentage": 16,
+      "frameworkCode": "21 CFR Part 11",
+      "sections": 4,
+      "iamControls": 3
+    },
+    {
+      "id": "fw-005",
+      "frameworkName": "SOC 2",
+      "frameworkVersion": "Type II",
+      "configured": 30,
+      "total": 45,
+      "percentage": 66,
+      "frameworkCode": "SOC 2 Type II",
+      "sections": 9,
+      "iamControls": 8
+    }
+  ],
+  "frameworkTimeline": [
+    {
+      "framework": "ISO27001",
+      "assignedMonth": 2,
+      "deployedMonth": 5
+    },
+    {
+      "framework": "ISO9001",
+      "assignedMonth": 4,
+      "deployedMonth": 7
+    },
+    {
+      "framework": "NIST CSF",
+      "assignedMonth": 1,
+      "deployedMonth": 4
+    },
+    {
+      "framework": "21 CFR",
+      "assignedMonth": 6,
+      "deployedMonth": 9
+    },
+    {
+      "framework": "SOC 2",
+      "assignedMonth": 3,
+      "deployedMonth": 8
+    }
+  ],
+  "deployedFrameworks": [
+    {
+      "name": "ISO27001:2022",
+      "count": 6,
+      "assignedOn": "12 Jan 2026",
+      "deployedOn": "28 Feb 2026",
+      "status": "Live"
+    },
+    {
+      "name": "ISO9001:2008",
+      "count": 4,
+      "assignedOn": "15 Feb 2026",
+      "deployedOn": "10 Mar 2026",
+      "status": "Live"
+    },
+    {
+      "name": "NIST CSF",
+      "count": 3,
+      "assignedOn": "01 Mar 2026",
+      "deployedOn": "20 Apr 2026",
+      "status": "Assigned"
+    },
+    {
+      "name": "21 CFR Part 11",
+      "count": 2,
+      "assignedOn": "10 Apr 2026",
+      "deployedOn": "—",
+      "status": "Pending"
+    },
+    {
+      "name": "SOC 2 Type II",
+      "count": 5,
+      "assignedOn": "05 Jan 2026",
+      "deployedOn": "25 Mar 2026",
+      "status": "Live"
+    }
+  ],
+  "assignedFrameworks": [
+    {
+      "id": "af-001",
+      "code": "ISO9001",
+      "name": "Quality Management Framework",
+      "version": "ISO9001:2008",
+      "assignmentStatus": "assigned",
+      "finalizationStatus": "finalized",
+      "assignedAt": "2026-07-02T00:00:00.000Z"
+    },
+    {
+      "id": "af-002",
+      "code": "ISO27001",
+      "name": "Information Security Management System",
+      "version": "ISO27001:2022",
+      "assignmentStatus": "assigned",
+      "finalizationStatus": "finalized",
+      "assignedAt": "2026-07-02T00:00:00.000Z"
+    }
+  ],
+  "recentActivity": [
+    {
+      "id": "ra-001",
+      "message": "Org Auditor uploaded Quality Management Framework v1.0.0",
+      "actor": "familiguide1990@gmail.com",
+      "timeAgo": "26 ago"
+    },
+    {
+      "id": "ra-002",
+      "message": "Acme Corporation Admin assigned ISO27001 to Ekvayu Tech",
+      "actor": "lakshitbambou1990@gmail.com",
+      "timeAgo": "06 ago"
+    },
+    {
+      "id": "ra-003",
+      "message": "Org Expert approved Information Security Management System",
+      "actor": "lakshit@ekvayu.com",
+      "timeAgo": "Yesterday"
+    },
+    {
+      "id": "ra-004",
+      "message": "Org Auditor requested review Quality Management Framework",
+      "actor": "lakshit623@gmail.com",
+      "timeAgo": "Yesterday"
+    },
+    {
+      "id": "ra-005",
+      "message": "Ekvayu Tech Private Limited configured 5 controls Identity & Access Management",
+      "actor": "admin@ekvayu.com",
+      "timeAgo": "2 days ago"
+    }
+  ]
+}

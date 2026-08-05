@@ -1,0 +1,350 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Instrument+Sans:wght@400;500;600&display=swap");
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* =====================================
+   THEME TOKEN MAPPING (shadcn)
+===================================== */
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+/* =====================================
+   🌞 LIGHT THEME (DEFAULT)
+   Based on OLD LIGHT THEME
+===================================== */
+:root {
+  --radius: 0.75rem;
+
+  /* Backgrounds */
+  --background: oklch(0.98 0 0);
+  /* #fafaf9 */
+  --foreground: oklch(0.2 0.01 240);
+  /* text */
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.01 240);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0.01 240);
+
+  /* Primary – Teal */
+  --primary: oklch(0.6 0.14 190);
+  /* #0d9488 */
+  --primary-foreground: oklch(0.98 0 0);
+
+  /* Secondary – Purple */
+  --secondary: oklch(0.62 0.18 305);
+  /* #9333ea */
+  --secondary-foreground: oklch(0.98 0 0);
+
+  /* Muted / Text */
+  --muted: oklch(0.94 0 0);
+  --muted-foreground: oklch(0.45 0 0);
+
+  --accent: oklch(0.94 0 0);
+  --accent-foreground: oklch(0.2 0.01 240);
+
+  /* Semantic */
+  --destructive: oklch(0.6 0.25 27);
+  --warning: oklch(0.75 0.18 85);
+  --warning-foreground: oklch(0.98 0 0);
+  --border: oklch(0.88 0 0);
+  --input: oklch(0.92 0 0);
+  --ring: oklch(0.6 0.14 190);
+}
+
+/* =====================================
+   🌙 DARK THEME (OLD DARK STYLE)
+===================================== */
+.dark {
+  --background: oklch(0.15 0.03 240);
+  /* #0a1628 */
+  --foreground: oklch(0.97 0.01 240);
+
+  --card: oklch(0.18 0.04 240);
+  /* bg-2 */
+  --card-foreground: oklch(0.97 0.01 240);
+
+  --popover: oklch(0.18 0.04 240);
+  --popover-foreground: oklch(0.97 0.01 240);
+
+  /* Teal */
+  --primary: oklch(0.72 0.15 190);
+  /* #14b8a6 */
+  --primary-foreground: oklch(0.98 0 0);
+
+  /* Purple */
+  --secondary: oklch(0.65 0.2 305);
+  /* #a855f7 */
+  --secondary-foreground: oklch(0.98 0 0);
+
+  --muted: oklch(0.3 0.03 240);
+  --muted-foreground: oklch(0.75 0.02 240);
+
+  --accent: oklch(0.25 0.04 240);
+  --accent-foreground: oklch(0.97 0.01 240);
+
+  --destructive: oklch(0.63 0.25 27);
+  --warning: oklch(0.8 0.15 85);
+  --warning-foreground: oklch(0.15 0.03 240);
+  --border: oklch(0.32 0.05 240);
+  --input: oklch(0.32 0.05 240);
+  --ring: oklch(0.72 0.15 190);
+}
+
+/* Sonner close button theme-aware hover */
+[data-sonner-toast] [data-close-button] {
+  background-color: var(--color-muted) !important;
+  border: 1px solid var(--color-border) !important;
+  color: var(--color-foreground) !important;
+}
+
+[data-sonner-toast] [data-close-button]:hover {
+  background-color: var(--color-muted) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-foreground) !important;
+}
+
+/* Sonner toast icon colors based on type */
+[data-sonner-toast][data-type="success"] [data-icon] {
+  color: var(--color-primary) !important;
+}
+
+[data-sonner-toast][data-type="error"] [data-icon] {
+  color: var(--color-destructive) !important;
+}
+
+[data-sonner-toast][data-type="warning"] [data-icon] {
+  color: oklch(0.65 0.15 85) !important;
+  /* yellow-500 */
+}
+
+[data-sonner-toast][data-type="info"] [data-icon] {
+  color: oklch(0.6 0.15 240) !important;
+  /* blue-500 */
+}
+
+[data-sonner-toast][data-type="loading"] [data-icon] {
+  color: var(--color-primary) !important;
+}
+
+/* =====================================
+   BASE STYLES
+===================================== */
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  .dark {
+    color-scheme: dark;
+  }
+
+  * {
+    border-color: var(--color-border);
+    outline-color: rgba(var(--color-ring), 0.5);
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--color-border);
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-muted-foreground);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: "Inter", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  input,
+  textarea {
+    color: var(--color-foreground);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-muted-foreground);
+  }
+}
+
+/* 🔥 Disable browser autofill background color */
+/* Autofill for light & dark theme */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: var(--color-foreground) !important;
+  caret-color: var(--color-foreground);
+  /* The transition delay prevents Chrome's autofill background from rendering */
+  transition:
+    background-color 9999s ease-in-out 0s,
+    color 9999s ease-in-out 0s !important;
+}
+
+@keyframes rotatePattern {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Animation delay utility */
+.animation-delay-150 {
+  animation-delay: 150ms;
+}
+
+/* Enhanced loading animation */
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+/* =====================================
+   🎯 SIDEBAR CUSTOM SCROLLBAR
+===================================== */
+.sidebar-scroll {
+  scrollbar-width: thin;
+  /* Firefox */
+  scrollbar-color: var(--border) transparent;
+}
+
+/* WebKit browsers (Chrome, Edge, Safari) */
+.sidebar-scroll::-webkit-scrollbar {
+  width: 6px;
+  /* 👈 thin width */
+}
+
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 999px;
+}
+
+/* Hover effect */
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: var(--primary);
+}
+
+/* =====================================
+   📊 RECHARTS - REMOVE FOCUS OUTLINE
+===================================== */
+.recharts-wrapper,
+.recharts-surface,
+.recharts-layer,
+.recharts-cartesian-grid,
+.recharts-area,
+.recharts-line {
+  outline: none !important;
+}
+
+.recharts-wrapper:focus,
+.recharts-surface:focus {
+  outline: none !important;
+}
+
+/* Remove focus outline from all recharts elements */
+[class*="recharts-"] {
+  outline: none !important;
+}
+
+[class*="recharts-"]:focus {
+  outline: none !important;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Sticky table column styling to prevent transparency during scroll and hover */
+.sticky-sr-header {
+  background-color: var(--color-muted) !important;
+}
+
+.sticky-sr-col {
+  background-color: var(--color-card) !important;
+}
+
+/* On row hover, style the sticky cell with a solid color that matches bg-accent/60 on top of card background */
+tr:hover .sticky-sr-col {
+  background-color: color-mix(
+    in srgb,
+    var(--color-accent) 100%,
+    var(--color-card)
+  ) !important;
+}

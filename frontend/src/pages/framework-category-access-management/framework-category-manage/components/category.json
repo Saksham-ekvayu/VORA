@@ -1,0 +1,87 @@
+[
+  {
+    "code": "iso27001",
+    "frameworkCategoryName": "Information Security Management System",
+    "description": "International standard for establishing, implementing, and maintaining an Information Security Management System (ISMS)."
+  },
+  {
+    "code": "cobit",
+    "frameworkCategoryName": "Governance Framework",
+    "description": "Framework for governance and management of enterprise IT, focusing on aligning IT goals with business objectives."
+  },
+  {
+    "code": "nist",
+    "frameworkCategoryName": "Cybersecurity Framework",
+    "description": "Guidelines and best practices developed to manage and reduce cybersecurity risks across organizations."
+  },
+  {
+    "code": "iso9001",
+    "frameworkCategoryName": "Quality Management Framework",
+    "description": "International standard that specifies requirements for a quality management system to ensure consistent product and service quality."
+  },
+  {
+    "code": "sox",
+    "frameworkCategoryName": "Compliance Framework",
+    "description": "Regulatory framework designed to ensure financial transparency, accuracy, and integrity in corporate reporting."
+  },
+  {
+    "code": "basel",
+    "frameworkCategoryName": "Banking Regulatory Framework",
+    "description": "International banking regulations focused on capital adequacy, risk management, and financial stability."
+  },
+  {
+    "code": "pcidss",
+    "frameworkCategoryName": "Payment Card Security Framework",
+    "description": "Security standard designed to protect cardholder data and secure payment card transactions."
+  },
+  {
+    "code": "gdpr",
+    "frameworkCategoryName": "Data Protection and Privacy Framework",
+    "description": "European privacy framework governing the collection, processing, and protection of personal data."
+  },
+  {
+    "code": "dpdp",
+    "frameworkCategoryName": "Data Protection Framework",
+    "description": "Indian framework governing the processing and protection of digital personal data."
+  },
+  {
+    "code": "iso31000",
+    "frameworkCategoryName": "Risk Management Framework",
+    "description": "International standard providing principles and guidelines for risk management."
+  },
+  {
+    "code": "iec62443",
+    "frameworkCategoryName": "Industrial Cybersecurity Framework",
+    "description": "Security framework for Industrial Automation and Control Systems (IACS)."
+  },
+  {
+    "code": "gmp_pharma",
+    "frameworkCategoryName": "Pharmaceutical Good Manufacturing Practice",
+    "description": "Frameworks governing quality and safety in pharmaceutical manufacturing."
+  },
+  {
+    "code": "gmp_food",
+    "frameworkCategoryName": "Food Safety and Manufacturing Framework",
+    "description": "Standards and regulations ensuring food safety and manufacturing quality."
+  },
+  {
+    "code": "hipaa",
+    "frameworkCategoryName": "Healthcare Privacy and Security Framework",
+    "description": "US regulation governing the privacy and security of protected health information (PHI)."
+  },
+  {
+    "code": "iso14001",
+    "frameworkCategoryName": "Environmental Management Framework",
+    "description": "International standard for environmental management systems to improve environmental performance."
+  },
+  {
+    "code": "iso45001",
+    "frameworkCategoryName": "Occupational Health and Safety Framework",
+    "description": "International standard for occupational health and safety management systems."
+  },
+  {
+    "code": "soc2",
+    "frameworkCategoryName": "Trust Services Compliance Framework",
+    "description": "Auditing framework for evaluating controls related to security, availability, processing integrity, confidentiality, and privacy."
+  }
+]

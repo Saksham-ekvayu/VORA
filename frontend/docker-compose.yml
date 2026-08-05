@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  vora-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        VITE_WS_BASE_URL: ${VITE_WS_BASE_URL}
+        VITE_INTERNAL_USER_SYNC_API_KEY: ${VITE_INTERNAL_USER_SYNC_API_KEY}
+
+    container_name: vora-frontend
+
+    restart: unless-stopped
+
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+      VITE_WS_BASE_URL: ${VITE_WS_BASE_URL}
+
+    ports:
+      - "7050:80"
+
+    networks:
+      - vora-shared-network
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  vora-shared-network:
+    external: true

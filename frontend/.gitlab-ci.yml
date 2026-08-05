@@ -1,0 +1,533 @@
+stages:
+  - lint
+  - sast
+  - scan
+  - security
+  - deploy
+  - post_deploy
+
+variables:
+  GIT_STRATEGY: none
+  REPO_URL: "http://192.168.1.30:8081/vora_project/vora-frontend.git"
+  BRANCH_NAME: "main"
+  BUILD_DIR: "/media/ubuntu2/vora-project/vora-frontend"
+  DEPLOY_SERVER: "192.168.1.30"
+  DEPLOY_USER: "ekvayu"
+
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - .pnpm-store/
+
+# -------------------------------------------------------------------
+# TEMPLATES
+# -------------------------------------------------------------------
+
+# Debian node:22 — install pnpm via npm
+.before_clone_apt:
+  before_script:
+    - rm -rf repo || true
+    - apt-get update -qq && apt-get install -y -qq git curl nodejs npm
+    - npm install -g pnpm
+    - git config --global http.sslVerify false
+    - git clone --depth 1 "http://oauth2:$GITLAB_TOKEN@192.168.1.30:8081/vora_project/vora-frontend.git" repo
+    - cd repo
+    - mkdir -p reports
+
+# Alpine node:22-alpine — pnpm ships via corepack, no npm install needed
+.before_clone_apk:
+  before_script:
+    - rm -rf repo || true
+    - apk add --no-cache git nodejs npm
+    - corepack enable pnpm
+    - git config --global http.sslVerify false
+    - git clone --depth 1 "http://oauth2:$GITLAB_TOKEN@192.168.1.30:8081/vora_project/vora-frontend.git" repo
+    - cd repo
+    - mkdir -p reports
+
+# -------------------------------------------------------------------
+# LINT
+# -------------------------------------------------------------------
+
+eslint:
+  stage: lint
+  image: node:22
+  tags: [devsecops]
+  dependencies: []
+  extends: .before_clone_apt
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+  script:
+    - pnpm clean --lockfile
+    - pnpm install --prefer-offline --store-dir ../.pnpm-store
+    - pnpm exec eslint . --ext .js,.jsx,.ts,.tsx --format=json --output-file reports/eslint-report.json || true
+    - |
+      (pnpm exec eslint . --ext .js,.jsx,.ts,.tsx --format=stylish 2>&1; echo $? > reports/eslint.exit) | tee reports/eslint-report.txt
+      EXIT_CODE=$(cat reports/eslint.exit)
+      rm -f reports/eslint.exit
+      if [ "$EXIT_CODE" -ne 0 ]; then
+        echo "❌ ESLint found errors — see eslint-report.txt"
+        exit 1
+      else
+        echo "✅ ESLint passed"
+      fi
+  artifacts:
+    when: always
+    paths:
+      - repo/reports/eslint-report.txt
+      - repo/reports/eslint-report.json
+    expire_in: 7 days
+
+# -------------------------------------------------------------------
+# SAST
+# -------------------------------------------------------------------
+
+sonarqube:
+  stage: sast
+  image:
+    name: sonarsource/sonar-scanner-cli:latest
+    entrypoint: [""]
+  tags: [devsecops]
+  dependencies: []
+  allow_failure: false
+  before_script:
+    - rm -rf repo .scannerwork || true
+    - git config --global http.sslVerify false
+    - git clone --depth 1 "http://oauth2:${GITLAB_TOKEN}@192.168.1.30:8081/vora_project/vora-frontend.git" repo
+    - cd repo
+    - mkdir -p reports
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+  script:
+    - |
+      (sonar-scanner \
+        -Dsonar.projectKey=vora-frontend \
+        -Dsonar.projectName="Vora Frontend" \
+        -Dsonar.sources=src \
+        -Dsonar.exclusions="**/node_modules/**,**/dist/**,**/coverage/**,**/*.test.*,**/*.spec.*" \
+        -Dsonar.sourceEncoding=UTF-8 \
+        -Dsonar.projectVersion=${CI_COMMIT_SHORT_SHA} \
+        -Dsonar.qualitygate.wait=true \
+        -Dsonar.host.url=${SONAR_HOST_URL} \
+        -Dsonar.token=${SONAR_TOKEN} \
+        -Dsonar.issue.ignore.multicriteria=S4662 \
+        -Dsonar.issue.ignore.multicriteria.S4662.ruleKey=css:S4662 \
+        -Dsonar.issue.ignore.multicriteria.S4662.resourceKey=src/index.css 2>&1; echo $? > reports/sonar.exit) | tee reports/sonarqube-report.txt
+      EXIT_CODE=$(cat reports/sonar.exit)
+      rm -f reports/sonar.exit
+      if [ "$EXIT_CODE" -ne 0 ]; then
+        echo "❌ SonarQube Quality Gate FAILED — see sonarqube-report.txt"
+        exit 1
+      else
+        echo "✅ SonarQube Quality Gate passed"
+      fi
+  artifacts:
+    when: always
+    paths:
+      - repo/reports/sonarqube-report.txt
+    expire_in: 7 days
+
+# -------------------------------------------------------------------
+# SCAN
+# -------------------------------------------------------------------
+
+prettier_scan:
+  stage: scan
+  image: node:22-alpine
+  tags: [devsecops]
+  dependencies: []
+  extends: .before_clone_apk
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  script:
+    - pnpm clean --lockfile
+    - pnpm install --prefer-offline --store-dir ../.pnpm-store
+    - |
+      (pnpm exec prettier --list-different . 2>&1; echo $? > reports/prettier.exit) | tee reports/prettier-report.txt || true
+      echo "✅ Prettier scan complete"
+    - cat reports/prettier-report.txt
+  artifacts:
+    when: always
+    paths:
+      - repo/reports/prettier-report.txt
+    expire_in: 7 days
+
+trivy_fs:
+  stage: scan
+  image:
+    name: aquasec/trivy:0.69.3
+    entrypoint: [""]
+  tags: [devsecops]
+  dependencies: []
+  # Trivy image is bare Alpine — no Node/corepack. Only git needed to clone.
+  before_script:
+    - rm -rf repo || true
+    - apk add --no-cache git
+    - git config --global http.sslVerify false
+    - git clone --depth 1 "http://oauth2:$GITLAB_TOKEN@192.168.1.30:8081/vora_project/vora-frontend.git" repo
+    - cd repo
+    - mkdir -p reports
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  script:
+    - |
+      TRIVY_NUM_WORKERS=4 trivy fs \
+        --severity HIGH,CRITICAL \
+        --exit-code 0 \
+        --format json \
+        --scanners vuln \
+        --skip-dirs node_modules,dist,coverage \
+        --output reports/trivy-fs.json \
+        .
+    - |
+      TRIVY_NUM_WORKERS=4 trivy fs \
+        --severity HIGH,CRITICAL \
+        --exit-code 1 \
+        --format table \
+        --scanners vuln \
+        --skip-dirs node_modules,dist,coverage \
+        --output reports/trivy-fs.txt \
+        .
+      EXIT_CODE=$?
+      if [ "$EXIT_CODE" -ne 0 ]; then
+        echo "❌ Trivy found HIGH/CRITICAL vulnerabilities — see trivy-fs.txt"
+        cat reports/trivy-fs.txt
+        exit 1
+      else
+        echo "✅ Trivy scan passed — no HIGH/CRITICAL vulnerabilities"
+      fi
+  artifacts:
+    when: always
+    paths:
+      - repo/reports/trivy-fs.txt
+      - repo/reports/trivy-fs.json
+    expire_in: 7 days
+
+owasp:
+  stage: scan
+  image: node:22-alpine
+  tags: [devsecops]
+  dependencies: []
+  cache:
+    key: pnpm-store
+    paths:
+      - .pnpm-store/
+  before_script:
+    - rm -rf repo || true
+    - apk add --no-cache git nodejs npm
+    - corepack enable pnpm
+    - git config --global http.sslVerify false
+    - git clone --depth 1 "http://oauth2:${GITLAB_TOKEN}@192.168.1.30:8081/vora_project/vora-frontend.git" repo
+    - cd repo
+    - mkdir -p reports
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  script:
+    - pnpm clean --lockfile
+    - pnpm install --prefer-offline --store-dir ../.pnpm-store
+    - pnpm audit --audit-level=high --json > reports/pnpm-audit.json 2>&1 || true
+    - |
+      (pnpm audit --audit-level=high 2>&1; echo $? > reports/audit.exit) | tee reports/pnpm-audit.txt
+      EXIT_CODE=$(cat reports/audit.exit)
+      rm -f reports/audit.exit
+      if [ "$EXIT_CODE" -ne 0 ]; then
+        echo "❌ pnpm audit found HIGH/CRITICAL vulnerabilities — see pnpm-audit.txt"
+        exit 1
+      else
+        echo "✅ pnpm audit passed"
+      fi
+  artifacts:
+    when: always
+    paths:
+      - repo/reports/pnpm-audit.txt
+      - repo/reports/pnpm-audit.json
+    expire_in: 7 days
+
+# -------------------------------------------------------------------
+# SECURITY
+# -------------------------------------------------------------------
+
+gitleaks:
+  stage: security
+  image:
+    name: zricethezav/gitleaks:latest
+    entrypoint: [""]
+  tags: [devsecops]
+  dependencies: []
+  # gitleaks image is bare Alpine — only git needed
+  before_script:
+    - rm -rf repo || true
+    - apk add --no-cache git
+    - git config --global http.sslVerify false
+    - git clone --depth 1 "http://oauth2:${GITLAB_TOKEN}@192.168.1.30:8081/vora_project/vora-frontend.git" repo
+    - mkdir -p repo/reports
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  script:
+    - cd repo
+    - |
+      (GOMAXPROCS=2 gitleaks detect \
+        --config=.gitleaks.toml \
+        --source . \
+        --no-git \
+        --max-target-megabytes 5 \
+        --report-format json \
+        --report-path reports/gitleaks.json \
+        --exit-code 1 2>&1; echo $? > reports/gitleaks.exit) | tee reports/gitleaks.txt
+      EXIT_CODE=$(cat reports/gitleaks.exit)
+      rm -f reports/gitleaks.exit
+      if [ "$EXIT_CODE" -ne 0 ]; then
+        echo "❌ Gitleaks found secrets/credentials — see gitleaks.json"
+        exit 1
+      else
+        echo "✅ Gitleaks passed — no secrets detected"
+      fi
+  artifacts:
+    when: always
+    paths:
+      - repo/reports/gitleaks.json
+      - repo/reports/gitleaks.txt
+    expire_in: 7 days
+
+semgrep:
+  stage: security
+  image: semgrep/semgrep:latest
+  tags: [devsecops]
+  dependencies: []
+  allow_failure: false
+  # semgrep image has Python/git but no Node — no corepack needed
+  before_script:
+    - rm -rf repo || true
+    - git config --global http.sslVerify false
+    - git clone --depth 1 "http://oauth2:$GITLAB_TOKEN@192.168.1.30:8081/vora_project/vora-frontend.git" repo
+    - cd repo
+    - mkdir -p reports
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  script:
+    - |
+      SEMGREP_JOBS=4 semgrep \
+        --config=p/security-audit \
+        --config=p/javascript \
+        --config=p/react \
+        --config=p/nodejs \
+        --config=p/owasp-top-ten \
+        --config=p/secrets \
+        --exclude=node_modules \
+        --exclude=dist \
+        --exclude=coverage \
+        --severity=WARNING \
+        --metrics=off \
+        --timeout=10 \
+        --json --output=reports/semgrep.json \
+        . || true
+    - |
+      SEMGREP_JOBS=4 semgrep \
+        --config=p/security-audit \
+        --config=p/javascript \
+        --config=p/react \
+        --config=p/nodejs \
+        --config=p/owasp-top-ten \
+        --config=p/secrets \
+        --exclude=node_modules \
+        --exclude=dist \
+        --exclude=coverage \
+        --severity=WARNING \
+        --metrics=off \
+        --timeout=10 \
+        --output=reports/semgrep.txt \
+        . 2>&1
+      EXIT_CODE=$?
+      if [ "$EXIT_CODE" -ne 0 ]; then
+        echo "❌ Semgrep found security issues — see semgrep.txt"
+        cat reports/semgrep.txt
+        exit 1
+      else
+        echo "✅ No Semgrep issues found" | tee -a reports/semgrep.txt
+      fi
+  artifacts:
+    when: always
+    paths:
+      - repo/reports/semgrep.txt
+      - repo/reports/semgrep.json
+    expire_in: 7 days
+
+retirejs:
+  stage: security
+  image: node:22
+  tags: [devsecops]
+  dependencies: []
+  extends: .before_clone_apt
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  script:
+    - pnpm clean --lockfile
+    - pnpm install --prefer-offline --store-dir ../.pnpm-store
+    - npm install -g retire
+    - retire --outputformat json --outputpath reports/retirejs.json || true
+    - |
+      (retire --outputformat text --outputpath reports/retirejs.txt 2>&1; echo $? > reports/retire.exit) | tee -a reports/retirejs.txt
+      EXIT_CODE=$(cat reports/retire.exit)
+      rm -f reports/retire.exit
+      if [ "$EXIT_CODE" -ne 0 ]; then
+        echo "❌ RetireJS found vulnerable libraries — see retirejs.txt"
+        exit 1
+      else
+        echo "✅ RetireJS passed — no vulnerable libraries found"
+      fi
+  artifacts:
+    when: always
+    paths:
+      - repo/reports/retirejs.txt
+      - repo/reports/retirejs.json
+    expire_in: 7 days
+
+# -------------------------------------------------------------------
+# DEPLOY
+# -------------------------------------------------------------------
+
+deploy_app:
+  stage: deploy
+  image: alpine:latest
+  tags: [devsecops]
+
+  before_script:
+    - apk add --no-cache openssh-client sshpass git curl
+    - mkdir -p ~/.ssh reports
+    - ssh-keyscan -H $DEPLOY_SERVER >> ~/.ssh/known_hosts
+
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+  script:
+    - echo "🚀 Deploying vora-frontend"
+
+    - |
+      (sshpass -p "$DEPLOY_PASS" ssh \
+        -o StrictHostKeyChecking=no \
+        $DEPLOY_USER@$DEPLOY_SERVER \
+        "BUILD_DIR='${BUILD_DIR}' CI_COMMIT_BRANCH='${CI_COMMIT_BRANCH}' GITLAB_TOKEN='${GITLAB_TOKEN}' bash -s" << 'ENDSSH' 2>&1; echo $? > reports/deploy.exit) | tee reports/deploy-report.txt
+
+      set -e
+
+      if [ -d "$BUILD_DIR/.git" ]; then
+        echo "📦 Updating existing repository"
+        cd "$BUILD_DIR"
+
+        git fetch origin
+
+        git checkout "$CI_COMMIT_BRANCH" || \
+        git checkout -b "$CI_COMMIT_BRANCH" "origin/$CI_COMMIT_BRANCH"
+
+        git reset --hard "origin/$CI_COMMIT_BRANCH"
+      else
+        echo "📦 Cloning fresh repository"
+
+        git clone --depth 1 \
+          -b "$CI_COMMIT_BRANCH" \
+          "http://oauth2:${GITLAB_TOKEN}@192.168.1.30:8081/vora_project/vora-frontend.git" \
+          "$BUILD_DIR"
+
+        cd "$BUILD_DIR"
+      fi
+
+      echo "🐳 Docker compose deployment"
+      docker compose down --remove-orphans
+      docker compose build
+      docker compose up -d
+
+      echo "🧹 Cleaning Docker"
+      docker image prune -af
+      docker builder prune -af
+
+      echo "✅ Deployment completed"
+      ENDSSH
+
+      EXIT_CODE=$(cat reports/deploy.exit)
+      rm -f reports/deploy.exit
+
+      if [ "$EXIT_CODE" -ne 0 ]; then
+        echo "❌ Deployment FAILED — see deploy-report.txt"
+        exit 1
+      else
+        echo "✅ Deployment succeeded"
+      fi
+
+  artifacts:
+    when: always
+    paths:
+      - reports/deploy-report.txt
+    expire_in: 7 days
+
+# -------------------------------------------------------------------
+# POST DEPLOY
+# -------------------------------------------------------------------
+
+healthcheck:
+  stage: post_deploy
+  image: curlimages/curl:latest
+  tags: [devsecops]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  script:
+    - mkdir -p reports
+    - |
+      echo "=== Healthcheck Report ===" > reports/healthcheck-report.txt
+      echo "Timestamp: $(date -u)" >> reports/healthcheck-report.txt
+      echo "Target: http://192.168.1.30:7050" >> reports/healthcheck-report.txt
+      echo "" >> reports/healthcheck-report.txt
+    - |
+      if curl -f -I http://192.168.1.30:7050 >> reports/healthcheck-report.txt 2>&1; then
+        echo "Status: ✅ PASSED" >> reports/healthcheck-report.txt
+        echo "✅ Healthcheck passed"
+      else
+        echo "Status: ❌ FAILED" >> reports/healthcheck-report.txt
+        echo "❌ Healthcheck FAILED — app not responding at http://192.168.1.30:7050"
+        cat reports/healthcheck-report.txt
+        exit 1
+      fi
+  artifacts:
+    when: always
+    paths:
+      - reports/healthcheck-report.txt
+    expire_in: 7 days
+
+owasp_zap:
+  stage: post_deploy
+  image:
+    name: zaproxy/zap-stable
+    entrypoint: [""]
+  tags: [devsecops]
+  allow_failure: true
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  script:
+    - mkdir -p /zap/wrk reports
+    - |
+      (zap-baseline.py \
+        -t http://192.168.1.30:7050 \
+        -r owasp-zap-report.html \
+        -J owasp-zap-report.json \
+        -w owasp-zap-report.md \
+        -I 2>&1; echo $? > reports/zap.exit) | tee reports/owasp-zap-report.txt
+      EXIT_CODE=$(cat reports/zap.exit)
+      rm -f reports/zap.exit
+      if [ "$EXIT_CODE" -ne 0 ]; then
+        echo "⚠️ OWASP ZAP found vulnerabilities (allow_failure=true) — see reports"
+      else
+        echo "✅ OWASP ZAP baseline passed"
+      fi
+    - cp /zap/wrk/owasp-zap-report.html reports/ || true
+    - cp /zap/wrk/owasp-zap-report.json reports/ || true
+    - cp /zap/wrk/owasp-zap-report.md reports/ || true
+  artifacts:
+    when: always
+    paths:
+      - reports/owasp-zap-report.html
+      - reports/owasp-zap-report.json
+      - reports/owasp-zap-report.md
+      - reports/owasp-zap-report.txt
+    expire_in: 7 days

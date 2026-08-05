@@ -1,0 +1,170 @@
+{
+  "success": true,
+  "message": "User list retrieved successfully",
+  "data": [
+    {
+      "id": "6a4750049568c7b997476650",
+      "tenantId": "tenant_5208bb38cd55a4ed",
+      "name": "Acme Corporation Admin",
+      "email": "lakshits067@gmail.com",
+      "role": "customer-admin",
+      "designation": null,
+      "phone": "919890989098",
+      "secondaryPhone": null,
+      "avatar": null,
+      "address": {
+        "permanentAddress": {
+          "country": null,
+          "state": null,
+          "city": null,
+          "locality": null
+        },
+        "temporaryAddress": {
+          "country": null,
+          "state": null,
+          "city": null,
+          "locality": null
+        }
+      },
+      "createdBy": {
+        "type": "admin",
+        "user": {
+          "id": "6a450a78b0650be22883c5ee",
+          "name": "Ekvayu Tech Private Limited",
+          "email": "saksham@ekvayu.com",
+          "role": "admin",
+          "avatar": null
+        }
+      },
+      "isEmailVerified": true,
+      "isActive": true,
+      "createdAt": "2026-07-03T06:00:36.901Z",
+      "updatedAt": "2026-07-03T06:03:36.449Z"
+    },
+    {
+      "id": "6a4510f9eac029fd7aedd872",
+      "tenantId": "tenant_5208bb38cd55a4ed",
+      "name": "Lakshit Saini",
+      "email": "lakshits922@gmail.com",
+      "role": "auditor",
+      "designation": "Level 2 Auditor",
+      "phone": "918789098789",
+      "secondaryPhone": null,
+      "avatar": null,
+      "address": {
+        "permanentAddress": {
+          "country": null,
+          "state": null,
+          "city": null,
+          "locality": null
+        },
+        "temporaryAddress": {
+          "country": null,
+          "state": null,
+          "city": null,
+          "locality": null
+        }
+      },
+      "createdBy": {
+        "type": "customer-admin",
+        "user": {
+          "id": "6a450bd7eac029fd7aedd865",
+          "name": "Acme Corporation Admin",
+          "email": "sakshamkamboj1999@gmail.com",
+          "role": "customer-admin",
+          "avatar": null
+        }
+      },
+      "isEmailVerified": true,
+      "isActive": true,
+      "createdAt": "2026-07-01T13:07:05.069Z",
+      "updatedAt": "2026-07-08T05:53:11.415Z"
+    },
+    {
+      "id": "6a450d2feac029fd7aedd870",
+      "tenantId": "tenant_5208bb38cd55a4ed",
+      "name": "Lakshit Saini",
+      "email": "lakshit@ekvayu.com",
+      "role": "internal-expert",
+      "designation": null,
+      "phone": "917618274727",
+      "secondaryPhone": null,
+      "avatar": null,
+      "address": {
+        "permanentAddress": {
+          "country": null,
+          "state": null,
+          "city": null,
+          "locality": null
+        },
+        "temporaryAddress": {
+          "country": null,
+          "state": null,
+          "city": null,
+          "locality": null
+        }
+      },
+      "createdBy": {
+        "type": "customer-admin",
+        "user": {
+          "id": "6a450bd7eac029fd7aedd865",
+          "name": "Acme Corporation Admin",
+          "email": "sakshamkamboj1999@gmail.com",
+          "role": "customer-admin",
+          "avatar": null
+        }
+      },
+      "isEmailVerified": true,
+      "isActive": true,
+      "createdAt": "2026-07-01T12:50:55.074Z",
+      "updatedAt": "2026-07-08T05:53:28.965Z"
+    },
+    {
+      "id": "6a450c5eeac029fd7aedd86a",
+      "tenantId": "tenant_5208bb38cd55a4ed",
+      "name": "Saksham Kamboj",
+      "email": "kambojsakshm@gmail.com",
+      "role": "auditor",
+      "designation": "Level 1 Auditor",
+      "phone": "917618274726",
+      "secondaryPhone": null,
+      "avatar": null,
+      "address": {
+        "permanentAddress": {
+          "country": null,
+          "state": null,
+          "city": null,
+          "locality": null
+        },
+        "temporaryAddress": {
+          "country": null,
+          "state": null,
+          "city": null,
+          "locality": null
+        }
+      },
+      "createdBy": {
+        "type": "customer-admin",
+        "user": {
+          "id": "6a450bd7eac029fd7aedd865",
+          "name": "Acme Corporation Admin",
+          "email": "sakshamkamboj1999@gmail.com",
+          "role": "customer-admin",
+          "avatar": null
+        }
+      },
+      "isEmailVerified": true,
+      "isActive": true,
+      "createdAt": "2026-07-01T12:47:26.250Z",
+      "updatedAt": "2026-07-08T05:53:37.669Z"
+    }
+  ],
+  "pagination": {
+    "currentPage": 1,
+    "totalPages": 1,
+    "totalItems": 4,
+    "itemsPerPage": 10,
+    "hasNextPage": false,
+    "hasPrevPage": false
+  }
+}

@@ -1,0 +1,11 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Ignore environment files containing configuration and keys"
+paths = [
+    '''\.env$''',
+    '''\.env\.local$''',
+    '''\.env\.production$''',
+    '''\.env\.development$'''
+]
