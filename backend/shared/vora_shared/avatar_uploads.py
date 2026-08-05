@@ -1,6 +1,3 @@
-"""Avatar upload handling — mirrors `upload.middleware.js` (multer disk
-storage, 5MB limit, jpeg/png/gif/webp only) from profile-service-main."""
-
 import mimetypes
 import secrets
 import time
@@ -11,9 +8,7 @@ from fastapi import UploadFile
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 MAX_AVATAR_SIZE = 5 * 1024 * 1024  # 5MB
 
-# UPLOADS_DIR points to backend/shared/uploads
-UPLOADS_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent / "shared" / "uploads"
-
+from vora_shared.file_storage import UPLOAD_ROOT
 
 class AvatarUploadError(Exception):
     def __init__(self, message: str):
@@ -22,9 +17,9 @@ class AvatarUploadError(Exception):
 
 
 async def save_avatar(upload: UploadFile, subdir: str) -> str:
-    """Validate + persist an avatar upload under `uploads/{subdir}/avatar/`.
+    """Validate + persist an avatar upload under `uploads/avatar/{subdir}/`.
 
-    Returns the public URL (e.g. `/uploads/<id>/avatar/<file>`), matching
+    Returns the public URL (e.g. `/uploads/avatar/<subdir>/<file>`), matching
     Node's stored `avatarUrl` path exactly.
     """
     content_type = upload.content_type or mimetypes.guess_type(upload.filename or "")[0] or ""
@@ -42,7 +37,7 @@ async def save_avatar(upload: UploadFile, subdir: str) -> str:
     timestamp = int(time.time() * 1000)
     filename = f"{name_without_ext}-{timestamp}{ext}"
 
-    directory = UPLOADS_DIR / "avatar" / subdir
+    directory = UPLOAD_ROOT / "avatar" / subdir
     directory.mkdir(parents=True, exist_ok=True)
     (directory / filename).write_bytes(data)
 
@@ -50,12 +45,11 @@ async def save_avatar(upload: UploadFile, subdir: str) -> str:
 
 
 def delete_avatar_file(public_url: str | None) -> None:
-    """Best-effort delete of a previous avatar (fire-and-forget, like Node's
-    `fs.unlink(path, () => {})`)."""
+    """Best-effort delete of a previous avatar."""
     if not public_url:
         return
     relative = public_url.replace("/uploads/", "", 1)
-    file_path = UPLOADS_DIR / relative
+    file_path = UPLOAD_ROOT / relative
     try:
         file_path.unlink(missing_ok=True)
     except OSError:

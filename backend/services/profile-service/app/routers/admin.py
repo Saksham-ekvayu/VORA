@@ -16,7 +16,7 @@ from app.utils.formatting import (
     user_admin_dict,
 )
 from app.utils.temp_password import generate_temp_password
-from app.utils.uploads import AvatarUploadError, delete_avatar_file, save_avatar
+from vora_shared.avatar_uploads import AvatarUploadError, delete_avatar_file, save_avatar
 from fastapi import APIRouter, Depends, File, Query, UploadFile
 from sqlalchemy import or_, select
 from sqlalchemy.orm.attributes import flag_modified
