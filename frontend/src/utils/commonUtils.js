@@ -44,7 +44,7 @@ export const getRoleBadgeClass = (role) => {
 export const getRoleFilterLabel = (role) => {
   if (role === ROLE_ADMIN) return "Admin";
   if (role === ROLE_EXPERT) return "Expert";
-  if (role === ROLE_CUSTOMER_ADMIN) return "Customer-Admin";
+  if (role === ROLE_CUSTOMER_ADMIN) return "Admin";
   if (role === ROLE_AUDITOR) return "Auditor";
   if (role === ROLE_USER) return "User";
   return "All Roles";
@@ -58,8 +58,8 @@ export const getStatusFilterLabel = (status) => {
 
 export const getRoleLabel = (role) => {
   if (role === ROLE_EXPERT) return "Expert";
-  if (role === ROLE_INTERNAL_EXPERT) return "Internal-Expert";
-  if (role === ROLE_CUSTOMER_ADMIN) return "Admin";
+  if (role === ROLE_INTERNAL_EXPERT) return "Internal Expert";
+  if (role === ROLE_CUSTOMER_ADMIN) return "Customer Admin";
   if (role === ROLE_ADMIN) return "Admin";
   if (role === ROLE_AUDITOR) return "Auditor";
   return "User";
