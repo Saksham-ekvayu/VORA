@@ -8,8 +8,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy import select
-
-from vora_shared import file_storage, data_format, query_builder
+from vora_shared import data_format, file_storage, query_builder
 from vora_shared.database import session_scope
 from vora_shared.ids import is_valid_id, new_id
 from vora_shared.models import DeploymentDocument, DeploymentDocumentFileVersion, DeploymentFramework, User
@@ -23,9 +22,7 @@ BUSINESS_MESSAGES = {
     "DOCUMENT_RETRIEVED_SUCCESS": "Document retrieved successfully",
     "DEPLOYMENT_DOCUMENTS_RETRIEVED": "Deployment documents retrieved successfully",
     "USER_DOCUMENTS_RETRIEVED": "Your documents retrieved successfully",
-    "NO_DOCUMENTS_MATCH_CRITERIA": (
-        "No documents match your search criteria. Try adjusting your filters."
-    ),
+    "NO_DOCUMENTS_MATCH_CRITERIA": ("No documents match your search criteria. Try adjusting your filters."),
     "NO_DEPLOYMENT_DOCUMENTS": "No documents found in your deployment",
     "NO_USER_DOCUMENTS": (
         "You haven't uploaded any documents yet. Upload your first document to get started."
@@ -106,9 +103,7 @@ async def get_all_documents(
 
         async def transform(doc: DeploymentDocument) -> dict:
             versions = _coerce_file_versions(doc.fileVersions)
-            current_version = next(
-                (v for v in versions if v.fileVersion == doc.currentFileVersion), None
-            )
+            current_version = next((v for v in versions if v.fileVersion == doc.currentFileVersion), None)
             fw = (
                 await session.get(DeploymentFramework, str(doc.deploymentFrameworkId))
                 if doc.deploymentFrameworkId
@@ -135,12 +130,12 @@ async def get_all_documents(
                 "controlName": doc.controlName,
                 "deploymentPoint": doc.deploymentPoint,
                 "fileInfo": {
-                    "versionFileId": str(current_version.fileId)
-                    if current_version and getattr(current_version, "fileId", None)
-                    else None,
-                    "originalFileName": (
-                        current_version.originalFileName if current_version else "Unknown"
+                    "versionFileId": (
+                        str(current_version.fileId)
+                        if current_version and getattr(current_version, "fileId", None)
+                        else None
                     ),
+                    "originalFileName": (current_version.originalFileName if current_version else "Unknown"),
                     "fileSize": data_format.format_file_size(
                         current_version.fileSize if current_version else 0
                     ),
@@ -249,9 +244,9 @@ async def get_document_by_id(id: str, ctx: RequestContext = Depends(get_context)
                     if fw
                     else None
                 ),
-                "controlId": str(document.controlId)
-                if document and getattr(document, "controlId", None)
-                else None,
+                "controlId": (
+                    str(document.controlId) if document and getattr(document, "controlId", None) else None
+                ),
                 "controlName": document.controlName,
                 "deploymentPoint": document.deploymentPoint,
                 "fileVersions": formatted_versions,
@@ -380,17 +375,15 @@ async def upload_deployment_document(
 
     file_version = currentFileVersion or "1.0.0"
     framework_version = "1.0.0"
-    
+
     if deploymentFrameworkId and is_valid_id(deploymentFrameworkId):
         async with session_scope() as session:
-            from vora_shared.models import DeploymentFramework
             from sqlalchemy import select
-            
+            from vora_shared.models import DeploymentFramework
+
             fw = (
                 await session.execute(
-                    select(DeploymentFramework).where(
-                        DeploymentFramework.id == str(deploymentFrameworkId)
-                    )
+                    select(DeploymentFramework).where(DeploymentFramework.id == str(deploymentFrameworkId))
                 )
             ).scalar_one_or_none()
             if fw and fw.frameworkVersion:
@@ -549,9 +542,7 @@ async def get_document_files(documentId: str, ctx: RequestContext = Depends(get_
 
 
 @router.get("/{documentId}/files/{fileId}")
-async def get_document_file_by_id(
-    documentId: str, fileId: str, ctx: RequestContext = Depends(get_context)
-):
+async def get_document_file_by_id(documentId: str, fileId: str, ctx: RequestContext = Depends(get_context)):
     if not is_valid_id(documentId):
         return error("Invalid document ID", 400)
 
@@ -582,9 +573,11 @@ async def get_document_file_by_id(
                 "isCurrentVersion": file_version.fileVersion == document.currentFileVersion,
                 "uploadedBy": (
                     {
-                        "id": str(uploaded_by_user.id)
-                        if uploaded_by_user and getattr(uploaded_by_user, "id", None)
-                        else None,
+                        "id": (
+                            str(uploaded_by_user.id)
+                            if uploaded_by_user and getattr(uploaded_by_user, "id", None)
+                            else None
+                        ),
                         "name": uploaded_by_user.name,
                         "email": uploaded_by_user.email,
                     }
@@ -597,9 +590,7 @@ async def get_document_file_by_id(
 
 
 @router.get("/{documentId}/files/{fileId}/download")
-async def download_document_file(
-    documentId: str, fileId: str, ctx: RequestContext = Depends(get_context)
-):
+async def download_document_file(documentId: str, fileId: str, ctx: RequestContext = Depends(get_context)):
     if not is_valid_id(documentId):
         return error("Invalid document ID", 400)
 
@@ -633,9 +624,7 @@ async def download_document_file(
 
 
 @router.get("/{documentId}/files/{fileId}/preview")
-async def preview_document_file(
-    documentId: str, fileId: str, ctx: RequestContext = Depends(get_context)
-):
+async def preview_document_file(documentId: str, fileId: str, ctx: RequestContext = Depends(get_context)):
     if not is_valid_id(documentId):
         return error("Invalid document ID", 400)
 
@@ -672,9 +661,7 @@ async def preview_document_file(
 
 
 @router.delete("/{documentId}/files/{fileId}")
-async def delete_document_file(
-    documentId: str, fileId: str, ctx: RequestContext = Depends(get_context)
-):
+async def delete_document_file(documentId: str, fileId: str, ctx: RequestContext = Depends(get_context)):
     if not is_valid_id(documentId):
         return error("Invalid document ID", 400)
 

@@ -6,7 +6,6 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
-
 from vora_shared.auth import AuthenticatedUser, authenticate
 from vora_shared.database import session_scope
 from vora_shared.models import FrameworkAccess, FrameworkCategory, User
@@ -16,8 +15,18 @@ from vora_shared.responses import success
 router = APIRouter(tags=["expert-dashboard"])
 
 MONTH_NAMES = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
 ]
 
 
@@ -75,13 +84,13 @@ def _subtract_months(d: datetime, months: int) -> datetime:
     return datetime(year, month + 1, 1)
 
 
-def _generate_upload_trend(frameworks: list[Framework], start_date: str | None, end_date: str | None) -> list[dict]:
-    trend_end = datetime.fromisoformat(end_date) if end_date else datetime.now(timezone.utc).replace(tzinfo=None)
-    trend_start = (
-        datetime.fromisoformat(start_date)
-        if start_date
-        else _subtract_months(trend_end, 5)
+def _generate_upload_trend(
+    frameworks: list[Framework], start_date: str | None, end_date: str | None
+) -> list[dict]:
+    trend_end = (
+        datetime.fromisoformat(end_date) if end_date else datetime.now(timezone.utc).replace(tzinfo=None)
     )
+    trend_start = datetime.fromisoformat(start_date) if start_date else _subtract_months(trend_end, 5)
 
     start_month = datetime(trend_start.year, trend_start.month, 1)
     end_month = datetime(trend_end.year, trend_end.month, 1)
@@ -97,9 +106,7 @@ def _generate_upload_trend(frameworks: list[Framework], start_date: str | None, 
         month_start = datetime(month_date.year, month_date.month, 1)
         month_end = _add_month(month_start)
         uploads = sum(
-            1
-            for fw in frameworks
-            if fw.createdAt and month_start <= _naive(fw.createdAt) < month_end
+            1 for fw in frameworks if fw.createdAt and month_start <= _naive(fw.createdAt) < month_end
         )
         label = (
             f"{MONTH_NAMES[month_date.month - 1]} {month_date.year}"
@@ -141,7 +148,9 @@ def _format_recent_uploads(frameworks: list[Framework], users_by_id: dict) -> li
             "frameworkName": fw.frameworkName,
             "frameworkCode": fw.frameworkCode or "",
             "frameworkVersion": fw.frameworkVersion or "",
-            "uploadedBy": (users_by_id.get(fw.uploadedBy).name if users_by_id.get(fw.uploadedBy) else "Unknown"),
+            "uploadedBy": (
+                users_by_id.get(fw.uploadedBy).name if users_by_id.get(fw.uploadedBy) else "Unknown"
+            ),
             "date": _fmt_date(fw.createdAt),
             "status": _title_case(_approval_status(fw)),
         }
@@ -213,9 +222,7 @@ async def get_expert_dashboard_analytics(
                 user_ids.add(by_id)
         users_by_id = {}
         if user_ids:
-            users = (
-                await session.execute(select(User).where(User.id.in_(list(user_ids))))
-            ).scalars().all()
+            users = (await session.execute(select(User).where(User.id.in_(list(user_ids))))).scalars().all()
             users_by_id = {u.id: u for u in users}
 
     total_uploads = len(frameworks)

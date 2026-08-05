@@ -3,7 +3,6 @@
 import re
 
 from sqlalchemy import select
-
 from vora_shared.database import session_scope
 from vora_shared.models import FrameworkCategory, User
 
@@ -50,7 +49,5 @@ async def fetch_users_by_ids(ids: set) -> dict[str, User]:
     if not id_list:
         return {}
     async with session_scope() as session:
-        users = (
-            await session.execute(select(User).where(User.id.in_(id_list)))
-        ).scalars().all()
+        users = (await session.execute(select(User).where(User.id.in_(id_list)))).scalars().all()
         return {str(u.id): u for u in users}

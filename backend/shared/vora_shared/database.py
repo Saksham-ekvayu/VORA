@@ -51,6 +51,7 @@ async def connect_db(database_url: str, *_args: Any, **_kwargs: Any) -> None:
     # async with _engine.begin() as conn:
     #     await conn.run_sync(Base.metadata.create_all)
 
+
 async def disconnect_db() -> None:
     global _engine, _session_factory
     if _engine is not None:

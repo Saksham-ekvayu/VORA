@@ -52,8 +52,12 @@ _styles = getSampleStyleSheet()
 _H_TITLE = ParagraphStyle("DFRTitle", parent=_styles["Title"], textColor=_COLORS["primary"], fontSize=18)
 _H1 = ParagraphStyle("DFRH1", parent=_styles["Heading1"], textColor=_COLORS["darkText"], fontSize=20)
 _MUTED = ParagraphStyle("DFRMuted", parent=_styles["Normal"], textColor=_COLORS["mutedText"], fontSize=11)
-_SECTION = ParagraphStyle("DFRSection", parent=_styles["Heading2"], textColor=_COLORS["darkText"], fontSize=12)
-_SMALL_MUTED = ParagraphStyle("DFRSmallMuted", parent=_styles["Normal"], textColor=_COLORS["mutedText"], fontSize=8.5)
+_SECTION = ParagraphStyle(
+    "DFRSection", parent=_styles["Heading2"], textColor=_COLORS["darkText"], fontSize=12
+)
+_SMALL_MUTED = ParagraphStyle(
+    "DFRSmallMuted", parent=_styles["Normal"], textColor=_COLORS["mutedText"], fontSize=8.5
+)
 
 
 def _format_size(num_bytes: float | None) -> str:
@@ -127,7 +131,9 @@ def _avg_sim(dp_rows: list[dict[str, Any]]) -> float:
     return sum(d["sim"] for d in dp_rows) / len(dp_rows)
 
 
-def _parse_report_data(package_data: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, list[dict[str, Any]]]]:
+def _parse_report_data(
+    package_data: dict[str, Any],
+) -> tuple[list[dict[str, Any]], dict[str, list[dict[str, Any]]]]:
     gap_results = ((package_data.get("gapAnalysis") or {}).get("deployment_gap_results")) or []
     dp_data = _build_dp_data(gap_results)
 
@@ -136,7 +142,9 @@ def _parse_report_data(package_data: dict[str, Any]) -> tuple[list[dict[str, Any
 
     for section in comparison_result:
         for ctrl in section.get("controls") or []:
-            control_id = ctrl.get("deployment_framework_control_id") or ctrl.get("assigned_framework_control_id") or ""
+            control_id = (
+                ctrl.get("deployment_framework_control_id") or ctrl.get("assigned_framework_control_id") or ""
+            )
             raw_score = ctrl.get("comparison_score") or 0
             score = round(raw_score * 100) if raw_score <= 1 else round(raw_score)
 
@@ -295,7 +303,11 @@ def generate_deployment_framework_report_pdf(framework: Any, package_data: dict[
     )
 
     expert_review = package_data.get("expertReview")
-    if expert_review and expert_review.get("assignedExpert") and expert_review.get("status") not in (None, "pending"):
+    if (
+        expert_review
+        and expert_review.get("assignedExpert")
+        and expert_review.get("status") not in (None, "pending")
+    ):
         expert = expert_review["assignedExpert"]
         story.append(Spacer(1, 4 * mm))
         story.append(
@@ -351,11 +363,23 @@ def generate_deployment_framework_report_pdf(framework: Any, package_data: dict[
         ("HIGH-MATCH CONTROLS", f"{high_match}/{total_compared}"),
         ("LOW-MATCH CONTROLS", f"{low_match}/{total_compared}"),
     ]
-    stat_style_val = ParagraphStyle("DFRStatVal", parent=_styles["Normal"], fontSize=14, fontName="Helvetica-Bold", textColor=_COLORS["primary"], alignment=1)
-    stat_style_label = ParagraphStyle("DFRStatLabel", parent=_styles["Normal"], fontSize=7, textColor=_COLORS["mutedText"], alignment=1)
+    stat_style_val = ParagraphStyle(
+        "DFRStatVal",
+        parent=_styles["Normal"],
+        fontSize=14,
+        fontName="Helvetica-Bold",
+        textColor=_COLORS["primary"],
+        alignment=1,
+    )
+    stat_style_label = ParagraphStyle(
+        "DFRStatLabel", parent=_styles["Normal"], fontSize=7, textColor=_COLORS["mutedText"], alignment=1
+    )
     stat_cells = [[Paragraph(v, stat_style_val)] for _, v in stats]
     stat_label_cells = [[Paragraph(l, stat_style_label)] for l, _ in stats]
-    combined_rows = [[stat_cells[i][0] for i in range(len(stats))], [stat_label_cells[i][0] for i in range(len(stats))]]
+    combined_rows = [
+        [stat_cells[i][0] for i in range(len(stats))],
+        [stat_label_cells[i][0] for i in range(len(stats))],
+    ]
     stat_table = Table(combined_rows, colWidths=[46 * mm] * len(stats), hAlign="LEFT")
     stat_table.setStyle(
         TableStyle(
@@ -405,15 +429,26 @@ def generate_deployment_framework_report_pdf(framework: Any, package_data: dict[
                 story.append(
                     Paragraph(
                         f"<b>{section.get('id', '')} - {section.get('name', 'Unnamed Section')}</b>",
-                        ParagraphStyle("DFRMergeSection", parent=_styles["Normal"], fontSize=10, textColor=_COLORS["primary"]),
+                        ParagraphStyle(
+                            "DFRMergeSection",
+                            parent=_styles["Normal"],
+                            fontSize=10,
+                            textColor=_COLORS["primary"],
+                        ),
                     )
                 )
                 for ctrl in section.get("controls") or []:
                     story.append(
-                        Paragraph(f"{ctrl.get('id', '')} - {ctrl.get('name', 'Unnamed Control')}", _SMALL_MUTED)
+                        Paragraph(
+                            f"{ctrl.get('id', '')} - {ctrl.get('name', 'Unnamed Control')}", _SMALL_MUTED
+                        )
                     )
                     for dp in ctrl.get("deployment_points") or []:
-                        story.append(Paragraph(f"\u2022 {dp.get('id', '')}: {dp.get('name', 'Unnamed DP')}", _SMALL_MUTED))
+                        story.append(
+                            Paragraph(
+                                f"\u2022 {dp.get('id', '')}: {dp.get('name', 'Unnamed DP')}", _SMALL_MUTED
+                            )
+                        )
             story.append(Spacer(1, 4 * mm))
 
     if controls:
@@ -464,7 +499,14 @@ def generate_deployment_framework_report_pdf(framework: Any, package_data: dict[
                 Paragraph(
                     f"Assigned: [{ctrl['assigned_id'] or 'N/A'}] {ctrl['assigned_name'] or '\u2014'}<br/>"
                     f"Deployment: [{ctrl['deployment_id'] or 'N/A'}] {ctrl['deployment_name'] or '\u2014'}",
-                    ParagraphStyle("DFRGapHeader", parent=_styles["Normal"], fontSize=8.5, textColor=_COLORS["primary"], backColor=_COLORS["primaryLight"], borderPadding=4),
+                    ParagraphStyle(
+                        "DFRGapHeader",
+                        parent=_styles["Normal"],
+                        fontSize=8.5,
+                        textColor=_COLORS["primary"],
+                        backColor=_COLORS["primaryLight"],
+                        borderPadding=4,
+                    ),
                 )
             )
             gap_rows = [["DP", "Assigned Point", "Matched Point", "Sim", "Status"]]
@@ -478,7 +520,9 @@ def generate_deployment_framework_report_pdf(framework: Any, package_data: dict[
                         gap["status"],
                     ]
                 )
-            gap_table = Table(gap_rows, colWidths=[10 * mm, 95 * mm, 95 * mm, 15 * mm, 25 * mm], hAlign="LEFT")
+            gap_table = Table(
+                gap_rows, colWidths=[10 * mm, 95 * mm, 95 * mm, 15 * mm, 25 * mm], hAlign="LEFT"
+            )
             gap_style_cmds = [
                 ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f1f5f9")),
                 ("FONTSIZE", (0, 0), (-1, -1), 7.5),

@@ -1,12 +1,11 @@
 from contextlib import asynccontextmanager
 
+from app.routers import access as access_router
+from app.routers import categories as categories_router
 from fastapi import FastAPI
-
 from vora_shared.config import get_settings
 from vora_shared.database import connect_db, disconnect_db
 from vora_shared.server import create_vora_app
-from app.routers import access as access_router
-from app.routers import categories as categories_router
 
 
 @asynccontextmanager

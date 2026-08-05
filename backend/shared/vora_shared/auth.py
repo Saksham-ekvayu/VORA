@@ -8,7 +8,6 @@ import jwt
 from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
-
 from vora_shared.config import Settings, get_settings
 from vora_shared.database import session_scope
 from vora_shared.models.user import User
@@ -117,9 +116,7 @@ async def authenticate(
     except jwt.PyJWTError:
         unverified = None
     if not unverified:
-        raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED, "Your session is invalid. Please login again."
-        )
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Your session is invalid. Please login again.")
 
     tenant_id = unverified.get("tenantId") or None
 
@@ -135,9 +132,7 @@ async def authenticate(
         ) from exc
 
     if header_tenant_id and payload.get("tenantId") != header_tenant_id:
-        raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED, "Your session is invalid. Please login again."
-        )
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Your session is invalid. Please login again.")
 
     user_id = payload.get("sub")
     user: User | None = None
@@ -150,9 +145,7 @@ async def authenticate(
                 session.expunge(user)
 
     if not user:
-        raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED, "Your session is invalid. Please login again."
-        )
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Your session is invalid. Please login again.")
 
     if not user.isActive:
         raise HTTPException(
@@ -165,8 +158,6 @@ async def authenticate(
 
     token_version = payload.get("tokenVersion")
     if token_version is not None and user.tokenVersion != token_version:
-        raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED, "Your session has expired. Please login again."
-        )
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Your session has expired. Please login again.")
 
     return AuthenticatedUser(user=user, tenant_id=tenant_id)

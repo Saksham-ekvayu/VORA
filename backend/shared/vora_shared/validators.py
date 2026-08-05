@@ -20,7 +20,9 @@ def capitalize_name(name: str) -> str:
     return re.sub(r"\b\w", lambda m: m.group().upper(), name.lower())
 
 
-def validate_name(value: str | None, required: bool = True, *, min_len: int = 2, max_len: int = 50) -> str | None:
+def validate_name(
+    value: str | None, required: bool = True, *, min_len: int = 2, max_len: int = 50
+) -> str | None:
     if value is None or value.strip() == "":
         if required:
             raise ValueError("Name is required")

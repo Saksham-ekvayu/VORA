@@ -1,0 +1,9 @@
+[tool.black]
+line-length = 110
+target-version = ['py313']
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line_length = 110
+multi_line_output = 3

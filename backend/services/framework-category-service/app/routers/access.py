@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
 
+from app.helpers import fetch_users_by_ids, get_user_data
+from app.validation import FieldError, validate_assign_access
 from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy import or_, select
 from sqlalchemy.orm.attributes import flag_modified
-
 from vora_shared.auth import AuthenticatedUser, authenticate
 from vora_shared.database import session_scope
 from vora_shared.ids import is_valid_id
@@ -12,9 +13,6 @@ from vora_shared.models import FrameworkAccess, FrameworkCategory, User
 from vora_shared.models.framework_access import ApprovalInfo, RejectionInfo, RevocationInfo
 from vora_shared.query_builder import apply_sort, paginate_stmt
 from vora_shared.responses import error, paginated, success
-
-from app.helpers import fetch_users_by_ids, get_user_data
-from app.validation import FieldError, validate_assign_access
 
 router = APIRouter(tags=["framework-access"])
 
@@ -61,9 +59,7 @@ async def _format_access_record(
         "requestedBy": str(record.requestedBy) if record and getattr(record, "requestedBy", None) else None,
         "rejection": (
             {
-                "rejectedBy": get_user_data(
-                    users_by_id.get(rejected_by_id), rejected_by_id
-                ),
+                "rejectedBy": get_user_data(users_by_id.get(rejected_by_id), rejected_by_id),
                 "rejectedAt": _json_get(record.rejection, "rejectedAt"),
             }
             if rejected_by_id
@@ -71,9 +67,7 @@ async def _format_access_record(
         ),
         "revocation": (
             {
-                "revokedBy": get_user_data(
-                    users_by_id.get(revoked_by_id), revoked_by_id
-                ),
+                "revokedBy": get_user_data(users_by_id.get(revoked_by_id), revoked_by_id),
                 "revokedAt": _json_get(record.revocation, "revokedAt"),
             }
             if revoked_by_id
@@ -81,9 +75,7 @@ async def _format_access_record(
         ),
         "approval": (
             {
-                "approvedBy": get_user_data(
-                    users_by_id.get(approved_by_id), approved_by_id
-                ),
+                "approvedBy": get_user_data(users_by_id.get(approved_by_id), approved_by_id),
                 "approvedAt": _json_get(record.approval, "approvedAt"),
             }
             if approved_by_id
@@ -117,12 +109,14 @@ async def _batch_format(records: list[FrameworkAccess]) -> list[dict]:
     if category_ids:
         async with session_scope() as session:
             categories = (
-                await session.execute(
-                    select(FrameworkCategory).where(
-                        FrameworkCategory.id.in_(list(category_ids))
+                (
+                    await session.execute(
+                        select(FrameworkCategory).where(FrameworkCategory.id.in_(list(category_ids)))
                     )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             categories_by_id = {str(c.id): c for c in categories}
 
     return [await _format_access_record(r, users_by_id, categories_by_id) for r in records]
@@ -130,26 +124,34 @@ async def _batch_format(records: list[FrameworkAccess]) -> list[dict]:
 
 async def _search_or_conditions(session, search: str) -> list:
     matching_users = (
-        await session.execute(
-            select(User).where(
-                or_(
-                    User.name.ilike(f"%{search}%"),
-                    User.email.ilike(f"%{search}%"),
+        (
+            await session.execute(
+                select(User).where(
+                    or_(
+                        User.name.ilike(f"%{search}%"),
+                        User.email.ilike(f"%{search}%"),
+                    )
                 )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     matching_categories = (
-        await session.execute(
-            select(FrameworkCategory).where(
-                or_(
-                    FrameworkCategory.code.ilike(f"%{search}%"),
-                    FrameworkCategory.frameworkCategoryName.ilike(f"%{search}%"),
-                    FrameworkCategory.description.ilike(f"%{search}%"),
+        (
+            await session.execute(
+                select(FrameworkCategory).where(
+                    or_(
+                        FrameworkCategory.code.ilike(f"%{search}%"),
+                        FrameworkCategory.frameworkCategoryName.ilike(f"%{search}%"),
+                        FrameworkCategory.description.ilike(f"%{search}%"),
+                    )
                 )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     user_ids = [u.id for u in matching_users]
     category_ids = [c.id for c in matching_categories]
@@ -187,9 +189,7 @@ async def get_framework_access_list(
 
     if expertId and not is_valid_id(expertId):
         return error(
-            format_message(
-                MESSAGES["INVALID_OBJECT_ID"], field="expertId", value=expertId
-            ),
+            format_message(MESSAGES["INVALID_OBJECT_ID"], field="expertId", value=expertId),
             400,
         )
 
@@ -212,12 +212,8 @@ async def get_framework_access_list(
             conditions = await _search_or_conditions(session, search)
             stmt = stmt.where(or_(*conditions))
 
-        stmt = apply_sort(
-            FrameworkAccess, stmt, sortBy, sortOrder, allowed_sort, default_sort="createdAt"
-        )
-        documents, pagination = await paginate_stmt(
-            session, stmt, page=page or 1, limit=limit or 10
-        )
+        stmt = apply_sort(FrameworkAccess, stmt, sortBy, sortOrder, allowed_sort, default_sort="createdAt")
+        documents, pagination = await paginate_stmt(session, stmt, page=page or 1, limit=limit or 10)
 
     data = await _batch_format(documents)
 
@@ -261,9 +257,7 @@ async def get_framework_access_by_user_id(
         if status and status != "all":
             if status not in VALID_STATUSES:
                 return error(
-                    format_message(
-                        MESSAGES["INVALID_STATUS"], statuses=", ".join(VALID_STATUSES)
-                    ),
+                    format_message(MESSAGES["INVALID_STATUS"], statuses=", ".join(VALID_STATUSES)),
                     400,
                 )
             stmt = stmt.where(FrameworkAccess.status == status)
@@ -279,9 +273,7 @@ async def get_framework_access_by_user_id(
             sortOrder or "desc",
             ["createdAt", "updatedAt", "frameworkCode", "status"],
         )
-        documents, pagination = await paginate_stmt(
-            session, stmt, page=page or 1, limit=limit or 10
-        )
+        documents, pagination = await paginate_stmt(session, stmt, page=page or 1, limit=limit or 10)
 
     data = await _batch_format(documents)
     message = MESSAGES["NO_ACCESS_EXPERT"] if not data else MESSAGES["FRAMEWORK_ACCESS_SUCCESS"]
@@ -318,9 +310,7 @@ async def assign_framework_access(
 
     if not is_valid_id(str(expert_id_raw)):
         return error(
-            format_message(
-                MESSAGES["INVALID_OBJECT_ID"], field="expertId", value=expert_id_raw
-            ),
+            format_message(MESSAGES["INVALID_OBJECT_ID"], field="expertId", value=expert_id_raw),
             400,
         )
     expert_id = str(expert_id_raw)
@@ -330,9 +320,7 @@ async def assign_framework_access(
         sid = str(raw_id)
         if not is_valid_id(sid):
             return error(
-                format_message(
-                    MESSAGES["INVALID_OBJECT_ID"], field="frameworkCategoryIds", value=raw_id
-                ),
+                format_message(MESSAGES["INVALID_OBJECT_ID"], field="frameworkCategoryIds", value=raw_id),
                 400,
             )
         category_ids.append(sid)
@@ -345,10 +333,10 @@ async def assign_framework_access(
             return error(MESSAGES["EXPERT_NOT_ACTIVE"], 404)
 
         framework_categories = (
-            await session.execute(
-                select(FrameworkCategory).where(FrameworkCategory.id.in_(category_ids))
-            )
-        ).scalars().all()
+            (await session.execute(select(FrameworkCategory).where(FrameworkCategory.id.in_(category_ids))))
+            .scalars()
+            .all()
+        )
 
         if len(framework_categories) != len(category_ids):
             found_ids = {str(c.id) for c in framework_categories}
@@ -391,9 +379,9 @@ async def assign_framework_access(
 
                     existing.status = "approved"
                     existing.requestedBy = "admin"
-                    existing.approval = ApprovalInfo(
-                        approvedBy=str(auth.user.id), approvedAt=now
-                    ).model_dump(mode="json")
+                    existing.approval = ApprovalInfo(approvedBy=str(auth.user.id), approvedAt=now).model_dump(
+                        mode="json"
+                    )
                     flag_modified(existing, "approval")
                     access_record = existing
                     is_update = True
@@ -404,9 +392,9 @@ async def assign_framework_access(
                         frameworkCode=category.code,
                         status="approved",
                         requestedBy="admin",
-                        approval=ApprovalInfo(
-                            approvedBy=str(auth.user.id), approvedAt=now
-                        ).model_dump(mode="json"),
+                        approval=ApprovalInfo(approvedBy=str(auth.user.id), approvedAt=now).model_dump(
+                            mode="json"
+                        ),
                     )
                     session.add(access_record)
                     await session.flush()
@@ -528,9 +516,7 @@ async def revoke_framework_access(
 
     async with session_scope() as session:
         expert = (
-            await session.execute(
-                select(User).where(User.id == expertId, User.isActive.is_(True))
-            )
+            await session.execute(select(User).where(User.id == expertId, User.isActive.is_(True)))
         ).scalar_one_or_none()
         if not expert:
             return error(MESSAGES["EXPERT_NOT_FOUND"], 404)

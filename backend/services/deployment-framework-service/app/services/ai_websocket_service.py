@@ -12,11 +12,14 @@ import os
 from datetime import datetime, timezone
 
 import websockets
-from sqlalchemy import select
-
 from app.helpers.deployment_framework_helpers import coerce_packages, dump_packages
+from sqlalchemy import select
 from vora_shared.database import session_scope
-from vora_shared.models.document_extraction import AiExtractionInfo, ExtractionHistoryEntry, ExtractionStatusHistory
+from vora_shared.models.document_extraction import (
+    AiExtractionInfo,
+    ExtractionHistoryEntry,
+    ExtractionStatusHistory,
+)
 
 logger = logging.getLogger("ai_websocket")
 
@@ -165,9 +168,7 @@ async def _on_extraction_completed(
         logger.error("Failed to save extraction data on completion: %s", exc)
 
 
-async def _on_extraction_failed(
-    framework_id: str, package_version: str, file_id: str, payload: dict
-) -> None:
+async def _on_extraction_failed(framework_id: str, package_version: str, file_id: str, payload: dict) -> None:
     try:
         extraction = await _resolve_extraction_record(framework_id, package_version, file_id)
         if not extraction:

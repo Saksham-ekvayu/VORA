@@ -6,11 +6,22 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
+from app.dependencies import current_user
+from app.helpers import framework_helper
+from app.helpers.report_helper import generate_framework_report_pdf
+from app.helpers.user_formatter import get_user_data
+from app.schemas.framework import (
+    AddControlBody,
+    AssignFrameworkToCustomerBody,
+    RejectFrameworkBody,
+    UpdateControlBody,
+    UpdateControlWeightageBody,
+)
+from app.services import authorization
 from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile
 from sqlalchemy import String, cast, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
-
-from vora_shared import file_storage, data_format
+from vora_shared import data_format, file_storage
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
 from vora_shared.models import Customer, FrameworkAssignment, FrameworkCategory, User
@@ -27,22 +38,7 @@ from vora_shared.models.framework_assignment import AssignmentInfo
 from vora_shared.query_builder import build_pagination_meta, clamp_limit, clamp_page
 from vora_shared.responses import error, paginated, success
 
-from app.dependencies import current_user
-from app.helpers import framework_helper
-from app.helpers.report_helper import generate_framework_report_pdf
-from app.helpers.user_formatter import get_user_data
-from app.schemas.framework import (
-    AddControlBody,
-    AssignFrameworkToCustomerBody,
-    RejectFrameworkBody,
-    UpdateControlBody,
-    UpdateControlWeightageBody,
-)
-from app.services import authorization
-
 router = APIRouter(tags=["framework"])
-
-
 
 
 def _now() -> datetime:
@@ -67,16 +63,12 @@ async def _validate_upload(file: UploadFile | None) -> tuple[bytes | None, str |
 def _apply_ai_status_filter(stmt, ai_status: str | None):
     if not ai_status:
         return stmt
-    return stmt.where(
-        text(
-            """EXISTS (
+    return stmt.where(text("""EXISTS (
                 SELECT 1
                 FROM jsonb_array_elements(frameworks."fileVersions") AS elem
                 WHERE elem->>'fileVersion' = frameworks."currentFileVersion"
                   AND elem->'aiExtraction'->>'status' = :ai_status
-            )"""
-        ).bindparams(ai_status=ai_status)
-    )
+            )""").bindparams(ai_status=ai_status))
 
 
 # ─── Categories ───────────────────────────────────────────────────────────────
@@ -100,10 +92,10 @@ async def get_available_categories(
 
     async with session_scope() as session:
         expert_requests = (
-            await session.execute(
-                select(FrameworkAccess).where(FrameworkAccess.expertId == user.id)
-            )
-        ).scalars().all()
+            (await session.execute(select(FrameworkAccess).where(FrameworkAccess.expertId == user.id)))
+            .scalars()
+            .all()
+        )
         requested_map = {
             str(req.frameworkCategoryId): {"hasRequested": True, "status": req.status}
             for req in expert_requests
@@ -120,9 +112,7 @@ async def get_available_categories(
                     stmt = stmt.where(FrameworkCategory.id.notin_(requested_ids))
             else:
                 matching_ids = [
-                    req.frameworkCategoryId
-                    for req in expert_requests
-                    if req.status == accessStatus
+                    req.frameworkCategoryId for req in expert_requests if req.status == accessStatus
                 ]
                 if matching_ids:
                     stmt = stmt.where(FrameworkCategory.id.in_(matching_ids))
@@ -152,17 +142,15 @@ async def get_available_categories(
             await session.execute(select(func.count()).select_from(stmt.order_by(None).subquery()))
         ).scalar_one()
         categories = list(
-            (
-                await session.execute(stmt.offset((page_num - 1) * limit_num).limit(limit_num))
-            ).scalars().all()
+            (await session.execute(stmt.offset((page_num - 1) * limit_num).limit(limit_num))).scalars().all()
         )
 
         creator_ids = {c.createdBy for c in categories if c.createdBy}
         creators_by_id = {}
         if creator_ids:
             creators = (
-                await session.execute(select(User).where(User.id.in_(list(creator_ids))))
-            ).scalars().all()
+                (await session.execute(select(User).where(User.id.in_(list(creator_ids))))).scalars().all()
+            )
             creators_by_id = {u.id: u for u in creators}
 
         data = []
@@ -229,18 +217,21 @@ async def get_all_frameworks(
             matching_user_ids = list(
                 (
                     await session.execute(
-                        select(User.id).where(
-                            or_(User.name.ilike(pattern), User.email.ilike(pattern))
-                        )
+                        select(User.id).where(or_(User.name.ilike(pattern), User.email.ilike(pattern)))
                     )
-                ).scalars().all()
+                )
+                .scalars()
+                .all()
             )
             if matching_user_ids:
                 search_conditions.append(Framework.uploadedBy.in_(matching_user_ids))
             stmt = stmt.where(or_(*search_conditions))
 
         allowed_sort_fields = {
-            "createdAt", "updatedAt", "frameworkName", "frameworkCode",
+            "createdAt",
+            "updatedAt",
+            "frameworkName",
+            "frameworkCode",
         }
         sort_field = "createdAt"
         if sortBy in allowed_sort_fields:
@@ -255,22 +246,19 @@ async def get_all_frameworks(
             await session.execute(select(func.count()).select_from(stmt.order_by(None).subquery()))
         ).scalar_one()
         docs = list(
-            (
-                await session.execute(stmt.offset((page_num - 1) * limit_num).limit(limit_num))
-            ).scalars().all()
+            (await session.execute(stmt.offset((page_num - 1) * limit_num).limit(limit_num))).scalars().all()
         )
 
         uploader_ids = {d.uploadedBy for d in docs}
         uploaders_by_id = {}
         if uploader_ids:
             uploaders = (
-                await session.execute(select(User).where(User.id.in_(list(uploader_ids))))
-            ).scalars().all()
+                (await session.execute(select(User).where(User.id.in_(list(uploader_ids))))).scalars().all()
+            )
             uploaders_by_id = {u.id: u for u in uploaders}
 
         data = [
-            framework_helper.transform_framework_doc(doc, uploaders_by_id.get(doc.uploadedBy))
-            for doc in docs
+            framework_helper.transform_framework_doc(doc, uploaders_by_id.get(doc.uploadedBy)) for doc in docs
         ]
 
     message = framework_helper.get_framework_message(len(data), search, aiStatus, approvalStatus)
@@ -287,7 +275,9 @@ async def get_framework_by_id(id: str, user: User = Depends(current_user)):
         if not framework:
             return error("Framework not found", 404)
 
-        uploaded_by_user = await session.get(User, str(framework.uploadedBy)) if framework.uploadedBy else None
+        uploaded_by_user = (
+            await session.get(User, str(framework.uploadedBy)) if framework.uploadedBy else None
+        )
         approved_by_id = framework_helper.approval_by(framework)
         approved_by_user = await session.get(User, str(approved_by_id)) if approved_by_id else None
 
@@ -312,7 +302,9 @@ async def get_framework_by_id(id: str, user: User = Depends(current_user)):
             "frameworkName": framework.frameworkName,
             "frameworkVersion": framework.frameworkVersion,
             "frameworkCode": framework.frameworkCode,
-            "frameworkCategoryId": str(framework.frameworkCategoryId) if framework.frameworkCategoryId else None,
+            "frameworkCategoryId": (
+                str(framework.frameworkCategoryId) if framework.frameworkCategoryId else None
+            ),
             "currentFileVersion": framework.currentFileVersion,
             "fileVersions": formatted_versions,
             "uploadedBy": data_format.format_uploaded_by(uploaded_by_user, framework.uploadedBy),
@@ -470,18 +462,14 @@ async def assign_framework_to_customer(
 
         framework_ids = [str(fid) for fid in body.frameworkIds]
         frameworks = list(
-            (
-                await session.execute(select(Framework).where(Framework.id.in_(framework_ids)))
-            ).scalars().all()
+            (await session.execute(select(Framework).where(Framework.id.in_(framework_ids)))).scalars().all()
         )
         if not frameworks:
             return error("Frameworks not found", 404)
         if len(frameworks) != len(framework_ids):
             return error("One or more provided framework IDs are invalid.", 400)
 
-        unapproved = [
-            f for f in frameworks if framework_helper.approval_status(f) != "approved"
-        ]
+        unapproved = [f for f in frameworks if framework_helper.approval_status(f) != "approved"]
         if unapproved:
             names = ", ".join(f.frameworkName for f in unapproved)
             return error(f"Cannot assign unapproved frameworks: {names}", 400)
@@ -512,9 +500,9 @@ async def assign_framework_to_customer(
                         currentFileVersion=fw.currentFileVersion or "1.0.0",
                         fileVersions=list(fw.fileVersions or []),
                         status="assigned",
-                        assignment=AssignmentInfo(
-                            assignedBy=user.id, assignedAt=_now()
-                        ).model_dump(mode="json"),
+                        assignment=AssignmentInfo(assignedBy=user.id, assignedAt=_now()).model_dump(
+                            mode="json"
+                        ),
                         revocation={},
                         finalization={"isFinalized": False},
                     )
@@ -756,9 +744,7 @@ async def get_framework_files(frameworkId: str, user: User = Depends(current_use
 
 
 @router.get("/{frameworkId}/files/{fileId}")
-async def get_framework_file_by_id(
-    frameworkId: str, fileId: str, user: User = Depends(current_user)
-):
+async def get_framework_file_by_id(frameworkId: str, fileId: str, user: User = Depends(current_user)):
     async with session_scope() as session:
         framework = await session.get(Framework, str(frameworkId))
         if not framework:
@@ -776,7 +762,11 @@ async def get_framework_file_by_id(
             "frameworkId": str(framework.id),
             "frameworkName": framework.frameworkName,
             "file": {
-                "fileId": str(file_version.fileId) if file_version and getattr(file_version, "fileId", None) else None,
+                "fileId": (
+                    str(file_version.fileId)
+                    if file_version and getattr(file_version, "fileId", None)
+                    else None
+                ),
                 "fileName": file_version.originalFileName,
                 "fileSize": file_version.fileSize,
                 "fileType": file_version.fileType,
@@ -820,9 +810,7 @@ async def download_framework_file(frameworkId: str, fileId: str):
 
 
 @router.get("/{frameworkId}/files/{fileId}/preview")
-async def preview_framework_file(
-    frameworkId: str, fileId: str, user: User = Depends(current_user)
-):
+async def preview_framework_file(frameworkId: str, fileId: str, user: User = Depends(current_user)):
     async with session_scope() as session:
         framework = await session.get(Framework, str(frameworkId))
         if not framework:
@@ -850,9 +838,7 @@ async def preview_framework_file(
 
 
 @router.delete("/{frameworkId}/files/{fileId}")
-async def delete_framework_file(
-    frameworkId: str, fileId: str, user: User = Depends(current_user)
-):
+async def delete_framework_file(frameworkId: str, fileId: str, user: User = Depends(current_user)):
     async with session_scope() as session:
         framework = await session.get(Framework, str(frameworkId))
         if not framework:
@@ -884,9 +870,15 @@ async def delete_framework_file(
         response_data = {
             "frameworkId": str(framework.id) if framework and getattr(framework, "id", None) else None,
             "frameworkName": framework.frameworkName,
-            "frameworkCategoryId": str(framework.frameworkCategoryId) if framework and getattr(framework, "frameworkCategoryId", None) else None,
+            "frameworkCategoryId": (
+                str(framework.frameworkCategoryId)
+                if framework and getattr(framework, "frameworkCategoryId", None)
+                else None
+            ),
             "frameworkCode": framework.frameworkCode,
-            "uploadedBy": str(framework.uploadedBy) if framework and getattr(framework, "uploadedBy", None) else None,
+            "uploadedBy": (
+                str(framework.uploadedBy) if framework and getattr(framework, "uploadedBy", None) else None
+            ),
             "currentFileVersion": framework.currentFileVersion,
             "fileVersions": framework.fileVersions,
             "approval": framework.approval,
@@ -894,6 +886,7 @@ async def delete_framework_file(
         }
 
     return success(response_data, "Framework retrieved successfully")
+
 
 # ─── Control CRUD ─────────────────────────────────────────────────────────────
 
@@ -920,9 +913,7 @@ async def add_framework_control(
             return error("Cannot edit controls in approved frameworks", 403)
 
         versions = framework_helper.parse_file_versions(framework)
-        file_version_doc = next(
-            (fv for fv in versions if fv.fileVersion == fileVersion), None
-        )
+        file_version_doc = next((fv for fv in versions if fv.fileVersion == fileVersion), None)
         if not file_version_doc:
             return error(f"Version {fileVersion} not found in this framework", 404)
 
@@ -1000,9 +991,7 @@ async def update_framework_control(
     user: User = Depends(current_user),
 ):
     if not body.name and body.description is None and body.deployment_points is None:
-        return error(
-            "At least one of name, description, or deployment_points must be provided", 400
-        )
+        return error("At least one of name, description, or deployment_points must be provided", 400)
 
     async with session_scope() as session:
         framework = await session.get(Framework, str(id))
@@ -1016,9 +1005,7 @@ async def update_framework_control(
             return error("Cannot edit controls in approved frameworks", 403)
 
         versions = framework_helper.parse_file_versions(framework)
-        file_version_doc = next(
-            (fv for fv in versions if fv.fileVersion == fileVersion), None
-        )
+        file_version_doc = next((fv for fv in versions if fv.fileVersion == fileVersion), None)
         if not file_version_doc:
             return error(f"Version {fileVersion} not found in this framework", 404)
 
@@ -1079,9 +1066,7 @@ async def update_framework_control_weightage(
             return error("Cannot edit controls in approved frameworks", 403)
 
         versions = framework_helper.parse_file_versions(framework)
-        file_version_doc = next(
-            (fv for fv in versions if fv.fileVersion == fileVersion), None
-        )
+        file_version_doc = next((fv for fv in versions if fv.fileVersion == fileVersion), None)
         if not file_version_doc:
             return error(f"Version {fileVersion} not found in this framework", 404)
 
@@ -1131,9 +1116,7 @@ async def delete_framework_control(
             return error("Cannot delete controls from approved frameworks", 403)
 
         versions = framework_helper.parse_file_versions(framework)
-        file_version_doc = next(
-            (fv for fv in versions if fv.fileVersion == fileVersion), None
-        )
+        file_version_doc = next((fv for fv in versions if fv.fileVersion == fileVersion), None)
         if not file_version_doc:
             return error(f"Version {fileVersion} not found in this framework", 404)
 
@@ -1145,9 +1128,7 @@ async def delete_framework_control(
         controls_data = controls.controls_data
         for s_idx in range(len(controls_data) - 1, -1, -1):
             section = controls_data[s_idx]
-            c_idx = next(
-                (i for i, c in enumerate(section.controls or []) if c.id == controlId), None
-            )
+            c_idx = next((i for i, c in enumerate(section.controls or []) if c.id == controlId), None)
             if c_idx is not None:
                 section.controls.pop(c_idx)
                 deleted = True
@@ -1164,7 +1145,7 @@ async def delete_framework_control(
         framework.fileVersions = framework_helper.dump_file_versions(versions)
         framework.updatedAt = _now()
         await session.flush()
-        
+
     return success(
         {"controlId": controlId, "fileVersion": fileVersion},
         f"Control {controlId} deleted successfully from version {fileVersion}",

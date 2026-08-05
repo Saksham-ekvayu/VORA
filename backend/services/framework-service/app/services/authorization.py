@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from sqlalchemy import select
-
 from vora_shared.database import session_scope
 from vora_shared.models import FrameworkAccess, FrameworkCategory
 
@@ -66,12 +65,16 @@ async def is_valid_framework_code(framework_code: str) -> bool:
 async def get_available_frameworks() -> list[dict]:
     async with session_scope() as session:
         categories = (
-            await session.execute(
-                select(FrameworkCategory)
-                .where(FrameworkCategory.isActive.is_(True))
-                .order_by(FrameworkCategory.frameworkCategoryName.asc())
+            (
+                await session.execute(
+                    select(FrameworkCategory)
+                    .where(FrameworkCategory.isActive.is_(True))
+                    .order_by(FrameworkCategory.frameworkCategoryName.asc())
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         return [
             {
                 "id": str(category.id) if category and getattr(category, "id", None) else None,
@@ -89,13 +92,17 @@ async def get_expert_approved_framework_codes(expert_id) -> list[str]:
     try:
         async with session_scope() as session:
             approved = (
-                await session.execute(
-                    select(FrameworkAccess).where(
-                        FrameworkAccess.expertId == str(expert_id),
-                        FrameworkAccess.status == "approved",
+                (
+                    await session.execute(
+                        select(FrameworkAccess).where(
+                            FrameworkAccess.expertId == str(expert_id),
+                            FrameworkAccess.status == "approved",
+                        )
                     )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             return [access.frameworkCode for access in approved]
     except Exception as exc:  # noqa: BLE001
         print(f"Error getting expert approved framework codes: {exc}")
@@ -125,13 +132,9 @@ async def request_access(expert_id, framework_category_id) -> FrameworkAccess:
 
         if existing_access:
             if existing_access.status == "approved":
-                raise FrameworkAuthorizationError(
-                    "You already have approved access to this framework"
-                )
+                raise FrameworkAuthorizationError("You already have approved access to this framework")
             if existing_access.status == "pending":
-                raise FrameworkAuthorizationError(
-                    "You already have a pending request for this framework"
-                )
+                raise FrameworkAuthorizationError("You already have a pending request for this framework")
             if existing_access.status in ("rejected", "revoked"):
                 existing_access.status = "pending"
                 existing_access.requestedBy = "expert"

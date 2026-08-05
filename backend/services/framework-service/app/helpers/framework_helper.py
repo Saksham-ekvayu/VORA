@@ -6,6 +6,7 @@ import json
 import re
 from typing import Any
 
+from vora_shared import data_format, file_storage
 from vora_shared.models.framework import (
     ControlItem,
     DeploymentPoint,
@@ -13,7 +14,6 @@ from vora_shared.models.framework import (
     Framework,
     Section,
 )
-from vora_shared import file_storage, data_format
 
 BUSINESS_MESSAGES = {
     "EXPERT_FRAMEWORKS_SUCCESS": "Your frameworks retrieved successfully",
@@ -115,14 +115,14 @@ def transform_framework_doc(doc: Framework, uploaded_by_user=None) -> dict:
         "frameworkName": doc.frameworkName,
         "frameworkVersion": doc.frameworkVersion,
         "frameworkCode": doc.frameworkCode,
-        "frameworkCategoryId": str(doc.frameworkCategoryId) if doc and getattr(doc, "frameworkCategoryId", None) else None,
+        "frameworkCategoryId": (
+            str(doc.frameworkCategoryId) if doc and getattr(doc, "frameworkCategoryId", None) else None
+        ),
         "currentFileVersion": doc.currentFileVersion,
         "fileInfo": {
             "fileId": str(current.fileId) if current and getattr(current, "fileId", None) else None,
             "originalFileName": current.originalFileName if current else "Unknown",
-            "fileSize": data_format.format_file_size(
-                current.fileSize if current else 0
-            ),
+            "fileSize": data_format.format_file_size(current.fileSize if current else 0),
             "fileType": current.fileType if current else "pdf",
         },
         "uploadedBy": data_format.format_uploaded_by(uploaded_by_user, current.uploadedBy),
@@ -193,15 +193,11 @@ def resolve_new_section(new_section: str, controls_data: list[Section]) -> dict:
     }
 
 
-def resolve_existing_section(
-    section_id: str, controls_data: list[Section], file_version: str
-) -> dict:
+def resolve_existing_section(section_id: str, controls_data: list[Section], file_version: str) -> dict:
     if len(controls_data) == 0:
         return {
             "error": {
-                "message": format_message(
-                    BUSINESS_MESSAGES["VERSION_NO_CONTROLS"], version=file_version
-                ),
+                "message": format_message(BUSINESS_MESSAGES["VERSION_NO_CONTROLS"], version=file_version),
                 "statusCode": 404,
             }
         }

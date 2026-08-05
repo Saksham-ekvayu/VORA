@@ -39,9 +39,15 @@ _styles = getSampleStyleSheet()
 _STYLE_TITLE = ParagraphStyle("AFRTitle", parent=_styles["Title"], textColor=COLORS["primary"], fontSize=18)
 _STYLE_H1 = ParagraphStyle("AFRH1", parent=_styles["Heading1"], textColor=COLORS["text"], fontSize=20)
 _STYLE_MUTED = ParagraphStyle("AFRMuted", parent=_styles["Normal"], textColor=COLORS["muted"], fontSize=10)
-_STYLE_SECTION = ParagraphStyle("AFRSection", parent=_styles["Heading2"], textColor=COLORS["primary"], fontSize=11)
+_STYLE_SECTION = ParagraphStyle(
+    "AFRSection", parent=_styles["Heading2"], textColor=COLORS["primary"], fontSize=11
+)
 _STYLE_CONTROL_TITLE = ParagraphStyle(
-    "AFRControlTitle", parent=_styles["Normal"], textColor=COLORS["text"], fontSize=9.5, fontName="Helvetica-Bold"
+    "AFRControlTitle",
+    parent=_styles["Normal"],
+    textColor=COLORS["text"],
+    fontSize=9.5,
+    fontName="Helvetica-Bold",
 )
 _STYLE_DESC = ParagraphStyle("AFRDesc", parent=_styles["Normal"], textColor=COLORS["muted"], fontSize=8.5)
 _STYLE_DP = ParagraphStyle("AFRDp", parent=_styles["Normal"], textColor=COLORS["muted"], fontSize=8)
@@ -49,7 +55,12 @@ _STYLE_STAT_LABEL = ParagraphStyle(
     "AFRStatLabel", parent=_styles["Normal"], fontSize=7.5, textColor=COLORS["muted"], alignment=1
 )
 _STYLE_STAT_VALUE = ParagraphStyle(
-    "AFRStatValue", parent=_styles["Normal"], fontSize=17, textColor=COLORS["primary"], alignment=1, fontName="Helvetica-Bold"
+    "AFRStatValue",
+    parent=_styles["Normal"],
+    fontSize=17,
+    textColor=COLORS["primary"],
+    alignment=1,
+    fontName="Helvetica-Bold",
 )
 
 
@@ -75,7 +86,10 @@ def _display_user(user: Any) -> str:
 
 
 def _stat_card(label: str, value: Any) -> Table:
-    table = Table([[Paragraph(str(value), _STYLE_STAT_VALUE)], [Paragraph(label, _STYLE_STAT_LABEL)]], colWidths=[54 * mm])
+    table = Table(
+        [[Paragraph(str(value), _STYLE_STAT_VALUE)], [Paragraph(label, _STYLE_STAT_LABEL)]],
+        colWidths=[54 * mm],
+    )
     table.setStyle(
         TableStyle(
             [
@@ -113,7 +127,11 @@ def generate_framework_assignment_report_pdf(assignment: Any, file_version: Any,
     avg_customer_weightage = (
         round(
             sum(
-                (c.customization.weightage.customer_weightage if c.customization and c.customization.weightage else 0)
+                (
+                    c.customization.weightage.customer_weightage
+                    if c.customization and c.customization.weightage
+                    else 0
+                )
                 for c in applicable_controls
             )
             / len(applicable_controls),
@@ -171,7 +189,9 @@ def generate_framework_assignment_report_pdf(assignment: Any, file_version: Any,
     stat_cards = [_stat_card(label, value) for label, value in stats]
     rows = [stat_cards[i : i + 3] for i in range(0, len(stat_cards), 3)]
     stats_table = Table(rows, hAlign="LEFT", spaceBefore=0, spaceAfter=0)
-    stats_table.setStyle(TableStyle([("LEFTPADDING", (0, 0), (-1, -1), 4), ("RIGHTPADDING", (0, 0), (-1, -1), 4)]))
+    stats_table.setStyle(
+        TableStyle([("LEFTPADDING", (0, 0), (-1, -1), 4), ("RIGHTPADDING", (0, 0), (-1, -1), 4)])
+    )
     story.append(stats_table)
 
     story.append(PageBreak())
@@ -220,9 +240,7 @@ def generate_framework_assignment_report_pdf(assignment: Any, file_version: Any,
                 accent = COLORS["primary"]
                 label_text = f"FW {fw_weight}/10 | Customer {cust_weight}/10"
 
-            title_style = ParagraphStyle(
-                "AFRCtrlTitleAccent", parent=_STYLE_CONTROL_TITLE
-            )
+            title_style = ParagraphStyle("AFRCtrlTitleAccent", parent=_STYLE_CONTROL_TITLE)
             label_style = ParagraphStyle(
                 "AFRCtrlLabel", parent=_styles["Normal"], fontSize=8, textColor=accent, alignment=2
             )
@@ -251,7 +269,14 @@ def generate_framework_assignment_report_pdf(assignment: Any, file_version: Any,
                 story.append(Paragraph(control.description, _STYLE_DESC))
 
             if control.deployment_points:
-                story.append(Paragraph("Deployment Points", ParagraphStyle("AFRDpHeader", parent=_styles["Normal"], fontSize=8, fontName="Helvetica-Bold")))
+                story.append(
+                    Paragraph(
+                        "Deployment Points",
+                        ParagraphStyle(
+                            "AFRDpHeader", parent=_styles["Normal"], fontSize=8, fontName="Helvetica-Bold"
+                        ),
+                    )
+                )
                 for idx, point in enumerate(control.deployment_points):
                     remark_part = f" | Remark: {point.remark}" if point.remark else ""
                     story.append(Paragraph(f"{idx + 1}. {point.name}{remark_part}", _STYLE_DP))
@@ -264,7 +289,9 @@ def generate_framework_assignment_report_pdf(assignment: Any, file_version: Any,
         canvas.saveState()
         canvas.setFont("Helvetica", 8)
         canvas.setFillColor(COLORS["light"])
-        canvas.drawString(14 * mm, 8 * mm, f"Generated by VORA Platform | {_display_date(datetime.now(timezone.utc))}")
+        canvas.drawString(
+            14 * mm, 8 * mm, f"Generated by VORA Platform | {_display_date(datetime.now(timezone.utc))}"
+        )
         canvas.drawRightString(doc_.pagesize[0] - 14 * mm, 8 * mm, f"Page {doc_.page}")
         if doc_.page > 1:
             canvas.setFont("Helvetica-Bold", 8)

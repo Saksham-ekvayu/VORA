@@ -6,12 +6,11 @@ Nested JSONB refs are plain string ids. Callers pass pre-fetched maps
 
 import math
 from typing import Any
-from vora_shared import data_format
-
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.helpers.deployment_framework_helpers import coerce_packages
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from vora_shared import data_format
 from vora_shared.models import (
     DeploymentFramework,
     DocumentExtraction,
@@ -59,9 +58,7 @@ async def hydrate_maps(
     async def _fetch(model, ids):
         if not ids:
             return {}
-        docs = (
-            await session.execute(select(model).where(model.id.in_(list(ids))))
-        ).scalars().all()
+        docs = (await session.execute(select(model).where(model.id.in_(list(ids))))).scalars().all()
         return {str(d.id): d for d in docs}
 
     users = await _fetch(User, user_ids)
@@ -79,6 +76,7 @@ async def hydrate_maps(
         "merges": merges,
         "assignedFrameworks": assigned_frameworks,
     }
+
 
 def format_uploaded_by(framework: Any, users: dict[str, User]) -> dict[str, Any]:
     user = users.get(str(framework.uploadedBy)) if framework.uploadedBy else None
@@ -133,11 +131,7 @@ def format_document(
                 "status": ai.status,
                 "timestamp": ai.timestamp,
                 "message": ai.message,
-                **(
-                    {}
-                    if exclude_details
-                    else {"statusHistory": ai.statusHistory, "controls": ai.controls}
-                ),
+                **({} if exclude_details else {"statusHistory": ai.statusHistory, "controls": ai.controls}),
             }
             if ai
             else None
@@ -271,7 +265,9 @@ def format_deployment_framework(
         "id": str(framework.id) if framework and getattr(framework, "id", None) else None,
         "tenantId": str(framework.tenantId) if framework and getattr(framework, "tenantId", None) else None,
         "frameworkName": framework.frameworkName,
-        "frameworkId": str(framework.frameworkId) if framework and getattr(framework, "frameworkId", None) else None,
+        "frameworkId": (
+            str(framework.frameworkId) if framework and getattr(framework, "frameworkId", None) else None
+        ),
         "frameworkCode": framework.frameworkCode,
         "frameworkVersion": framework.frameworkVersion,
         "currentPackageVersion": framework.currentPackageVersion,
@@ -279,7 +275,11 @@ def format_deployment_framework(
         "uploadedBy": format_uploaded_by(framework, maps.get("users", {})),
         "assignedFramework": (
             {
-                "id": str(assigned_framework.id) if assigned_framework and getattr(assigned_framework, "id", None) else None,
+                "id": (
+                    str(assigned_framework.id)
+                    if assigned_framework and getattr(assigned_framework, "id", None)
+                    else None
+                ),
                 "frameworkName": assigned_framework.frameworkName,
                 "frameworkCode": assigned_framework.frameworkCode,
                 "frameworkVersion": assigned_framework.frameworkVersion,
@@ -351,7 +351,9 @@ def format_deployment_framework_list_item(framework: Any, maps: dict[str, dict[s
         "id": str(framework.id) if framework and getattr(framework, "id", None) else None,
         "tenantId": str(framework.tenantId) if framework and getattr(framework, "tenantId", None) else None,
         "frameworkName": framework.frameworkName,
-        "frameworkId": str(framework.frameworkId) if framework and getattr(framework, "frameworkId", None) else None,
+        "frameworkId": (
+            str(framework.frameworkId) if framework and getattr(framework, "frameworkId", None) else None
+        ),
         "frameworkCode": framework.frameworkCode,
         "frameworkVersion": framework.frameworkVersion,
         "currentPackageVersion": framework.currentPackageVersion,

@@ -1,14 +1,13 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from app.routers import admin as admin_router
+from app.routers import user as user_router
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-
 from vora_shared.config import get_settings
 from vora_shared.database import connect_db, disconnect_db
 from vora_shared.server import create_vora_app
-from app.routers import admin as admin_router
-from app.routers import user as user_router
 
 UPLOADS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "shared" / "uploads"
 

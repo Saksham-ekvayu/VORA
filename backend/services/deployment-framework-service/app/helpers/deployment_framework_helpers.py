@@ -7,11 +7,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from app.services import package_builder, version_service
 from fastapi import UploadFile
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.services import package_builder, version_service
 from vora_shared import file_storage
 from vora_shared.ids import new_id
 from vora_shared.models.deployment_framework import FrameworkPackageDocument, PackageVersion
@@ -161,7 +160,9 @@ def get_current_package(framework: Any):
 def get_upload_file_path(file_url: str | None) -> str | None:
     if not file_url or file_url.startswith("/api/"):
         return None
-    relative = file_url.replace("/uploads/", "", 1) if file_url.startswith("/uploads/") else file_url.lstrip("/")
+    relative = (
+        file_url.replace("/uploads/", "", 1) if file_url.startswith("/uploads/") else file_url.lstrip("/")
+    )
     return str((Path(file_storage.UPLOAD_BASE_PATH) / relative).resolve())
 
 
@@ -252,9 +253,7 @@ def _version_sort_key(v: str) -> tuple[int, int, int]:
 def process_and_save_file(
     content: bytes, filename: str, framework_id: str | None, user_id: str, version: str
 ) -> dict[str, Any] | None:
-    path_info = file_storage.generate_deployment_file_path(
-        filename, user_id, "deployment-framework", version
-    )
+    path_info = file_storage.generate_deployment_file_path(filename, user_id, "deployment-framework", version)
 
     if not file_storage.save_file(content, path_info.absolute_path):
         return None
@@ -285,7 +284,9 @@ async def process_uploaded_files(
         if not validation.get("isValid"):
             return {"error": {"message": validation.get("message"), "status": validation.get("status")}}
 
-        document_data = process_and_save_file(content, file.filename or "file", framework_id, user_id, version)
+        document_data = process_and_save_file(
+            content, file.filename or "file", framework_id, user_id, version
+        )
         if not document_data:
             return {"error": {"message": f"Failed to save file: {file.filename}", "status": 500}}
         document_data_array.append(document_data)
@@ -475,9 +476,9 @@ def gap_point_matches(
         return False
     if p.get("deployment_framework_control_id") != deployment_control_id:
         return False
-    if deployment_point_id and str(
-        (p.get("deployment_framework_deployment_points") or {}).get("id")
-    ) != str(deployment_point_id):
+    if deployment_point_id and str((p.get("deployment_framework_deployment_points") or {}).get("id")) != str(
+        deployment_point_id
+    ):
         return False
     return True
 

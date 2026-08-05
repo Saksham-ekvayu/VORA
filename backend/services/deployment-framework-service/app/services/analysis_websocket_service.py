@@ -11,7 +11,6 @@ from datetime import datetime, timezone
 from typing import Any
 
 import websockets
-
 from app.helpers.deployment_framework_helpers import coerce_packages
 from vora_shared.database import session_scope
 
@@ -86,7 +85,9 @@ def _set_merge_fields(merge, *, status: str, payload: dict[str, Any], pkg=None) 
 async def start_merge(deployment_framework_id: str, package_version: str) -> None:
     from vora_shared.models import DeploymentFramework, PackageMerge
 
-    url = f"{_ws_base_url_analysis()}/api/extract/ws/package-merge/{deployment_framework_id}/{package_version}"
+    url = (
+        f"{_ws_base_url_analysis()}/api/extract/ws/package-merge/{deployment_framework_id}/{package_version}"
+    )
 
     async def _update_merge(status: str, payload: dict[str, Any]) -> None:
         async with session_scope() as session:
@@ -149,7 +150,9 @@ async def start_merge(deployment_framework_id: str, package_version: str) -> Non
 async def start_comparison(deployment_framework_id: str, package_version: str) -> None:
     from vora_shared.models import DeploymentFramework, PackageComparison
 
-    url = f"{_ws_base_url_analysis()}/api/comparison/ws/comparison/{deployment_framework_id}/{package_version}"
+    url = (
+        f"{_ws_base_url_analysis()}/api/comparison/ws/comparison/{deployment_framework_id}/{package_version}"
+    )
 
     async def _update_comparison(status: str, payload: dict[str, Any]) -> None:
         async with session_scope() as session:

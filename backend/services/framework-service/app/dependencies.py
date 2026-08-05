@@ -6,7 +6,6 @@ isActive/tokenVersion) against the shared `users` collection.
 """
 
 from fastapi import Depends
-
 from vora_shared.auth import AuthenticatedUser, authenticate
 from vora_shared.models import User
 

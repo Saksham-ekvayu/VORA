@@ -200,7 +200,9 @@ def format_file_version(file: Any) -> dict[str, Any]:
     }
 
 
-def format_assignment_response(doc: Any, customer: Any | None, finalized_by_user: User | None) -> dict[str, Any]:
+def format_assignment_response(
+    doc: Any, customer: Any | None, finalized_by_user: User | None
+) -> dict[str, Any]:
     fin = as_finalization(doc.finalization)
     return {
         "id": str(doc.id) if doc and getattr(doc, "id", None) else None,
@@ -209,9 +211,9 @@ def format_assignment_response(doc: Any, customer: Any | None, finalized_by_user
         "frameworkCode": doc.frameworkCode,
         "frameworkName": doc.frameworkName,
         "frameworkVersion": doc.frameworkVersion,
-        "frameworkCategoryId": str(doc.frameworkCategoryId)
-        if doc and getattr(doc, "frameworkCategoryId", None)
-        else None,
+        "frameworkCategoryId": (
+            str(doc.frameworkCategoryId) if doc and getattr(doc, "frameworkCategoryId", None) else None
+        ),
         "customer": format_customer(customer),
         "status": doc.status,
         "assignment": format_assignment(doc.assignment),
@@ -272,11 +274,11 @@ def extract_section_prefix(section_name: str, fallback_id: str) -> str:
     return match.group(1) if match else fallback_id
 
 
-def build_deployment_points(deployment_points: list[dict[str, Any]] | None) -> list[AssignmentDeploymentPoint]:
+def build_deployment_points(
+    deployment_points: list[dict[str, Any]] | None,
+) -> list[AssignmentDeploymentPoint]:
     result = []
-    for idx, dp in enumerate(
-        [dp for dp in (deployment_points or []) if (dp.get("name") or "").strip()]
-    ):
+    for idx, dp in enumerate([dp for dp in (deployment_points or []) if (dp.get("name") or "").strip()]):
         result.append(
             AssignmentDeploymentPoint(
                 id=f"DP-{idx + 1:03d}",
@@ -311,9 +313,7 @@ def create_new_control(
     )
 
 
-def handle_new_section(
-    new_section: str, controls_data: list[AssignmentSection]
-) -> dict[str, Any]:
+def handle_new_section(new_section: str, controls_data: list[AssignmentSection]) -> dict[str, Any]:
     trimmed_new_section = new_section.strip()
     if not trimmed_new_section:
         return {"error": "New section name is required"}
@@ -353,9 +353,7 @@ def handle_existing_section(
         }
 
     existing_controls = section.controls or []
-    section_prefix = (
-        ".".join(existing_controls[0].id.split(".")[:2]) if existing_controls else section.id
-    )
+    section_prefix = ".".join(existing_controls[0].id.split(".")[:2]) if existing_controls else section.id
 
     return {
         "section": section,
@@ -437,7 +435,6 @@ def build_assignment_base_filters(
 ) -> dict[str, Any]:
     """Returns SQLAlchemy filter clauses (not Mongo dict filters)."""
     from sqlalchemy import or_
-
     from vora_shared.models import FrameworkAssignment
 
     filters = []
@@ -492,7 +489,9 @@ def collect_invalid_weightage_controls(file_versions: list[Any]) -> list[dict[st
                         {
                             "section": section.name,
                             "control": control.name,
-                            "controlId": str(control.id) if control and getattr(control, "id", None) else None,
+                            "controlId": (
+                                str(control.id) if control and getattr(control, "id", None) else None
+                            ),
                             "customer_weightage": value,
                         }
                     )

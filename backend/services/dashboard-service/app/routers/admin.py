@@ -1,14 +1,5 @@
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select
-
-from vora_shared.auth import AuthenticatedUser, authenticate
-from vora_shared.database import session_scope
-from vora_shared.messages import MESSAGES
-from vora_shared.models import Customer, User
-from vora_shared.responses import error, success
-
 from app.helpers import (
     apply_date_filters,
     build_response_data,
@@ -22,6 +13,13 @@ from app.helpers import (
     to_naive_utc,
     utcnow,
 )
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy import select
+from vora_shared.auth import AuthenticatedUser, authenticate
+from vora_shared.database import session_scope
+from vora_shared.messages import MESSAGES
+from vora_shared.models import Customer, User
+from vora_shared.responses import error, success
 
 router = APIRouter(tags=["dashboard-admin"])
 
@@ -70,9 +68,7 @@ async def get_admin_dashboard_analytics(
             "usersByRole": role_stats,
         }
 
-        response_data = build_response_data(
-            stats, chart_labels, chart_data, recent_created_users, customers
-        )
+        response_data = build_response_data(stats, chart_labels, chart_data, recent_created_users, customers)
 
         return success(response_data, MESSAGES["DASHBOARD_ANALYTICS_SUCCESS"])
     except Exception:

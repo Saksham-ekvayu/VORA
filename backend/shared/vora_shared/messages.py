@@ -4,26 +4,33 @@ from typing import Any
 
 # --- Helper functions ---
 
+
 def format_message(template: str, **replacements: Any) -> str:
     message = template
     for key, value in replacements.items():
         message = message.replace(f"{{{key}}}", str(value))
     return message
 
+
 def role_restriction(current_role: str, allowed_roles: str) -> str:
     return f"{current_role} can only create users with roles: {allowed_roles}"
+
 
 def role_assignment_restriction(current_role: str, allowed_roles: str) -> str:
     return f"{current_role} can only assign roles: {allowed_roles}"
 
+
 def cannot_change_own_role(role: str) -> str:
     return f"{role} cannot change their own role"
+
 
 def cannot_change_own_status(role: str) -> str:
     return f"{role} cannot change their own account status"
 
+
 def cannot_delete_own_account(role: str) -> str:
     return f"{role} cannot delete their own account"
+
 
 # --- Flat Messages (Auth & Profile) ---
 USER_ALREADY_EXISTS = "An account with this email already exists."
@@ -81,6 +88,7 @@ FAILED_TO_UPDATE_USER = "Failed to update user"
 FAILED_TO_UPDATE_USER_STATUS = "Failed to update user status"
 USER_ACTIVATED = "User activated successfully"
 USER_DEACTIVATED = "User deactivated successfully"
+CUSTOMER_NOT_FOUND = "Customer not found"
 
 NO_USERS_MATCH_CRITERIA = "No users match your search criteria. Try adjusting your filters."
 NO_USERS_AVAILABLE = "No users available yet. Create your first user to get started."
@@ -88,7 +96,9 @@ USER_LIST_RETRIEVED = "User list retrieved successfully"
 PROFILE_RETRIEVED = "Profile retrieved successfully"
 PROFILE_UPDATED = "Profile updated successfully"
 USER_CREATED = "User created successfully. Temporary password has been sent to their email address."
-USER_CREATED_EMAIL_FAILED = "User created successfully, but failed to send email. Please provide the temporary password manually."
+USER_CREATED_EMAIL_FAILED = (
+    "User created successfully, but failed to send email. Please provide the temporary password manually."
+)
 USER_DELETED = "User deleted successfully"
 
 TENANT_ID_REQUIRED = "Tenant ID is required in X-TENANT-ID header"

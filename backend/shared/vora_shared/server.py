@@ -1,9 +1,9 @@
+from typing import Any, Callable
+
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from typing import Callable, Any
-
 from vora_shared.config import get_settings
 from vora_shared.responses import http_exception_handler, request_validation_exception_handler
 
@@ -30,10 +30,7 @@ def create_vora_app(title: str, lifespan: Callable[[FastAPI], Any] = None) -> Fa
 
     @app.get("/")
     async def root():
-        return {
-            "success": True,
-            "message": f"Welcome to {app.title}"
-        }
+        return {"success": True, "message": f"Welcome to {app.title}"}
 
     @app.get("/health")
     async def health():

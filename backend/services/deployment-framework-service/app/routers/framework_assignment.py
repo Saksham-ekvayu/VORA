@@ -5,9 +5,6 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, Query
-from sqlalchemy import select
-
 from app.helpers import framework_assignment_helper as helper
 from app.helpers.framework_assignment_helper import (
     as_finalization,
@@ -17,6 +14,8 @@ from app.helpers.framework_assignment_helper import (
 )
 from app.helpers.reports.framework_assignment_report import generate_framework_assignment_report_pdf
 from app.services import ai_service
+from fastapi import APIRouter, Body, Depends, Query
+from sqlalchemy import select
 from vora_shared import query_builder
 from vora_shared.database import session_scope
 from vora_shared.messages import BUSINESS_MESSAGES, format_message
@@ -61,9 +60,7 @@ async def _hydrate_customers(session, assignments: list[FrameworkAssignment]) ->
     ids = {str(a.customerId) for a in assignments if a.customerId}
     if not ids:
         return {}
-    customers = (
-        await session.execute(select(Customer).where(Customer.id.in_(list(ids))))
-    ).scalars().all()
+    customers = (await session.execute(select(Customer).where(Customer.id.in_(list(ids))))).scalars().all()
     return {str(c.id): c for c in customers}
 
 
@@ -223,7 +220,9 @@ async def download_framework_assignment_report(
 
 
 @router.patch("/assignments/{frameworkId}/{customerId}/revoke")
-async def revoke_framework_assignment(frameworkId: str, customerId: str, ctx: RequestContext = Depends(get_context)):
+async def revoke_framework_assignment(
+    frameworkId: str, customerId: str, ctx: RequestContext = Depends(get_context)
+):
     user = ctx.user
 
     async with session_scope() as session:
@@ -244,9 +243,7 @@ async def revoke_framework_assignment(frameworkId: str, customerId: str, ctx: Re
         from vora_shared.models.framework_assignment import AssignmentFinalization, AssignmentRevocation
 
         assignment.status = "revoked"
-        assignment.revocation = dump_model(
-            AssignmentRevocation(revokedBy=str(user.id), revokedAt=_utcnow())
-        )
+        assignment.revocation = dump_model(AssignmentRevocation(revokedBy=str(user.id), revokedAt=_utcnow()))
         assignment.finalization = dump_model(
             AssignmentFinalization(isFinalized=False, finalizedBy=None, finalizedAt=None)
         )
@@ -254,13 +251,19 @@ async def revoke_framework_assignment(frameworkId: str, customerId: str, ctx: Re
         return success(
             {
                 "id": str(assignment.id) if assignment and getattr(assignment, "id", None) else None,
-                "tenantId": str(assignment.tenantId) if assignment and getattr(assignment, "tenantId", None) else None,
-                "customerId": str(assignment.customerId)
-                if assignment and getattr(assignment, "customerId", None)
-                else None,
-                "frameworkId": str(assignment.frameworkId)
-                if assignment and getattr(assignment, "frameworkId", None)
-                else None,
+                "tenantId": (
+                    str(assignment.tenantId) if assignment and getattr(assignment, "tenantId", None) else None
+                ),
+                "customerId": (
+                    str(assignment.customerId)
+                    if assignment and getattr(assignment, "customerId", None)
+                    else None
+                ),
+                "frameworkId": (
+                    str(assignment.frameworkId)
+                    if assignment and getattr(assignment, "frameworkId", None)
+                    else None
+                ),
                 "status": assignment.status,
                 "revocation": assignment.revocation,
             },
@@ -297,7 +300,9 @@ async def add_assigned_framework_control(
         file_versions = coerce_file_versions(assignment.fileVersions)
         file_version_doc = _find_file_version(file_versions, fileVersion)
         if not file_version_doc:
-            return error(format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=fileVersion), 404)
+            return error(
+                format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=fileVersion), 404
+            )
 
         fin = as_finalization(assignment.finalization)
         if fin.isFinalized:
@@ -337,7 +342,9 @@ async def add_assigned_framework_control(
         if new_section:
             from vora_shared.models.framework_assignment import AssignmentSection
 
-            controls_data.append(AssignmentSection(id=section_id_to_use, name=section_name, controls=[new_control]))
+            controls_data.append(
+                AssignmentSection(id=section_id_to_use, name=section_name, controls=[new_control])
+            )
         else:
             section.controls.append(new_control)
 
@@ -347,7 +354,9 @@ async def add_assigned_framework_control(
 
         return success(
             {"control": dump_model(new_control), "sectionId": section_id_to_use, "fileVersion": fileVersion},
-            format_message(BUSINESS_MESSAGES["CONTROL_ADDED_SUCCESS"], sectionId=section_id_to_use, version=fileVersion),
+            format_message(
+                BUSINESS_MESSAGES["CONTROL_ADDED_SUCCESS"], sectionId=section_id_to_use, version=fileVersion
+            ),
         )
 
 
@@ -374,7 +383,9 @@ async def update_assigned_framework_control(
         file_versions = coerce_file_versions(assignment.fileVersions)
         file_version_doc = _find_file_version(file_versions, fileVersion)
         if not file_version_doc:
-            return error(format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=fileVersion), 404)
+            return error(
+                format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=fileVersion), 404
+            )
 
         fin = as_finalization(assignment.finalization)
         if fin.isFinalized:
@@ -386,7 +397,9 @@ async def update_assigned_framework_control(
         target_control = helper.find_assigned_control(file_version_doc.aiExtraction, controlId)
         if not target_control:
             return error(
-                format_message(BUSINESS_MESSAGES["CONTROL_NOT_FOUND"], controlId=controlId, version=fileVersion),
+                format_message(
+                    BUSINESS_MESSAGES["CONTROL_NOT_FOUND"], controlId=controlId, version=fileVersion
+                ),
                 404,
             )
 
@@ -433,7 +446,9 @@ async def update_assigned_framework_control(
 
         return success(
             {"control": dump_model(target_control), "fileVersion": fileVersion},
-            format_message(BUSINESS_MESSAGES["CONTROL_UPDATED_SUCCESS"], controlId=controlId, version=fileVersion),
+            format_message(
+                BUSINESS_MESSAGES["CONTROL_UPDATED_SUCCESS"], controlId=controlId, version=fileVersion
+            ),
         )
 
 
@@ -449,7 +464,9 @@ async def delete_assigned_framework_control(
         file_versions = coerce_file_versions(assignment.fileVersions)
         file_version_doc = _find_file_version(file_versions, fileVersion)
         if not file_version_doc:
-            return error(format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=fileVersion), 404)
+            return error(
+                format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=fileVersion), 404
+            )
 
         fin = as_finalization(assignment.finalization)
         if fin.isFinalized:
@@ -469,7 +486,9 @@ async def delete_assigned_framework_control(
 
         return success(
             {"controlId": controlId, "fileVersion": fileVersion},
-            format_message(BUSINESS_MESSAGES["CONTROL_DELETED_SUCCESS"], controlId=controlId, version=fileVersion),
+            format_message(
+                BUSINESS_MESSAGES["CONTROL_DELETED_SUCCESS"], controlId=controlId, version=fileVersion
+            ),
         )
 
 
@@ -493,7 +512,9 @@ async def update_assigned_framework_control_weightage(
         file_versions = coerce_file_versions(assignment.fileVersions)
         file_version_doc = _find_file_version(file_versions, fileVersion)
         if not file_version_doc:
-            return error(format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=fileVersion), 404)
+            return error(
+                format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=fileVersion), 404
+            )
 
         fin = as_finalization(assignment.finalization)
         if fin.isFinalized:
@@ -505,7 +526,9 @@ async def update_assigned_framework_control_weightage(
         target_control = helper.find_assigned_control(file_version_doc.aiExtraction, controlId)
         if not target_control:
             return error(
-                format_message(BUSINESS_MESSAGES["CONTROL_NOT_FOUND"], controlId=controlId, version=fileVersion),
+                format_message(
+                    BUSINESS_MESSAGES["CONTROL_NOT_FOUND"], controlId=controlId, version=fileVersion
+                ),
                 404,
             )
 
@@ -546,7 +569,9 @@ async def update_assigned_framework_control_weightage(
         return success(
             {"control": dump_model(target_control), "fileVersion": fileVersion},
             format_message(
-                BUSINESS_MESSAGES["CONTROL_WEIGHTAGE_UPDATED_SUCCESS"], controlId=controlId, version=fileVersion
+                BUSINESS_MESSAGES["CONTROL_WEIGHTAGE_UPDATED_SUCCESS"],
+                controlId=controlId,
+                version=fileVersion,
             ),
         )
 
@@ -572,7 +597,9 @@ async def update_control_applicability(
         file_versions = coerce_file_versions(assignment.fileVersions)
         file_version_doc = _find_file_version(file_versions, fileVersion)
         if not file_version_doc:
-            return error(format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=fileVersion), 404)
+            return error(
+                format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=fileVersion), 404
+            )
 
         fin = as_finalization(assignment.finalization)
         if fin.isFinalized:
@@ -606,7 +633,11 @@ async def update_control_applicability(
         status_label = "applicable" if is_applicable else "not applicable"
 
         return success(
-            {"controlIds": [c.id for c in existing_controls], "fileVersion": fileVersion, "is_applicable": is_applicable},
+            {
+                "controlIds": [c.id for c in existing_controls],
+                "fileVersion": fileVersion,
+                "is_applicable": is_applicable,
+            },
             format_message(
                 BUSINESS_MESSAGES["CONTROL_APPLICABILITY_UPDATED_SUCCESS"],
                 controlId=display_control_id,

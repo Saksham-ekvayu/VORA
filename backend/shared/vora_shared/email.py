@@ -11,7 +11,6 @@ from email.message import EmailMessage
 from pathlib import Path
 
 import aiosmtplib
-
 from vora_shared.config import Settings, get_settings
 
 logger = logging.getLogger(__name__)

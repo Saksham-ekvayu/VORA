@@ -2,17 +2,15 @@
 
 from __future__ import annotations
 
+from app.dependencies import current_user
+from app.helpers.user_formatter import get_user_data
+from app.services import authorization
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, or_, select
-
 from vora_shared.database import session_scope
 from vora_shared.models import FrameworkAccess, FrameworkCategory, User
 from vora_shared.query_builder import build_pagination_meta, clamp_limit, clamp_page
 from vora_shared.responses import error, paginated, success
-
-from app.dependencies import current_user
-from app.helpers.user_formatter import get_user_data
-from app.services import authorization
 
 router = APIRouter(tags=["framework-access"])
 
@@ -43,10 +41,18 @@ async def request_framework_access(
     return success(
         {
             "id": str(access_request.id) if access_request and getattr(access_request, "id", None) else None,
-            "frameworkCategoryId": str(access_request.frameworkCategoryId) if access_request and getattr(access_request, "frameworkCategoryId", None) else None,
+            "frameworkCategoryId": (
+                str(access_request.frameworkCategoryId)
+                if access_request and getattr(access_request, "frameworkCategoryId", None)
+                else None
+            ),
             "frameworkCode": access_request.frameworkCode,
             "status": access_request.status,
-            "requestedBy": str(access_request.requestedBy) if access_request and getattr(access_request, "requestedBy", None) else None,
+            "requestedBy": (
+                str(access_request.requestedBy)
+                if access_request and getattr(access_request, "requestedBy", None)
+                else None
+            ),
             "createdAt": access_request.createdAt,
         },
         "Framework access request submitted successfully",
@@ -79,11 +85,11 @@ async def get_my_framework_access(
             matching_user_ids = list(
                 (
                     await session.execute(
-                        select(User.id).where(
-                            or_(User.name.ilike(pattern), User.email.ilike(pattern))
-                        )
+                        select(User.id).where(or_(User.name.ilike(pattern), User.email.ilike(pattern)))
                     )
-                ).scalars().all()
+                )
+                .scalars()
+                .all()
             )
             matching_category_ids = list(
                 (
@@ -96,7 +102,9 @@ async def get_my_framework_access(
                             )
                         )
                     )
-                ).scalars().all()
+                )
+                .scalars()
+                .all()
             )
 
             search_conditions = [FrameworkAccess.frameworkCode.ilike(pattern)]
@@ -109,9 +117,7 @@ async def get_my_framework_access(
                     ]
                 )
             if matching_category_ids:
-                search_conditions.append(
-                    FrameworkAccess.frameworkCategoryId.in_(matching_category_ids)
-                )
+                search_conditions.append(FrameworkAccess.frameworkCategoryId.in_(matching_category_ids))
             stmt = stmt.where(or_(*search_conditions))
 
         sort_field = "createdAt"
@@ -128,9 +134,7 @@ async def get_my_framework_access(
             await session.execute(select(func.count()).select_from(stmt.order_by(None).subquery()))
         ).scalar_one()
         records = list(
-            (
-                await session.execute(stmt.offset((page_num - 1) * limit_num).limit(limit_num))
-            ).scalars().all()
+            (await session.execute(stmt.offset((page_num - 1) * limit_num).limit(limit_num))).scalars().all()
         )
 
         user_ids_needed: set[str] = set()
@@ -150,19 +154,23 @@ async def get_my_framework_access(
         users_by_id: dict = {}
         if user_ids_needed:
             users = (
-                await session.execute(select(User).where(User.id.in_(list(user_ids_needed))))
-            ).scalars().all()
+                (await session.execute(select(User).where(User.id.in_(list(user_ids_needed)))))
+                .scalars()
+                .all()
+            )
             users_by_id = {u.id: u for u in users}
 
         categories_by_id: dict = {}
         if category_ids_needed:
             categories = (
-                await session.execute(
-                    select(FrameworkCategory).where(
-                        FrameworkCategory.id.in_(list(category_ids_needed))
+                (
+                    await session.execute(
+                        select(FrameworkCategory).where(FrameworkCategory.id.in_(list(category_ids_needed)))
                     )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             categories_by_id = {c.id: c for c in categories}
 
         data = []

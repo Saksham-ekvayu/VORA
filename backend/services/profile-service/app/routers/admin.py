@@ -2,22 +2,8 @@ import logging
 import secrets
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
-from sqlalchemy import or_, select
-from sqlalchemy.orm.attributes import flag_modified
-
-from vora_shared.auth import AuthenticatedUser, authenticate
-from vora_shared.database import session_scope
-from vora_shared.email import load_template, send_email
-from vora_shared.ids import is_valid_id
-from vora_shared.models.customer import AddressBlock, Customer, CustomerAddress, CustomerCreatedBy
-from vora_shared.models.user import User, UserAddress, UserCreatedBy
-from vora_shared.query_builder import apply_search_filter, apply_sort, paginate_stmt
-from vora_shared.responses import error, forbidden, paginated, success
-from vora_shared.security import hash_password
-
-from vora_shared import messages as msg
 from app.schemas.admin import CreateUserRequest, UpdateUserRequest
 from app.schemas.customer import CreateCustomerRequest, UpdateCustomerRequest
 from app.utils.formatting import (
@@ -31,6 +17,19 @@ from app.utils.formatting import (
 )
 from app.utils.temp_password import generate_temp_password
 from app.utils.uploads import AvatarUploadError, delete_avatar_file, save_avatar
+from fastapi import APIRouter, Depends, File, Query, UploadFile
+from sqlalchemy import or_, select
+from sqlalchemy.orm.attributes import flag_modified
+from vora_shared import messages as msg
+from vora_shared.auth import AuthenticatedUser, authenticate
+from vora_shared.database import session_scope
+from vora_shared.email import load_template, send_email
+from vora_shared.ids import is_valid_id
+from vora_shared.models.customer import AddressBlock, Customer, CustomerAddress, CustomerCreatedBy
+from vora_shared.models.user import User, UserAddress, UserCreatedBy
+from vora_shared.query_builder import apply_search_filter, apply_sort, paginate_stmt
+from vora_shared.responses import error, forbidden, paginated, success
+from vora_shared.security import hash_password
 
 router = APIRouter(tags=["admin"])
 logger = logging.getLogger(__name__)
@@ -72,21 +71,179 @@ def _user_by_tenant_stmt(tenant_id: str | None, *extra):
     return stmt
 
 
+def _validate_customer_admin_permission(user: User, current_user_id: str) -> bool:
+    """Validate if customer-admin has permission to access/modify a user."""
+    return (
+        created_by_type(user.createdBy) == "customer-admin"
+        and created_by_user_id(user.createdBy) == current_user_id
+    )
+
+
+def _apply_customer_updates(customer: Customer, body: UpdateCustomerRequest):
+    """Apply updates to customer object."""
+    if body.name is not None:
+        customer.name = body.name
+    if body.isActive is not None:
+        customer.isActive = body.isActive
+    if body.avatar is not None:
+        customer.avatar = body.avatar
+    if body.email is not None:
+        customer.email = body.email
+    if body.phone is not None:
+        customer.phone = body.phone
+    if body.secondaryPhone is not None:
+        customer.secondaryPhone = body.secondaryPhone
+    if body.address:
+        customer.address = merge_address(
+            customer.address,
+            body.address.permanentAddress,
+            body.address.temporaryAddress,
+        )
+        flag_modified(customer, "address")
+    customer.updatedAt = datetime.now(timezone.utc)
+
+
+def _apply_user_updates(user: User, body: UpdateUserRequest):
+    """Apply updates to user object."""
+    if body.name:
+        user.name = body.name
+    if body.role:
+        user.role = body.role
+    if body.designation is not None:
+        user.designation = body.designation
+    if body.secondaryPhone is not None:
+        user.secondaryPhone = body.secondaryPhone
+    if body.phone and body.phone != user.phone:
+        user.phone = body.phone
+    if body.permanentAddress or body.temporaryAddress:
+        user.address = merge_address(
+            user.address, body.permanentAddress, body.temporaryAddress
+        )
+        flag_modified(user, "address")
+    user.updatedAt = datetime.now(timezone.utc)
+
+
+async def _check_customer_email_exists(session, email: str, exclude_id: str = None) -> bool:
+    """Check if customer email already exists."""
+    stmt = select(Customer).where(Customer.email == email)
+    if exclude_id:
+        stmt = stmt.where(Customer.id != exclude_id)
+    return (await session.execute(stmt)).scalar_one_or_none() is not None
+
+
+async def _check_customer_phone_exists(session, phone: str, exclude_id: str = None) -> bool:
+    """Check if customer phone already exists."""
+    stmt = select(Customer).where(Customer.phone == phone)
+    if exclude_id:
+        stmt = stmt.where(Customer.id != exclude_id)
+    return (await session.execute(stmt)).scalar_one_or_none() is not None
+
+
+def _build_customer_address(body: CreateCustomerRequest) -> dict:
+    """Build customer address from request body."""
+    return CustomerAddress(
+        permanentAddress=AddressBlock(
+            **(
+                body.address.permanentAddress.model_dump(exclude_none=True)
+                if body.address and body.address.permanentAddress
+                else {}
+            )
+        ),
+        temporaryAddress=AddressBlock(
+            **(
+                body.address.temporaryAddress.model_dump(exclude_none=True)
+                if body.address and body.address.temporaryAddress
+                else {}
+            )
+        ),
+    ).model_dump(mode="json")
+
+
+def _build_user_search_conditions(search: str, creator_ids: list):
+    """Build search conditions for user query."""
+    conditions = [
+        User.name.ilike(f"%{search}%"),
+        User.email.ilike(f"%{search}%"),
+        User.role.ilike(f"%{search}%"),
+        User.phone.ilike(f"%{search}%"),
+    ]
+    if creator_ids:
+        conditions.append(User.createdBy["userId"].astext.in_(creator_ids))
+    return conditions
+
+
+def _validate_user_creation_permissions(
+    current_role: str, body: CreateUserRequest, creator_tenant_id: str
+) -> tuple[str | None, str | None]:
+    """Validate user creation permissions and return tenant_id or error."""
+    if current_role == "customer-admin" and body.role in RESTRICTED_ROLES_FOR_CUSTOMER_ADMIN:
+        return None, error(
+            msg.role_restriction(
+                current_role, "custom roles (excluding admin, customer-admin, expert)"
+            ),
+            403,
+        )
+
+    if current_role == "admin" and body.role in TENANT_SCOPED_ROLES and not body.tenantId:
+        return None, error(f"Tenant ID is required for {body.role} role", 400, field="tenantId")
+
+    if current_role == "admin":
+        new_tenant_id = body.tenantId if body.role in TENANT_SCOPED_ROLES else None
+    else:
+        new_tenant_id = creator_tenant_id
+
+    return new_tenant_id, None
+
+
+def _validate_user_update_permissions(
+    current_user: AuthenticatedUser, target_user: User, new_role: str | None
+) -> tuple[bool, str | None, int | None]:
+    """Validate user update permissions."""
+    current_role = current_user.role
+    current_id_str = str(current_user.id)
+    target_id_str = str(target_user.id)
+
+    # Can't change own role
+    if current_id_str == target_id_str and new_role and new_role != current_user.role:
+        return False, msg.cannot_change_own_role(current_user.role), 400
+
+    # Customer-admin restrictions
+    if current_role == "customer-admin":
+        if not _validate_customer_admin_permission(target_user, current_id_str):
+            return False, msg.ONLY_UPDATE_CREATED_USERS, 403
+        if new_role and new_role != target_user.role and new_role in RESTRICTED_ROLES_FOR_CUSTOMER_ADMIN:
+            return False, msg.role_assignment_restriction(
+                current_role, "custom roles (excluding admin, customer-admin, expert)"
+            ), 403
+
+    # Admin restrictions
+    if (
+        current_role == "admin"
+        and target_user.role == "admin"
+        and new_role
+        and new_role != "admin"
+        and current_id_str != target_id_str
+    ):
+        return False, msg.CANNOT_CHANGE_ADMIN_ROLE, 400
+
+    return True, None, None
+
+
 # ------------------------------------------------------------------------
 # Customer management
 # ------------------------------------------------------------------------
 
 
 @router.post("/customers")
-async def create_customer(body: CreateCustomerRequest, ctx: AuthenticatedUser = Depends(authenticate)):
+async def create_customer(
+    body: Annotated[CreateCustomerRequest, Depends()],
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)]
+):
     async with session_scope() as session:
-        if (
-            await session.execute(select(Customer).where(Customer.email == body.email))
-        ).scalar_one_or_none():
+        if await _check_customer_email_exists(session, body.email):
             return error("Email already exists", 400, field="email")
-        if body.phone and (
-            await session.execute(select(Customer).where(Customer.phone == body.phone))
-        ).scalar_one_or_none():
+        
+        if body.phone and await _check_customer_phone_exists(session, body.phone):
             return error("Customer with this phone number already exists", 400, field="phone")
 
         tenant_id = f"tenant_{secrets.token_hex(8)}"
@@ -94,23 +251,6 @@ async def create_customer(body: CreateCustomerRequest, ctx: AuthenticatedUser = 
             await session.execute(select(Customer).where(Customer.tenantId == tenant_id))
         ).scalar_one_or_none():
             tenant_id = f"tenant_{secrets.token_hex(8)}"
-
-        address = CustomerAddress(
-            permanentAddress=AddressBlock(
-                **(
-                    body.address.permanentAddress.model_dump(exclude_none=True)
-                    if body.address and body.address.permanentAddress
-                    else {}
-                )
-            ),
-            temporaryAddress=AddressBlock(
-                **(
-                    body.address.temporaryAddress.model_dump(exclude_none=True)
-                    if body.address and body.address.temporaryAddress
-                    else {}
-                )
-            ),
-        )
 
         now = datetime.now(timezone.utc)
         new_customer = Customer(
@@ -120,7 +260,7 @@ async def create_customer(body: CreateCustomerRequest, ctx: AuthenticatedUser = 
             phone=body.phone,
             secondaryPhone=body.secondaryPhone,
             avatar=body.avatar,
-            address=address.model_dump(mode="json"),
+            address=_build_customer_address(body),
             createdBy=CustomerCreatedBy(
                 type="admin" if ctx.user.role == "admin" else "self",
                 userId=ctx.user.id,
@@ -137,23 +277,23 @@ async def create_customer(body: CreateCustomerRequest, ctx: AuthenticatedUser = 
 
 @router.get("/customers")
 async def get_all_customers(
-    page: int = Query(1),
-    limit: int = Query(10),
-    search: str | None = Query(None),
-    isActive: str | None = Query(None),
-    sortBy: str | None = Query(None),
-    sortOrder: str | None = Query(None),
-    ctx: AuthenticatedUser = Depends(authenticate),
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
+    page: Annotated[int, Query()] = 1,
+    limit: Annotated[int, Query()] = 10,
+    search: Annotated[str | None, Query()] = None,
+    is_active: Annotated[str | None, Query()] = None,
+    sort_by: Annotated[str | None, Query()] = None,
+    sort_order: Annotated[str | None, Query()] = None,
 ):
     allowed_sort_fields = ["name", "email", "tenantId", "createdAt", "updatedAt"]
     allowed_search_fields = ["name", "email", "tenantId", "phone"]
 
     async with session_scope() as session:
         stmt = select(Customer)
-        if isActive is not None:
-            stmt = stmt.where(Customer.isActive.is_(isActive.lower() == "true"))
+        if is_active is not None:
+            stmt = stmt.where(Customer.isActive.is_(is_active.lower() == "true"))
         stmt = apply_search_filter(Customer, search, allowed_search_fields, stmt)
-        stmt = apply_sort(Customer, stmt, sortBy, sortOrder, allowed_sort_fields)
+        stmt = apply_sort(Customer, stmt, sort_by, sort_order, allowed_sort_fields)
         data, pagination = await paginate_stmt(session, stmt, page=page, limit=limit)
 
         creators = await _batch_fetch_creators(session, data)
@@ -166,17 +306,17 @@ async def get_all_customers(
 
 @router.get("/customers/{id}")
 async def get_customer_by_id(
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
     id: str,
-    page: int = Query(1),
-    limit: int = Query(10),
-    search: str | None = Query(None),
-    isActive: str | None = Query(None),
-    sortBy: str | None = Query(None),
-    sortOrder: str | None = Query(None),
-    ctx: AuthenticatedUser = Depends(authenticate),
+    page: Annotated[int, Query()] = 1,
+    limit: Annotated[int, Query()] = 10,
+    search: Annotated[str | None, Query()] = None,
+    is_active: Annotated[str | None, Query()] = None,
+    sort_by: Annotated[str | None, Query()] = None,
+    sort_order: Annotated[str | None, Query()] = None,
 ):
     if not is_valid_id(id):
-        return error("Customer not found", 404)
+        return error(msg.CUSTOMER_NOT_FOUND, 404)
 
     allowed_sort_fields = ["name", "email", "createdAt", "updatedAt"]
     allowed_search_fields = ["name", "email"]
@@ -184,7 +324,7 @@ async def get_customer_by_id(
     async with session_scope() as session:
         customer = await session.get(Customer, id)
         if not customer:
-            return error("Customer not found", 404)
+            return error(msg.CUSTOMER_NOT_FOUND, 404)
 
         creator = None
         creator_id = created_by_user_id(customer.createdBy)
@@ -192,10 +332,10 @@ async def get_customer_by_id(
             creator = await session.get(User, creator_id)
 
         users_stmt = select(User).where(User.tenantId == customer.tenantId)
-        if isActive is not None:
-            users_stmt = users_stmt.where(User.isActive.is_(isActive.lower() == "true"))
+        if is_active is not None:
+            users_stmt = users_stmt.where(User.isActive.is_(is_active.lower() == "true"))
         users_stmt = apply_search_filter(User, search, allowed_search_fields, users_stmt)
-        users_stmt = apply_sort(User, users_stmt, sortBy, sortOrder, allowed_sort_fields)
+        users_stmt = apply_sort(User, users_stmt, sort_by, sort_order, allowed_sort_fields)
         users_data, users_pagination = await paginate_stmt(
             session, users_stmt, page=page, limit=limit
         )
@@ -212,53 +352,28 @@ async def get_customer_by_id(
 @router.patch("/customers/{id}")
 async def update_customer(
     id: str,
-    body: UpdateCustomerRequest,
-    ctx: AuthenticatedUser = Depends(authenticate),
+    body: Annotated[UpdateCustomerRequest, Depends()],
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
     if not is_valid_id(id):
-        return error("Customer not found", 404)
+        return error(msg.CUSTOMER_NOT_FOUND, 404)
 
     async with session_scope() as session:
         customer = await session.get(Customer, id)
         if not customer:
-            return error("Customer not found", 404)
+            return error(msg.CUSTOMER_NOT_FOUND, 404)
 
         if body.email and body.email != customer.email:
-            existing = (
-                await session.execute(select(Customer).where(Customer.email == body.email))
-            ).scalar_one_or_none()
-            if existing and str(existing.id) != id:
-                return error("Email already exists", 400, field="email")
+            if await _check_customer_email_exists(session, body.email, id):
+                return error(msg.EMAIL_ALREADY_EXISTS, 400, field="email")
 
         if body.phone and body.phone != customer.phone:
-            existing = (
-                await session.execute(select(Customer).where(Customer.phone == body.phone))
-            ).scalar_one_or_none()
-            if existing and str(existing.id) != id:
+            if await _check_customer_phone_exists(session, body.phone, id):
                 return error(
-                    "Customer with this phone number already exists", 400, field="phone"
+                    msg.PHONE_ALREADY_EXISTS, 400, field="phone"
                 )
 
-        if body.name is not None:
-            customer.name = body.name
-        if body.isActive is not None:
-            customer.isActive = body.isActive
-        if body.avatar is not None:
-            customer.avatar = body.avatar
-        if body.email is not None:
-            customer.email = body.email
-        if body.phone is not None:
-            customer.phone = body.phone
-        if body.secondaryPhone is not None:
-            customer.secondaryPhone = body.secondaryPhone
-        if body.address:
-            customer.address = merge_address(
-                customer.address,
-                body.address.permanentAddress,
-                body.address.temporaryAddress,
-            )
-            flag_modified(customer, "address")
-        customer.updatedAt = datetime.now(timezone.utc)
+        _apply_customer_updates(customer, body)
 
         creator = None
         creator_id = created_by_user_id(customer.createdBy)
@@ -270,14 +385,17 @@ async def update_customer(
 
 
 @router.patch("/customers/{id}/toggle-status")
-async def toggle_customer_status(id: str, ctx: AuthenticatedUser = Depends(authenticate)):
+async def toggle_customer_status(
+    id: str,
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)]
+):
     if not is_valid_id(id):
-        return error("Customer not found", 404)
+        return error(msg.CUSTOMER_NOT_FOUND, 404)
 
     async with session_scope() as session:
         customer = await session.get(Customer, id)
         if not customer:
-            return error("Customer not found", 404)
+            return error(msg.CUSTOMER_NOT_FOUND, 404)
 
         customer.isActive = not customer.isActive
         customer.updatedAt = datetime.now(timezone.utc)
@@ -293,14 +411,17 @@ async def toggle_customer_status(id: str, ctx: AuthenticatedUser = Depends(authe
 
 
 @router.delete("/customers/{id}")
-async def delete_customer(id: str, ctx: AuthenticatedUser = Depends(authenticate)):
+async def delete_customer(
+    id: str,
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)]
+):
     if not is_valid_id(id):
-        return error("Customer not found", 404)
+        return error(msg.CUSTOMER_NOT_FOUND, 404)
 
     async with session_scope() as session:
         customer = await session.get(Customer, id)
         if not customer:
-            return error("Customer not found", 404)
+            return error(msg.CUSTOMER_NOT_FOUND, 404)
         await session.delete(customer)
 
     return success(None, "Customer deleted successfully")
@@ -309,20 +430,20 @@ async def delete_customer(id: str, ctx: AuthenticatedUser = Depends(authenticate
 @router.post("/customers/{id}/avatar")
 async def update_customer_avatar_by_admin(
     id: str,
-    avatar: UploadFile | None = File(default=None),
-    ctx: AuthenticatedUser = Depends(authenticate),
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
+    avatar: Annotated[UploadFile | None, File()] = None,
 ):
     """Admin uploads a customer avatar by customer id (from updated Mongo API)."""
     if avatar is None:
         return error(msg.AVATAR_REQUIRED, 400, field="avatar")
 
     if not is_valid_id(id):
-        return error("Customer not found", 404)
+        return error(msg.CUSTOMER_NOT_FOUND, 404)
 
     async with session_scope() as session:
         customer = await session.get(Customer, id)
         if not customer:
-            return error("Customer not found", 404)
+            return error(msg.CUSTOMER_NOT_FOUND, 404)
 
         try:
             avatar_url = await save_avatar(avatar, f"customer-{customer.tenantId}")
@@ -349,25 +470,19 @@ async def update_customer_avatar_by_admin(
 
 
 @router.post("/create")
-async def create_user(body: CreateUserRequest, ctx: AuthenticatedUser = Depends(authenticate)):
+async def create_user(
+    body: Annotated[CreateUserRequest, Depends()],
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)]
+):
     current_role = ctx.user.role
     creator_tenant_id = ctx.tenant_id
 
-    if current_role == "customer-admin" and body.role in RESTRICTED_ROLES_FOR_CUSTOMER_ADMIN:
-        return error(
-            msg.role_restriction(
-                current_role, "custom roles (excluding admin, customer-admin, expert)"
-            ),
-            403,
-        )
-
-    if current_role == "admin" and body.role in TENANT_SCOPED_ROLES and not body.tenantId:
-        return error(f"Tenant ID is required for {body.role} role", 400, field="tenantId")
-
-    if current_role == "admin":
-        new_tenant_id = body.tenantId if body.role in TENANT_SCOPED_ROLES else None
-    else:
-        new_tenant_id = creator_tenant_id
+    # Validate permissions
+    new_tenant_id, error_response = await _validate_user_creation_permissions(
+        current_role, body, creator_tenant_id
+    )
+    if error_response:
+        return error_response
 
     async with session_scope() as session:
         email_stmt = _user_by_tenant_stmt(new_tenant_id, User.email == body.email)
@@ -434,52 +549,32 @@ def _render_temp_password_email(name: str, email: str, temp_password: str) -> st
 
 
 @router.patch("/{id}")
-async def update_user(id: str, body: UpdateUserRequest, ctx: AuthenticatedUser = Depends(authenticate)):
+async def update_user(
+    id: str,
+    body: Annotated[UpdateUserRequest, Depends()],
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)]
+):
     current_user = ctx.user
-    current_role = current_user.role
     tenant_id = ctx.tenant_id
 
     if not is_valid_id(id):
-        return error("User not found", 404, field="user")
+        return error(msg.USER_NOT_FOUND, 404, field="user")
 
     async with session_scope() as session:
         user = (
             await session.execute(_user_by_tenant_stmt(tenant_id, User.id == id))
         ).scalar_one_or_none()
         if not user:
-            return error("User not found", 404, field="user")
+            return error(msg.USER_NOT_FOUND, 404, field="user")
 
-        current_id_str = str(current_user.id)
-        target_id_str = str(user.id)
-        new_role = body.role
+        # Validate permissions
+        is_valid, error_msg, status_code = await _validate_user_update_permissions(
+            current_user, user, body.role
+        )
+        if not is_valid:
+            return error(error_msg, status_code)
 
-        if current_id_str == target_id_str and new_role and new_role != current_user.role:
-            return error(msg.cannot_change_own_role(current_user.role), 400)
-
-        if current_role == "customer-admin":
-            if not (
-                created_by_type(user.createdBy) == "customer-admin"
-                and created_by_user_id(user.createdBy) == current_id_str
-            ):
-                return error(msg.ONLY_UPDATE_CREATED_USERS, 403)
-
-            if new_role and new_role != user.role and new_role in RESTRICTED_ROLES_FOR_CUSTOMER_ADMIN:
-                return error(
-                    msg.role_assignment_restriction(
-                        current_role, "custom roles (excluding admin, customer-admin, expert)"
-                    ),
-                    403,
-                )
-
-        if current_role == "admin":
-            if (
-                user.role == "admin"
-                and new_role
-                and new_role != "admin"
-                and current_id_str != target_id_str
-            ):
-                return error(msg.CANNOT_CHANGE_ADMIN_ROLE, 400)
-
+        # Check phone uniqueness
         if body.phone and body.phone != user.phone:
             existing_phone = (
                 await session.execute(
@@ -491,22 +586,7 @@ async def update_user(id: str, body: UpdateUserRequest, ctx: AuthenticatedUser =
                     "User with this phone number already exists", 400, field="phone"
                 )
 
-        if body.name:
-            user.name = body.name
-        if body.role:
-            user.role = body.role
-        if body.designation is not None:
-            user.designation = body.designation
-        if body.secondaryPhone is not None:
-            user.secondaryPhone = body.secondaryPhone
-        if body.phone and body.phone != user.phone:
-            user.phone = body.phone
-        if body.permanentAddress or body.temporaryAddress:
-            user.address = merge_address(
-                user.address, body.permanentAddress, body.temporaryAddress
-            )
-            flag_modified(user, "address")
-        user.updatedAt = datetime.now(timezone.utc)
+        _apply_user_updates(user, body)
         result = {
             "id": str(user.id),
             "tenantId": str(user.tenantId) if user.tenantId else None,
@@ -517,14 +597,14 @@ async def update_user(id: str, body: UpdateUserRequest, ctx: AuthenticatedUser =
 
 @router.get("/all-users")
 async def get_all_users(
-    page: int = Query(1),
-    limit: int = Query(10),
-    search: str | None = Query(None),
-    isActive: str | None = Query(None),
-    role: str | None = Query(None),
-    sortBy: str | None = Query(None),
-    sortOrder: str | None = Query(None),
-    ctx: AuthenticatedUser = Depends(authenticate),
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
+    page: Annotated[int, Query()] = 1,
+    limit: Annotated[int, Query()] = 10,
+    search: Annotated[str | None, Query()] = None,
+    is_active: Annotated[str | None, Query()] = None,
+    role: Annotated[str | None, Query()] = None,
+    sort_by: Annotated[str | None, Query()] = None,
+    sort_order: Annotated[str | None, Query()] = None,
 ):
     current_role = ctx.user.role
     tenant_id = ctx.tenant_id
@@ -545,8 +625,8 @@ async def get_all_users(
             stmt = stmt.where(User.tenantId == tenant_id)
         if role:
             stmt = stmt.where(User.role == role)
-        if isActive is not None:
-            stmt = stmt.where(User.isActive.is_(isActive.lower() == "true"))
+        if is_active is not None:
+            stmt = stmt.where(User.isActive.is_(is_active.lower() == "true"))
 
         if search:
             creator_stmt = select(User.id).where(
@@ -561,19 +641,10 @@ async def get_all_users(
                 row[0] for row in (await session.execute(creator_stmt)).all()
             ]
 
-            search_conditions = [
-                User.name.ilike(f"%{search}%"),
-                User.email.ilike(f"%{search}%"),
-                User.role.ilike(f"%{search}%"),
-                User.phone.ilike(f"%{search}%"),
-            ]
-            if creator_ids:
-                search_conditions.append(
-                    User.createdBy["userId"].astext.in_(creator_ids)
-                )
+            search_conditions = _build_user_search_conditions(search, creator_ids)
             stmt = stmt.where(or_(*search_conditions))
 
-        stmt = apply_sort(User, stmt, sortBy, sortOrder, allowed_sort_fields)
+        stmt = apply_sort(User, stmt, sort_by, sort_order, allowed_sort_fields)
         data, pagination = await paginate_stmt(session, stmt, page=page, limit=limit)
 
         creators = await _batch_fetch_creators(session, data)
@@ -585,7 +656,7 @@ async def get_all_users(
     if not users_list:
         message = (
             msg.NO_USERS_MATCH_CRITERIA
-            if (search or isActive or role)
+            if (search or is_active or role)
             else msg.NO_USERS_AVAILABLE
         )
 
@@ -593,25 +664,25 @@ async def get_all_users(
 
 
 @router.get("/{id}")
-async def get_user_by_id(id: str, ctx: AuthenticatedUser = Depends(authenticate)):
+async def get_user_by_id(
+    id: str,
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)]
+):
     current_role = ctx.user.role
     tenant_id = ctx.tenant_id
 
     if not is_valid_id(id):
-        return error("User not found", 404, field="user")
+        return error(msg.USER_NOT_FOUND, 404, field="user")
 
     async with session_scope() as session:
         user = (
             await session.execute(_user_by_tenant_stmt(tenant_id, User.id == id))
         ).scalar_one_or_none()
         if not user:
-            return error("User not found", 404, field="user")
+            return error(msg.USER_NOT_FOUND, 404, field="user")
 
         if current_role == "customer-admin":
-            if not (
-                created_by_type(user.createdBy) == "customer-admin"
-                and created_by_user_id(user.createdBy) == str(ctx.user.id)
-            ):
+            if not _validate_customer_admin_permission(user, str(ctx.user.id)):
                 return error(msg.ONLY_VIEW_CREATED_USERS, 403)
 
         creator = None
@@ -633,7 +704,10 @@ async def get_user_by_id(id: str, ctx: AuthenticatedUser = Depends(authenticate)
 
 
 @router.patch("/{id}/toggle-status")
-async def toggle_user_status(id: str, ctx: AuthenticatedUser = Depends(authenticate)):
+async def toggle_user_status(
+    id: str,
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)]
+):
     current_role = ctx.user.role
     if current_role not in ("admin", "customer-admin"):
         return forbidden("Forbidden: only admin or customer can access.")
@@ -644,20 +718,17 @@ async def toggle_user_status(id: str, ctx: AuthenticatedUser = Depends(authentic
         return error(msg.cannot_change_own_status(current_role), 400)
 
     if not is_valid_id(id):
-        return error("User not found", 404, field="user")
+        return error(msg.USER_NOT_FOUND, 404, field="user")
 
     async with session_scope() as session:
         user = (
             await session.execute(_user_by_tenant_stmt(tenant_id, User.id == id))
         ).scalar_one_or_none()
         if not user:
-            return error("User not found", 404, field="user")
+            return error(msg.USER_NOT_FOUND, 404, field="user")
 
         if current_role == "customer-admin":
-            if not (
-                created_by_type(user.createdBy) == "customer-admin"
-                and created_by_user_id(user.createdBy) == str(ctx.user.id)
-            ):
+            if not _validate_customer_admin_permission(user, str(ctx.user.id)):
                 return error(msg.ONLY_CHANGE_STATUS_CREATED_USERS, 403)
 
         new_status = not user.isActive
@@ -674,7 +745,10 @@ async def toggle_user_status(id: str, ctx: AuthenticatedUser = Depends(authentic
 
 
 @router.delete("/{id}")
-async def delete_user(id: str, ctx: AuthenticatedUser = Depends(authenticate)):
+async def delete_user(
+    id: str,
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)]
+):
     current_role = ctx.user.role
     tenant_id = ctx.tenant_id
 
@@ -682,20 +756,17 @@ async def delete_user(id: str, ctx: AuthenticatedUser = Depends(authenticate)):
         return error(msg.cannot_delete_own_account(current_role), 400)
 
     if not is_valid_id(id):
-        return error("User not found", 404, field="user")
+        return error(msg.USER_NOT_FOUND, 404, field="user")
 
     async with session_scope() as session:
         user = (
             await session.execute(_user_by_tenant_stmt(tenant_id, User.id == id))
         ).scalar_one_or_none()
         if not user:
-            return error("User not found", 404, field="user")
+            return error(msg.USER_NOT_FOUND, 404, field="user")
 
         if current_role == "customer-admin":
-            if not (
-                created_by_type(user.createdBy) == "customer-admin"
-                and created_by_user_id(user.createdBy) == str(ctx.user.id)
-            ):
+            if not _validate_customer_admin_permission(user, str(ctx.user.id)):
                 return error(msg.ONLY_DELETE_CREATED_USERS, 403)
 
         result = {

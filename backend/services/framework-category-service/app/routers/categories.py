@@ -1,6 +1,7 @@
+from app.helpers import code_exists, fetch_users_by_ids, get_user_data
+from app.validation import FieldError, validate_create_category, validate_update_category
 from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy import delete, or_, select
-
 from vora_shared.auth import AuthenticatedUser, authenticate
 from vora_shared.database import session_scope
 from vora_shared.ids import is_valid_id
@@ -9,15 +10,10 @@ from vora_shared.models import FrameworkAccess, FrameworkCategory, User
 from vora_shared.query_builder import apply_sort, paginate_stmt
 from vora_shared.responses import error, paginated, success
 
-from app.helpers import code_exists, fetch_users_by_ids, get_user_data
-from app.validation import FieldError, validate_create_category, validate_update_category
-
 router = APIRouter(tags=["framework-categories"])
 
 
-async def _format_category(
-    category: FrameworkCategory, users_by_id: dict[str, User]
-) -> dict:
+async def _format_category(category: FrameworkCategory, users_by_id: dict[str, User]) -> dict:
     created_by_id = str(category.createdBy) if category.createdBy else None
     updated_by_id = str(category.updatedBy) if category.updatedBy else None
     return {
@@ -81,27 +77,27 @@ async def get_all_framework_categories(
                 FrameworkCategory.description.ilike(f"%{search}%"),
             ]
             matching_users = (
-                await session.execute(
-                    select(User).where(
-                        or_(
-                            User.name.ilike(f"%{search}%"),
-                            User.email.ilike(f"%{search}%"),
+                (
+                    await session.execute(
+                        select(User).where(
+                            or_(
+                                User.name.ilike(f"%{search}%"),
+                                User.email.ilike(f"%{search}%"),
+                            )
                         )
                     )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             user_ids = [u.id for u in matching_users]
             if user_ids:
                 or_conditions.append(FrameworkCategory.createdBy.in_(user_ids))
                 or_conditions.append(FrameworkCategory.updatedBy.in_(user_ids))
             stmt = stmt.where(or_(*or_conditions))
 
-        stmt = apply_sort(
-            FrameworkCategory, stmt, "createdAt", "desc", ["createdAt"]
-        )
-        documents, pagination = await paginate_stmt(
-            session, stmt, page=page, limit=limit or 10
-        )
+        stmt = apply_sort(FrameworkCategory, stmt, "createdAt", "desc", ["createdAt"])
+        documents, pagination = await paginate_stmt(session, stmt, page=page, limit=limit or 10)
 
         user_ids_needed: set[str] = set()
         for doc in documents:
@@ -210,9 +206,7 @@ async def delete_framework_category(
         deleted_count = delete_result.rowcount or 0
         await session.delete(category)
 
-    message = MESSAGES["FRAMEWORK_CATEGORY_DELETED_WITH_ACCESS"].replace(
-        "{count}", str(deleted_count)
-    )
+    message = MESSAGES["FRAMEWORK_CATEGORY_DELETED_WITH_ACCESS"].replace("{count}", str(deleted_count))
 
     return success(
         {"id": str(id), "deletedAccessRecords": deleted_count},

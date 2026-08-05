@@ -388,9 +388,7 @@ def generate_framework_report_pdf(framework, approval_by_user=None) -> bytes:
     styles = _styles()
     buffer = io.BytesIO()
 
-    frame = Frame(
-        20 * mm, 15 * mm, A4[0] - 40 * mm, A4[1] - 35 * mm, id="normal"
-    )
+    frame = Frame(20 * mm, 15 * mm, A4[0] - 40 * mm, A4[1] - 35 * mm, id="normal")
 
     def _on_page(canvas, doc):
         canvas.saveState()
@@ -424,9 +422,7 @@ def generate_framework_report_pdf(framework, approval_by_user=None) -> bytes:
         rightMargin=20 * mm,
         title=f"{framework.frameworkName} Report",
     )
-    doc.addPageTemplates(
-        [PageTemplate(id="report", frames=[frame], onPage=_on_page)]
-    )
+    doc.addPageTemplates([PageTemplate(id="report", frames=[frame], onPage=_on_page)])
 
     story: list = []
 
@@ -477,7 +473,9 @@ def generate_framework_report_pdf(framework, approval_by_user=None) -> bytes:
 
     sections = fw_dict["sections"]
     if not sections:
-        story.append(Paragraph("No controls have been extracted for this framework yet.", styles["no_controls"]))
+        story.append(
+            Paragraph("No controls have been extracted for this framework yet.", styles["no_controls"])
+        )
     for section in sections:
         header_table = Table(
             [[Paragraph(f"{section['id']} {section['name']}", styles["section_header"])]],

@@ -79,9 +79,7 @@ def validation_error(
     )
 
 
-async def http_exception_handler(
-    request: Request, exc: StarletteHTTPException
-) -> JSONResponse:
+async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
     """Reformat FastAPI/Starlette HTTPExceptions into the {success, message} envelope.
 
     `exc.detail` may be a plain string, or a dict of {message, field, value} for
@@ -105,9 +103,7 @@ async def http_exception_handler(
     return error(message, exc.status_code)
 
 
-async def request_validation_exception_handler(
-    request: Request, exc: RequestValidationError
-) -> JSONResponse:
+async def request_validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """Reformat FastAPI's 422 validation errors into Node's express-validator style
     400 {success, message, errors: [{field, message, value}]} envelope."""
     errors = []

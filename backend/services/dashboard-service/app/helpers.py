@@ -7,7 +7,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import Select, func, select
-
 from vora_shared.database import session_scope
 from vora_shared.models import (
     Customer,
@@ -95,9 +94,7 @@ async def _count_model(model: type, start_date: datetime | None, end_date: datet
         return (await session.execute(stmt)).scalar_one()
 
 
-async def get_model_counts(
-    start_date: datetime | None, end_date: datetime | None
-) -> dict[str, int]:
+async def get_model_counts(start_date: datetime | None, end_date: datetime | None) -> dict[str, int]:
     (
         total_frameworks,
         total_deployment_frameworks,
@@ -159,17 +156,15 @@ def format_recent_users(all_users: list[User]) -> list[dict[str, Any]]:
 def generate_chart_labels(start_date: datetime | None = None, end_date: datetime | None = None) -> list[str]:
     end = end_date or utcnow()
     start = start_date or (end - timedelta(days=29))
-    
+
     start_aware = to_aware_utc(start)
     end_aware = to_aware_utc(end)
-    
+
     delta = (end_aware.date() - start_aware.date()).days
     if delta < 0:
         return []
-    
-    return [
-        (start_aware + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(delta + 1)
-    ]
+
+    return [(start_aware + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(delta + 1)]
 
 
 def initialize_chart_data(chart_labels: list[str]) -> dict[str, int]:
@@ -187,9 +182,7 @@ def get_creation_type(user: User) -> str:
     return getattr(created_by, "type", None) or "self"
 
 
-def populate_chart_data(
-    recent_users: list[User], chart_labels: list[str]
-) -> dict[str, dict[str, int]]:
+def populate_chart_data(recent_users: list[User], chart_labels: list[str]) -> dict[str, dict[str, int]]:
     total_data = initialize_chart_data(chart_labels)
 
     label_set = set(chart_labels)
@@ -222,9 +215,7 @@ def build_response_data(
         "charts": {
             "userCreation": {
                 "labels": chart_labels,
-                "total": get_chart_values(
-                    chart_labels, chart_data["totalData"]
-                ),
+                "total": get_chart_values(chart_labels, chart_data["totalData"]),
             }
         },
         "recentCreatedUsers": recent_created_users,

@@ -1,6 +1,7 @@
 import math
 from typing import Any
 
+
 def format_file_size(num_bytes: int | float | None) -> str:
     if not num_bytes or num_bytes <= 0:
         return "0 Bytes"
@@ -28,6 +29,7 @@ def format_user_ref(user: Any | None, fallback_id: Any = None) -> dict:
         "avatar": None,
         "isDeleted": True,
     }
+
 
 def format_uploaded_by(uploaded_by_user: Any | None, uploaded_by_id: Any = None) -> dict:
     return format_user_ref(uploaded_by_user, uploaded_by_id)

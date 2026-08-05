@@ -8,7 +8,6 @@ from typing import Any
 from sqlalchemy import DateTime, Float, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
-
 from vora_shared.database import Base
 from vora_shared.ids import new_id
 
@@ -80,9 +79,7 @@ class PackageMergeTracking(Base):
 
 class ComparisonJob(Base):
     __tablename__ = "comparison_jobs"
-    __table_args__ = (
-        Index("ix_comparison_jobs_df", "deployment_framework_id", "package_version"),
-    )
+    __table_args__ = (Index("ix_comparison_jobs_df", "deployment_framework_id", "package_version"),)
 
     id: Mapped[str] = mapped_column(String(24), primary_key=True, default=new_id)
     deployment_framework_id: Mapped[str] = mapped_column(String(24), nullable=False)
@@ -96,9 +93,7 @@ class ComparisonJob(Base):
 
 class ComparisonResult(Base):
     __tablename__ = "comparison_results"
-    __table_args__ = (
-        Index("ix_comparison_results_df", "deployment_framework_id", "package_version"),
-    )
+    __table_args__ = (Index("ix_comparison_results_df", "deployment_framework_id", "package_version"),)
 
     id: Mapped[str] = mapped_column(String(24), primary_key=True, default=new_id)
     deployment_framework_id: Mapped[str] = mapped_column(String(24), nullable=False)
@@ -110,9 +105,7 @@ class ComparisonResult(Base):
 
 class DeploymentGapJob(Base):
     __tablename__ = "deployment_gap_jobs"
-    __table_args__ = (
-        Index("ix_gap_jobs_df", "deployment_framework_id", "package_version"),
-    )
+    __table_args__ = (Index("ix_gap_jobs_df", "deployment_framework_id", "package_version"),)
 
     id: Mapped[str] = mapped_column(String(24), primary_key=True, default=new_id)
     deployment_framework_id: Mapped[str] = mapped_column(String(24), nullable=False)

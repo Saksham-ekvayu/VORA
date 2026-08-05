@@ -9,8 +9,8 @@ replicate that exact "first failing field, in declared order" behaviour.
 import re
 from typing import Any
 
-from vora_shared.messages import VALIDATION_MESSAGES as VM
 from app.helpers import to_title_case
+from vora_shared.messages import VALIDATION_MESSAGES as VM
 
 CODE_RE = re.compile(r"^[a-z0-9_]+$")
 SPACES_ONLY_RE = re.compile(r"^\s+$")
@@ -89,9 +89,7 @@ def validate_update_category(body: dict[str, Any]) -> dict[str, Any]:
     if "code" in body and body["code"] is not None:
         result["code"] = _validate_code(body.get("code"), required=False)
     if "frameworkCategoryName" in body and body["frameworkCategoryName"] is not None:
-        result["frameworkCategoryName"] = _validate_name(
-            body.get("frameworkCategoryName"), required=False
-        )
+        result["frameworkCategoryName"] = _validate_name(body.get("frameworkCategoryName"), required=False)
     if "description" in body and body["description"] is not None:
         result["description"] = _validate_description(body.get("description"))
     if "isActive" in body and body["isActive"] is not None:
@@ -111,9 +109,7 @@ def validate_assign_access(body: dict[str, Any]) -> tuple[str, list[str]] | None
     if framework_category_ids is None:
         raise FieldError("At least one framework category must be selected", field="")
     if not isinstance(framework_category_ids, list):
-        raise FieldError(
-            "Framework category IDs must be provided as an array", field=""
-        )
+        raise FieldError("Framework category IDs must be provided as an array", field="")
     if len(framework_category_ids) == 0:
         raise FieldError("At least one framework category must be selected", field="")
 

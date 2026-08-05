@@ -57,7 +57,9 @@ async def check_health() -> bool:
         return False
 
 
-def _find_active_package(framework: Any, package_version: str | None, upload_file_ids: set[str]) -> Any | None:
+def _find_active_package(
+    framework: Any, package_version: str | None, upload_file_ids: set[str]
+) -> Any | None:
     packages = getattr(framework, "packages", None) or []
     if package_version:
         for pkg in packages:
@@ -126,9 +128,7 @@ async def upload_deployment_framework(
         data["package"] = json.dumps(mapped_package, default=str)
 
     async with httpx.AsyncClient(base_url=_base_url(), timeout=_timeout()) as client:
-        resp = await client.request(
-            "PATCH", AI_API["UPLOAD_DEPLOYMENT_FRAMEWORK"], data=data, files=files
-        )
+        resp = await client.request("PATCH", AI_API["UPLOAD_DEPLOYMENT_FRAMEWORK"], data=data, files=files)
         return _handle_response(resp)
 
 

@@ -6,7 +6,6 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import or_, select
-
 from vora_shared.database import session_scope
 from vora_shared.models import (
     Customer,
@@ -94,9 +93,7 @@ def _process_assignments_and_progress(
         ]
 
         for df in dfs_for_assignment:
-            live_package = next(
-                (p for p in (df.packages or []) if _get(p, "status") == "live"), None
-            )
+            live_package = next((p for p in (df.packages or []) if _get(p, "status") == "live"), None)
             merge_doc_id = _get(live_package, "mergeDocument") if live_package else None
             pm = package_merges.get(str(merge_doc_id)) if merge_doc_id else None
 
@@ -140,9 +137,7 @@ def _process_assignments_and_progress(
         )
         deployed_on = None
         if df and df.packages:
-            live_package = next(
-                (p for p in df.packages if _get(p, "status") == "live"), None
-            )
+            live_package = next((p for p in df.packages if _get(p, "status") == "live"), None)
             if live_package:
                 deployed_on = _get(live_package, "updatedAt") or _get(live_package, "createdAt")
 
@@ -166,9 +161,7 @@ def _process_assignments_and_progress(
                 "name": assignment.frameworkName,
                 "version": assignment.frameworkVersion,
                 "assignmentStatus": assignment.status,
-                "finalizationStatus": (
-                    "finalized" if _get(finalization, "isFinalized") else "pending"
-                ),
+                "finalizationStatus": ("finalized" if _get(finalization, "isFinalized") else "pending"),
                 "assignedAt": assignment.createdAt,
             }
         )
@@ -276,7 +269,9 @@ def _build_framework_activities(
             expert = users.get(str(assigned_expert)) if assigned_expert else None
             requested_at = _get(expert_review, "requestedAt")
             if expert_review and requested_at:
-                expert_name = (expert.name if expert else None) or (expert.email if expert else None) or "Expert"
+                expert_name = (
+                    (expert.name if expert else None) or (expert.email if expert else None) or "Expert"
+                )
                 recent_activity.append(
                     {
                         "id": f"pkg-review-req-{df.id}-{package_version}",
@@ -290,7 +285,9 @@ def _build_framework_activities(
             reviewed_at = _get(expert_review, "reviewedAt")
             review_status = _get(expert_review, "status")
             if expert_review and reviewed_at and review_status in ("approved", "returned"):
-                expert_name = (expert.name if expert else None) or (expert.email if expert else None) or "Expert"
+                expert_name = (
+                    (expert.name if expert else None) or (expert.email if expert else None) or "Expert"
+                )
                 recent_activity.append(
                     {
                         "id": f"pkg-review-res-{df.id}-{package_version}",
@@ -352,7 +349,11 @@ def _build_customer_activities(customer: Customer | None, recent_activity: list[
                 "timestamp": customer.createdAt,
             }
         )
-    if customer.updatedAt and customer.createdAt and (customer.updatedAt - customer.createdAt).total_seconds() > 1:
+    if (
+        customer.updatedAt
+        and customer.createdAt
+        and (customer.updatedAt - customer.createdAt).total_seconds() > 1
+    ):
         recent_activity.append(
             {
                 "id": f"cust-updated-{customer.id}",
@@ -474,11 +475,9 @@ async def get_customer_admin_dashboard(ctx: RequestContext = Depends(get_context
 
         async with session_scope() as session:
             users = list(
-                (
-                    await session.execute(
-                        select(User).where(User.tenantId == tenant_id, User.id != user.id)
-                    )
-                ).scalars().all()
+                (await session.execute(select(User).where(User.tenantId == tenant_id, User.id != user.id)))
+                .scalars()
+                .all()
             )
             customer = (
                 await session.execute(select(Customer).where(Customer.tenantId == tenant_id))
@@ -488,7 +487,9 @@ async def get_customer_admin_dashboard(ctx: RequestContext = Depends(get_context
                     await session.execute(
                         select(DeploymentFramework).where(DeploymentFramework.tenantId == tenant_id)
                     )
-                ).scalars().all()
+                )
+                .scalars()
+                .all()
             )
             assignments = list(
                 (
@@ -496,13 +497,16 @@ async def get_customer_admin_dashboard(ctx: RequestContext = Depends(get_context
                         select(FrameworkAssignment).where(
                             or_(
                                 FrameworkAssignment.tenantId == tenant_id,
-                                FrameworkAssignment.customerId == str(getattr(user, "customerId", None) or ""),
+                                FrameworkAssignment.customerId
+                                == str(getattr(user, "customerId", None) or ""),
                             )
                             if getattr(user, "customerId", None)
                             else FrameworkAssignment.tenantId == tenant_id
                         )
                     )
-                ).scalars().all()
+                )
+                .scalars()
+                .all()
             )
 
             framework_ids = [df.id for df in deployment_frameworks]
@@ -523,7 +527,9 @@ async def get_customer_admin_dashboard(ctx: RequestContext = Depends(get_context
                                 DocumentExtraction.fileHash.in_(list(file_hashes))
                             )
                         )
-                    ).scalars().all()
+                    )
+                    .scalars()
+                    .all()
                 )
 
             package_comparisons = []
@@ -533,11 +539,11 @@ async def get_customer_admin_dashboard(ctx: RequestContext = Depends(get_context
                 package_comparisons = list(
                     (
                         await session.execute(
-                            select(PackageComparison).where(
-                                PackageComparison.frameworkId.in_(framework_ids)
-                            )
+                            select(PackageComparison).where(PackageComparison.frameworkId.in_(framework_ids))
                         )
-                    ).scalars().all()
+                    )
+                    .scalars()
+                    .all()
                 )
                 package_gap_analyses = list(
                     (
@@ -546,14 +552,18 @@ async def get_customer_admin_dashboard(ctx: RequestContext = Depends(get_context
                                 PackageGapAnalysis.frameworkId.in_(framework_ids)
                             )
                         )
-                    ).scalars().all()
+                    )
+                    .scalars()
+                    .all()
                 )
                 package_merges = list(
                     (
                         await session.execute(
                             select(PackageMerge).where(PackageMerge.frameworkId.in_(framework_ids))
                         )
-                    ).scalars().all()
+                    )
+                    .scalars()
+                    .all()
                 )
 
             package_merges_map = {str(pm.id): pm for pm in package_merges}
@@ -587,8 +597,8 @@ async def get_customer_admin_dashboard(ctx: RequestContext = Depends(get_context
             activity_users_map: dict[str, User] = {}
             if user_ids:
                 fetched = (
-                    await session.execute(select(User).where(User.id.in_(list(user_ids))))
-                ).scalars().all()
+                    (await session.execute(select(User).where(User.id.in_(list(user_ids))))).scalars().all()
+                )
                 activity_users_map = {str(u.id): u for u in fetched}
 
             recent_activity: list[dict[str, Any]] = []
@@ -623,9 +633,9 @@ async def get_customer_admin_dashboard(ctx: RequestContext = Depends(get_context
                 "setupProgress": {
                     "configured": controls_configured,
                     "total": controls_total,
-                    "percentage": round((controls_configured / controls_total) * 100)
-                    if controls_total > 0
-                    else 0,
+                    "percentage": (
+                        round((controls_configured / controls_total) * 100) if controls_total > 0 else 0
+                    ),
                 },
                 "setupProgressByFramework": progress["setupProgressByFramework"],
                 "deployedFrameworks": progress["deployedFrameworks"],

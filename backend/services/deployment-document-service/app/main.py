@@ -1,12 +1,10 @@
 from contextlib import asynccontextmanager
 
+from app.routers import deployment_document as deployment_document_router
 from fastapi import FastAPI
-
 from vora_shared.config import get_settings
 from vora_shared.database import connect_db, disconnect_db
 from vora_shared.server import create_vora_app
-
-from app.routers import deployment_document as deployment_document_router
 
 
 @asynccontextmanager

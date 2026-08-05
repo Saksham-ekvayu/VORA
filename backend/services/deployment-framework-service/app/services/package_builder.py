@@ -8,9 +8,8 @@ import hashlib
 from datetime import datetime, timezone
 from typing import Any
 
-from vora_shared.ids import new_id
-
 from app.services import version_service
+from vora_shared.ids import new_id
 
 
 def _utcnow() -> datetime:
@@ -214,7 +213,9 @@ def apply_document_updates(base_documents: list[dict], updates: list[dict] | Non
     return result
 
 
-def create_document_from_file(file_bytes: bytes, filename: str, package_version: str = "1.0.0") -> dict[str, Any]:
+def create_document_from_file(
+    file_bytes: bytes, filename: str, package_version: str = "1.0.0"
+) -> dict[str, Any]:
     extension = (filename or "").rsplit(".", 1)[-1].lower()
     mime_map_ext = {"pdf": "pdf", "doc": "doc", "docx": "docx"}
     file_type = mime_map_ext.get(extension, "doc")
@@ -239,11 +240,7 @@ def get_current_package(framework: Any) -> Any | None:
     if not framework or not getattr(framework, "packages", None) or not framework.currentPackageVersion:
         return None
     return next(
-        (
-            pkg
-            for pkg in framework.packages
-            if _g(pkg, "packageVersion") == framework.currentPackageVersion
-        ),
+        (pkg for pkg in framework.packages if _g(pkg, "packageVersion") == framework.currentPackageVersion),
         None,
     )
 

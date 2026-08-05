@@ -1,12 +1,12 @@
 import hashlib
 import os
 import time
-from pathlib import Path
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
-from vora_shared.ids import new_id
 from vora_shared import data_format
+from vora_shared.ids import new_id
 
 _BACKEND_ROOT = Path(__file__).resolve().parent.parent.parent
 UPLOAD_BASE_PATH = os.environ.get("DEPLOYMENT_UPLOAD_BASE_PATH", str(_BACKEND_ROOT / "shared" / "uploads"))
@@ -36,12 +36,14 @@ PREVIEW_MIME_TYPES = {
     "doc": "application/msword",
 }
 
+
 @dataclass
 class FilePathInfo:
     filename: str
     relative_path: str
     absolute_path: str
     directory: str
+
 
 @dataclass
 class FramworkFilePathInfo:
@@ -72,6 +74,7 @@ def generate_deployment_file_path(
         absolute_path=absolute_path,
         directory=os.path.dirname(absolute_path),
     )
+
 
 def _sanitize_version(version: str) -> str:
     sanitized = version
@@ -139,6 +142,8 @@ def calculate_file_hash(file_path: Path | str) -> str:
 
 def calculate_buffer_hash(buffer: bytes) -> str:
     return hashlib.sha256(buffer).hexdigest()
+
+
 calculate_bytes_hash = calculate_buffer_hash
 
 
@@ -176,6 +181,7 @@ def resolve_actual_file_path(file_url: str, user_id: str) -> str | None:
         print(f"Error searching for file {filename}: {exc}")
     return None
 
+
 def validate_uploaded_file(filename: str, size: int) -> dict[str, Any]:
     max_size = MAX_FILE_SIZE
     allowed = [ext if ext.startswith(".") else f".{ext}" for ext in ALLOWED_EXTENSIONS]
@@ -185,7 +191,7 @@ def validate_uploaded_file(filename: str, size: int) -> dict[str, Any]:
         return {
             "isValid": False,
             "status": 400,
-            "message": f"File size exceeds maximum allowed size of {data_format.format_file_size(max_size)}"
+            "message": f"File size exceeds maximum allowed size of {data_format.format_file_size(max_size)}",
         }
 
     # Validate file extension
@@ -194,10 +200,11 @@ def validate_uploaded_file(filename: str, size: int) -> dict[str, Any]:
         return {
             "isValid": False,
             "status": 400,
-            "message": f"Invalid file type. Allowed types: {', '.join(sorted([e.lstrip('.') for e in allowed]))}"
+            "message": f"Invalid file type. Allowed types: {', '.join(sorted([e.lstrip('.') for e in allowed]))}",
         }
 
     return {"isValid": True, "message": None, "status": 200}
+
 
 def ensure_directory_exists(directory_path: str) -> None:
     os.makedirs(directory_path, exist_ok=True)
