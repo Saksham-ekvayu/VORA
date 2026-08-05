@@ -15,7 +15,7 @@ from vora_shared.config import get_settings
 
 _settings = get_settings()
 ALLOWED_EXTENSIONS = set(_settings.allowed_extensions.split(","))
-MAX_FILE_SIZE = _settings.max_file_size
+MAX_FILE_SIZE = _settings.max_file_size * 1024 * 1024
 CONTENT_TYPES = {
     "pdf": "application/pdf",
     "doc": "application/msword",

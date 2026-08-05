@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     email_pass: str = ""
     email_from: str = ""
     allowed_extensions: str = "pdf,doc,docx"
-    max_file_size: int = 10485760
+    max_file_size: int = 10
 
     def resolved_database_url(self) -> str:
         url = self.database_url
