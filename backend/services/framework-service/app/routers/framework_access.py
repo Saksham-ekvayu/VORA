@@ -249,7 +249,7 @@ def _get_response_message(
         return "No framework access records match your criteria. Try adjusting your filters."
 
     return (
-        "You haven't requested access to any frameworks yet. " "Request access to start uploading frameworks."
+        "You haven't requested access to any frameworks yet. Request access to start uploading frameworks."
     )
 
 
