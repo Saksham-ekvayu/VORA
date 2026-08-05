@@ -9,11 +9,11 @@ from app.utils.formatting import (
     format_created_by,
     merge_address,
 )
-from vora_shared.avatar_uploads import AvatarUploadError, delete_avatar_file, save_avatar
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import select
 from vora_shared import messages as msg
 from vora_shared.auth import AuthenticatedUser, authenticate
+from vora_shared.avatar_uploads import AvatarUploadError, delete_avatar_file, save_avatar
 from vora_shared.database import session_scope
 from vora_shared.models.customer import Customer
 from vora_shared.models.user import User

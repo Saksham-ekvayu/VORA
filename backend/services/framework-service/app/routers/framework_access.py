@@ -1,13 +1,15 @@
 """Port of framework-access.controller.js + framework-access.routes.js."""
 
 from __future__ import annotations
+
 from typing import Annotated
 
-from vora_shared.auth import AuthenticatedUser, authenticate
-from vora_shared import data_format, messages as msg
 from app.services import authorization
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, or_, select
+from vora_shared import data_format
+from vora_shared import messages as msg
+from vora_shared.auth import AuthenticatedUser, authenticate
 from vora_shared.database import session_scope
 from vora_shared.models import FrameworkAccess, FrameworkCategory, User
 from vora_shared.query_builder import build_pagination_meta, clamp_limit, clamp_page
@@ -27,9 +29,7 @@ async def _get_matching_user_ids(session, pattern: str) -> list[str]:
     return list(
         (
             await session.execute(
-                select(User.id).where(
-                    or_(User.name.ilike(pattern), User.email.ilike(pattern))
-                )
+                select(User.id).where(or_(User.name.ilike(pattern), User.email.ilike(pattern)))
             )
         )
         .scalars()
@@ -61,7 +61,7 @@ def _build_search_conditions(
 ) -> list:
     """Build search conditions for framework access query."""
     conditions = [FrameworkAccess.frameworkCode.ilike(pattern)]
-    
+
     if matching_user_ids:
         conditions.extend(
             [
@@ -70,12 +70,10 @@ def _build_search_conditions(
                 FrameworkAccess.revocation["revokedBy"].astext.in_(matching_user_ids),
             ]
         )
-    
+
     if matching_category_ids:
-        conditions.append(
-            FrameworkAccess.frameworkCategoryId.in_(matching_category_ids)
-        )
-    
+        conditions.append(FrameworkAccess.frameworkCategoryId.in_(matching_category_ids))
+
     return conditions
 
 
@@ -85,7 +83,7 @@ def _apply_sorting(stmt, sort_by: str | None, sort_order: str | None):
     allowed_sort_fields = {"createdAt", "frameworkCode", "status"}
     if sort_by in allowed_sort_fields:
         sort_field = sort_by
-    
+
     col = getattr(FrameworkAccess, sort_field)
     if (sort_order or "desc").lower() == "asc":
         return stmt.order_by(col.asc())
@@ -93,16 +91,22 @@ def _apply_sorting(stmt, sort_by: str | None, sort_order: str | None):
 
 
 async def _get_records_with_filters(
-    session, user_id: str, status: str | None, framework_category_id: str | None,
-    search: str | None, sort_by: str | None, sort_order: str | None,
-    page_num: int, limit_num: int
+    session,
+    user_id: str,
+    status: str | None,
+    framework_category_id: str | None,
+    search: str | None,
+    sort_by: str | None,
+    sort_order: str | None,
+    page_num: int,
+    limit_num: int,
 ) -> tuple[list, int]:
     """Get filtered and paginated records."""
     stmt = select(FrameworkAccess).where(FrameworkAccess.expertId == user_id)
-    
+
     if status:
         stmt = stmt.where(FrameworkAccess.status == status)
-    
+
     if framework_category_id:
         stmt = stmt.where(FrameworkAccess.frameworkCategoryId == str(framework_category_id))
 
@@ -118,13 +122,11 @@ async def _get_records_with_filters(
     total = (
         await session.execute(select(func.count()).select_from(stmt.order_by(None).subquery()))
     ).scalar_one()
-    
+
     records = list(
-        (await session.execute(stmt.offset((page_num - 1) * limit_num).limit(limit_num)))
-        .scalars()
-        .all()
+        (await session.execute(stmt.offset((page_num - 1) * limit_num).limit(limit_num))).scalars().all()
     )
-    
+
     return records, total
 
 
@@ -132,12 +134,12 @@ def _collect_needed_ids(records: list) -> tuple[set[str], set[str]]:
     """Collect user and category IDs needed for the response."""
     user_ids_needed: set[str] = set()
     category_ids_needed: set[str] = set()
-    
+
     for record in records:
         approved_by = _nested_user_id(record.approval, "approvedBy")
         rejected_by = _nested_user_id(record.rejection, "rejectedBy")
         revoked_by = _nested_user_id(record.revocation, "revokedBy")
-        
+
         if approved_by:
             user_ids_needed.add(approved_by)
         if rejected_by:
@@ -145,7 +147,7 @@ def _collect_needed_ids(records: list) -> tuple[set[str], set[str]]:
         if revoked_by:
             user_ids_needed.add(revoked_by)
         category_ids_needed.add(record.frameworkCategoryId)
-    
+
     return user_ids_needed, category_ids_needed
 
 
@@ -153,11 +155,7 @@ async def _fetch_users(session, user_ids: set[str]) -> dict:
     """Fetch users by IDs."""
     if not user_ids:
         return {}
-    users = (
-        (await session.execute(select(User).where(User.id.in_(list(user_ids)))))
-        .scalars()
-        .all()
-    )
+    users = (await session.execute(select(User).where(User.id.in_(list(user_ids))))).scalars().all()
     return {u.id: u for u in users}
 
 
@@ -166,13 +164,7 @@ async def _fetch_categories(session, category_ids: set[str]) -> dict:
     if not category_ids:
         return {}
     categories = (
-        (
-            await session.execute(
-                select(FrameworkCategory).where(
-                    FrameworkCategory.id.in_(list(category_ids))
-                )
-            )
-        )
+        (await session.execute(select(FrameworkCategory).where(FrameworkCategory.id.in_(list(category_ids)))))
         .scalars()
         .all()
     )
@@ -185,9 +177,7 @@ def _build_approval_data(record, users_by_id: dict) -> dict | None:
     if not approved_by:
         return None
     return {
-        "approvedBy": data_format.format_user_ref(
-            users_by_id.get(approved_by), approved_by
-        ),
+        "approvedBy": data_format.format_user_ref(users_by_id.get(approved_by), approved_by),
         "approvedAt": (record.approval or {}).get("approvedAt"),
     }
 
@@ -198,9 +188,7 @@ def _build_rejection_data(record, users_by_id: dict) -> dict | None:
     if not rejected_by:
         return None
     return {
-        "rejectedBy": data_format.format_user_ref(
-            users_by_id.get(rejected_by), rejected_by
-        ),
+        "rejectedBy": data_format.format_user_ref(users_by_id.get(rejected_by), rejected_by),
         "rejectedAt": (record.rejection or {}).get("rejectedAt"),
     }
 
@@ -211,9 +199,7 @@ def _build_revocation_data(record, users_by_id: dict) -> dict | None:
     if not revoked_by:
         return None
     return {
-        "revokedBy": data_format.format_user_ref(
-            users_by_id.get(revoked_by), revoked_by
-        ),
+        "revokedBy": data_format.format_user_ref(users_by_id.get(revoked_by), revoked_by),
         "revokedAt": (record.revocation or {}).get("revokedAt"),
     }
 
@@ -235,7 +221,7 @@ def _build_response_data(records: list, categories_by_id: dict, users_by_id: dic
     data = []
     for record in records:
         category = categories_by_id.get(record.frameworkCategoryId)
-        
+
         data.append(
             {
                 "id": str(record.id),
@@ -252,17 +238,18 @@ def _build_response_data(records: list, categories_by_id: dict, users_by_id: dic
     return data
 
 
-def _get_response_message(data: list, search: str | None, status: str | None, framework_category_id: str | None) -> str:
+def _get_response_message(
+    data: list, search: str | None, status: str | None, framework_category_id: str | None
+) -> str:
     """Get appropriate response message based on data and filters."""
     if data:
         return "Framework access records retrieved successfully"
-    
+
     if search or status or framework_category_id:
         return "No framework access records match your criteria. Try adjusting your filters."
-    
+
     return (
-        "You haven't requested access to any frameworks yet. "
-        "Request access to start uploading frameworks."
+        "You haven't requested access to any frameworks yet. " "Request access to start uploading frameworks."
     )
 
 
@@ -289,8 +276,7 @@ async def request_framework_access(
         {
             msg.FRAMEWORK_SERVICE_MESSAGES["ID"]: (
                 str(access_request.id)
-                if access_request
-                and getattr(access_request, msg.FRAMEWORK_SERVICE_MESSAGES["ID"], None)
+                if access_request and getattr(access_request, msg.FRAMEWORK_SERVICE_MESSAGES["ID"], None)
                 else None
             ),
             "frameworkCategoryId": (
@@ -328,8 +314,15 @@ async def get_my_framework_access(
 
     async with session_scope() as session:
         records, total = await _get_records_with_filters(
-            session, str(user.id), status, framework_category_id,
-            search, sort_by, sort_order, page_num, limit_num
+            session,
+            str(user.id),
+            status,
+            framework_category_id,
+            search,
+            sort_by,
+            sort_order,
+            page_num,
+            limit_num,
         )
 
         user_ids_needed, category_ids_needed = _collect_needed_ids(records)

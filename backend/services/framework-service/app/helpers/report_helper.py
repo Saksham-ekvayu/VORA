@@ -440,9 +440,7 @@ def _add_controls_section(story, sections: list, styles: dict):
 
     if not sections:
         story.append(
-            Paragraph(
-                "No controls have been extracted for this framework yet.", styles["no_controls"]
-            )
+            Paragraph("No controls have been extracted for this framework yet.", styles["no_controls"])
         )
         return
 

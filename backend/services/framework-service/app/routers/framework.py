@@ -5,11 +5,10 @@ from __future__ import annotations
 import re
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Annotated
 
-from vora_shared.auth import AuthenticatedUser, authenticate
 from app.helpers import framework_helper
 from app.helpers.report_helper import generate_framework_report_pdf
-from vora_shared import data_format, messages as msg, file_storage
 from app.schemas.framework import (
     AddControlBody,
     AssignFrameworkToCustomerBody,
@@ -18,10 +17,14 @@ from app.schemas.framework import (
     UpdateControlWeightageBody,
 )
 from app.services import authorization
-from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form
+from fastapi import Path as ApiPath
+from fastapi import Query, Response, UploadFile
 from sqlalchemy import String, cast, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
-from vora_shared import data_format, messages as msg, file_storage
+from vora_shared import data_format, file_storage
+from vora_shared import messages as msg
+from vora_shared.auth import AuthenticatedUser, authenticate
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
 from vora_shared.models import Customer, FrameworkAssignment, FrameworkCategory, User
@@ -71,20 +74,160 @@ def _apply_ai_status_filter(stmt, ai_status: str | None):
             )""").bindparams(ai_status=ai_status))
 
 
+def _apply_category_access_filter(stmt, access_status: str | None, expert_requests):
+    if not access_status:
+        return stmt
+
+    if access_status == "not_requested":
+        requested_ids = [req.frameworkCategoryId for req in expert_requests]
+        return stmt.where(FrameworkCategory.id.notin_(requested_ids)) if requested_ids else stmt
+
+    matching_ids = [req.frameworkCategoryId for req in expert_requests if req.status == access_status]
+    return stmt.where(FrameworkCategory.id.in_(matching_ids)) if matching_ids else stmt.where(text("false"))
+
+
+def _apply_category_sort(stmt, sort_by: str | None, sort_order: str | None):
+    sort_field = sort_by if sort_by in {"createdAt", "frameworkCategoryName", "code"} else "createdAt"
+    col = getattr(FrameworkCategory, sort_field)
+    return stmt.order_by(col.asc() if (sort_order or "desc").lower() == "asc" else col.desc())
+
+
+def _apply_framework_approval_filter(stmt, approval_status: str | None):
+    if approval_status in {"pending", "approved", "rejected"}:
+        return stmt.where(Framework.approval["status"].astext == approval_status)
+    return stmt
+
+
+async def _apply_framework_search_filter(stmt, search: str | None, session):
+    if not search:
+        return stmt
+
+    pattern = f"%{search}%"
+    search_conditions = [
+        Framework.frameworkName.ilike(pattern),
+        Framework.frameworkCode.ilike(pattern),
+        Framework.frameworkVersion.ilike(pattern),
+        cast(Framework.fileVersions, String).ilike(pattern),
+    ]
+    matching_user_ids = list(
+        (
+            await session.execute(
+                select(User.id).where(or_(User.name.ilike(pattern), User.email.ilike(pattern)))
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if matching_user_ids:
+        search_conditions.append(Framework.uploadedBy.in_(matching_user_ids))
+    return stmt.where(or_(*search_conditions))
+
+
+def _apply_framework_sort(stmt, sort_by: str | None, sort_order: str | None):
+    allowed_sort_fields = {
+        "createdAt",
+        "updatedAt",
+        "frameworkName",
+        "frameworkCode",
+    }
+    sort_field = sort_by if sort_by in allowed_sort_fields else "createdAt"
+    col = getattr(Framework, sort_field)
+    return stmt.order_by(col.asc() if (sort_order or "desc").lower() == "asc" else col.desc())
+
+
+async def _load_users_by_id(session, user_ids):
+    if not user_ids:
+        return {}
+
+    users = (await session.execute(select(User).where(User.id.in_(list(user_ids))))).scalars().all()
+    return {u.id: u for u in users}
+
+
+def _find_control_in_sections(controls_data, control_id: str):
+    for section in controls_data:
+        target_control = next((c for c in (section.controls or []) if c.id == control_id), None)
+        if target_control:
+            return target_control
+    return None
+
+
+async def _load_editable_framework_version(
+    session,
+    framework_id: str,
+    file_version: str,
+    user: User,
+    approved_message: str,
+):
+    framework = await session.get(Framework, str(framework_id))
+    if not framework:
+        return None, None, None, error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
+
+    if str(framework.uploadedBy) != str(user.id):
+        return (
+            None,
+            None,
+            None,
+            error(msg.FRAMEWORK_SERVICE_MESSAGES["YOU_DON_T_HAVE_PERMISSION_TO_MODIFY_THIS"], 403),
+        )
+
+    if framework_helper.approval_status(framework) == "approved":
+        return None, None, None, error(approved_message, 403)
+
+    versions = framework_helper.parse_file_versions(framework)
+    file_version_doc = next((fv for fv in versions if fv.fileVersion == file_version), None)
+    if not file_version_doc:
+        return None, None, None, error(f"Version {file_version} not found in this framework", 404)
+
+    return framework, versions, file_version_doc, None
+
+
+def _ensure_control_extraction(file_version_doc):
+    if not file_version_doc.aiExtraction:
+        return None, error(msg.FRAMEWORK_SERVICE_MESSAGES["AI_EXTRACTION_DATA_NOT_FOUND_FOR_THIS_VE"], 400)
+
+    if not file_version_doc.aiExtraction.controls:
+        file_version_doc.aiExtraction.controls = Controls()
+
+    return file_version_doc.aiExtraction.controls, None
+
+
+def _existing_controls(file_version_doc, file_version: str):
+    controls = file_version_doc.aiExtraction.controls if file_version_doc.aiExtraction else None
+    if not controls or not controls.controls_data:
+        return None, error(f"Version {file_version} does not have any controls", 404)
+    return controls, None
+
+
+def _delete_control_from_sections(controls_data, control_id: str) -> bool:
+    for s_idx in range(len(controls_data) - 1, -1, -1):
+        section = controls_data[s_idx]
+        c_idx = next((i for i, c in enumerate(section.controls or []) if c.id == control_id), None)
+        if c_idx is None:
+            continue
+
+        section.controls.pop(c_idx)
+        if not section.controls:
+            controls_data.pop(s_idx)
+        return True
+
+    return False
+
+
 # ─── Categories ───────────────────────────────────────────────────────────────
 
 
 @router.get("/categories/available")
 async def get_available_categories(
-    ctx: AuthenticatedUser = Depends(authenticate),
-    page: int = Query(1),
-    limit: int = Query(10),
-    search: str | None = Query(default=None),
-    isActive: str | None = Query(default=None),
-    accessStatus: str | None = Query(default=None),
-    sortBy: str | None = Query(default=None),
-    sortOrder: str | None = Query(default=None),
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
+    page: Annotated[int, Query()] = 1,
+    limit: Annotated[int, Query()] = 10,
+    search: Annotated[str | None, Query()] = None,
+    is_active: Annotated[str | None, Query(alias="isActive")] = None,
+    access_status: Annotated[str | None, Query(alias="accessStatus")] = None,
+    sort_by: Annotated[str | None, Query(alias="sortBy")] = None,
+    sort_order: Annotated[str | None, Query(alias="sortOrder")] = None,
 ):
+    user = ctx.user
     from vora_shared.models import FrameworkAccess
 
     page_num = clamp_page(page)
@@ -102,22 +245,10 @@ async def get_available_categories(
         }
 
         stmt = select(FrameworkCategory)
-        if isActive is not None:
-            stmt = stmt.where(FrameworkCategory.isActive.is_(isActive.lower() == "true"))
+        if is_active is not None:
+            stmt = stmt.where(FrameworkCategory.isActive.is_(is_active.lower() == "true"))
 
-        if accessStatus:
-            if accessStatus == "not_requested":
-                requested_ids = [req.frameworkCategoryId for req in expert_requests]
-                if requested_ids:
-                    stmt = stmt.where(FrameworkCategory.id.notin_(requested_ids))
-            else:
-                matching_ids = [
-                    req.frameworkCategoryId for req in expert_requests if req.status == accessStatus
-                ]
-                if matching_ids:
-                    stmt = stmt.where(FrameworkCategory.id.in_(matching_ids))
-                else:
-                    stmt = stmt.where(text("false"))
+        stmt = _apply_category_access_filter(stmt, access_status, expert_requests)
 
         if search:
             pattern = f"%{search}%"
@@ -129,14 +260,7 @@ async def get_available_categories(
                 )
             )
 
-        sort_field = "createdAt"
-        if sortBy in {"createdAt", "frameworkCategoryName", "code"}:
-            sort_field = sortBy
-        col = getattr(FrameworkCategory, sort_field)
-        if (sortOrder or "desc").lower() == "asc":
-            stmt = stmt.order_by(col.asc())
-        else:
-            stmt = stmt.order_by(col.desc())
+        stmt = _apply_category_sort(stmt, sort_by, sort_order)
 
         total = (
             await session.execute(select(func.count()).select_from(stmt.order_by(None).subquery()))
@@ -189,60 +313,24 @@ async def get_available_categories(
 
 @router.get("/all-frameworks")
 async def get_all_frameworks(
-    ctx: AuthenticatedUser = Depends(authenticate),
-    page: int = Query(1),
-    limit: int = Query(10),
-    search: str | None = Query(default=None),
-    aiStatus: str | None = Query(default=None),
-    approvalStatus: str | None = Query(default=None),
-    sortBy: str | None = Query(default=None),
-    sortOrder: str | None = Query(default=None),
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
+    page: Annotated[int, Query()] = 1,
+    limit: Annotated[int, Query()] = 10,
+    search: Annotated[str | None, Query()] = None,
+    ai_status: Annotated[str | None, Query(alias="aiStatus")] = None,
+    approval_status: Annotated[str | None, Query(alias="approvalStatus")] = None,
+    sort_by: Annotated[str | None, Query(alias="sortBy")] = None,
+    sort_order: Annotated[str | None, Query(alias="sortOrder")] = None,
 ):
     page_num = clamp_page(page)
     limit_num = clamp_limit(limit)
 
     async with session_scope() as session:
         stmt = select(Framework)
-        if approvalStatus in {"pending", "approved", "rejected"}:
-            stmt = stmt.where(Framework.approval["status"].astext == approvalStatus)
-
-        stmt = _apply_ai_status_filter(stmt, aiStatus)
-
-        if search:
-            pattern = f"%{search}%"
-            search_conditions = [
-                Framework.frameworkName.ilike(pattern),
-                Framework.frameworkCode.ilike(pattern),
-                Framework.frameworkVersion.ilike(pattern),
-                cast(Framework.fileVersions, String).ilike(pattern),
-            ]
-            matching_user_ids = list(
-                (
-                    await session.execute(
-                        select(User.id).where(or_(User.name.ilike(pattern), User.email.ilike(pattern)))
-                    )
-                )
-                .scalars()
-                .all()
-            )
-            if matching_user_ids:
-                search_conditions.append(Framework.uploadedBy.in_(matching_user_ids))
-            stmt = stmt.where(or_(*search_conditions))
-
-        allowed_sort_fields = {
-            "createdAt",
-            "updatedAt",
-            "frameworkName",
-            "frameworkCode",
-        }
-        sort_field = "createdAt"
-        if sortBy in allowed_sort_fields:
-            sort_field = sortBy
-        col = getattr(Framework, sort_field)
-        if (sortOrder or "desc").lower() == "asc":
-            stmt = stmt.order_by(col.asc())
-        else:
-            stmt = stmt.order_by(col.desc())
+        stmt = _apply_framework_approval_filter(stmt, approval_status)
+        stmt = _apply_ai_status_filter(stmt, ai_status)
+        stmt = await _apply_framework_search_filter(stmt, search, session)
+        stmt = _apply_framework_sort(stmt, sort_by, sort_order)
 
         total = (
             await session.execute(select(func.count()).select_from(stmt.order_by(None).subquery()))
@@ -251,19 +339,13 @@ async def get_all_frameworks(
             (await session.execute(stmt.offset((page_num - 1) * limit_num).limit(limit_num))).scalars().all()
         )
 
-        uploader_ids = {d.uploadedBy for d in docs}
-        uploaders_by_id = {}
-        if uploader_ids:
-            uploaders = (
-                (await session.execute(select(User).where(User.id.in_(list(uploader_ids))))).scalars().all()
-            )
-            uploaders_by_id = {u.id: u for u in uploaders}
+        uploaders_by_id = await _load_users_by_id(session, {d.uploadedBy for d in docs})
 
         data = [
             framework_helper.transform_framework_doc(doc, uploaders_by_id.get(doc.uploadedBy)) for doc in docs
         ]
 
-    message = framework_helper.get_framework_message(len(data), search, aiStatus, approvalStatus)
+    message = framework_helper.get_framework_message(len(data), search, ai_status, approval_status)
     return paginated(data, build_pagination_meta(page_num, limit_num, total), message)
 
 
@@ -271,8 +353,7 @@ async def get_all_frameworks(
 
 
 @router.get("/{id}")
-async def get_framework_by_id(id: str, ctx: AuthenticatedUser = Depends(authenticate)):
-    user = ctx.user
+async def get_framework_by_id(id: str, ctx: Annotated[AuthenticatedUser, Depends(authenticate)]):
 
     async with session_scope() as session:
         framework = await session.get(Framework, str(id))
@@ -328,8 +409,7 @@ async def get_framework_by_id(id: str, ctx: AuthenticatedUser = Depends(authenti
 
 
 @router.get("/{id}/download-report")
-async def download_framework_report(id: str, ctx: AuthenticatedUser = Depends(authenticate)):
-    user = ctx.user
+async def download_framework_report(id: str, ctx: Annotated[AuthenticatedUser, Depends(authenticate)]):
 
     async with session_scope() as session:
         framework = await session.get(Framework, str(id))
@@ -351,7 +431,7 @@ async def download_framework_report(id: str, ctx: AuthenticatedUser = Depends(au
 
 
 @router.post("/{id}/approve")
-async def approve_framework(id: str, ctx: AuthenticatedUser = Depends(authenticate)):
+async def approve_framework(id: str, ctx: Annotated[AuthenticatedUser, Depends(authenticate)]):
     user = ctx.user
 
     async with session_scope() as session:
@@ -407,7 +487,7 @@ async def approve_framework(id: str, ctx: AuthenticatedUser = Depends(authentica
 async def reject_framework(
     id: str,
     body: RejectFrameworkBody,
-    ctx: AuthenticatedUser = Depends(authenticate),
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
     user = ctx.user
 
@@ -450,7 +530,7 @@ async def reject_framework(
 @router.post("/assign-framework-to-customer")
 async def assign_framework_to_customer(
     body: AssignFrameworkToCustomerBody,
-    ctx: AuthenticatedUser = Depends(authenticate),
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
     user = ctx.user
 
@@ -538,10 +618,12 @@ async def assign_framework_to_customer(
 
 @router.post("/upload")
 async def upload_framework(
-    metadata: str = Form(...),
-    file: UploadFile | None = File(default=None),
-    ctx: AuthenticatedUser = Depends(authenticate),
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
+    metadata: Annotated[str, Form()],
+    file: Annotated[UploadFile | None, File()] = None,
 ):
+    user = ctx.user
+
     try:
         meta = framework_helper.parse_upload_metadata(metadata)
     except Exception as exc:
@@ -624,10 +706,12 @@ async def upload_framework(
 @router.put("/{id}")
 async def update_framework(
     id: str,
-    metadata: str | None = Form(default=None),
-    file: UploadFile | None = File(default=None),
-    ctx: AuthenticatedUser = Depends(authenticate),
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
+    metadata: Annotated[str | None, Form()] = None,
+    file: Annotated[UploadFile | None, File()] = None,
 ):
+    user = ctx.user
+
     content, err_msg = await _validate_upload(file)
     if err_msg:
         return error(err_msg, 400)
@@ -696,7 +780,7 @@ async def update_framework(
 
 
 @router.delete("/{id}")
-async def delete_framework(id: str, ctx: AuthenticatedUser = Depends(authenticate)):
+async def delete_framework(id: str, ctx: Annotated[AuthenticatedUser, Depends(authenticate)]):
     user = ctx.user
 
     async with session_scope() as session:
@@ -727,11 +811,14 @@ async def delete_framework(id: str, ctx: AuthenticatedUser = Depends(authenticat
 
 
 @router.get("/{frameworkId}/files")
-async def get_framework_files(frameworkId: str, ctx: AuthenticatedUser = Depends(authenticate)):
+async def get_framework_files(
+    framework_id: Annotated[str, ApiPath(alias="frameworkId")],
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
+):
     user = ctx.user
 
     async with session_scope() as session:
-        framework = await session.get(Framework, str(frameworkId))
+        framework = await session.get(Framework, str(framework_id))
         if not framework:
             return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
 
@@ -765,12 +852,14 @@ async def get_framework_files(frameworkId: str, ctx: AuthenticatedUser = Depends
 
 @router.get("/{frameworkId}/files/{fileId}")
 async def get_framework_file_by_id(
-    frameworkId: str, fileId: str, ctx: AuthenticatedUser = Depends(authenticate)
+    framework_id: Annotated[str, ApiPath(alias="frameworkId")],
+    file_id: Annotated[str, ApiPath(alias="fileId")],
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
     user = ctx.user
 
     async with session_scope() as session:
-        framework = await session.get(Framework, str(frameworkId))
+        framework = await session.get(Framework, str(framework_id))
         if not framework:
             return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
 
@@ -778,7 +867,7 @@ async def get_framework_file_by_id(
             return error(msg.FRAMEWORK_SERVICE_MESSAGES["YOU_DON_T_HAVE_PERMISSION_TO_ACCESS_THIS"], 403)
 
         versions = framework_helper.parse_file_versions(framework)
-        file_version = next((v for v in versions if str(v.fileId) == fileId), None)
+        file_version = next((v for v in versions if str(v.fileId) == file_id), None)
         if not file_version:
             return error(msg.FRAMEWORK_SERVICE_MESSAGES["FILE_NOT_FOUND"], 404)
 
@@ -805,14 +894,17 @@ async def get_framework_file_by_id(
 
 
 @router.get("/{frameworkId}/files/{fileId}/download")
-async def download_framework_file(frameworkId: str, fileId: str):
+async def download_framework_file(
+    framework_id: Annotated[str, ApiPath(alias="frameworkId")],
+    file_id: Annotated[str, ApiPath(alias="fileId")],
+):
     async with session_scope() as session:
-        framework = await session.get(Framework, str(frameworkId))
+        framework = await session.get(Framework, str(framework_id))
         if not framework:
             return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
 
         versions = framework_helper.parse_file_versions(framework)
-        file_version = next((v for v in versions if str(v.fileId) == fileId), None)
+        file_version = next((v for v in versions if str(v.fileId) == file_id), None)
         if not file_version:
             return error(msg.FRAMEWORK_SERVICE_MESSAGES["FILE_NOT_FOUND"], 404)
 
@@ -835,17 +927,19 @@ async def download_framework_file(frameworkId: str, fileId: str):
 
 @router.get("/{frameworkId}/files/{fileId}/preview")
 async def preview_framework_file(
-    frameworkId: str, fileId: str, ctx: AuthenticatedUser = Depends(authenticate)
+    framework_id: Annotated[str, ApiPath(alias="frameworkId")],
+    file_id: Annotated[str, ApiPath(alias="fileId")],
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
     user = ctx.user
 
     async with session_scope() as session:
-        framework = await session.get(Framework, str(frameworkId))
+        framework = await session.get(Framework, str(framework_id))
         if not framework:
             return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
 
         versions = framework_helper.parse_file_versions(framework)
-        file_version = next((v for v in versions if str(v.fileId) == fileId), None)
+        file_version = next((v for v in versions if str(v.fileId) == file_id), None)
         if not file_version:
             return error(msg.FRAMEWORK_SERVICE_MESSAGES["FILE_VERSION_NOT_FOUND"], 404)
 
@@ -867,12 +961,14 @@ async def preview_framework_file(
 
 @router.delete("/{frameworkId}/files/{fileId}")
 async def delete_framework_file(
-    frameworkId: str, fileId: str, ctx: AuthenticatedUser = Depends(authenticate)
+    framework_id: Annotated[str, ApiPath(alias="frameworkId")],
+    file_id: Annotated[str, ApiPath(alias="fileId")],
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
     user = ctx.user
 
     async with session_scope() as session:
-        framework = await session.get(Framework, str(frameworkId))
+        framework = await session.get(Framework, str(framework_id))
         if not framework:
             return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
 
@@ -883,7 +979,7 @@ async def delete_framework_file(
             return error(msg.FRAMEWORK_SERVICE_MESSAGES["CANNOT_DELETE_FILES_FROM_APPROVED_FRAMEW"], 403)
 
         versions = framework_helper.parse_file_versions(framework)
-        idx = next((i for i, v in enumerate(versions) if str(v.fileId) == fileId), None)
+        idx = next((i for i, v in enumerate(versions) if str(v.fileId) == file_id), None)
         if idx is None:
             return error(msg.FRAMEWORK_SERVICE_MESSAGES["FILE_NOT_FOUND"], 404)
 
@@ -926,9 +1022,9 @@ async def delete_framework_file(
 @router.post("/{id}/file-versions/{fileVersion}/controls")
 async def add_framework_control(
     id: str,
-    fileVersion: str,
+    file_version: Annotated[str, ApiPath(alias="fileVersion")],
     body: AddControlBody,
-    ctx: AuthenticatedUser = Depends(authenticate),
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
     user = ctx.user
 
@@ -936,31 +1032,24 @@ async def add_framework_control(
         return error(msg.FRAMEWORK_SERVICE_MESSAGES["SECTIONID_OR_NEWSECTION_AND_NAME_ARE_REQ"], 400)
 
     async with session_scope() as session:
-        framework = await session.get(Framework, str(id))
-        if not framework:
-            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
+        framework, versions, file_version_doc, load_error = await _load_editable_framework_version(
+            session,
+            id,
+            file_version,
+            user,
+            msg.FRAMEWORK_SERVICE_MESSAGES["CANNOT_EDIT_CONTROLS_IN_APPROVED_FRAMEWO"],
+        )
+        if load_error:
+            return load_error
 
-        if str(framework.uploadedBy) != str(user.id):
-            return error(msg.FRAMEWORK_SERVICE_MESSAGES["YOU_DON_T_HAVE_PERMISSION_TO_MODIFY_THIS"], 403)
+        controls, controls_error = _ensure_control_extraction(file_version_doc)
+        if controls_error:
+            return controls_error
 
-        if framework_helper.approval_status(framework) == "approved":
-            return error(msg.FRAMEWORK_SERVICE_MESSAGES["CANNOT_EDIT_CONTROLS_IN_APPROVED_FRAMEWO"], 403)
-
-        versions = framework_helper.parse_file_versions(framework)
-        file_version_doc = next((fv for fv in versions if fv.fileVersion == fileVersion), None)
-        if not file_version_doc:
-            return error(f"Version {fileVersion} not found in this framework", 404)
-
-        if not file_version_doc.aiExtraction:
-            return error(msg.FRAMEWORK_SERVICE_MESSAGES["AI_EXTRACTION_DATA_NOT_FOUND_FOR_THIS_VE"], 400)
-
-        if not file_version_doc.aiExtraction.controls:
-            file_version_doc.aiExtraction.controls = Controls()
-
-        controls_data = file_version_doc.aiExtraction.controls.controls_data
+        controls_data = controls.controls_data
 
         result = framework_helper.resolve_section_and_ids(
-            body.newSection, body.sectionId, controls_data, fileVersion
+            body.newSection, body.sectionId, controls_data, file_version
         )
         if "error" in result:
             return error(result["error"]["message"], result["error"]["statusCode"])
@@ -992,13 +1081,11 @@ async def add_framework_control(
                 id=section_id_to_use, name=body.newSection.strip(), controls=[new_control]
             )
             controls_data.append(new_section_obj)
-            file_version_doc.aiExtraction.controls.total_sections = len(controls_data)
+            controls.total_sections = len(controls_data)
         else:
             section.controls.append(new_control)
 
-        file_version_doc.aiExtraction.controls.total_controls = sum(
-            len(s.controls or []) for s in controls_data
-        )
+        controls.total_controls = sum(len(s.controls or []) for s in controls_data)
 
         framework.fileVersions = framework_helper.dump_file_versions(versions)
         framework.updatedAt = _now()
@@ -1010,19 +1097,19 @@ async def add_framework_control(
         {
             "control": control_payload,
             msg.FRAMEWORK_SERVICE_MESSAGES["SECTIONID"]: section_id_to_use,
-            "fileVersion": fileVersion,
+            "fileVersion": file_version,
         },
-        f"Control added successfully to section {section_id_to_use} in version {fileVersion}",
+        f"Control added successfully to section {section_id_to_use} in version {file_version}",
     )
 
 
 @router.patch("/{id}/file-versions/{fileVersion}/controls/{controlId}")
 async def update_framework_control(
     id: str,
-    fileVersion: str,
-    controlId: str,
+    file_version: Annotated[str, ApiPath(alias="fileVersion")],
+    control_id: Annotated[str, ApiPath(alias="controlId")],
     body: UpdateControlBody,
-    ctx: AuthenticatedUser = Depends(authenticate),
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
     user = ctx.user
 
@@ -1041,22 +1128,17 @@ async def update_framework_control(
             return error(msg.FRAMEWORK_SERVICE_MESSAGES["CANNOT_EDIT_CONTROLS_IN_APPROVED_FRAMEWO"], 403)
 
         versions = framework_helper.parse_file_versions(framework)
-        file_version_doc = next((fv for fv in versions if fv.fileVersion == fileVersion), None)
+        file_version_doc = next((fv for fv in versions if fv.fileVersion == file_version), None)
         if not file_version_doc:
-            return error(f"Version {fileVersion} not found in this framework", 404)
+            return error(f"Version {file_version} not found in this framework", 404)
 
         controls = file_version_doc.aiExtraction.controls if file_version_doc.aiExtraction else None
         if not controls or not controls.controls_data:
-            return error(f"Version {fileVersion} does not have any controls", 404)
+            return error(f"Version {file_version} does not have any controls", 404)
 
-        target_control = None
-        for section in controls.controls_data:
-            target_control = next((c for c in (section.controls or []) if c.id == controlId), None)
-            if target_control:
-                break
-
+        target_control = _find_control_in_sections(controls.controls_data, control_id)
         if not target_control:
-            return error(f"Control with ID {controlId} not found in version {fileVersion}", 404)
+            return error(f"Control with ID {control_id} not found in version {file_version}", 404)
 
         if body.name:
             target_control.name = body.name.strip()
@@ -1074,18 +1156,18 @@ async def update_framework_control(
         control_payload = target_control.model_dump(mode="json")
 
     return success(
-        {"control": control_payload, msg.FRAMEWORK_SERVICE_MESSAGES["FILEVERSION"]: fileVersion},
-        f"Control {controlId} updated successfully in version {fileVersion}",
+        {"control": control_payload, msg.FRAMEWORK_SERVICE_MESSAGES["FILEVERSION"]: file_version},
+        f"Control {control_id} updated successfully in version {file_version}",
     )
 
 
 @router.patch("/{id}/file-versions/{fileVersion}/controls/{controlId}/weightage")
 async def update_framework_control_weightage(
     id: str,
-    fileVersion: str,
-    controlId: str,
+    file_version: Annotated[str, ApiPath(alias="fileVersion")],
+    control_id: Annotated[str, ApiPath(alias="controlId")],
     body: UpdateControlWeightageBody,
-    ctx: AuthenticatedUser = Depends(authenticate),
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
     user = ctx.user
 
@@ -1104,22 +1186,17 @@ async def update_framework_control_weightage(
             return error(msg.FRAMEWORK_SERVICE_MESSAGES["CANNOT_EDIT_CONTROLS_IN_APPROVED_FRAMEWO"], 403)
 
         versions = framework_helper.parse_file_versions(framework)
-        file_version_doc = next((fv for fv in versions if fv.fileVersion == fileVersion), None)
+        file_version_doc = next((fv for fv in versions if fv.fileVersion == file_version), None)
         if not file_version_doc:
-            return error(f"Version {fileVersion} not found in this framework", 404)
+            return error(f"Version {file_version} not found in this framework", 404)
 
         controls = file_version_doc.aiExtraction.controls if file_version_doc.aiExtraction else None
         if not controls or not controls.controls_data:
-            return error(f"Version {fileVersion} does not have any controls", 404)
+            return error(f"Version {file_version} does not have any controls", 404)
 
-        target_control = None
-        for section in controls.controls_data:
-            target_control = next((c for c in (section.controls or []) if c.id == controlId), None)
-            if target_control:
-                break
-
+        target_control = _find_control_in_sections(controls.controls_data, control_id)
         if not target_control:
-            return error(f"Control with ID {controlId} not found in version {fileVersion}", 404)
+            return error(f"Control with ID {control_id} not found in version {file_version}", 404)
 
         target_control.weightage = body.weightage
 
@@ -1130,7 +1207,7 @@ async def update_framework_control_weightage(
         control_payload = target_control.model_dump(mode="json")
 
     return success(
-        {"control": control_payload, msg.FRAMEWORK_SERVICE_MESSAGES["FILEVERSION"]: fileVersion},
+        {"control": control_payload, msg.FRAMEWORK_SERVICE_MESSAGES["FILEVERSION"]: file_version},
         "Control weightage updated successfully",
     )
 
@@ -1138,48 +1215,32 @@ async def update_framework_control_weightage(
 @router.delete("/{id}/file-versions/{fileVersion}/controls/{controlId}")
 async def delete_framework_control(
     id: str,
-    fileVersion: str,
-    controlId: str,
-    ctx: AuthenticatedUser = Depends(authenticate),
+    file_version: Annotated[str, ApiPath(alias="fileVersion")],
+    control_id: Annotated[str, ApiPath(alias="controlId")],
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
     user = ctx.user
 
     async with session_scope() as session:
-        framework = await session.get(Framework, str(id))
-        if not framework:
-            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
+        framework, versions, file_version_doc, load_error = await _load_editable_framework_version(
+            session,
+            id,
+            file_version,
+            user,
+            msg.FRAMEWORK_SERVICE_MESSAGES["CANNOT_DELETE_CONTROLS_FROM_APPROVED_FRA"],
+        )
+        if load_error:
+            return load_error
 
-        if str(framework.uploadedBy) != str(user.id):
-            return error(msg.FRAMEWORK_SERVICE_MESSAGES["YOU_DON_T_HAVE_PERMISSION_TO_MODIFY_THIS"], 403)
+        controls, controls_error = _existing_controls(file_version_doc, file_version)
+        if controls_error:
+            return controls_error
 
-        if framework_helper.approval_status(framework) == "approved":
-            return error(msg.FRAMEWORK_SERVICE_MESSAGES["CANNOT_DELETE_CONTROLS_FROM_APPROVED_FRA"], 403)
-
-        versions = framework_helper.parse_file_versions(framework)
-        file_version_doc = next((fv for fv in versions if fv.fileVersion == fileVersion), None)
-        if not file_version_doc:
-            return error(f"Version {fileVersion} not found in this framework", 404)
-
-        controls = file_version_doc.aiExtraction.controls if file_version_doc.aiExtraction else None
-        if not controls or not controls.controls_data:
-            return error(f"Version {fileVersion} does not have any controls", 404)
-
-        deleted = False
         controls_data = controls.controls_data
-        for s_idx in range(len(controls_data) - 1, -1, -1):
-            section = controls_data[s_idx]
-            c_idx = next((i for i, c in enumerate(section.controls or []) if c.id == controlId), None)
-            if c_idx is not None:
-                section.controls.pop(c_idx)
-                deleted = True
-                if not section.controls:
-                    controls_data.pop(s_idx)
-                    controls.total_sections = len(controls_data)
-                break
+        if not _delete_control_from_sections(controls_data, control_id):
+            return error(f"Control with ID {control_id} not found in version {file_version}", 404)
 
-        if not deleted:
-            return error(f"Control with ID {controlId} not found in version {fileVersion}", 404)
-
+        controls.total_sections = len(controls_data)
         controls.total_controls = sum(len(s.controls or []) for s in controls_data)
 
         framework.fileVersions = framework_helper.dump_file_versions(versions)
@@ -1187,6 +1248,6 @@ async def delete_framework_control(
         await session.flush()
 
     return success(
-        {"controlId": controlId, msg.FRAMEWORK_SERVICE_MESSAGES["FILEVERSION"]: fileVersion},
-        f"Control {controlId} deleted successfully from version {fileVersion}",
+        {"controlId": control_id, msg.FRAMEWORK_SERVICE_MESSAGES["FILEVERSION"]: file_version},
+        f"Control {control_id} deleted successfully from version {file_version}",
     )

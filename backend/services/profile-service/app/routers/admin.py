@@ -16,12 +16,12 @@ from app.utils.formatting import (
     user_admin_dict,
 )
 from app.utils.temp_password import generate_temp_password
-from vora_shared.avatar_uploads import AvatarUploadError, delete_avatar_file, save_avatar
 from fastapi import APIRouter, Depends, File, Query, UploadFile
 from sqlalchemy import or_, select
 from sqlalchemy.orm.attributes import flag_modified
 from vora_shared import messages as msg
 from vora_shared.auth import AuthenticatedUser, authenticate
+from vora_shared.avatar_uploads import AvatarUploadError, delete_avatar_file, save_avatar
 from vora_shared.database import session_scope
 from vora_shared.email import load_template, send_email
 from vora_shared.ids import is_valid_id
@@ -44,12 +44,8 @@ RESTRICTED_ROLES_FOR_CUSTOMER_ADMIN = {"admin", "customer-admin", "expert"}
 
 def _address_from_blocks(permanent, temporary) -> dict:
     return UserAddress(
-        permanentAddress=AddressBlock(
-            **(permanent.model_dump(exclude_none=True) if permanent else {})
-        ),
-        temporaryAddress=AddressBlock(
-            **(temporary.model_dump(exclude_none=True) if temporary else {})
-        ),
+        permanentAddress=AddressBlock(**(permanent.model_dump(exclude_none=True) if permanent else {})),
+        temporaryAddress=AddressBlock(**(temporary.model_dump(exclude_none=True) if temporary else {})),
     ).model_dump(mode="json")
 
 
@@ -116,9 +112,7 @@ def _apply_user_updates(user: User, body: UpdateUserRequest):
     if body.phone and body.phone != user.phone:
         user.phone = body.phone
     if body.permanentAddress or body.temporaryAddress:
-        user.address = merge_address(
-            user.address, body.permanentAddress, body.temporaryAddress
-        )
+        user.address = merge_address(user.address, body.permanentAddress, body.temporaryAddress)
         flag_modified(user, "address")
     user.updatedAt = datetime.now(timezone.utc)
 
@@ -178,9 +172,7 @@ def _validate_user_creation_permissions(
     """Validate user creation permissions and return tenant_id or error."""
     if current_role == "customer-admin" and body.role in RESTRICTED_ROLES_FOR_CUSTOMER_ADMIN:
         return None, error(
-            msg.role_restriction(
-                current_role, "custom roles (excluding admin, customer-admin, expert)"
-            ),
+            msg.role_restriction(current_role, "custom roles (excluding admin, customer-admin, expert)"),
             403,
         )
 
@@ -212,9 +204,13 @@ def _validate_user_update_permissions(
         if not _validate_customer_admin_permission(target_user, current_id_str):
             return False, msg.ONLY_UPDATE_CREATED_USERS, 403
         if new_role and new_role != target_user.role and new_role in RESTRICTED_ROLES_FOR_CUSTOMER_ADMIN:
-            return False, msg.role_assignment_restriction(
-                current_role, "custom roles (excluding admin, customer-admin, expert)"
-            ), 403
+            return (
+                False,
+                msg.role_assignment_restriction(
+                    current_role, "custom roles (excluding admin, customer-admin, expert)"
+                ),
+                403,
+            )
 
     # Admin restrictions
     if (
@@ -237,12 +233,12 @@ def _validate_user_update_permissions(
 @router.post("/customers")
 async def create_customer(
     body: Annotated[CreateCustomerRequest, Depends()],
-    ctx: Annotated[AuthenticatedUser, Depends(authenticate)]
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
     async with session_scope() as session:
         if await _check_customer_email_exists(session, body.email):
             return error("Email already exists", 400, field="email")
-        
+
         if body.phone and await _check_customer_phone_exists(session, body.phone):
             return error("Customer with this phone number already exists", 400, field="phone")
 
@@ -297,9 +293,7 @@ async def get_all_customers(
         data, pagination = await paginate_stmt(session, stmt, page=page, limit=limit)
 
         creators = await _batch_fetch_creators(session, data)
-        result = [
-            customer_dict(c, creators.get(created_by_user_id(c.createdBy))) for c in data
-        ]
+        result = [customer_dict(c, creators.get(created_by_user_id(c.createdBy))) for c in data]
 
     return paginated(result, pagination, "Customers retrieved successfully")
 
@@ -336,9 +330,7 @@ async def get_customer_by_id(
             users_stmt = users_stmt.where(User.isActive.is_(is_active.lower() == "true"))
         users_stmt = apply_search_filter(User, search, allowed_search_fields, users_stmt)
         users_stmt = apply_sort(User, users_stmt, sort_by, sort_order, allowed_sort_fields)
-        users_data, users_pagination = await paginate_stmt(
-            session, users_stmt, page=page, limit=limit
-        )
+        users_data, users_pagination = await paginate_stmt(session, users_stmt, page=page, limit=limit)
 
         customer_details = customer_dict(customer, creator)
         customer_details["users"] = {
@@ -369,9 +361,7 @@ async def update_customer(
 
         if body.phone and body.phone != customer.phone:
             if await _check_customer_phone_exists(session, body.phone, id):
-                return error(
-                    msg.PHONE_ALREADY_EXISTS, 400, field="phone"
-                )
+                return error(msg.PHONE_ALREADY_EXISTS, 400, field="phone")
 
         _apply_customer_updates(customer, body)
 
@@ -385,10 +375,7 @@ async def update_customer(
 
 
 @router.patch("/customers/{id}/toggle-status")
-async def toggle_customer_status(
-    id: str,
-    ctx: Annotated[AuthenticatedUser, Depends(authenticate)]
-):
+async def toggle_customer_status(id: str, ctx: Annotated[AuthenticatedUser, Depends(authenticate)]):
     if not is_valid_id(id):
         return error(msg.CUSTOMER_NOT_FOUND, 404)
 
@@ -411,10 +398,7 @@ async def toggle_customer_status(
 
 
 @router.delete("/customers/{id}")
-async def delete_customer(
-    id: str,
-    ctx: Annotated[AuthenticatedUser, Depends(authenticate)]
-):
+async def delete_customer(id: str, ctx: Annotated[AuthenticatedUser, Depends(authenticate)]):
     if not is_valid_id(id):
         return error(msg.CUSTOMER_NOT_FOUND, 404)
 
@@ -471,8 +455,7 @@ async def update_customer_avatar_by_admin(
 
 @router.post("/create")
 async def create_user(
-    body: Annotated[CreateUserRequest, Depends()],
-    ctx: Annotated[AuthenticatedUser, Depends(authenticate)]
+    body: Annotated[CreateUserRequest, Depends()], ctx: Annotated[AuthenticatedUser, Depends(authenticate)]
 ):
     current_role = ctx.user.role
     creator_tenant_id = ctx.tenant_id
@@ -492,9 +475,7 @@ async def create_user(
         if body.phone:
             phone_stmt = _user_by_tenant_stmt(new_tenant_id, User.phone == body.phone)
             if (await session.execute(phone_stmt)).scalar_one_or_none():
-                return error(
-                    "User with this phone number already exists", 400, field="phone"
-                )
+                return error("User with this phone number already exists", 400, field="phone")
 
         temp_password = generate_temp_password(12)
         hashed_password = hash_password(temp_password)
@@ -513,9 +494,7 @@ async def create_user(
             isActive=True,
             tokenVersion=0,
             address=_address_from_blocks(body.permanentAddress, body.temporaryAddress),
-            createdBy=UserCreatedBy(
-                type=created_by_type_val, userId=ctx.user.id
-            ).model_dump(mode="json"),
+            createdBy=UserCreatedBy(type=created_by_type_val, userId=ctx.user.id).model_dump(mode="json"),
         )
         session.add(new_user)
         await session.flush()
@@ -552,7 +531,7 @@ def _render_temp_password_email(name: str, email: str, temp_password: str) -> st
 async def update_user(
     id: str,
     body: Annotated[UpdateUserRequest, Depends()],
-    ctx: Annotated[AuthenticatedUser, Depends(authenticate)]
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
     current_user = ctx.user
     tenant_id = ctx.tenant_id
@@ -561,9 +540,7 @@ async def update_user(
         return error(msg.USER_NOT_FOUND, 404, field="user")
 
     async with session_scope() as session:
-        user = (
-            await session.execute(_user_by_tenant_stmt(tenant_id, User.id == id))
-        ).scalar_one_or_none()
+        user = (await session.execute(_user_by_tenant_stmt(tenant_id, User.id == id))).scalar_one_or_none()
         if not user:
             return error(msg.USER_NOT_FOUND, 404, field="user")
 
@@ -577,14 +554,10 @@ async def update_user(
         # Check phone uniqueness
         if body.phone and body.phone != user.phone:
             existing_phone = (
-                await session.execute(
-                    _user_by_tenant_stmt(tenant_id, User.phone == body.phone)
-                )
+                await session.execute(_user_by_tenant_stmt(tenant_id, User.phone == body.phone))
             ).scalar_one_or_none()
             if existing_phone and str(existing_phone.id) != id:
-                return error(
-                    "User with this phone number already exists", 400, field="phone"
-                )
+                return error("User with this phone number already exists", 400, field="phone")
 
         _apply_user_updates(user, body)
         result = {
@@ -637,9 +610,7 @@ async def get_all_users(
             )
             if current_role != "admin":
                 creator_stmt = creator_stmt.where(User.tenantId == tenant_id)
-            creator_ids = [
-                row[0] for row in (await session.execute(creator_stmt)).all()
-            ]
+            creator_ids = [row[0] for row in (await session.execute(creator_stmt)).all()]
 
             search_conditions = _build_user_search_conditions(search, creator_ids)
             stmt = stmt.where(or_(*search_conditions))
@@ -648,26 +619,17 @@ async def get_all_users(
         data, pagination = await paginate_stmt(session, stmt, page=page, limit=limit)
 
         creators = await _batch_fetch_creators(session, data)
-        users_list = [
-            user_admin_dict(u, creators.get(created_by_user_id(u.createdBy))) for u in data
-        ]
+        users_list = [user_admin_dict(u, creators.get(created_by_user_id(u.createdBy))) for u in data]
 
     message = msg.USER_LIST_RETRIEVED
     if not users_list:
-        message = (
-            msg.NO_USERS_MATCH_CRITERIA
-            if (search or is_active or role)
-            else msg.NO_USERS_AVAILABLE
-        )
+        message = msg.NO_USERS_MATCH_CRITERIA if (search or is_active or role) else msg.NO_USERS_AVAILABLE
 
     return paginated(users_list, pagination, message)
 
 
 @router.get("/{id}")
-async def get_user_by_id(
-    id: str,
-    ctx: Annotated[AuthenticatedUser, Depends(authenticate)]
-):
+async def get_user_by_id(id: str, ctx: Annotated[AuthenticatedUser, Depends(authenticate)]):
     current_role = ctx.user.role
     tenant_id = ctx.tenant_id
 
@@ -675,9 +637,7 @@ async def get_user_by_id(
         return error(msg.USER_NOT_FOUND, 404, field="user")
 
     async with session_scope() as session:
-        user = (
-            await session.execute(_user_by_tenant_stmt(tenant_id, User.id == id))
-        ).scalar_one_or_none()
+        user = (await session.execute(_user_by_tenant_stmt(tenant_id, User.id == id))).scalar_one_or_none()
         if not user:
             return error(msg.USER_NOT_FOUND, 404, field="user")
 
@@ -694,9 +654,7 @@ async def get_user_by_id(
         response_data["customer"] = None
         if user.tenantId:
             customer = (
-                await session.execute(
-                    select(Customer).where(Customer.tenantId == user.tenantId)
-                )
+                await session.execute(select(Customer).where(Customer.tenantId == user.tenantId))
             ).scalar_one_or_none()
             response_data["customer"] = customer_summary(customer)
 
@@ -704,10 +662,7 @@ async def get_user_by_id(
 
 
 @router.patch("/{id}/toggle-status")
-async def toggle_user_status(
-    id: str,
-    ctx: Annotated[AuthenticatedUser, Depends(authenticate)]
-):
+async def toggle_user_status(id: str, ctx: Annotated[AuthenticatedUser, Depends(authenticate)]):
     current_role = ctx.user.role
     if current_role not in ("admin", "customer-admin"):
         return forbidden("Forbidden: only admin or customer can access.")
@@ -721,9 +676,7 @@ async def toggle_user_status(
         return error(msg.USER_NOT_FOUND, 404, field="user")
 
     async with session_scope() as session:
-        user = (
-            await session.execute(_user_by_tenant_stmt(tenant_id, User.id == id))
-        ).scalar_one_or_none()
+        user = (await session.execute(_user_by_tenant_stmt(tenant_id, User.id == id))).scalar_one_or_none()
         if not user:
             return error(msg.USER_NOT_FOUND, 404, field="user")
 
@@ -745,10 +698,7 @@ async def toggle_user_status(
 
 
 @router.delete("/{id}")
-async def delete_user(
-    id: str,
-    ctx: Annotated[AuthenticatedUser, Depends(authenticate)]
-):
+async def delete_user(id: str, ctx: Annotated[AuthenticatedUser, Depends(authenticate)]):
     current_role = ctx.user.role
     tenant_id = ctx.tenant_id
 
@@ -759,9 +709,7 @@ async def delete_user(
         return error(msg.USER_NOT_FOUND, 404, field="user")
 
     async with session_scope() as session:
-        user = (
-            await session.execute(_user_by_tenant_stmt(tenant_id, User.id == id))
-        ).scalar_one_or_none()
+        user = (await session.execute(_user_by_tenant_stmt(tenant_id, User.id == id))).scalar_one_or_none()
         if not user:
             return error(msg.USER_NOT_FOUND, 404, field="user")
 

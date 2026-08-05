@@ -10,6 +10,7 @@ MAX_AVATAR_SIZE = 5 * 1024 * 1024  # 5MB
 
 from vora_shared.file_storage import UPLOAD_ROOT
 
+
 class AvatarUploadError(Exception):
     def __init__(self, message: str):
         super().__init__(message)
