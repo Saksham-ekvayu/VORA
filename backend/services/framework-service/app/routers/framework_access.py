@@ -72,6 +72,7 @@ async def get_my_framework_access(
     sortBy: str | None = Query(default=None),
     sortOrder: str | None = Query(default=None),
 ):
+    user = ctx.user
     page_num = clamp_page(page)
     limit_num = clamp_limit(limit)
 
