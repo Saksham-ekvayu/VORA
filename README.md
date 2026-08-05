@@ -1,8 +1,9 @@
-# VORA FastAPI Platform
+# VORA Platform
 
 FastAPI microservices for VORA.
 
 ## Structure
+
 - `services/`: Contains all domain and AI microservices.
 - `shared/`: Shared package used across services.
 - `gateway/`: API Gateway.
@@ -15,11 +16,13 @@ The platform is designed to be run using the provided batch scripts which automa
 ### 1. Setup Environments
 
 Create virtual environments for all services:
+
 ```cmd
 python scripts\batch\create_service_venvs.bat
 ```
 
 Install requirements across all virtual environments:
+
 ```cmd
 scripts\batch\install_venvs.bat
 ```
@@ -51,4 +54,23 @@ Start all services simultaneously. If Windows Terminal is installed, it will lau
 python scripts\batch\run_services.bat
 ```
 
+### 4. Run Frontend
+
+Open your terminal and run the following commands sequentially:
+
+1. Navigate to the frontend directory:
+   ```cmd
+   cd frontend
+   ```
+2. Generate the node_modules or install:
+   ```cmd
+   pnpm i
+   ```
+3. Run:
+   ```cmd
+   pnpm dev
+   ```
+
 The API Gateway will be accessible at `http://localhost:8000`.
+
+The Frontend will be accessible at `http://localhost:5173`.
