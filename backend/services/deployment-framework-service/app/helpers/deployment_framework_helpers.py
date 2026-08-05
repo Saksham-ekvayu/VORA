@@ -249,24 +249,6 @@ def _version_sort_key(v: str) -> tuple[int, int, int]:
         return (0, 0, 0)
 
 
-def validate_uploaded_file(filename: str, size: int) -> dict[str, Any]:
-    if not file_storage.is_valid_file_size(size, "framework"):
-        max_size = file_storage.get_max_file_size("framework")
-        return {
-            "isValid": False,
-            "status": 400,
-            "message": f"File size exceeds maximum allowed size of {file_storage.format_file_size(max_size)}",
-        }
-    if not file_storage.is_valid_deployment_file_type(filename):
-        allowed = ", ".join(file_storage.get_allowed_deployment_file_types())
-        return {
-            "isValid": False,
-            "status": 400,
-            "message": f"Invalid file type. Allowed types: {allowed}",
-        }
-    return {"isValid": True}
-
-
 def process_and_save_file(
     content: bytes, filename: str, framework_id: str | None, user_id: str, version: str
 ) -> dict[str, Any] | None:
@@ -299,9 +281,9 @@ async def process_uploaded_files(
     document_data_array = []
     for file in files:
         content = await file.read()
-        validation = validate_uploaded_file(file.filename or "", len(content))
-        if not validation["isValid"]:
-            return {"error": {"message": validation["message"], "status": validation["status"]}}
+        validation = file_storage.validate_uploaded_file(file.filename or "", len(content))
+        if not validation.get("isValid"):
+            return {"error": {"message": validation.get("message"), "status": validation.get("status")}}
 
         document_data = process_and_save_file(content, file.filename or "file", framework_id, user_id, version)
         if not document_data:

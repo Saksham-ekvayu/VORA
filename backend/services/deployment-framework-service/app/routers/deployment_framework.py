@@ -462,7 +462,13 @@ async def update_deployment_framework(
             return error("Invalid patch type. Must be 'minor' or 'major'", 400)
 
         try:
-            file_entries = [{"filename": f.filename or "file", "content": await f.read()} for f in files]
+            file_entries = []
+            for f in files:
+                content = await f.read()
+                validation = file_storage.validate_uploaded_file(f.filename or "", len(content))
+                if not validation.get("isValid"):
+                    return error(validation.get("message"), validation.get("status"))
+                file_entries.append({"filename": f.filename or "file", "content": content})
 
             if patch_type == "minor":
                 result = package_builder.build_minor_patch(framework, file_entries, document_updates)

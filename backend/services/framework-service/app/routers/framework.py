@@ -42,28 +42,7 @@ from app.services import data_formatter
 
 router = APIRouter(tags=["framework"])
 
-ALLOWED_EXTENSIONS = {"pdf", "doc", "docx", "xls", "xlsx"}
-MAX_FILE_SIZE = 10 * 1024 * 1024
-CONTENT_TYPES = {
-    "pdf": "application/pdf",
-    "doc": "application/msword",
-    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "xls": "application/vnd.ms-excel",
-    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-}
-PREVIEW_MIME_TYPES = {
-    "pdf": "application/pdf",
-    "png": "image/png",
-    "jpg": "image/jpeg",
-    "jpeg": "image/jpeg",
-    "gif": "image/gif",
-    "webp": "image/webp",
-    "svg": "image/svg+xml",
-    "txt": "text/plain",
-    "csv": "text/csv",
-    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "doc": "application/msword",
-}
+
 
 
 def _now() -> datetime:
@@ -78,12 +57,10 @@ async def _validate_upload(file: UploadFile | None) -> tuple[bytes | None, str |
     """Returns (file_bytes, error_message). error_message is None on success."""
     if file is None or not file.filename:
         return None, "No file uploaded"
-    extension = _ext(file.filename)
-    if extension not in ALLOWED_EXTENSIONS:
-        return None, f"Invalid file type. Allowed types: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
     content = await file.read()
-    if len(content) > MAX_FILE_SIZE:
-        return None, "File size too large. Maximum size is 10MB"
+    validation = file_storage.validate_uploaded_file(file.filename, len(content))
+    if not validation.get("isValid"):
+        return None, validation.get("message")
     return content, None
 
 
@@ -829,7 +806,7 @@ async def download_framework_file(frameworkId: str, fileId: str):
         if file_bytes is None:
             return error("File not found on disk", 404)
 
-        content_type = CONTENT_TYPES.get(file_version.fileType, "application/octet-stream")
+        content_type = file_storage.CONTENT_TYPES.get(file_version.fileType, "application/octet-stream")
         original_name = file_version.originalFileName
 
     return Response(
@@ -862,7 +839,7 @@ async def preview_framework_file(
 
         file_bytes = file_storage.read_file(actual_path)
         ext = (file_version.fileType or "").lower()
-        mime = PREVIEW_MIME_TYPES.get(ext, "application/octet-stream")
+        mime = file_storage.PREVIEW_MIME_TYPES.get(ext, "application/octet-stream")
         original_name = file_version.originalFileName
 
     return Response(

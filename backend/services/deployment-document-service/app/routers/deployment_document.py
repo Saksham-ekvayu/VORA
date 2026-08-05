@@ -374,9 +374,10 @@ async def upload_deployment_document(
     if not documentName and not documentId:
         return error("Document name or existing Document ID is required", 400)
 
-    if not file_storage.is_valid_deployment_file_type(file.filename or ""):
-        allowed = ", ".join(file_storage.get_allowed_deployment_file_types())
-        return error(f"Invalid file type. Allowed types: {allowed}", 400)
+    content = await file.read()
+    validation = file_storage.validate_uploaded_file(file.filename or "", len(content))
+    if not validation.get("isValid"):
+        return error(validation.get("message"), validation.get("status"))
 
     file_version = currentFileVersion or "1.0.0"
     framework_version = "1.0.0"
@@ -400,7 +401,7 @@ async def upload_deployment_document(
         file.filename or "file", str(user_id), "deployment-document", framework_version
     )
 
-    buffer = await file.read()
+    buffer = content
     if not file_storage.save_file(buffer, path_info.absolute_path):
         return error("Failed to save file", 500)
 
