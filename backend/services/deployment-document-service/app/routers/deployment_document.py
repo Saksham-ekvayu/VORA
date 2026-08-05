@@ -378,9 +378,26 @@ async def upload_deployment_document(
         allowed = ", ".join(file_storage.get_allowed_deployment_file_types())
         return error(f"Invalid file type. Allowed types: {allowed}", 400)
 
-    document_id_for_path = documentId or f"temp-{int(_utcnow().timestamp() * 1000)}"
+    file_version = currentFileVersion or "1.0.0"
+    framework_version = "1.0.0"
+    
+    if deploymentFrameworkId and is_valid_id(deploymentFrameworkId):
+        async with session_scope() as session:
+            from vora_shared.models import DeploymentFramework
+            from sqlalchemy import select
+            
+            fw = (
+                await session.execute(
+                    select(DeploymentFramework).where(
+                        DeploymentFramework.id == str(deploymentFrameworkId)
+                    )
+                )
+            ).scalar_one_or_none()
+            if fw and fw.frameworkVersion:
+                framework_version = fw.frameworkVersion
+
     path_info = file_storage.generate_deployment_file_path(
-        file.filename or "file", document_id_for_path, tenant_id, "document"
+        file.filename or "file", str(user_id), "deployment-document", framework_version
     )
 
     buffer = await file.read()
@@ -388,7 +405,6 @@ async def upload_deployment_document(
         return error("Failed to save file", 500)
 
     file_hash = file_storage.calculate_file_hash(path_info.absolute_path)
-    file_version = currentFileVersion or "1.0.0"
     file_id = new_id()
     document_type = (file.filename or "").rsplit(".", 1)[-1].lower()
 

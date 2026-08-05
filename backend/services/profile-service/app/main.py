@@ -10,7 +10,7 @@ from vora_shared.server import create_vora_app
 from app.routers import admin as admin_router
 from app.routers import user as user_router
 
-UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads"
+UPLOADS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "shared" / "uploads"
 
 
 @asynccontextmanager

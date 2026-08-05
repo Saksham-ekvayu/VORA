@@ -11,8 +11,8 @@ from fastapi import UploadFile
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 MAX_AVATAR_SIZE = 5 * 1024 * 1024  # 5MB
 
-# services/profile-service/uploads — served publicly by main.py's StaticFiles mount.
-UPLOADS_DIR = Path(__file__).resolve().parent.parent.parent / "uploads"
+# UPLOADS_DIR points to backend/shared/uploads
+UPLOADS_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent / "shared" / "uploads"
 
 
 class AvatarUploadError(Exception):
@@ -38,13 +38,15 @@ async def save_avatar(upload: UploadFile, subdir: str) -> str:
         raise AvatarUploadError("Please select an image file to upload")
 
     ext = Path(upload.filename or "").suffix or ".jpg"
-    filename = f"{int(time.time() * 1000)}-{secrets.token_hex(4)}{ext}"
+    name_without_ext = Path(upload.filename or "image").stem
+    timestamp = int(time.time() * 1000)
+    filename = f"{name_without_ext}-{timestamp}{ext}"
 
-    directory = UPLOADS_DIR / subdir / "avatar"
+    directory = UPLOADS_DIR / "avatar" / subdir
     directory.mkdir(parents=True, exist_ok=True)
     (directory / filename).write_bytes(data)
 
-    return f"/uploads/{subdir}/avatar/{filename}"
+    return f"/uploads/avatar/{subdir}/{filename}"
 
 
 def delete_avatar_file(public_url: str | None) -> None:

@@ -268,11 +268,10 @@ def validate_uploaded_file(filename: str, size: int) -> dict[str, Any]:
 
 
 def process_and_save_file(
-    content: bytes, filename: str, framework_id: str | None, tenant_id: str, version: str
+    content: bytes, filename: str, framework_id: str | None, user_id: str, version: str
 ) -> dict[str, Any] | None:
-    framework_id_for_path = framework_id or f"temp-{new_id()}"
     path_info = file_storage.generate_deployment_file_path(
-        filename, framework_id_for_path, tenant_id, "framework"
+        filename, user_id, "deployment-framework", version
     )
 
     if not file_storage.save_file(content, path_info.absolute_path):
@@ -295,7 +294,7 @@ def process_and_save_file(
 
 
 async def process_uploaded_files(
-    files: list[UploadFile], framework_id: str | None, tenant_id: str, version: str
+    files: list[UploadFile], framework_id: str | None, user_id: str, version: str
 ) -> dict[str, Any]:
     document_data_array = []
     for file in files:
@@ -304,7 +303,7 @@ async def process_uploaded_files(
         if not validation["isValid"]:
             return {"error": {"message": validation["message"], "status": validation["status"]}}
 
-        document_data = process_and_save_file(content, file.filename or "file", framework_id, tenant_id, version)
+        document_data = process_and_save_file(content, file.filename or "file", framework_id, user_id, version)
         if not document_data:
             return {"error": {"message": f"Failed to save file: {file.filename}", "status": 500}}
         document_data_array.append(document_data)
@@ -312,7 +311,7 @@ async def process_uploaded_files(
 
 
 def save_uploaded_files_for_package(
-    framework: Any, uploaded_files_map: dict[str, bytes], result: dict[str, Any], tenant_id: str
+    framework: Any, uploaded_files_map: dict[str, bytes], result: dict[str, Any], user_id: str
 ) -> dict[str, Any]:
     if not uploaded_files_map:
         return {"success": True}
@@ -320,12 +319,14 @@ def save_uploaded_files_for_package(
     framework_id_for_path = framework.frameworkId or f"temp-{framework.id}"
 
     remaining = dict(uploaded_files_map)
+    version = framework.frameworkVersion if hasattr(framework, "frameworkVersion") else None
+
     for doc in result["newPackage"]["documents"]:
         if not doc.get("replicated"):
             content = remaining.get(doc["originalFileName"])
             if content is not None:
                 path_info = file_storage.generate_deployment_file_path(
-                    doc["originalFileName"], framework_id_for_path, tenant_id, "framework"
+                    doc["originalFileName"], user_id, "deployment-framework", version
                 )
                 if not file_storage.save_file(content, path_info.absolute_path):
                     return {"error": True, "filename": doc["originalFileName"]}
