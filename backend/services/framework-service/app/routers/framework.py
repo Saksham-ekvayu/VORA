@@ -9,7 +9,7 @@ from pathlib import Path
 from vora_shared.auth import AuthenticatedUser, authenticate
 from app.helpers import framework_helper
 from app.helpers.report_helper import generate_framework_report_pdf
-from app.helpers.user_formatter import get_user_data
+from vora_shared import data_format, file_storage
 from app.schemas.framework import (
     AddControlBody,
     AssignFrameworkToCustomerBody,
@@ -163,7 +163,9 @@ async def get_available_categories(
                     "frameworkCategoryName": category.frameworkCategoryName,
                     "description": category.description,
                     "isActive": category.isActive,
-                    "createdBy": get_user_data(creators_by_id.get(category.createdBy), category.createdBy),
+                    "createdBy": data_format.format_user_ref(
+                        creators_by_id.get(category.createdBy), category.createdBy
+                    ),
                     "createdAt": category.createdAt,
                     "updatedAt": category.updatedAt,
                     "hasRequested": request_info["hasRequested"],
@@ -312,7 +314,9 @@ async def get_framework_by_id(id: str, ctx: AuthenticatedUser = Depends(authenti
             "uploadedBy": data_format.format_uploaded_by(uploaded_by_user, framework.uploadedBy),
             "approval": {
                 "status": framework_helper.approval_status(framework),
-                "by": get_user_data(approved_by_user, approved_by_id) if approved_by_id else None,
+                "by": (
+                    data_format.format_user_ref(approved_by_user, approved_by_id) if approved_by_id else None
+                ),
                 "date": framework_helper.approval_date(framework),
                 "remark": framework_helper.approval_remark(framework),
             },
@@ -758,7 +762,9 @@ async def get_framework_files(frameworkId: str, ctx: AuthenticatedUser = Depends
 
 
 @router.get("/{frameworkId}/files/{fileId}")
-async def get_framework_file_by_id(frameworkId: str, fileId: str, ctx: AuthenticatedUser = Depends(authenticate)):
+async def get_framework_file_by_id(
+    frameworkId: str, fileId: str, ctx: AuthenticatedUser = Depends(authenticate)
+):
     user = ctx.user
 
     async with session_scope() as session:
@@ -826,7 +832,9 @@ async def download_framework_file(frameworkId: str, fileId: str):
 
 
 @router.get("/{frameworkId}/files/{fileId}/preview")
-async def preview_framework_file(frameworkId: str, fileId: str, ctx: AuthenticatedUser = Depends(authenticate)):
+async def preview_framework_file(
+    frameworkId: str, fileId: str, ctx: AuthenticatedUser = Depends(authenticate)
+):
     user = ctx.user
 
     async with session_scope() as session:
@@ -856,7 +864,9 @@ async def preview_framework_file(frameworkId: str, fileId: str, ctx: Authenticat
 
 
 @router.delete("/{frameworkId}/files/{fileId}")
-async def delete_framework_file(frameworkId: str, fileId: str, ctx: AuthenticatedUser = Depends(authenticate)):
+async def delete_framework_file(
+    frameworkId: str, fileId: str, ctx: AuthenticatedUser = Depends(authenticate)
+):
     user = ctx.user
 
     async with session_scope() as session:

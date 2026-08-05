@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from vora_shared.auth import AuthenticatedUser, authenticate
-from app.helpers.user_formatter import get_user_data
+from vora_shared import data_format
 from app.services import authorization
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, or_, select
@@ -182,21 +182,21 @@ async def get_my_framework_access(
             approved_by = _nested_user_id(record.approval, "approvedBy")
             if approved_by:
                 approval = {
-                    "approvedBy": get_user_data(users_by_id.get(approved_by), approved_by),
+                    "approvedBy": data_format.format_user_ref(users_by_id.get(approved_by), approved_by),
                     "approvedAt": (record.approval or {}).get("approvedAt"),
                 }
             rejection = None
             rejected_by = _nested_user_id(record.rejection, "rejectedBy")
             if rejected_by:
                 rejection = {
-                    "rejectedBy": get_user_data(users_by_id.get(rejected_by), rejected_by),
+                    "rejectedBy": data_format.format_user_ref(users_by_id.get(rejected_by), rejected_by),
                     "rejectedAt": (record.rejection or {}).get("rejectedAt"),
                 }
             revocation = None
             revoked_by = _nested_user_id(record.revocation, "revokedBy")
             if revoked_by:
                 revocation = {
-                    "revokedBy": get_user_data(users_by_id.get(revoked_by), revoked_by),
+                    "revokedBy": data_format.format_user_ref(users_by_id.get(revoked_by), revoked_by),
                     "revokedAt": (record.revocation or {}).get("revokedAt"),
                 }
 
