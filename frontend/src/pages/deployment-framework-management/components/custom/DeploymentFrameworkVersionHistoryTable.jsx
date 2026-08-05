@@ -80,9 +80,9 @@ export default function DeploymentFrameworkVersionHistoryTable({
               isComparisonCompleted && isGapAnalysisCompleted;
             let reportButtonTitle;
             if (downloadingVersion === row.packageVersion) {
-              reportButtonTitle = "Downloading Report...";
+              reportButtonTitle = "Generating...";
             } else if (isReportReady) {
-              reportButtonTitle = "Download Report";
+              reportButtonTitle = "Report";
             } else {
               reportButtonTitle =
                 "Report can only be downloaded after both comparison and gap analysis are completed";
