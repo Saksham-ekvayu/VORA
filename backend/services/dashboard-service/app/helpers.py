@@ -156,10 +156,19 @@ def format_recent_users(all_users: list[User]) -> list[dict[str, Any]]:
     ]
 
 
-def generate_chart_labels() -> list[str]:
-    today = utcnow()
+def generate_chart_labels(start_date: datetime | None = None, end_date: datetime | None = None) -> list[str]:
+    end = end_date or utcnow()
+    start = start_date or (end - timedelta(days=29))
+    
+    start_aware = to_aware_utc(start)
+    end_aware = to_aware_utc(end)
+    
+    delta = (end_aware.date() - start_aware.date()).days
+    if delta < 0:
+        return []
+    
     return [
-        (today - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(29, -1, -1)
+        (start_aware + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(delta + 1)
     ]
 
 
@@ -181,9 +190,7 @@ def get_creation_type(user: User) -> str:
 def populate_chart_data(
     recent_users: list[User], chart_labels: list[str]
 ) -> dict[str, dict[str, int]]:
-    self_registration_data = initialize_chart_data(chart_labels)
-    admin_creation_data = initialize_chart_data(chart_labels)
-    customer_creation_data = initialize_chart_data(chart_labels)
+    total_data = initialize_chart_data(chart_labels)
 
     label_set = set(chart_labels)
     for user in recent_users:
@@ -192,18 +199,10 @@ def populate_chart_data(
         date_label = to_aware_utc(user.createdAt).strftime("%Y-%m-%d")
         if date_label not in label_set:
             continue
-        creation_type = get_creation_type(user)
-        if creation_type == "self":
-            self_registration_data[date_label] += 1
-        elif creation_type == "admin":
-            admin_creation_data[date_label] += 1
-        elif creation_type == "customer-admin":
-            customer_creation_data[date_label] += 1
+        total_data[date_label] += 1
 
     return {
-        "selfRegistrationData": self_registration_data,
-        "adminCreationData": admin_creation_data,
-        "customerCreationData": customer_creation_data,
+        "totalData": total_data,
     }
 
 
@@ -223,14 +222,8 @@ def build_response_data(
         "charts": {
             "userCreation": {
                 "labels": chart_labels,
-                "selfRegistration": get_chart_values(
-                    chart_labels, chart_data["selfRegistrationData"]
-                ),
-                "adminCreation": get_chart_values(
-                    chart_labels, chart_data["adminCreationData"]
-                ),
-                "customerCreation": get_chart_values(
-                    chart_labels, chart_data["customerCreationData"]
+                "total": get_chart_values(
+                    chart_labels, chart_data["totalData"]
                 ),
             }
         },
