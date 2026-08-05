@@ -7,7 +7,6 @@ from vora_shared.database import connect_db, disconnect_db
 from vora_shared.server import create_vora_app
 
 from app.routers import framework, framework_access
-from app.services.ai_websocket_service import ai_websocket_service
 
 
 @asynccontextmanager
@@ -15,7 +14,6 @@ async def lifespan(_: FastAPI):
     settings = get_settings()
     await connect_db(settings.resolved_database_url())
     yield
-    ai_websocket_service.close_all()
     await disconnect_db()
 
 

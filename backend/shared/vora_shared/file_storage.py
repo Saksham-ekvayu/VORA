@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from vora_shared.ids import new_id
+from vora_shared import data_format
 
 _BACKEND_ROOT = Path(__file__).resolve().parent.parent.parent
 UPLOAD_BASE_PATH = os.environ.get("DEPLOYMENT_UPLOAD_BASE_PATH", str(_BACKEND_ROOT / "shared" / "uploads"))
@@ -184,7 +185,7 @@ def validate_uploaded_file(filename: str, size: int) -> dict[str, Any]:
         return {
             "isValid": False,
             "status": 400,
-            "message": f"File size exceeds maximum allowed size of {format_file_size(max_size)}"
+            "message": f"File size exceeds maximum allowed size of {data_format.format_file_size(max_size)}"
         }
 
     # Validate file extension
@@ -200,13 +201,3 @@ def validate_uploaded_file(filename: str, size: int) -> dict[str, Any]:
 
 def ensure_directory_exists(directory_path: str) -> None:
     os.makedirs(directory_path, exist_ok=True)
-
-def format_file_size(num_bytes: int) -> str:
-    sizes = ["Bytes", "KB", "MB", "GB"]
-    if not num_bytes:
-        return "0 Bytes"
-    import math
-    i = math.floor(math.log(num_bytes) / math.log(1024))
-    return f"{round((num_bytes / (1024 ** i)) * 100) / 100} {sizes[i]}"
-
-

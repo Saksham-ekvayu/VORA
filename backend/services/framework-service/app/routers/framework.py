@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile
 from sqlalchemy import String, cast, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
 
-from vora_shared import file_storage
+from vora_shared import file_storage, data_format
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
 from vora_shared.models import Customer, FrameworkAssignment, FrameworkCategory, User
@@ -38,7 +38,7 @@ from app.schemas.framework import (
     UpdateControlBody,
     UpdateControlWeightageBody,
 )
-from app.services import data_formatter
+from app.services import authorization
 
 router = APIRouter(tags=["framework"])
 
@@ -299,7 +299,7 @@ async def get_framework_by_id(id: str, user: User = Depends(current_user)):
                 "fileUrl": v.fileUrl,
                 "fileHash": v.fileHash,
                 "originalFileName": v.originalFileName,
-                "fileSize": data_formatter.format_file_size(v.fileSize),
+                "fileSize": data_format.format_file_size(v.fileSize),
                 "fileType": v.fileType,
                 "uploadedAt": v.uploadedAt,
                 "aiExtraction": v.aiExtraction.model_dump(mode="json") if v.aiExtraction else None,
@@ -315,7 +315,7 @@ async def get_framework_by_id(id: str, user: User = Depends(current_user)):
             "frameworkCategoryId": str(framework.frameworkCategoryId) if framework.frameworkCategoryId else None,
             "currentFileVersion": framework.currentFileVersion,
             "fileVersions": formatted_versions,
-            "uploadedBy": data_formatter.format_uploaded_by(uploaded_by_user, framework.uploadedBy),
+            "uploadedBy": data_format.format_uploaded_by(uploaded_by_user, framework.uploadedBy),
             "approval": {
                 "status": framework_helper.approval_status(framework),
                 "by": get_user_data(approved_by_user, approved_by_id) if approved_by_id else None,
@@ -602,11 +602,11 @@ async def upload_framework(
                 "currentFileVersion": framework.currentFileVersion,
                 "fileInfo": {
                     "originalFileName": file.filename,
-                    "fileSize": data_formatter.format_file_size(len(content)),
+                    "fileSize": data_format.format_file_size(len(content)),
                     "fileType": _ext(file.filename),
                     "fileUrl": file_storage.get_file_url(path_info.filename),
                 },
-                "uploadedBy": data_formatter.format_uploaded_by(user, user.id),
+                "uploadedBy": data_format.format_uploaded_by(user, user.id),
                 "approval": framework.approval,
                 "createdAt": framework.createdAt,
             }

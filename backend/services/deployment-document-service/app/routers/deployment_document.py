@@ -9,8 +9,7 @@ from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy import select
 
-from app.services import data_formatter
-from vora_shared import file_storage, query_builder
+from vora_shared import file_storage, data_format, query_builder
 from vora_shared.database import session_scope
 from vora_shared.ids import is_valid_id, new_id
 from vora_shared.models import DeploymentDocument, DeploymentDocumentFileVersion, DeploymentFramework, User
@@ -142,7 +141,7 @@ async def get_all_documents(
                     "originalFileName": (
                         current_version.originalFileName if current_version else "Unknown"
                     ),
-                    "fileSize": data_formatter.format_file_size(
+                    "fileSize": data_format.format_file_size(
                         current_version.fileSize if current_version else 0
                     ),
                     "fileType": current_version.documentType if current_version else "pdf",
@@ -219,10 +218,10 @@ async def get_document_by_id(id: str, ctx: RequestContext = Depends(get_context)
                 "fileUrl": v.fileUrl,
                 "fileHash": v.fileHash,
                 "originalFileName": v.originalFileName,
-                "fileSize": data_formatter.format_file_size(v.fileSize),
+                "fileSize": data_format.format_file_size(v.fileSize),
                 "documentType": v.documentType,
                 "uploadedAt": v.uploadedAt,
-                "uploadedBy": data_formatter.format_uploaded_by(uploaded_by_user, document.uploadedBy),
+                "uploadedBy": data_format.format_uploaded_by(uploaded_by_user, document.uploadedBy),
                 "aiUpload": v.aiUpload,
             }
             for v in versions

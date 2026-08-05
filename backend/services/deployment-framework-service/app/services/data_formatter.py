@@ -6,6 +6,7 @@ Nested JSONB refs are plain string ids. Callers pass pre-fetched maps
 
 import math
 from typing import Any
+from vora_shared import data_format
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -79,34 +80,9 @@ async def hydrate_maps(
         "assignedFrameworks": assigned_frameworks,
     }
 
-
-def format_file_size(num_bytes: int | float | None) -> str:
-    if not num_bytes:
-        return "0 Bytes"
-    k = 1024
-    sizes = ["Bytes", "KB", "MB", "GB", "TB"]
-    i = math.floor(math.log(num_bytes) / math.log(k))
-    return f"{round(num_bytes / (k ** i), 2)} {sizes[i]}"
-
-
 def format_uploaded_by(framework: Any, users: dict[str, User]) -> dict[str, Any]:
     user = users.get(str(framework.uploadedBy)) if framework.uploadedBy else None
-    if user:
-        return {
-            "id": str(user.id) if user and getattr(user, "id", None) else None,
-            "name": user.name,
-            "email": user.email,
-            "role": user.role,
-            "avatar": user.avatar,
-        }
-    return {
-        "id": framework.uploadedBy,
-        "name": "Deleted User",
-        "email": "N/A",
-        "role": "N/A",
-        "avatar": None,
-        "isDeleted": True,
-    }
+    return data_format.format_user_ref(user, framework.uploadedBy)
 
 
 def format_expert_review(expert_review: Any | None, users: dict[str, User]) -> dict[str, Any] | None:
@@ -115,17 +91,7 @@ def format_expert_review(expert_review: Any | None, users: dict[str, User]) -> d
     expert = users.get(str(expert_review.assignedExpert)) if expert_review.assignedExpert else None
     return {
         "status": expert_review.status,
-        "assignedExpert": (
-            {
-                "id": str(expert.id) if expert and getattr(expert, "id", None) else None,
-                "name": expert.name,
-                "email": expert.email,
-                "role": expert.role,
-                "avatar": expert.avatar,
-            }
-            if expert
-            else None
-        ),
+        "assignedExpert": data_format.format_user_ref(expert) if expert else None,
         "requestedAt": expert_review.requestedAt,
         "reviewedAt": expert_review.reviewedAt,
         "comments": expert_review.comments,
