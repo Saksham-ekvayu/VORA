@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.dependencies import current_user
+from vora_shared.auth import AuthenticatedUser, authenticate
 from app.helpers.user_formatter import get_user_data
 from app.services import authorization
 from fastapi import APIRouter, Depends, Query
@@ -24,8 +24,10 @@ def _nested_user_id(blob: dict | None, key: str) -> str | None:
 @router.post("/{framework_category_id}/request")
 async def request_framework_access(
     framework_category_id: str,
-    user: User = Depends(current_user),
+    ctx: AuthenticatedUser = Depends(authenticate),
 ):
+    user = ctx.user
+
     async with session_scope() as session:
         category = await session.get(FrameworkCategory, str(framework_category_id))
         if not category:
@@ -61,7 +63,7 @@ async def request_framework_access(
 
 @router.get("/my-access")
 async def get_my_framework_access(
-    user: User = Depends(current_user),
+    ctx: AuthenticatedUser = Depends(authenticate),
     page: int = Query(1),
     limit: int = Query(10),
     status: str | None = Query(default=None),

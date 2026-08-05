@@ -6,7 +6,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-from app.dependencies import current_user
+from vora_shared.auth import AuthenticatedUser, authenticate
 from app.helpers import framework_helper
 from app.helpers.report_helper import generate_framework_report_pdf
 from app.helpers.user_formatter import get_user_data
@@ -76,7 +76,7 @@ def _apply_ai_status_filter(stmt, ai_status: str | None):
 
 @router.get("/categories/available")
 async def get_available_categories(
-    user: User = Depends(current_user),
+    ctx: AuthenticatedUser = Depends(authenticate),
     page: int = Query(1),
     limit: int = Query(10),
     search: str | None = Query(default=None),
@@ -187,7 +187,7 @@ async def get_available_categories(
 
 @router.get("/all-frameworks")
 async def get_all_frameworks(
-    user: User = Depends(current_user),
+    ctx: AuthenticatedUser = Depends(authenticate),
     page: int = Query(1),
     limit: int = Query(10),
     search: str | None = Query(default=None),
@@ -269,7 +269,9 @@ async def get_all_frameworks(
 
 
 @router.get("/{id}")
-async def get_framework_by_id(id: str, user: User = Depends(current_user)):
+async def get_framework_by_id(id: str, ctx: AuthenticatedUser = Depends(authenticate)):
+    user = ctx.user
+
     async with session_scope() as session:
         framework = await session.get(Framework, str(id))
         if not framework:
@@ -322,7 +324,9 @@ async def get_framework_by_id(id: str, user: User = Depends(current_user)):
 
 
 @router.get("/{id}/download-report")
-async def download_framework_report(id: str, user: User = Depends(current_user)):
+async def download_framework_report(id: str, ctx: AuthenticatedUser = Depends(authenticate)):
+    user = ctx.user
+
     async with session_scope() as session:
         framework = await session.get(Framework, str(id))
         if not framework:
@@ -343,7 +347,9 @@ async def download_framework_report(id: str, user: User = Depends(current_user))
 
 
 @router.post("/{id}/approve")
-async def approve_framework(id: str, user: User = Depends(current_user)):
+async def approve_framework(id: str, ctx: AuthenticatedUser = Depends(authenticate)):
+    user = ctx.user
+
     async with session_scope() as session:
         framework = await session.get(Framework, str(id))
         if not framework:
@@ -397,8 +403,10 @@ async def approve_framework(id: str, user: User = Depends(current_user)):
 async def reject_framework(
     id: str,
     body: RejectFrameworkBody,
-    user: User = Depends(current_user),
+    ctx: AuthenticatedUser = Depends(authenticate),
 ):
+    user = ctx.user
+
     async with session_scope() as session:
         framework = await session.get(Framework, str(id))
         if not framework:
@@ -438,8 +446,10 @@ async def reject_framework(
 @router.post("/assign-framework-to-customer")
 async def assign_framework_to_customer(
     body: AssignFrameworkToCustomerBody,
-    user: User = Depends(current_user),
+    ctx: AuthenticatedUser = Depends(authenticate),
 ):
+    user = ctx.user
+
     if not body.customerId or not body.tenantId or not body.frameworkIds:
         return error(
             "customerId, tenantId, and frameworkIds (non-empty array) are required fields.",
@@ -526,7 +536,7 @@ async def assign_framework_to_customer(
 async def upload_framework(
     metadata: str = Form(...),
     file: UploadFile | None = File(default=None),
-    user: User = Depends(current_user),
+    ctx: AuthenticatedUser = Depends(authenticate),
 ):
     try:
         meta = framework_helper.parse_upload_metadata(metadata)
@@ -612,7 +622,7 @@ async def update_framework(
     id: str,
     metadata: str | None = Form(default=None),
     file: UploadFile | None = File(default=None),
-    user: User = Depends(current_user),
+    ctx: AuthenticatedUser = Depends(authenticate),
 ):
     content, err_msg = await _validate_upload(file)
     if err_msg:
@@ -682,7 +692,9 @@ async def update_framework(
 
 
 @router.delete("/{id}")
-async def delete_framework(id: str, user: User = Depends(current_user)):
+async def delete_framework(id: str, ctx: AuthenticatedUser = Depends(authenticate)):
+    user = ctx.user
+
     async with session_scope() as session:
         framework = await session.get(Framework, str(id))
         if not framework:
@@ -709,7 +721,9 @@ async def delete_framework(id: str, user: User = Depends(current_user)):
 
 
 @router.get("/{frameworkId}/files")
-async def get_framework_files(frameworkId: str, user: User = Depends(current_user)):
+async def get_framework_files(frameworkId: str, ctx: AuthenticatedUser = Depends(authenticate)):
+    user = ctx.user
+
     async with session_scope() as session:
         framework = await session.get(Framework, str(frameworkId))
         if not framework:
@@ -744,7 +758,9 @@ async def get_framework_files(frameworkId: str, user: User = Depends(current_use
 
 
 @router.get("/{frameworkId}/files/{fileId}")
-async def get_framework_file_by_id(frameworkId: str, fileId: str, user: User = Depends(current_user)):
+async def get_framework_file_by_id(frameworkId: str, fileId: str, ctx: AuthenticatedUser = Depends(authenticate)):
+    user = ctx.user
+
     async with session_scope() as session:
         framework = await session.get(Framework, str(frameworkId))
         if not framework:
@@ -810,7 +826,9 @@ async def download_framework_file(frameworkId: str, fileId: str):
 
 
 @router.get("/{frameworkId}/files/{fileId}/preview")
-async def preview_framework_file(frameworkId: str, fileId: str, user: User = Depends(current_user)):
+async def preview_framework_file(frameworkId: str, fileId: str, ctx: AuthenticatedUser = Depends(authenticate)):
+    user = ctx.user
+
     async with session_scope() as session:
         framework = await session.get(Framework, str(frameworkId))
         if not framework:
@@ -838,7 +856,9 @@ async def preview_framework_file(frameworkId: str, fileId: str, user: User = Dep
 
 
 @router.delete("/{frameworkId}/files/{fileId}")
-async def delete_framework_file(frameworkId: str, fileId: str, user: User = Depends(current_user)):
+async def delete_framework_file(frameworkId: str, fileId: str, ctx: AuthenticatedUser = Depends(authenticate)):
+    user = ctx.user
+
     async with session_scope() as session:
         framework = await session.get(Framework, str(frameworkId))
         if not framework:
@@ -896,8 +916,10 @@ async def add_framework_control(
     id: str,
     fileVersion: str,
     body: AddControlBody,
-    user: User = Depends(current_user),
+    ctx: AuthenticatedUser = Depends(authenticate),
 ):
+    user = ctx.user
+
     if (not body.sectionId and not body.newSection) or not body.name:
         return error("sectionId or newSection, and name are required", 400)
 
@@ -988,8 +1010,10 @@ async def update_framework_control(
     fileVersion: str,
     controlId: str,
     body: UpdateControlBody,
-    user: User = Depends(current_user),
+    ctx: AuthenticatedUser = Depends(authenticate),
 ):
+    user = ctx.user
+
     if not body.name and body.description is None and body.deployment_points is None:
         return error("At least one of name, description, or deployment_points must be provided", 400)
 
@@ -1049,8 +1073,10 @@ async def update_framework_control_weightage(
     fileVersion: str,
     controlId: str,
     body: UpdateControlWeightageBody,
-    user: User = Depends(current_user),
+    ctx: AuthenticatedUser = Depends(authenticate),
 ):
+    user = ctx.user
+
     if body.weightage is None or body.weightage < 0:
         return error("Valid weightage must be provided", 400)
 
@@ -1102,8 +1128,10 @@ async def delete_framework_control(
     id: str,
     fileVersion: str,
     controlId: str,
-    user: User = Depends(current_user),
+    ctx: AuthenticatedUser = Depends(authenticate),
 ):
+    user = ctx.user
+
     async with session_scope() as session:
         framework = await session.get(Framework, str(id))
         if not framework:
