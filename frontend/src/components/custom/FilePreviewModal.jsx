@@ -114,16 +114,16 @@ const FilePreviewModal = ({
 
   const ext = getExtension(fileName);
 
-  const getPreviewEndpoint = (fileId, serviceType, frameworkId) => {
+    const getPreviewEndpoint = (fileId, serviceType, frameworkId) => {
     switch (serviceType) {
       case "deployment-framework":
-        return `/deployment-frameworks/frameworks/${frameworkId}/files/${fileId}/preview`;
+        return `/deployment-frameworks/${frameworkId}/files/${fileId}/preview`;
       case "deployment-document":
-        return `/deployment-documents/files/${fileId}/preview`;
+        return `/deployment-documents/${frameworkId}/files/${fileId}/preview`;
       case "framework":
-        return `/frameworks/${frameworkId}/files/${fileId}/preview`;
+        return `/framework/${frameworkId}/files/${fileId}/preview`;
       default:
-        return `/frameworks/${frameworkId}/files/${fileId}/preview`;
+        return `/framework/${frameworkId}/files/${fileId}/preview`;
     }
   };
 

@@ -470,7 +470,7 @@ async def update_deployment_framework(
                 result = package_builder.build_major_patch(framework, file_entries, document_updates)
 
             uploaded_files_map = {f["filename"]: f["content"] for f in file_entries}
-            save_result = helpers.save_uploaded_files_for_package(framework, uploaded_files_map, result, tenant_id)
+            save_result = helpers.save_uploaded_files_for_package(framework, uploaded_files_map, result, str(ctx.user.id))
             if save_result.get("error"):
                 return error(f"Failed to save file: {save_result['filename']}", 500)
 
@@ -645,7 +645,7 @@ async def upload_deployment_framework(
 
     version = meta.get("fileVersion") or "1.0.0"
 
-    process_result = await helpers.process_uploaded_files(all_files, framework_id, tenant_id, version)
+    process_result = await helpers.process_uploaded_files(all_files, framework_id, str(user_id), framework_version)
     if process_result.get("error"):
         return error(process_result["error"]["message"], process_result["error"]["status"])
 

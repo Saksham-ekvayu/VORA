@@ -77,7 +77,7 @@ const OverviewActions = ({
         size="12px"
         className={isDownloadingReport ? "animate-spin" : ""}
       />
-      {isDownloadingReport ? " Generating..." : " Download Report"}
+      {isDownloadingReport ? " Generating..." : " Report"}
     </Button>
 
     <Button

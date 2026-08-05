@@ -6,8 +6,9 @@ from dataclasses import dataclass
 
 from vora_shared.ids import new_id
 
-UPLOAD_BASE_PATH = os.environ.get("DEPLOYMENT_UPLOAD_BASE_PATH", "uploads")
-UPLOAD_ROOT = Path("uploads")
+_BACKEND_ROOT = Path(__file__).resolve().parent.parent.parent
+UPLOAD_BASE_PATH = os.environ.get("DEPLOYMENT_UPLOAD_BASE_PATH", str(_BACKEND_ROOT / "shared" / "uploads"))
+UPLOAD_ROOT = _BACKEND_ROOT / "shared" / "uploads"
 
 ALLOWED_DEPLOYMENT_FILE_TYPES = [
     ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt", ".rtf", ".csv",
@@ -33,13 +34,16 @@ class FramworkFilePathInfo:
 
 
 def generate_deployment_file_path(
-    original_name: str, document_id: str, tenant_id: str, category: str = "document"
+    original_name: str, user_id: str, category: str = "document", version: str = None
 ) -> FilePathInfo:
     ext = Path(original_name).suffix
-    unique_id = new_id()
+    name_without_ext = Path(original_name).stem
     timestamp = int(time.time() * 1000)
-    filename = f"{category}-{timestamp}-{unique_id}{ext}"
-    sub_dir = os.path.join(tenant_id, str(document_id), category)
+    filename = f"{name_without_ext}-{timestamp}{ext}"
+    if version:
+        sub_dir = os.path.join("file", category, _sanitize_version(version), user_id)
+    else:
+        sub_dir = os.path.join("file", category, user_id)
     relative_path = os.path.join(sub_dir, filename)
     absolute_path = os.path.join(UPLOAD_BASE_PATH, relative_path)
     return FilePathInfo(
@@ -57,15 +61,17 @@ def _sanitize_version(version: str) -> str:
 
 
 def generate_framework_file_path(
-    original_name: str, user_id: str, framework_version: str
+    original_name: str, user_id: str, framework_version: str = None
 ) -> FramworkFilePathInfo:
     ext = Path(original_name).suffix
     name_without_ext = Path(original_name).stem
     timestamp = int(time.time() * 1000)
     filename = f"{name_without_ext}-{timestamp}{ext}"
     file_id = f"{name_without_ext}-{timestamp}"
-    sanitized_version = _sanitize_version(framework_version)
-    sub_dir = Path(user_id) / sanitized_version
+    if framework_version:
+        sub_dir = Path("file/framework") / _sanitize_version(framework_version) / user_id
+    else:
+        sub_dir = Path("file/framework") / user_id
     relative_path = sub_dir / filename
     absolute_path = UPLOAD_ROOT / relative_path
     return FramworkFilePathInfo(

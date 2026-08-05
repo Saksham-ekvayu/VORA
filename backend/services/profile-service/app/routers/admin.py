@@ -3,7 +3,7 @@ import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Query, UploadFile
 from sqlalchemy import or_, select
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -30,6 +30,7 @@ from app.utils.formatting import (
     user_admin_dict,
 )
 from app.utils.temp_password import generate_temp_password
+from app.utils.uploads import AvatarUploadError, delete_avatar_file, save_avatar
 
 router = APIRouter(tags=["admin"])
 logger = logging.getLogger(__name__)
@@ -303,6 +304,43 @@ async def delete_customer(id: str, ctx: AuthenticatedUser = Depends(authenticate
         await session.delete(customer)
 
     return success(None, "Customer deleted successfully")
+
+
+@router.post("/customers/{id}/avatar")
+async def update_customer_avatar_by_admin(
+    id: str,
+    avatar: UploadFile | None = File(default=None),
+    ctx: AuthenticatedUser = Depends(authenticate),
+):
+    """Admin uploads a customer avatar by customer id (from updated Mongo API)."""
+    if avatar is None:
+        return error(msg.AVATAR_REQUIRED, 400, field="avatar")
+
+    if not is_valid_id(id):
+        return error("Customer not found", 404)
+
+    async with session_scope() as session:
+        customer = await session.get(Customer, id)
+        if not customer:
+            return error("Customer not found", 404)
+
+        try:
+            avatar_url = await save_avatar(avatar, f"customer-{customer.tenantId}")
+        except AvatarUploadError as exc:
+            return error(exc.message, 400, field="avatar")
+
+        old_avatar = customer.avatar
+        customer.avatar = avatar_url
+        customer.updatedAt = datetime.now(timezone.utc)
+
+        creator = None
+        creator_id = created_by_user_id(customer.createdBy)
+        if creator_id:
+            creator = await session.get(User, creator_id)
+        result = customer_dict(customer, creator)
+
+    delete_avatar_file(old_avatar)
+    return success(result, msg.AVATAR_UPDATED)
 
 
 # ------------------------------------------------------------------------

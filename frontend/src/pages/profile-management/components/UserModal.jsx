@@ -112,6 +112,11 @@ export default function UserModal({
     const phoneError = validatePhone(formData.phone);
     if (phoneError) newErrors.phone = phoneError;
 
+    if (formData.phone) {
+      const phoneError = validatePhone(formData.phone);
+      if (phoneError) newErrors.phone = phoneError;
+    }
+
     if (isCustomerAdmin(authUser?.role) && !formData.role) {
       newErrors.role = "Role is required";
     }
@@ -213,9 +218,7 @@ export default function UserModal({
 
             {/* Phone Field */}
             <div className="space-y-1.5">
-              <Label htmlFor="user-phone">
-                Phone Number <span className="required">*</span>
-              </Label>
+              <Label htmlFor="user-phone">Phone Number</Label>
               <PhoneInputField
                 id="user-phone"
                 value={formData.phone}

@@ -462,7 +462,7 @@ function FrameworkDetail() {
                     size="12px"
                     className={downloading ? "animate-spin" : ""}
                   />
-                  {downloading ? " Generating..." : " Download Report"}
+                  {downloading ? " Generating..." : " Report"}
                 </Button>
                 {isExpert && hasAccess && (
                   <>
