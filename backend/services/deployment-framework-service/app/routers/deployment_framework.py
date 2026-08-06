@@ -21,7 +21,7 @@ from sqlalchemy import delete, select
 from vora_shared import file_storage, query_builder
 from vora_shared.database import session_scope
 from vora_shared.ids import is_valid_id, new_id
-from vora_shared.messages import BUSINESS_MESSAGES, FRAMEWORK_MESSAGES
+from vora_shared.messages import BUSINESS_MESSAGES, FRAMEWORK_MESSAGES, FRAMEWORK_SERVICE_MESSAGES
 from vora_shared.models import (
     DeploymentFramework,
     PackageComparison,
@@ -472,6 +472,67 @@ def _check_missing_files(new_package_documents: list[Any]) -> JSONResponse | Non
     return None
 
 
+async def _get_framework_for_update(session: Any, id: str, tenant_id: str) -> Any | None:
+    if is_valid_id(id):
+        return (
+            await session.execute(
+                select(DeploymentFramework).where(
+                    DeploymentFramework.id == str(id),
+                    DeploymentFramework.tenantId == tenant_id,
+                )
+            )
+        ).scalar_one_or_none()
+
+    candidates = list(
+        (
+            await session.execute(
+                select(DeploymentFramework).where(DeploymentFramework.tenantId == tenant_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for fw in candidates:
+        if helpers.find_framework_document(fw, id):
+            return fw
+    return None
+
+
+def _update_framework_metadata(framework: Any, meta_dict: dict[str, Any]) -> None:
+    if meta_dict.get("frameworkName"):
+        framework.frameworkName = meta_dict["frameworkName"]
+    if meta_dict.get("frameworkCode"):
+        framework.frameworkCode = meta_dict["frameworkCode"]
+    if meta_dict.get("frameworkVersion"):
+        framework.frameworkVersion = meta_dict["frameworkVersion"]
+    if meta_dict.get("frameworkId"):
+        framework.frameworkId = meta_dict["frameworkId"]
+
+
+def _parse_metadata(metadata: str | None) -> dict[str, Any]:
+    if not metadata:
+        return {}
+    import json
+    try:
+        return json.loads(metadata)
+    except (ValueError, TypeError):
+        return {}
+
+def _format_patch_response(framework: Any, new_package: Any, patch_type: str) -> dict[str, Any]:
+    return {
+        "id": (str(framework.id) if getattr(framework, "id", None) else None),
+        "frameworkId": (str(framework.frameworkId) if getattr(framework, "frameworkId", None) else None),
+        "frameworkName": framework.frameworkName,
+        "frameworkCode": framework.frameworkCode,
+        "frameworkVersion": framework.frameworkVersion,
+        "currentPackageVersion": framework.currentPackageVersion,
+        "packageVersion": new_package.packageVersion,
+        "patchType": patch_type,
+        "documentsCount": len(new_package.documents),
+        "updatedAt": framework.updatedAt,
+    }
+
+
 @router.put("/{id}")
 async def update_deployment_framework(
     id: str,
@@ -482,44 +543,12 @@ async def update_deployment_framework(
     tenant_id = ctx.tenant_id
 
     async with session_scope() as session:
-        if is_valid_id(id):
-            framework = (
-                await session.execute(
-                    select(DeploymentFramework).where(
-                        DeploymentFramework.id == str(id),
-                        DeploymentFramework.tenantId == tenant_id,
-                    )
-                )
-            ).scalar_one_or_none()
-        else:
-            # Legacy path: treat as nested fileId lookup inside packages JSONB
-            candidates = list(
-                (
-                    await session.execute(
-                        select(DeploymentFramework).where(DeploymentFramework.tenantId == tenant_id)
-                    )
-                )
-                .scalars()
-                .all()
-            )
-            framework = None
-            for fw in candidates:
-                if helpers.find_framework_document(fw, id):
-                    framework = fw
-                    break
+        framework = await _get_framework_for_update(session, id, tenant_id)
 
         if not framework:
             return not_found(_RESOURCE_DEPLOYMENT_FRAMEWORK)
 
-        meta_dict: dict[str, Any] = {}
-        if metadata:
-            import json
-
-            try:
-                meta_dict = json.loads(metadata)
-            except (ValueError, TypeError):
-                meta_dict = {}
-
+        meta_dict = _parse_metadata(metadata)
         document_updates = helpers.parse_document_updates(meta_dict.get("documents"))
 
         patch_type = meta_dict.get("patchType", "minor")
@@ -568,34 +597,12 @@ async def update_deployment_framework(
             framework.packages = dump_packages(packages)
             framework.currentPackageVersion = new_package.packageVersion
 
-            if meta_dict.get("frameworkName"):
-                framework.frameworkName = meta_dict["frameworkName"]
-            if meta_dict.get("frameworkCode"):
-                framework.frameworkCode = meta_dict["frameworkCode"]
-            if meta_dict.get("frameworkVersion"):
-                framework.frameworkVersion = meta_dict["frameworkVersion"]
-            if meta_dict.get("frameworkId"):
-                framework.frameworkId = meta_dict["frameworkId"]
+            _update_framework_metadata(framework, meta_dict)
 
             framework.updatedAt = _utcnow()
 
             return success(
-                {
-                    "id": (str(framework.id) if framework and getattr(framework, "id", None) else None),
-                    "frameworkId": (
-                        str(framework.frameworkId)
-                        if framework and getattr(framework, "frameworkId", None)
-                        else None
-                    ),
-                    "frameworkName": framework.frameworkName,
-                    "frameworkCode": framework.frameworkCode,
-                    "frameworkVersion": framework.frameworkVersion,
-                    "currentPackageVersion": framework.currentPackageVersion,
-                    "packageVersion": new_package.packageVersion,
-                    "patchType": patch_type,
-                    "documentsCount": len(new_package.documents),
-                    "updatedAt": framework.updatedAt,
-                },
+                _format_patch_response(framework, new_package, patch_type),
                 f"Framework {patch_type} patch created successfully",
             )
         except Exception as exc:
@@ -1153,20 +1160,9 @@ def _update_comparison_review_remark(
     results: list[Any], assigned_control_id: str, deployment_control_id: str, comment: str | None
 ) -> bool:
     for section in results:
-        controls = (
-            section.get("controls") if isinstance(section, dict) else getattr(section, "controls", None)
-        )
-        for c in controls or []:
-            c_assigned = (
-                c.get("assigned_framework_control_id")
-                if isinstance(c, dict)
-                else getattr(c, "assigned_framework_control_id", None)
-            )
-            c_deploy = (
-                c.get("deployment_framework_control_id")
-                if isinstance(c, dict)
-                else getattr(c, "deployment_framework_control_id", None)
-            )
+        for c in _blob_get(section, "controls") or []:
+            c_assigned = _blob_get(c, "assigned_framework_control_id")
+            c_deploy = _blob_get(c, "deployment_framework_control_id")
             if c_assigned == assigned_control_id and c_deploy == deployment_control_id:
                 if isinstance(c, dict):
                     c["reviewComment"] = comment or ""
