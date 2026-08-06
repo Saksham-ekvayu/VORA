@@ -1,7 +1,13 @@
 @echo off
-echo ========================================================
-echo Formatting Backend Code using Black and Isort...
-echo ========================================================
+REM =====================================================
+REM VORA Backend - Format Code Script
+REM Uses Black for code formatting and Isort for imports
+REM =====================================================
+
+echo.
+echo =====================================================
+echo Formatting VORA Backend Code
+echo =====================================================
 echo.
 
 echo [1/3] Ensuring Black and Isort are installed...
@@ -12,20 +18,37 @@ if errorlevel 1 (
     echo OK.
 )
 
-:: Navigate to the backend root directory
+REM Navigate to the backend root directory
 set BACKEND_DIR=%~dp0..\..
 cd /d "%BACKEND_DIR%"
 
 echo.
 echo [2/3] Running Black (Code Formatter)...
-python -m black .
+echo Formatting Python files...
+python -m black . --exclude ".venv,__pycache__"
+if errorlevel 1 (
+    echo ERROR: Black formatting failed.
+    pause
+    exit /b 1
+)
+echo OK.
 
 echo.
 echo [3/3] Running Isort (Import Sorter)...
-python -m isort .
+echo Sorting imports in Python files...
+python -m isort . --skip-gitignore --skip ".venv"
+if errorlevel 1 (
+    echo ERROR: Isort formatting failed.
+    pause
+    exit /b 1
+)
+echo OK.
 
 echo.
-echo ========================================================
+echo =====================================================
 echo Formatting Complete!
-echo ========================================================
+echo =====================================================
+echo.
+echo All Python files in backend have been formatted.
+echo.
 pause
