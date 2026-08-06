@@ -24,6 +24,32 @@ from vora_shared.models import (
 from vora_shared.models.document_extraction import AiExtractionInfo
 
 
+def _collect_framework_refs(
+    fw: Any,
+    user_ids: set[str],
+    assigned_framework_ids: set[str],
+    comparison_ids: set[str],
+    gap_ids: set[str],
+    merge_ids: set[str],
+    extraction_ids: set[str],
+) -> None:
+    if fw.uploadedBy:
+        user_ids.add(str(fw.uploadedBy))
+    if fw.assignedFrameworkId:
+        assigned_framework_ids.add(str(fw.assignedFrameworkId))
+    for pkg in coerce_packages(fw.packages):
+        if pkg.expertReview and pkg.expertReview.assignedExpert:
+            user_ids.add(str(pkg.expertReview.assignedExpert))
+        if pkg.comparison:
+            comparison_ids.add(str(pkg.comparison))
+        if pkg.gapAnalysis:
+            gap_ids.add(str(pkg.gapAnalysis))
+        if pkg.mergeDocument:
+            merge_ids.add(str(pkg.mergeDocument))
+        for doc in pkg.documents or []:
+            if doc.aiExtraction:
+                extraction_ids.add(str(doc.aiExtraction))
+
 async def hydrate_maps(
     session: AsyncSession, frameworks: list[DeploymentFramework]
 ) -> dict[str, dict[str, Any]]:
@@ -38,22 +64,9 @@ async def hydrate_maps(
     assigned_framework_ids: set[str] = set()
 
     for fw in frameworks:
-        if fw.uploadedBy:
-            user_ids.add(str(fw.uploadedBy))
-        if fw.assignedFrameworkId:
-            assigned_framework_ids.add(str(fw.assignedFrameworkId))
-        for pkg in coerce_packages(fw.packages):
-            if pkg.expertReview and pkg.expertReview.assignedExpert:
-                user_ids.add(str(pkg.expertReview.assignedExpert))
-            if pkg.comparison:
-                comparison_ids.add(str(pkg.comparison))
-            if pkg.gapAnalysis:
-                gap_ids.add(str(pkg.gapAnalysis))
-            if pkg.mergeDocument:
-                merge_ids.add(str(pkg.mergeDocument))
-            for doc in pkg.documents or []:
-                if doc.aiExtraction:
-                    extraction_ids.add(str(doc.aiExtraction))
+        _collect_framework_refs(
+            fw, user_ids, assigned_framework_ids, comparison_ids, gap_ids, merge_ids, extraction_ids
+        )
 
     async def _fetch(model, ids):
         if not ids:
@@ -141,6 +154,71 @@ def format_document(
     }
 
 
+def _get(blob: Any, key: str, default: Any = None) -> Any:
+    if blob is None:
+        return default
+    if isinstance(blob, dict):
+        return blob.get(key, default)
+    return getattr(blob, key, default)
+
+
+def _format_gap_analysis(gap_data: Any, exclude_details: bool) -> dict[str, Any]:
+    if gap_data:
+        return {
+            "status": _get(gap_data, "status"),
+            "message": _get(gap_data, "message"),
+            "timestamp": _get(gap_data, "timestamp"),
+            **({} if exclude_details else {"deployment_gap_results": _get(gap_data, "deployment_gap_results") or []}),
+        }
+    return {
+        "status": "pending",
+        "message": None,
+        "timestamp": None,
+        **({} if exclude_details else {"deployment_gap_results": []}),
+    }
+
+
+def _format_comparison(comp_data: Any, exclude_details: bool) -> dict[str, Any]:
+    if comp_data:
+        return {
+            "status": _get(comp_data, "status"),
+            "message": _get(comp_data, "message"),
+            "timestamp": _get(comp_data, "timestamp"),
+            "comparison_time_seconds": _get(comp_data, "comparison_time_seconds"),
+            **({} if exclude_details else {"comparison_result": _get(comp_data, "comparison_result") or []}),
+        }
+    return {
+        "status": "pending",
+        "message": None,
+        "timestamp": None,
+        "comparison_time_seconds": None,
+        **({} if exclude_details else {"comparison_result": []}),
+    }
+
+
+def _format_merge_document(merge_data: Any, merge: Any, exclude_details: bool) -> dict[str, Any]:
+    if merge_data:
+        return {
+            "status": _get(merge_data, "status"),
+            "message": _get(merge_data, "message"),
+            "timestamp": _get(merge_data, "timestamp"),
+            **(
+                {}
+                if exclude_details
+                else {
+                    "controls_data": _get(merge_data, "controls_data") or [],
+                    "sourceDocuments": (merge.sourceDocuments if merge else []) or [],
+                }
+            ),
+        }
+    return {
+        "status": "pending",
+        "message": None,
+        "timestamp": None,
+        **({} if exclude_details else {"controls_data": [], "sourceDocuments": []}),
+    }
+
+
 def _json_status(blob: Any, key: str = "status") -> Any:
     if blob is None:
         return None
@@ -167,81 +245,15 @@ def format_package(
     gap_data = gap.gapAnalysis if gap else None
     merge_data = merge.mergeExtraction if merge else None
 
-    def _get(blob, key, default=None):
-        if blob is None:
-            return default
-        if isinstance(blob, dict):
-            return blob.get(key, default)
-        return getattr(blob, key, default)
-
     return {
         "packageVersion": pkg.packageVersion,
         "type": pkg.type,
         "trigger": pkg.trigger,
         "status": pkg.status,
         "documents": [format_document(doc, extractions, exclude_details) for doc in (pkg.documents or [])],
-        "gapAnalysis": (
-            {
-                "status": _get(gap_data, "status"),
-                "message": _get(gap_data, "message"),
-                "timestamp": _get(gap_data, "timestamp"),
-                **(
-                    {}
-                    if exclude_details
-                    else {"deployment_gap_results": _get(gap_data, "deployment_gap_results") or []}
-                ),
-            }
-            if gap_data
-            else {
-                "status": "pending",
-                "message": None,
-                "timestamp": None,
-                **({} if exclude_details else {"deployment_gap_results": []}),
-            }
-        ),
-        "comparison": (
-            {
-                "status": _get(comp_data, "status"),
-                "message": _get(comp_data, "message"),
-                "timestamp": _get(comp_data, "timestamp"),
-                "comparison_time_seconds": _get(comp_data, "comparison_time_seconds"),
-                **(
-                    {}
-                    if exclude_details
-                    else {"comparison_result": _get(comp_data, "comparison_result") or []}
-                ),
-            }
-            if comp_data
-            else {
-                "status": "pending",
-                "message": None,
-                "timestamp": None,
-                "comparison_time_seconds": None,
-                **({} if exclude_details else {"comparison_result": []}),
-            }
-        ),
-        "mergeDocument": (
-            {
-                "status": _get(merge_data, "status"),
-                "message": _get(merge_data, "message"),
-                "timestamp": _get(merge_data, "timestamp"),
-                **(
-                    {}
-                    if exclude_details
-                    else {
-                        "controls_data": _get(merge_data, "controls_data") or [],
-                        "sourceDocuments": (merge.sourceDocuments if merge else []) or [],
-                    }
-                ),
-            }
-            if merge_data
-            else {
-                "status": "pending",
-                "message": None,
-                "timestamp": None,
-                **({} if exclude_details else {"controls_data": [], "sourceDocuments": []}),
-            }
-        ),
+        "gapAnalysis": _format_gap_analysis(gap_data, exclude_details),
+        "comparison": _format_comparison(comp_data, exclude_details),
+        "mergeDocument": _format_merge_document(merge_data, merge, exclude_details),
         "expertReview": format_expert_review(pkg.expertReview, users),
         "createdAt": pkg.createdAt,
         "updatedAt": pkg.updatedAt,
@@ -292,6 +304,28 @@ def format_deployment_framework(
     }
 
 
+def _derive_ai_status(statuses: list[str]) -> str:
+    status = "pending"
+    if "failed" in statuses:
+        status = "failed"
+    elif "processing" in statuses:
+        status = "processing"
+    elif "uploaded" in statuses:
+        status = "uploaded"
+    elif statuses and all(s == "extracted" for s in statuses):
+        status = "extracted"
+    elif "extracted" in statuses:
+        status = "processing"
+    return status
+
+def _derive_ai_timestamp(resolved: list[Any]) -> Any:
+    timestamps = []
+    for e in resolved:
+        ai = _as_ai(e.aiExtraction)
+        if ai and ai.timestamp:
+            timestamps.append(ai.timestamp)
+    return max(timestamps) if timestamps else None
+
 def derive_package_ai_extraction(
     current_package: PackageVersion | None, extractions: dict[str, DocumentExtraction]
 ) -> dict[str, Any] | None:
@@ -313,24 +347,9 @@ def derive_package_ai_extraction(
         if ai and ai.status:
             statuses.append(str(ai.status).lower())
 
-    status = "pending"
-    if "failed" in statuses:
-        status = "failed"
-    elif "processing" in statuses:
-        status = "processing"
-    elif "uploaded" in statuses:
-        status = "uploaded"
-    elif statuses and all(s == "extracted" for s in statuses):
-        status = "extracted"
-    elif "extracted" in statuses:
-        status = "processing"
+    status = _derive_ai_status(statuses)
 
-    timestamps = []
-    for e in resolved:
-        ai = _as_ai(e.aiExtraction)
-        if ai and ai.timestamp:
-            timestamps.append(ai.timestamp)
-    timestamp = max(timestamps) if timestamps else None
+    timestamp = _derive_ai_timestamp(resolved)
 
     return {"status": status, "timestamp": timestamp}
 

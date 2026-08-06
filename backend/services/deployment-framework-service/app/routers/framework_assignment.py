@@ -277,6 +277,50 @@ def _find_file_version(file_versions: list, file_version: str):
     return next((fv for fv in file_versions if fv.fileVersion == file_version), None)
 
 
+def _validate_assignment_for_modification(
+    assignment: Any, file_version: str, file_versions: list[Any]
+) -> tuple[JSONResponse | None, Any | None]:
+    file_version_doc = _find_file_version(file_versions, file_version)
+    if not file_version_doc:
+        return error(
+            format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=file_version), 404
+        ), None
+
+    fin = as_finalization(assignment.finalization)
+    if fin.isFinalized:
+        return error(BUSINESS_MESSAGES["CANNOT_MODIFY_FINALIZED"], 400), None
+
+    if not file_version_doc.aiExtraction:
+        return error(BUSINESS_MESSAGES["AI_EXTRACTION_NOT_FOUND"], 400), None
+
+    return None, file_version_doc
+
+
+def _update_deployment_points(target_control: Any, deployment_points: list[dict[str, Any]]) -> None:
+    from vora_shared.models.framework_assignment import AssignmentDeploymentPoint, AssignmentWeightage
+
+    new_points = []
+    for idx, dp in enumerate(deployment_points):
+        if not (dp.get("name") or "").strip():
+            continue
+        weightage = dp.get("weightage") or {}
+        new_points.append(
+            AssignmentDeploymentPoint(
+                id=dp.get("id") or f"DP-{idx + 1:03d}",
+                name=dp["name"].strip(),
+                status=dp.get("status", "pending"),
+                path=dp.get("path", ""),
+                weightage=AssignmentWeightage(
+                    framework_weightage=weightage.get("framework_weightage", 0),
+                    customer_weightage=weightage.get("customer_weightage", 0),
+                ),
+                score=dp.get("score", 0),
+                remark=dp.get("remark", ""),
+            )
+        )
+    target_control.deployment_points = new_points
+
+
 @router.post("/{id}/file-versions/{fileVersion}/controls")
 async def add_assigned_framework_control(
     id: str, file_version: Annotated[str, Path(alias="fileVersion")], ctx: Annotated[RequestContext, Depends(get_context)], body: Annotated[dict[str, Any], Body(...)]
@@ -297,18 +341,9 @@ async def add_assigned_framework_control(
             return not_found(BUSINESS_MESSAGES["ASSIGNMENT_NOT_FOUND"])
 
         file_versions = coerce_file_versions(assignment.fileVersions)
-        file_version_doc = _find_file_version(file_versions, file_version)
-        if not file_version_doc:
-            return error(
-                format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=file_version), 404
-            )
-
-        fin = as_finalization(assignment.finalization)
-        if fin.isFinalized:
-            return error(BUSINESS_MESSAGES["CANNOT_MODIFY_FINALIZED"], 400)
-
-        if not file_version_doc.aiExtraction:
-            return error(BUSINESS_MESSAGES["AI_EXTRACTION_NOT_FOUND"], 400)
+        err_response, file_version_doc = _validate_assignment_for_modification(assignment, file_version, file_versions)
+        if err_response:
+            return err_response
 
         controls_data = list(file_version_doc.aiExtraction)
 
@@ -380,18 +415,9 @@ async def update_assigned_framework_control(
             return not_found(BUSINESS_MESSAGES["ASSIGNMENT_NOT_FOUND"])
 
         file_versions = coerce_file_versions(assignment.fileVersions)
-        file_version_doc = _find_file_version(file_versions, file_version)
-        if not file_version_doc:
-            return error(
-                format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=file_version), 404
-            )
-
-        fin = as_finalization(assignment.finalization)
-        if fin.isFinalized:
-            return error(BUSINESS_MESSAGES["CANNOT_MODIFY_FINALIZED"], 400)
-
-        if not file_version_doc.aiExtraction:
-            return error(BUSINESS_MESSAGES["AI_EXTRACTION_NOT_FOUND"], 400)
+        err_response, file_version_doc = _validate_assignment_for_modification(assignment, file_version, file_versions)
+        if err_response:
+            return err_response
 
         target_control = helper.find_assigned_control(file_version_doc.aiExtraction, control_id)
         if not target_control:
@@ -411,28 +437,7 @@ async def update_assigned_framework_control(
             target_control.description = description.strip()
 
         if isinstance(deployment_points, list):
-            from vora_shared.models.framework_assignment import AssignmentDeploymentPoint, AssignmentWeightage
-
-            new_points = []
-            for idx, dp in enumerate(deployment_points):
-                if not (dp.get("name") or "").strip():
-                    continue
-                weightage = dp.get("weightage") or {}
-                new_points.append(
-                    AssignmentDeploymentPoint(
-                        id=dp.get("id") or f"DP-{idx + 1:03d}",
-                        name=dp["name"].strip(),
-                        status=dp.get("status", "pending"),
-                        path=dp.get("path", ""),
-                        weightage=AssignmentWeightage(
-                            framework_weightage=weightage.get("framework_weightage", 0),
-                            customer_weightage=weightage.get("customer_weightage", 0),
-                        ),
-                        score=dp.get("score", 0),
-                        remark=dp.get("remark", ""),
-                    )
-                )
-            target_control.deployment_points = new_points
+            _update_deployment_points(target_control, deployment_points)
 
         if not target_control.customization:
             from vora_shared.models.framework_assignment import AssignmentCustomization
@@ -461,18 +466,9 @@ async def delete_assigned_framework_control(
             return not_found(BUSINESS_MESSAGES["ASSIGNMENT_NOT_FOUND"])
 
         file_versions = coerce_file_versions(assignment.fileVersions)
-        file_version_doc = _find_file_version(file_versions, file_version)
-        if not file_version_doc:
-            return error(
-                format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=file_version), 404
-            )
-
-        fin = as_finalization(assignment.finalization)
-        if fin.isFinalized:
-            return error(BUSINESS_MESSAGES["CANNOT_MODIFY_FINALIZED"], 400)
-
-        if not file_version_doc.aiExtraction:
-            return error(BUSINESS_MESSAGES["AI_EXTRACTION_NOT_FOUND"], 400)
+        err_response, file_version_doc = _validate_assignment_for_modification(assignment, file_version, file_versions)
+        if err_response:
+            return err_response
 
         controls_data = list(file_version_doc.aiExtraction)
         delete_result = helper.delete_control_from_section(controls_data, control_id, file_version)
@@ -509,18 +505,9 @@ async def update_assigned_framework_control_weightage(
             return not_found(BUSINESS_MESSAGES["ASSIGNMENT_NOT_FOUND"])
 
         file_versions = coerce_file_versions(assignment.fileVersions)
-        file_version_doc = _find_file_version(file_versions, file_version)
-        if not file_version_doc:
-            return error(
-                format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=file_version), 404
-            )
-
-        fin = as_finalization(assignment.finalization)
-        if fin.isFinalized:
-            return error(BUSINESS_MESSAGES["CANNOT_MODIFY_FINALIZED"], 400)
-
-        if not file_version_doc.aiExtraction:
-            return error(BUSINESS_MESSAGES["AI_EXTRACTION_NOT_FOUND"], 400)
+        err_response, file_version_doc = _validate_assignment_for_modification(assignment, file_version, file_versions)
+        if err_response:
+            return err_response
 
         target_control = helper.find_assigned_control(file_version_doc.aiExtraction, control_id)
         if not target_control:
@@ -580,18 +567,9 @@ async def update_control_applicability(
             return not_found(BUSINESS_MESSAGES["ASSIGNMENT_NOT_FOUND"])
 
         file_versions = coerce_file_versions(assignment.fileVersions)
-        file_version_doc = _find_file_version(file_versions, file_version)
-        if not file_version_doc:
-            return error(
-                format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=file_version), 404
-            )
-
-        fin = as_finalization(assignment.finalization)
-        if fin.isFinalized:
-            return error(BUSINESS_MESSAGES["CANNOT_MODIFY_FINALIZED"], 400)
-
-        if not file_version_doc.aiExtraction:
-            return error(BUSINESS_MESSAGES["AI_EXTRACTION_NOT_FOUND"], 400)
+        err_response, file_version_doc = _validate_assignment_for_modification(assignment, file_version, file_versions)
+        if err_response:
+            return err_response
 
         existing_controls = helper.collect_existing_controls(file_version_doc.aiExtraction, control_ids)
         if not existing_controls:
