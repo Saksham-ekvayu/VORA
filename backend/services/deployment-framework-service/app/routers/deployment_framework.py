@@ -6,7 +6,7 @@ import logging
 import os
 import re
 from datetime import datetime, timezone
-from typing import Any
+from typing import Annotated, Any
 
 from app.helpers import deployment_framework_helpers as helpers
 from app.helpers.deployment_framework_helpers import coerce_packages, dump_packages
@@ -15,8 +15,8 @@ from app.services import (
     data_formatter,
     package_builder,
 )
-from fastapi import APIRouter, Body, Depends, File, Form, Query, UploadFile
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Body, Depends, File, Form, Query, UploadFile, Path
+from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import delete, select
 from vora_shared import file_storage, query_builder
 from vora_shared.database import session_scope
@@ -36,6 +36,8 @@ logger = logging.getLogger("deployment_framework_router")
 
 router = APIRouter(tags=["deployment-framework"])
 
+_RESOURCE_DEPLOYMENT_FRAMEWORK = "Deployment framework"
+_RESOURCE_PACKAGE_VERSION = "Package version"
 
 def not_found(resource: str = "Resource"):
     return error(f"{resource} not found", 404)
@@ -60,19 +62,68 @@ def _expert_assigned(pkg, user_id: str) -> bool:
     return str(er.assignedExpert) == str(user_id) and er.status != "pending"
 
 
+def _filter_for_internal_expert(all_docs: list[Any], user_id: str) -> list[Any]:
+    filtered = []
+    for doc in all_docs:
+        packages = coerce_packages(doc.packages)
+        assigned = [p for p in packages if _expert_assigned(p, str(user_id))]
+        if assigned:
+            doc.packages = dump_packages(assigned)
+            latest = helpers.get_latest_package(assigned)
+            if latest:
+                doc.currentPackageVersion = latest.packageVersion
+            filtered.append(doc)
+    return filtered
+
+
+def _filter_for_user(all_docs: list[Any]) -> list[Any]:
+    filtered = []
+    for doc in all_docs:
+        packages = coerce_packages(doc.packages)
+        current = next(
+            (p for p in packages if p.packageVersion == doc.currentPackageVersion),
+            packages[0] if packages else None,
+        )
+        if current and current.expertReview and current.expertReview.status == "approved":
+            filtered.append(doc)
+    return filtered
+
+
+def _get_list_response_message(
+    user_role: str,
+    has_data: bool,
+    search: str | None,
+    ai_extraction_status: str | None,
+    request_review_status: str | None,
+) -> str:
+    if has_data:
+        return (
+            BUSINESS_MESSAGES["DEPLOYMENT_FRAMEWORKS_RETRIEVED"]
+            if user_role == "internal-expert"
+            else BUSINESS_MESSAGES["USER_FRAMEWORKS_RETRIEVED"]
+        )
+    if search or ai_extraction_status or request_review_status:
+        return BUSINESS_MESSAGES["NO_FRAMEWORKS_MATCH_CRITERIA"]
+    return (
+        BUSINESS_MESSAGES["NO_FRAMEWORKS_FOR_REVIEW"]
+        if user_role == "internal-expert"
+        else BUSINESS_MESSAGES["NO_USER_FRAMEWORKS"]
+    )
+
+
 # ─── GET / (list) ───────────────────────────────────────────────────────────
 
 
 @router.get("/")
 async def get_deployment_frameworks(
-    ctx: RequestContext = Depends(get_context),
-    page: int | None = Query(default=None),
-    limit: int = Query(default=10),
-    search: str | None = Query(default=None),
-    sortBy: str | None = Query(default=None),
-    sortOrder: str | None = Query(default=None),
-    aiExtractionStatus: str | None = Query(default=None),
-    requestReviewStatus: str | None = Query(default=None),
+    ctx: Annotated[RequestContext, Depends(get_context)],
+    page: Annotated[int | None, Query(default=None)] = None,
+    limit: Annotated[int, Query(default=10)] = 10,
+    search: Annotated[str | None, Query(default=None)] = None,
+    sort_by: Annotated[str | None, Query(alias="sortBy", default=None)] = None,
+    sort_order: Annotated[str | None, Query(alias="sortOrder", default=None)] = None,
+    ai_extraction_status: Annotated[str | None, Query(alias="aiExtractionStatus", default=None)] = None,
+    request_review_status: Annotated[str | None, Query(alias="requestReviewStatus", default=None)] = None,
 ):
     user = ctx.user
     tenant_id = ctx.tenant_id
@@ -87,40 +138,18 @@ async def get_deployment_frameworks(
 
     async with session_scope() as session:
         base_filters = []
-        if user.role == "internal-expert":
-            pass
-        else:
+        if user.role != "internal-expert":
             base_filters.append(DeploymentFramework.tenantId == tenant_id)
 
-        # Role filters that need JSONB inspection are applied in Python, then paginated manually.
         stmt = select(DeploymentFramework)
         for f in base_filters:
             stmt = stmt.where(f)
         all_docs = list((await session.execute(stmt)).scalars().all())
 
         if user.role == "internal-expert":
-            filtered = []
-            for doc in all_docs:
-                packages = coerce_packages(doc.packages)
-                assigned = [p for p in packages if _expert_assigned(p, str(user.id))]
-                if assigned:
-                    doc.packages = dump_packages(assigned)
-                    latest = helpers.get_latest_package(assigned)
-                    if latest:
-                        doc.currentPackageVersion = latest.packageVersion
-                    filtered.append(doc)
-            all_docs = filtered
+            all_docs = _filter_for_internal_expert(all_docs, str(user.id))
         elif user.role == "user":
-            filtered = []
-            for doc in all_docs:
-                packages = coerce_packages(doc.packages)
-                current = next(
-                    (p for p in packages if p.packageVersion == doc.currentPackageVersion),
-                    packages[0] if packages else None,
-                )
-                if current and current.expertReview and current.expertReview.status == "approved":
-                    filtered.append(doc)
-            all_docs = filtered
+            all_docs = _filter_for_user(all_docs)
 
         if search:
             term = search.lower()
@@ -131,8 +160,8 @@ async def get_deployment_frameworks(
                 or term in (d.frameworkVersion or "").lower()
             ]
 
-        sort_field = sortBy if sortBy in allowed_sort_fields else "createdAt"
-        reverse = (sortOrder or "").lower() != "asc"
+        sort_field = sort_by if sort_by in allowed_sort_fields else "createdAt"
+        reverse = (sort_order or "").lower() != "asc"
         all_docs.sort(key=lambda d: getattr(d, sort_field, None) or d.createdAt, reverse=reverse)
 
         maps = await data_formatter.hydrate_maps(session, all_docs)
@@ -140,17 +169,17 @@ async def get_deployment_frameworks(
             data_formatter.format_deployment_framework_list_item(doc, maps) for doc in all_docs
         ]
 
-        if aiExtractionStatus:
+        if ai_extraction_status:
             formatted = [
                 d
                 for d in formatted
-                if (d.get("aiExtraction") or {}).get("status") == aiExtractionStatus
+                if (d.get("aiExtraction") or {}).get("status") == ai_extraction_status
             ]
-        if requestReviewStatus:
+        if request_review_status:
             formatted = [
                 d
                 for d in formatted
-                if (d.get("requestReview") or {}).get("status") == requestReviewStatus
+                if (d.get("requestReview") or {}).get("status") == request_review_status
             ]
 
         page_num = query_builder.clamp_page(page)
@@ -162,20 +191,9 @@ async def get_deployment_frameworks(
             "pagination": query_builder.build_pagination_meta(page_num, limit_num, total),
         }
 
-        message = (
-            BUSINESS_MESSAGES["DEPLOYMENT_FRAMEWORKS_RETRIEVED"]
-            if user.role == "internal-expert"
-            else BUSINESS_MESSAGES["USER_FRAMEWORKS_RETRIEVED"]
+        message = _get_list_response_message(
+            user.role, bool(result["data"]), search, ai_extraction_status, request_review_status
         )
-        if not result["data"]:
-            if search or aiExtractionStatus or requestReviewStatus:
-                message = BUSINESS_MESSAGES["NO_FRAMEWORKS_MATCH_CRITERIA"]
-            else:
-                message = (
-                    BUSINESS_MESSAGES["NO_FRAMEWORKS_FOR_REVIEW"]
-                    if user.role == "internal-expert"
-                    else BUSINESS_MESSAGES["NO_USER_FRAMEWORKS"]
-                )
 
         return paginated(result["data"], result["pagination"], message)
 
@@ -183,9 +201,25 @@ async def get_deployment_frameworks(
 # ─── GET /client-controls ───────────────────────────────────────────────────
 
 
+def _get_live_package(framework: Any) -> Any | None:
+    packages = coerce_packages(framework.packages)
+    return next((p for p in packages if p.status == "live"), None)
+
+
+def _format_client_control(fw: Any, live_package: Any, merge: Any | None) -> dict[str, Any]:
+    controls_data = _blob_get(merge.mergeExtraction if merge else None, "controls_data") or []
+    return {
+        "frameworkId": str(fw.id) if fw and getattr(fw, "id", None) else None,
+        "frameworkName": fw.frameworkName,
+        "frameworkVersion": fw.frameworkVersion,
+        "packageVersion": live_package.packageVersion,
+        "controls": controls_data or [],
+    }
+
+
 @router.get("/client-controls")
 async def get_deployment_framework_package_client_controls(
-    ctx: RequestContext = Depends(get_context),
+    ctx: Annotated[RequestContext, Depends(get_context)],
 ):
     async with session_scope() as session:
         frameworks = list(
@@ -200,8 +234,7 @@ async def get_deployment_framework_package_client_controls(
         merge_ids = []
         live_by_fw = []
         for fw in frameworks:
-            packages = coerce_packages(fw.packages)
-            live_package = next((p for p in packages if p.status == "live"), None)
+            live_package = _get_live_package(fw)
             if not live_package:
                 continue
             live_by_fw.append((fw, live_package))
@@ -222,18 +255,7 @@ async def get_deployment_framework_package_client_controls(
             merge = (
                 merges.get(str(live_package.mergeDocument)) if live_package.mergeDocument else None
             )
-            controls_data = (
-                _blob_get(merge.mergeExtraction if merge else None, "controls_data") or []
-            )
-            client_controls.append(
-                {
-                    "frameworkId": str(fw.id) if fw and getattr(fw, "id", None) else None,
-                    "frameworkName": fw.frameworkName,
-                    "frameworkVersion": fw.frameworkVersion,
-                    "packageVersion": live_package.packageVersion,
-                    "controls": controls_data or [],
-                }
-            )
+            client_controls.append(_format_client_control(fw, live_package, merge))
 
         return success(client_controls, "Client controls retrieved successfully")
 
@@ -241,11 +263,33 @@ async def get_deployment_framework_package_client_controls(
 # ─── PATCH /:id/deployment-points ───────────────────────────────────────────
 
 
+def _update_deployment_point_path(
+    controls_data: list[Any], section_id: str | None, control_id: str, point_id: str, path_value: str
+) -> bool:
+    for section in controls_data:
+        if section_id and section.get("id") != section_id:
+            continue
+        control = next(
+            (c for c in (section.get("controls") or []) if c.get("id") == control_id), None
+        )
+        if not control:
+            continue
+        dp = next(
+            (d for d in (control.get("deployment_points") or []) if d.get("id") == point_id),
+            None,
+        )
+        if not dp:
+            continue
+        dp["path"] = path_value
+        return True
+    return False
+
+
 @router.patch("/{id}/deployment-points")
 async def update_deployment_package_point_path(
     id: str,
-    ctx: RequestContext = Depends(get_context),
-    body: dict[str, Any] = Body(...),
+    ctx: Annotated[RequestContext, Depends(get_context)],
+    body: Annotated[dict[str, Any], Body(...)],
 ):
     control_id = body.get("controlId")
     point_id = body.get("pointId")
@@ -269,12 +313,12 @@ async def update_deployment_package_point_path(
             )
         ).scalar_one_or_none()
         if not framework:
-            return not_found("Deployment framework")
+            return not_found(_RESOURCE_DEPLOYMENT_FRAMEWORK)
 
         packages = coerce_packages(framework.packages)
         target_package = next((p for p in packages if p.packageVersion == package_version), None)
         if not target_package:
-            return not_found("Package version")
+            return not_found(_RESOURCE_PACKAGE_VERSION)
 
         if not target_package.mergeDocument:
             return not_found("Package merge document")
@@ -292,24 +336,10 @@ async def update_deployment_package_point_path(
 
         merge_data = dict(package_merge.mergeExtraction or {})
         controls_data = list(merge_data.get("controls_data") or [])
-        point_found = False
-        for section in controls_data:
-            if section_id and section.get("id") != section_id:
-                continue
-            control = next(
-                (c for c in (section.get("controls") or []) if c.get("id") == control_id), None
-            )
-            if not control:
-                continue
-            dp = next(
-                (d for d in (control.get("deployment_points") or []) if d.get("id") == point_id),
-                None,
-            )
-            if not dp:
-                continue
-            dp["path"] = path_value
-            point_found = True
-            break
+        
+        point_found = _update_deployment_point_path(
+            controls_data, section_id, control_id, point_id, path_value
+        )
 
         if not point_found:
             return not_found("Control or deployment point")
@@ -336,7 +366,7 @@ async def update_deployment_package_point_path(
 
 
 @router.get("/{id}")
-async def get_deployment_framework_by_id(id: str, ctx: RequestContext = Depends(get_context)):
+async def get_deployment_framework_by_id(id: str, ctx: Annotated[RequestContext, Depends(get_context)]):
     user = ctx.user
     async with session_scope() as session:
         framework = await session.get(DeploymentFramework, str(id))
@@ -375,9 +405,29 @@ async def get_deployment_framework_by_id(id: str, ctx: RequestContext = Depends(
 # ─── GET /:id/packages/:packageVersion ──────────────────────────────────────
 
 
+def _validate_package_access(user_role: str, user_id: str, found_package: Any) -> JSONResponse | None:
+    if user_role == "internal-expert":
+        assigned_expert_id = (
+            str(found_package.expertReview.assignedExpert)
+            if found_package.expertReview and found_package.expertReview.assignedExpert
+            else None
+        )
+        is_not_pending = (
+            found_package.expertReview.status != "pending"
+            if found_package.expertReview
+            else False
+        )
+        if assigned_expert_id != str(user_id) or not is_not_pending:
+            return not_found("Framework")
+    elif user_role == "user":
+        if not found_package.expertReview or found_package.expertReview.status != "approved":
+            return error(BUSINESS_MESSAGES["FRAMEWORK_ACCESS_DENIED"], 403)
+    return None
+
+
 @router.get("/{id}/packages/{packageVersion}")
 async def get_deployment_framework_package_by_version(
-    id: str, packageVersion: str, ctx: RequestContext = Depends(get_context)
+    id: str, package_version: Annotated[str, Path(alias="packageVersion")], ctx: Annotated[RequestContext, Depends(get_context)]
 ):
     user = ctx.user
     async with session_scope() as session:
@@ -389,29 +439,16 @@ async def get_deployment_framework_package_by_version(
             return not_found("Framework")
 
         packages = coerce_packages(framework.packages)
-        found_package = next((p for p in packages if p.packageVersion == packageVersion), None)
+        found_package = next((p for p in packages if p.packageVersion == package_version), None)
         if not found_package:
-            return not_found("Package version")
+            return not_found(_RESOURCE_PACKAGE_VERSION)
 
-        if user.role == "internal-expert":
-            assigned_expert_id = (
-                str(found_package.expertReview.assignedExpert)
-                if found_package.expertReview and found_package.expertReview.assignedExpert
-                else None
-            )
-            is_not_pending = (
-                found_package.expertReview.status != "pending"
-                if found_package.expertReview
-                else False
-            )
-            if assigned_expert_id != str(user.id) or not is_not_pending:
-                return not_found("Framework")
-        elif user.role == "user":
-            if not found_package.expertReview or found_package.expertReview.status != "approved":
-                return error(BUSINESS_MESSAGES["FRAMEWORK_ACCESS_DENIED"], 403)
+        validation_error = _validate_package_access(user.role, str(user.id), found_package)
+        if validation_error:
+            return validation_error
 
         framework.packages = dump_packages([found_package])
-        framework.currentPackageVersion = packageVersion
+        framework.currentPackageVersion = package_version
 
         maps = await data_formatter.hydrate_maps(session, [framework])
         response_data = data_formatter.format_deployment_framework(framework, maps, False)
@@ -421,12 +458,41 @@ async def get_deployment_framework_package_by_version(
 # ─── PUT /:id (update / new patch) ──────────────────────────────────────────
 
 
+async def _process_uploaded_files(files: list[UploadFile]) -> list[dict[str, Any]] | JSONResponse:
+    file_entries = []
+    for f in files:
+        content = await f.read()
+        validation = file_storage.validate_uploaded_file(f.filename or "", len(content))
+        if not validation.get("isValid"):
+            return error(validation.get("message"), validation.get("status"))
+        file_entries.append({"filename": f.filename or "file", "content": content})
+    return file_entries
+
+
+def _check_missing_files(new_package_documents: list[Any]) -> JSONResponse | None:
+    missing_file_docs = [
+        d
+        for d in new_package_documents
+        if not d.get("replicated") and (not d.get("fileUrl") or not d.get("fileHash"))
+    ]
+    if missing_file_docs:
+        missing_names = ", ".join(
+            str(d.get("originalFileName") or d.get("fileId")) for d in missing_file_docs
+        )
+        return error(
+            f"Missing uploaded file data for add/replace document(s): {missing_names}. "
+            "Add operations require file upload in the same multipart request.",
+            400,
+        )
+    return None
+
+
 @router.put("/{id}")
 async def update_deployment_framework(
     id: str,
-    ctx: RequestContext = Depends(get_context),
-    files: list[UploadFile] = File(default=[]),
-    metadata: str | None = Form(default=None),
+    ctx: Annotated[RequestContext, Depends(get_context)],
+    files: Annotated[list[UploadFile], File(default=[])] = [],
+    metadata: Annotated[str | None, Form(default=None)] = None,
 ):
     tenant_id = ctx.tenant_id
 
@@ -458,7 +524,7 @@ async def update_deployment_framework(
                     break
 
         if not framework:
-            return not_found("Deployment framework")
+            return not_found(_RESOURCE_DEPLOYMENT_FRAMEWORK)
 
         meta_dict: dict[str, Any] = {}
         if metadata:
@@ -476,13 +542,9 @@ async def update_deployment_framework(
             return error("Invalid patch type. Must be 'minor' or 'major'", 400)
 
         try:
-            file_entries = []
-            for f in files:
-                content = await f.read()
-                validation = file_storage.validate_uploaded_file(f.filename or "", len(content))
-                if not validation.get("isValid"):
-                    return error(validation.get("message"), validation.get("status"))
-                file_entries.append({"filename": f.filename or "file", "content": content})
+            file_entries = await _process_uploaded_files(files)
+            if isinstance(file_entries, JSONResponse):
+                return file_entries
 
             if patch_type == "minor":
                 result = package_builder.build_minor_patch(
@@ -500,20 +562,9 @@ async def update_deployment_framework(
             if save_result.get("error"):
                 return error(f"Failed to save file: {save_result['filename']}", 500)
 
-            missing_file_docs = [
-                d
-                for d in result["newPackage"]["documents"]
-                if not d.get("replicated") and (not d.get("fileUrl") or not d.get("fileHash"))
-            ]
-            if missing_file_docs:
-                missing_names = ", ".join(
-                    str(d.get("originalFileName") or d.get("fileId")) for d in missing_file_docs
-                )
-                return error(
-                    f"Missing uploaded file data for add/replace document(s): {missing_names}. "
-                    "Add operations require file upload in the same multipart request.",
-                    400,
-                )
+            missing_files_error = _check_missing_files(result["newPackage"]["documents"])
+            if missing_files_error:
+                return missing_files_error
 
             validation = package_builder.validate_package(result["newPackage"])
             if not validation["isValid"]:
@@ -579,7 +630,7 @@ async def update_deployment_framework(
 
 
 @router.delete("/{id}")
-async def delete_deployment_framework(id: str, ctx: RequestContext = Depends(get_context)):
+async def delete_deployment_framework(id: str, ctx: Annotated[RequestContext, Depends(get_context)]):
     tenant_id = ctx.tenant_id
     user = ctx.user
 
@@ -593,7 +644,7 @@ async def delete_deployment_framework(id: str, ctx: RequestContext = Depends(get
             )
         ).scalar_one_or_none()
         if not framework:
-            return not_found("Deployment framework")
+            return not_found(_RESOURCE_DEPLOYMENT_FRAMEWORK)
 
         is_owner = str(framework.uploadedBy) == str(user.id)
         is_admin = user.role == "admin"
@@ -638,10 +689,10 @@ async def delete_deployment_framework(id: str, ctx: RequestContext = Depends(get
 
 @router.post("/upload", status_code=201)
 async def upload_deployment_framework(
-    ctx: RequestContext = Depends(get_context),
-    file: list[UploadFile] | None = File(default=None),
-    files: list[UploadFile] | None = File(default=None),
-    metadata: str | None = Form(default=None),
+    ctx: Annotated[RequestContext, Depends(get_context)],
+    file: Annotated[list[UploadFile] | None, File(default=None)] = None,
+    files: Annotated[list[UploadFile] | None, File(default=None)] = None,
+    metadata: Annotated[str | None, Form(default=None)] = None,
 ):
     import json
 
@@ -746,14 +797,14 @@ async def upload_deployment_framework(
 
 @router.get("/{frameworkId}/files/{fileId}/preview")
 async def preview_framework_file(
-    frameworkId: str, fileId: str, ctx: RequestContext = Depends(get_context)
+    framework_id: Annotated[str, Path(alias="frameworkId")], file_id: Annotated[str, Path(alias="fileId")], ctx: Annotated[RequestContext, Depends(get_context)]
 ):
     async with session_scope() as session:
-        framework = await session.get(DeploymentFramework, str(frameworkId))
-        if not framework or not helpers.find_framework_document(framework, fileId):
+        framework = await session.get(DeploymentFramework, str(framework_id))
+        if not framework or not helpers.find_framework_document(framework, file_id):
             return not_found("Framework")
 
-        document = helpers.find_framework_document(framework, fileId)
+        document = helpers.find_framework_document(framework, file_id)
         if not document:
             return not_found("Document")
 
@@ -775,14 +826,14 @@ async def preview_framework_file(
 
 @router.get("/{frameworkId}/files/{fileId}/download")
 async def download_framework_file(
-    frameworkId: str, fileId: str, ctx: RequestContext = Depends(get_context)
+    framework_id: Annotated[str, Path(alias="frameworkId")], file_id: Annotated[str, Path(alias="fileId")], ctx: Annotated[RequestContext, Depends(get_context)]
 ):
     async with session_scope() as session:
-        framework = await session.get(DeploymentFramework, str(frameworkId))
-        if not framework or not helpers.find_framework_document(framework, fileId):
+        framework = await session.get(DeploymentFramework, str(framework_id))
+        if not framework or not helpers.find_framework_document(framework, file_id):
             return not_found("Framework")
 
-        document = helpers.find_framework_document(framework, fileId)
+        document = helpers.find_framework_document(framework, file_id)
         if not document:
             return not_found("Document")
 
@@ -804,7 +855,7 @@ async def download_framework_file(
 
 @router.delete("/{frameworkId}/packages/{packageVersion}")
 async def delete_deployment_framework_package(
-    frameworkId: str, packageVersion: str, ctx: RequestContext = Depends(get_context)
+    framework_id: Annotated[str, Path(alias="frameworkId")], package_version: Annotated[str, Path(alias="packageVersion")], ctx: Annotated[RequestContext, Depends(get_context)]
 ):
     tenant_id = ctx.tenant_id
 
@@ -812,17 +863,17 @@ async def delete_deployment_framework_package(
         framework = (
             await session.execute(
                 select(DeploymentFramework).where(
-                    DeploymentFramework.id == str(frameworkId),
+                    DeploymentFramework.id == str(framework_id),
                     DeploymentFramework.tenantId == tenant_id,
                 )
             )
         ).scalar_one_or_none()
         if not framework:
-            return not_found("Deployment framework")
+            return not_found(_RESOURCE_DEPLOYMENT_FRAMEWORK)
 
         packages = coerce_packages(framework.packages)
         package_index = next(
-            (i for i, p in enumerate(packages) if p.packageVersion == packageVersion), -1
+            (i for i, p in enumerate(packages) if p.packageVersion == package_version), -1
         )
         if package_index == -1:
             return not_found("Package")
@@ -877,9 +928,39 @@ async def delete_deployment_framework_package(
 # ─── GET /:id/packages/:packageVersion/report ───────────────────────────────
 
 
+def _validate_report_statuses(found_package: Any, maps: dict[str, Any]) -> JSONResponse | None:
+    merge = (
+        maps["merges"].get(str(found_package.mergeDocument))
+        if found_package.mergeDocument
+        else None
+    )
+    comparison = (
+        maps["comparisons"].get(str(found_package.comparison))
+        if found_package.comparison
+        else None
+    )
+    gap = (
+        maps["gaps"].get(str(found_package.gapAnalysis)) if found_package.gapAnalysis else None
+    )
+
+    merge_status = _blob_get(merge.mergeExtraction if merge else None, "status") or "pending"
+    comparison_status = (
+        _blob_get(comparison.comparison if comparison else None, "status") or "pending"
+    )
+    gap_status = _blob_get(gap.gapAnalysis if gap else None, "status") or "pending"
+
+    if merge_status != "merged":
+        return error(FRAMEWORK_MESSAGES["MERGE_DOCUMENT_NOT_COMPLETED"], 400)
+    if comparison_status != "completed":
+        return error(FRAMEWORK_MESSAGES["COMPARISON_NOT_COMPLETED"], 400)
+    if gap_status != "completed":
+        return error(FRAMEWORK_MESSAGES["GAP_ANALYSIS_NOT_COMPLETED"], 400)
+    return None
+
+
 @router.get("/{id}/packages/{packageVersion}/report")
 async def download_deployment_framework_report(
-    id: str, packageVersion: str, ctx: RequestContext = Depends(get_context)
+    id: str, package_version: Annotated[str, Path(alias="packageVersion")], ctx: Annotated[RequestContext, Depends(get_context)]
 ):
     user = ctx.user
     async with session_scope() as session:
@@ -889,46 +970,23 @@ async def download_deployment_framework_report(
 
         framework = (await session.execute(stmt)).scalar_one_or_none()
         if not framework:
-            return not_found("Deployment framework")
+            return not_found(_RESOURCE_DEPLOYMENT_FRAMEWORK)
 
         packages = coerce_packages(framework.packages)
-        found_package = next((p for p in packages if p.packageVersion == packageVersion), None)
+        found_package = next((p for p in packages if p.packageVersion == package_version), None)
         if not found_package:
-            return not_found("Package version")
+            return not_found(_RESOURCE_PACKAGE_VERSION)
 
         maps = await data_formatter.hydrate_maps(session, [framework])
-        merge = (
-            maps["merges"].get(str(found_package.mergeDocument))
-            if found_package.mergeDocument
-            else None
-        )
-        comparison = (
-            maps["comparisons"].get(str(found_package.comparison))
-            if found_package.comparison
-            else None
-        )
-        gap = (
-            maps["gaps"].get(str(found_package.gapAnalysis)) if found_package.gapAnalysis else None
-        )
-
-        merge_status = _blob_get(merge.mergeExtraction if merge else None, "status") or "pending"
-        comparison_status = (
-            _blob_get(comparison.comparison if comparison else None, "status") or "pending"
-        )
-        gap_status = _blob_get(gap.gapAnalysis if gap else None, "status") or "pending"
-
-        if merge_status != "merged":
-            return error(FRAMEWORK_MESSAGES["MERGE_DOCUMENT_NOT_COMPLETED"], 400)
-        if comparison_status != "completed":
-            return error(FRAMEWORK_MESSAGES["COMPARISON_NOT_COMPLETED"], 400)
-        if gap_status != "completed":
-            return error(FRAMEWORK_MESSAGES["GAP_ANALYSIS_NOT_COMPLETED"], 400)
+        validation_error = _validate_report_statuses(found_package, maps)
+        if validation_error:
+            return validation_error
 
         package_dict = data_formatter.format_package(found_package, maps, exclude_details=False)
         pdf_bytes = generate_deployment_framework_report_pdf(framework, package_dict)
         filename = (
             f"{re.sub(r'[^a-zA-Z0-9]', '_', framework.frameworkName or 'framework')}_"
-            f"{packageVersion.replace('.', '_')}_report.pdf"
+            f"{package_version.replace('.', '_')}_report.pdf"
         )
 
         from fastapi import Response
@@ -945,7 +1003,7 @@ async def download_deployment_framework_report(
 
 @router.post("/{id}/request-review")
 async def request_expert_review(
-    id: str, ctx: RequestContext = Depends(get_context), body: dict[str, Any] = Body(...)
+    id: str, ctx: Annotated[RequestContext, Depends(get_context)], body: Annotated[dict[str, Any], Body(...)]
 ):
     user = ctx.user
     tenant_id = ctx.tenant_id
@@ -970,12 +1028,12 @@ async def request_expert_review(
             )
         ).scalar_one_or_none()
         if not framework:
-            return not_found("Deployment framework")
+            return not_found(_RESOURCE_DEPLOYMENT_FRAMEWORK)
 
         packages = coerce_packages(framework.packages)
         found_package = next((p for p in packages if p.packageVersion == package_version), None)
         if not found_package:
-            return not_found("Package version")
+            return not_found(_RESOURCE_PACKAGE_VERSION)
 
         if found_package.expertReview and found_package.expertReview.status != "pending":
             return error(FRAMEWORK_MESSAGES["REVIEW_ALREADY_REQUESTED"], 400)
@@ -1036,12 +1094,37 @@ async def request_expert_review(
 # ─── PATCH /:id/packages/:packageVersion/review ─────────────────────────────
 
 
+def _apply_review_action(
+    action: str, framework: Any, packages: list[Any], found_package: Any, package_version: str, comments: str | None
+) -> None:
+    if action == "approve":
+        for pkg in packages:
+            if pkg.status == "live" and pkg.packageVersion != package_version:
+                pkg.status = "superseded"
+                pkg.updatedAt = _utcnow()
+
+        found_package.type = "deployed"
+        found_package.status = "live"
+        found_package.expertReview.status = "approved"
+        found_package.expertReview.reviewedAt = _utcnow()
+        found_package.expertReview.comments = comments
+        found_package.updatedAt = _utcnow()
+        framework.currentPackageVersion = package_version
+    else:
+        found_package.type = "pre-release"
+        found_package.status = "returned"
+        found_package.expertReview.status = "rejected"
+        found_package.expertReview.reviewedAt = _utcnow()
+        found_package.expertReview.comments = comments
+        found_package.updatedAt = _utcnow()
+
+
 @router.patch("/{id}/packages/{packageVersion}/review")
 async def review_deployment_package(
     id: str,
-    packageVersion: str,
-    ctx: RequestContext = Depends(get_context),
-    body: dict[str, Any] = Body(...),
+    package_version: Annotated[str, Path(alias="packageVersion")],
+    ctx: Annotated[RequestContext, Depends(get_context)],
+    body: Annotated[dict[str, Any], Body(...)],
 ):
     user = ctx.user
     tenant_id = ctx.tenant_id
@@ -1061,12 +1144,12 @@ async def review_deployment_package(
             )
         ).scalar_one_or_none()
         if not framework:
-            return not_found("Deployment framework")
+            return not_found(_RESOURCE_DEPLOYMENT_FRAMEWORK)
 
         packages = coerce_packages(framework.packages)
-        found_package = next((p for p in packages if p.packageVersion == packageVersion), None)
+        found_package = next((p for p in packages if p.packageVersion == package_version), None)
         if not found_package:
-            return not_found("Package version")
+            return not_found(_RESOURCE_PACKAGE_VERSION)
 
         if not found_package.expertReview or found_package.expertReview.status != "requested":
             return error(FRAMEWORK_MESSAGES["REVIEW_NOT_REQUESTED"], 400)
@@ -1079,26 +1162,7 @@ async def review_deployment_package(
         if assigned_expert_id != str(user.id):
             return forbidden(FRAMEWORK_MESSAGES["ONLY_ASSIGNED_FRAMEWORKS"])
 
-        if action == "approve":
-            for pkg in packages:
-                if pkg.status == "live" and pkg.packageVersion != packageVersion:
-                    pkg.status = "superseded"
-                    pkg.updatedAt = _utcnow()
-
-            found_package.type = "deployed"
-            found_package.status = "live"
-            found_package.expertReview.status = "approved"
-            found_package.expertReview.reviewedAt = _utcnow()
-            found_package.expertReview.comments = comments
-            found_package.updatedAt = _utcnow()
-            framework.currentPackageVersion = packageVersion
-        else:
-            found_package.type = "pre-release"
-            found_package.status = "returned"
-            found_package.expertReview.status = "rejected"
-            found_package.expertReview.reviewedAt = _utcnow()
-            found_package.expertReview.comments = comments
-            found_package.updatedAt = _utcnow()
+        _apply_review_action(action, framework, packages, found_package, package_version, comments)
 
         framework.packages = dump_packages(packages)
         framework.updatedAt = _utcnow()
@@ -1113,7 +1177,7 @@ async def review_deployment_package(
                 "frameworkId": (
                     str(framework.id) if framework and getattr(framework, "id", None) else None
                 ),
-                "packageVersion": packageVersion,
+                "packageVersion": package_version,
                 "type": found_package.type,
                 "status": found_package.status,
                 "expertReview": {
@@ -1129,12 +1193,41 @@ async def review_deployment_package(
 # ─── POST /:id/packegeVersion/:packegeVersion/add-comparison-review-remark ──
 
 
+def _update_comparison_review_remark(
+    results: list[Any], assigned_control_id: str, deployment_control_id: str, comment: str | None
+) -> bool:
+    for section in results:
+        controls = (
+            section.get("controls")
+            if isinstance(section, dict)
+            else getattr(section, "controls", None)
+        )
+        for c in controls or []:
+            c_assigned = (
+                c.get("assigned_framework_control_id")
+                if isinstance(c, dict)
+                else getattr(c, "assigned_framework_control_id", None)
+            )
+            c_deploy = (
+                c.get("deployment_framework_control_id")
+                if isinstance(c, dict)
+                else getattr(c, "deployment_framework_control_id", None)
+            )
+            if c_assigned == assigned_control_id and c_deploy == deployment_control_id:
+                if isinstance(c, dict):
+                    c["reviewComment"] = comment or ""
+                else:
+                    c.reviewComment = comment or ""
+                return True
+    return False
+
+
 @router.post("/{id}/packegeVersion/{packegeVersion}/add-comparison-review-remark")
 async def add_review_remark(
     id: str,
-    packegeVersion: str,
-    ctx: RequestContext = Depends(get_context),
-    body: dict[str, Any] = Body(...),
+    package_version: Annotated[str, Path(alias="packegeVersion")],
+    ctx: Annotated[RequestContext, Depends(get_context)],
+    body: Annotated[dict[str, Any], Body(...)],
 ):
     user = ctx.user
     tenant_id = ctx.tenant_id
@@ -1155,12 +1248,12 @@ async def add_review_remark(
             )
         ).scalar_one_or_none()
         if not framework:
-            return not_found("Deployment framework")
+            return not_found(_RESOURCE_DEPLOYMENT_FRAMEWORK)
 
         packages = coerce_packages(framework.packages)
-        found_package = next((p for p in packages if p.packageVersion == packegeVersion), None)
+        found_package = next((p for p in packages if p.packageVersion == package_version), None)
         if not found_package:
-            return not_found("Package version")
+            return not_found(_RESOURCE_PACKAGE_VERSION)
 
         if not found_package.comparison:
             return error("Comparison not completed or not found for this package version", 400)
@@ -1171,33 +1264,9 @@ async def add_review_remark(
 
         comp = dict(package_comparison.comparison or {})
         results = list(comp.get("comparison_result") or [])
-        control_found = False
-        for section in results:
-            controls = (
-                section.get("controls")
-                if isinstance(section, dict)
-                else getattr(section, "controls", None)
-            )
-            for c in controls or []:
-                c_assigned = (
-                    c.get("assigned_framework_control_id")
-                    if isinstance(c, dict)
-                    else c.assigned_framework_control_id
-                )
-                c_deploy = (
-                    c.get("deployment_framework_control_id")
-                    if isinstance(c, dict)
-                    else c.deployment_framework_control_id
-                )
-                if c_assigned == assigned_control_id and c_deploy == deployment_control_id:
-                    if isinstance(c, dict):
-                        c["reviewComment"] = comment or ""
-                    else:
-                        c.reviewComment = comment or ""
-                    control_found = True
-                    break
-            if control_found:
-                break
+        control_found = _update_comparison_review_remark(
+            results, assigned_control_id, deployment_control_id, comment
+        )
 
         if not control_found:
             return not_found("Control alignment not found in comparison results")
@@ -1213,9 +1282,9 @@ async def add_review_remark(
 @router.post("/{id}/packegeVersion/{packegeVersion}/add-gap-review-remark")
 async def add_gap_review_remark(
     id: str,
-    packegeVersion: str,
-    ctx: RequestContext = Depends(get_context),
-    body: dict[str, Any] = Body(...),
+    package_version: Annotated[str, Path(alias="packegeVersion")],
+    ctx: Annotated[RequestContext, Depends(get_context)],
+    body: Annotated[dict[str, Any], Body(...)],
 ):
     user = ctx.user
     tenant_id = ctx.tenant_id
@@ -1238,12 +1307,12 @@ async def add_gap_review_remark(
             )
         ).scalar_one_or_none()
         if not framework:
-            return not_found("Deployment framework")
+            return not_found(_RESOURCE_DEPLOYMENT_FRAMEWORK)
 
         packages = coerce_packages(framework.packages)
-        found_package = next((p for p in packages if p.packageVersion == packegeVersion), None)
+        found_package = next((p for p in packages if p.packageVersion == package_version), None)
         if not found_package:
-            return not_found("Package version")
+            return not_found(_RESOURCE_PACKAGE_VERSION)
 
         if not found_package.gapAnalysis:
             return error("Gap analysis not completed or not found for this package version", 400)
@@ -1269,3 +1338,4 @@ async def add_gap_review_remark(
         gap["deployment_gap_results"] = results
         package_gap_analysis.gapAnalysis = gap
         return success({"reviewComment": comment}, "Gap review remark added successfully")
+

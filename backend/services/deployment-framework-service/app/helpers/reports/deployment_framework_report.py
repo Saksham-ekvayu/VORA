@@ -131,6 +131,34 @@ def _avg_sim(dp_rows: list[dict[str, Any]]) -> float:
     return sum(d["sim"] for d in dp_rows) / len(dp_rows)
 
 
+def _process_comparison_control(ctrl: dict[str, Any], dp_data: dict[str, list[dict[str, Any]]]) -> dict[str, Any]:
+    control_id = (
+        ctrl.get("deployment_framework_control_id") or ctrl.get("assigned_framework_control_id") or ""
+    )
+    raw_score = ctrl.get("comparison_score") or 0
+    score = round(raw_score * 100) if raw_score <= 1 else round(raw_score)
+
+    impl, partial, not_impl = _count_from_dp_rows(dp_data.get(control_id, []))
+    sim = _avg_sim(dp_data.get(control_id, []))
+
+    return {
+        "id": control_id,
+        "name": ctrl.get("assigned_framework_control_name")
+        or ctrl.get("deployment_framework_control_name")
+        or control_id,
+        "assigned_id": ctrl.get("assigned_framework_control_id") or "",
+        "assigned_name": ctrl.get("assigned_framework_control_name") or "",
+        "deployment_id": ctrl.get("deployment_framework_control_id") or "",
+        "deployment_name": ctrl.get("deployment_framework_control_name") or "",
+        "score": score,
+        "match": _normalise_match(score),
+        "impl": impl,
+        "partial": partial,
+        "notImpl": not_impl,
+        "sim": round(sim, 1),
+    }
+
+
 def _parse_report_data(
     package_data: dict[str, Any],
 ) -> tuple[list[dict[str, Any]], dict[str, list[dict[str, Any]]]]:
@@ -142,33 +170,7 @@ def _parse_report_data(
 
     for section in comparison_result:
         for ctrl in section.get("controls") or []:
-            control_id = (
-                ctrl.get("deployment_framework_control_id") or ctrl.get("assigned_framework_control_id") or ""
-            )
-            raw_score = ctrl.get("comparison_score") or 0
-            score = round(raw_score * 100) if raw_score <= 1 else round(raw_score)
-
-            impl, partial, not_impl = _count_from_dp_rows(dp_data.get(control_id, []))
-            sim = _avg_sim(dp_data.get(control_id, []))
-
-            controls.append(
-                {
-                    "id": control_id,
-                    "name": ctrl.get("assigned_framework_control_name")
-                    or ctrl.get("deployment_framework_control_name")
-                    or control_id,
-                    "assigned_id": ctrl.get("assigned_framework_control_id") or "",
-                    "assigned_name": ctrl.get("assigned_framework_control_name") or "",
-                    "deployment_id": ctrl.get("deployment_framework_control_id") or "",
-                    "deployment_name": ctrl.get("deployment_framework_control_name") or "",
-                    "score": score,
-                    "match": _normalise_match(score),
-                    "impl": impl,
-                    "partial": partial,
-                    "notImpl": not_impl,
-                    "sim": round(sim, 1),
-                }
-            )
+            controls.append(_process_comparison_control(ctrl, dp_data))
 
     return controls, dp_data
 
@@ -256,53 +258,7 @@ def _spider_drawing(controls: list[dict[str, Any]]) -> Drawing | None:
     return d
 
 
-def generate_deployment_framework_report_pdf(framework: Any, package_data: dict[str, Any]) -> bytes:
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(
-        buffer,
-        pagesize=landscape(A4),
-        topMargin=16 * mm,
-        bottomMargin=12 * mm,
-        leftMargin=14 * mm,
-        rightMargin=14 * mm,
-        title="Deployment Framework Report",
-    )
-
-    fw_name = getattr(framework, "frameworkName", None) or "Framework Report"
-    fw_version = getattr(framework, "frameworkVersion", None) or "N/A"
-
-    controls, dp_data = _parse_report_data(package_data)
-
-    total_impl = sum(c["impl"] for c in controls)
-    total_partial = sum(c["partial"] for c in controls)
-    total_not_impl = sum(c["notImpl"] for c in controls)
-    total_dp = total_impl + total_partial + total_not_impl
-
-    story: list[Any] = []
-
-    story.append(Paragraph("Deployment Framework Report", _H_TITLE))
-    story.append(HRFlowable(width="100%", color=_COLORS["borderColor"], thickness=1, spaceAfter=6))
-
-    badge_row = " &nbsp;&nbsp; ".join(
-        [
-            f"<font color='#1a73e8'><b>{fw_version}</b></font>",
-            f"<font color='#b06000'><b>{str(package_data.get('type', 'pre-release')).title()}</b></font>",
-            f"<font color='#137333'><b>v{package_data.get('packageVersion', '1.0.0')}</b></font>",
-            f"<font color='#1a73e8'><b>{str(package_data.get('status', 'pending')).title()}</b></font>",
-        ]
-    )
-    story.append(Paragraph(badge_row, _MUTED))
-    story.append(Spacer(1, 4 * mm))
-    story.append(Paragraph(fw_name, _H1))
-    story.append(
-        Paragraph(
-            f"{fw_name} Deployment Framework Gap Analysis &amp; Compliance Audit Report "
-            f"\u2014 Package v{package_data.get('packageVersion', '1.0.0')}, {package_data.get('trigger', '')}",
-            _MUTED,
-        )
-    )
-
-    expert_review = package_data.get("expertReview")
+def _add_expert_review_section(story: list, expert_review: dict):
     if (
         expert_review
         and expert_review.get("assignedExpert")
@@ -312,44 +268,46 @@ def generate_deployment_framework_report_pdf(framework: Any, package_data: dict[
         story.append(Spacer(1, 4 * mm))
         story.append(
             Paragraph(
-                f"<b>Expert Review:</b> {expert.get('name', '\u2014')} ({expert.get('email', '')}) "
-                f"\u2014 {str(expert_review.get('status')).upper()}",
+                f"<b>Expert Review:</b> {expert.get('name', '—')} ({expert.get('email', '')}) "
+                f"— {str(expert_review.get('status')).upper()}",
                 _MUTED,
             )
         )
         if expert_review.get("comments"):
-            story.append(Paragraph(f"\u201c{expert_review['comments']}\u201d", _SMALL_MUTED))
+            story.append(Paragraph(f"“{expert_review['comments']}”", _SMALL_MUTED))
 
-    story.append(PageBreak())
 
-    documents = package_data.get("documents") or []
-    if documents:
-        story.append(Paragraph(f"File Information ({len(documents)} files)", _SECTION))
-        rows = [["VERSION", "FILE NAME", "SIZE"]]
-        for fv in documents:
-            rows.append(
-                [
-                    f"v{fv.get('fileVersion', '1.0.0')}",
-                    fv.get("originalFileName", "\u2014"),
-                    _format_size(fv.get("fileSize")),
-                ]
-            )
-        file_table = Table(rows, colWidths=[25 * mm, 180 * mm, 25 * mm], hAlign="LEFT")
-        file_table.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (-1, 0), _COLORS["primaryLight"]),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), _COLORS["primary"]),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("FONTSIZE", (0, 0), (-1, -1), 8),
-                    ("GRID", (0, 0), (-1, -1), 0.5, _COLORS["borderColor"]),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ]
-            )
+def _add_document_table(story: list, documents: list):
+    if not documents:
+        return
+    story.append(Paragraph(f"File Information ({len(documents)} files)", _SECTION))
+    rows = [["VERSION", "FILE NAME", "SIZE"]]
+    for fv in documents:
+        rows.append(
+            [
+                f"v{fv.get('fileVersion', '1.0.0')}",
+                fv.get("originalFileName", "—"),
+                _format_size(fv.get("fileSize")),
+            ]
         )
-        story.append(file_table)
-        story.append(Spacer(1, 6 * mm))
+    file_table = Table(rows, colWidths=[25 * mm, 180 * mm, 25 * mm], hAlign="LEFT")
+    file_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), _COLORS["primaryLight"]),
+                ("TEXTCOLOR", (0, 0), (-1, 0), _COLORS["primary"]),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("GRID", (0, 0), (-1, -1), 0.5, _COLORS["borderColor"]),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ]
+        )
+    )
+    story.append(file_table)
+    story.append(Spacer(1, 6 * mm))
 
+
+def _add_implementation_status_table(story: list, controls: list, total_dp: int):
     total_compared = len(controls)
     avg_score = round(sum(c["score"] for c in controls) / total_compared) if total_compared else 0
     high_match = sum(1 for c in controls if c["match"] == HIGH)
@@ -395,6 +353,10 @@ def generate_deployment_framework_report_pdf(framework: Any, package_data: dict[
     story.append(stat_table)
     story.append(Spacer(1, 6 * mm))
 
+
+def _add_charts(
+    story: list, controls: list, total_dp: int, total_impl: int, total_partial: int, total_not_impl: int
+):
     if total_dp > 0:
         impl_chart = _donut_drawing(
             [
@@ -412,131 +374,188 @@ def generate_deployment_framework_report_pdf(framework: Any, package_data: dict[
         story.append(Paragraph("Compliance Radar Analysis", _SECTION))
         story.append(
             Paragraph(
-                f"Spider chart mapping all {total_compared} controls by achieved compliance score.",
+                f"Spider chart mapping all {len(controls)} controls by achieved compliance score.",
                 _SMALL_MUTED,
             )
         )
         story.append(spider)
         story.append(PageBreak())
 
-    merge_doc = package_data.get("mergeDocument") or {}
-    merge_sections = merge_doc.get("controls_data") or []
-    if merge_sections:
-        total_merge_controls = sum(len(s.get("controls") or []) for s in merge_sections)
-        if total_merge_controls:
-            story.append(Paragraph("Merge Extraction Details", _SECTION))
-            for section in merge_sections:
-                story.append(
-                    Paragraph(
-                        f"<b>{section.get('id', '')} - {section.get('name', 'Unnamed Section')}</b>",
-                        ParagraphStyle(
-                            "DFRMergeSection",
-                            parent=_styles["Normal"],
-                            fontSize=10,
-                            textColor=_COLORS["primary"],
-                        ),
-                    )
-                )
-                for ctrl in section.get("controls") or []:
-                    story.append(
-                        Paragraph(
-                            f"{ctrl.get('id', '')} - {ctrl.get('name', 'Unnamed Control')}", _SMALL_MUTED
-                        )
-                    )
-                    for dp in ctrl.get("deployment_points") or []:
-                        story.append(
-                            Paragraph(
-                                f"\u2022 {dp.get('id', '')}: {dp.get('name', 'Unnamed DP')}", _SMALL_MUTED
-                            )
-                        )
-            story.append(Spacer(1, 4 * mm))
 
-    if controls:
-        story.append(Paragraph("Control Compliance Detail", _SECTION))
-        rows = [["ID", "Control Name", "Score", "Match", "Impl", "Part", "Not"]]
-        for c in controls:
-            rows.append(
+def _add_merge_details(story: list, merge_sections: list):
+    if not merge_sections:
+        return
+    total_merge_controls = sum(len(s.get("controls") or []) for s in merge_sections)
+    if not total_merge_controls:
+        return
+    story.append(Paragraph("Merge Extraction Details", _SECTION))
+    for section in merge_sections:
+        story.append(
+            Paragraph(
+                f"<b>{section.get('id', '')} - {section.get('name', 'Unnamed Section')}</b>",
+                ParagraphStyle(
+                    "DFRMergeSection",
+                    parent=_styles["Normal"],
+                    fontSize=10,
+                    textColor=_COLORS["primary"],
+                ),
+            )
+        )
+        for ctrl in section.get("controls") or []:
+            story.append(
+                Paragraph(f"{ctrl.get('id', '')} - {ctrl.get('name', 'Unnamed Control')}", _SMALL_MUTED)
+            )
+            for dp in ctrl.get("deployment_points") or []:
+                story.append(Paragraph(f"• {dp.get('id', '')}: {dp.get('name', 'Unnamed DP')}", _SMALL_MUTED))
+    story.append(Spacer(1, 4 * mm))
+
+
+def _add_control_compliance_table(story: list, controls: list):
+    if not controls:
+        return
+    story.append(Paragraph("Control Compliance Detail", _SECTION))
+    rows = [["ID", "Control Name", "Score", "Match", "Impl", "Part", "Not"]]
+    for c in controls:
+        rows.append(
+            [
+                c["assigned_id"] or c["id"],
+                c["name"],
+                f"{c['score']}%",
+                c["match"],
+                str(c["impl"]),
+                str(c["partial"]),
+                str(c["notImpl"]),
+            ]
+        )
+    detail_table = Table(
+        rows, colWidths=[22 * mm, 110 * mm, 18 * mm, 22 * mm, 12 * mm, 12 * mm, 12 * mm], hAlign="LEFT"
+    )
+    style_cmds = [
+        ("BACKGROUND", (0, 0), (-1, 0), _COLORS["primaryLight"]),
+        ("TEXTCOLOR", (0, 0), (-1, 0), _COLORS["primary"]),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("GRID", (0, 0), (-1, -1), 0.5, _COLORS["borderColor"]),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]
+    for i, c in enumerate(controls, start=1):
+        style_cmds.append(("TEXTCOLOR", (2, i), (2, i), _score_color(c["score"])))
+    detail_table.setStyle(TableStyle(style_cmds))
+    story.append(detail_table)
+    story.append(Spacer(1, 6 * mm))
+
+
+def _add_deployment_point_analysis(story: list, controls: list, dp_data: dict, total_dp: int):
+    if total_dp <= 0:
+        return
+    story.append(Paragraph("Deployment Point Analysis", _SECTION))
+    story.append(
+        Paragraph(
+            f"Granular view of all {total_dp} deployment points, mapped to their best-matched framework point.",
+            _SMALL_MUTED,
+        )
+    )
+    for ctrl in controls:
+        gaps = dp_data.get(ctrl["id"], [])
+        if not gaps:
+            continue
+        story.append(
+            Paragraph(
+                f"Assigned: [{ctrl['assigned_id'] or 'N/A'}] {ctrl['assigned_name'] or '—'}<br/>"
+                f"Deployment: [{ctrl['deployment_id'] or 'N/A'}] {ctrl['deployment_name'] or '—'}",
+                ParagraphStyle(
+                    "DFRGapHeader",
+                    parent=_styles["Normal"],
+                    fontSize=8.5,
+                    textColor=_COLORS["primary"],
+                    backColor=_COLORS["primaryLight"],
+                    borderPadding=4,
+                ),
+            )
+        )
+        gap_rows = [["DP", "Assigned Point", "Matched Point", "Sim", "Status"]]
+        for idx, gap in enumerate(gaps):
+            gap_rows.append(
                 [
-                    c["assigned_id"] or c["id"],
-                    c["name"],
-                    f"{c['score']}%",
-                    c["match"],
-                    str(c["impl"]),
-                    str(c["partial"]),
-                    str(c["notImpl"]),
+                    f"D{idx + 1}",
+                    gap["clientDp"],
+                    gap["matchedFp"] or "No matching deployment point",
+                    f"{gap['sim']:.1f}%",
+                    gap["status"],
                 ]
             )
-        detail_table = Table(
-            rows, colWidths=[22 * mm, 110 * mm, 18 * mm, 22 * mm, 12 * mm, 12 * mm, 12 * mm], hAlign="LEFT"
-        )
-        style_cmds = [
-            ("BACKGROUND", (0, 0), (-1, 0), _COLORS["primaryLight"]),
-            ("TEXTCOLOR", (0, 0), (-1, 0), _COLORS["primary"]),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 8),
+        gap_table = Table(gap_rows, colWidths=[10 * mm, 95 * mm, 95 * mm, 15 * mm, 25 * mm], hAlign="LEFT")
+        gap_style_cmds = [
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f1f5f9")),
+            ("FONTSIZE", (0, 0), (-1, -1), 7.5),
             ("GRID", (0, 0), (-1, -1), 0.5, _COLORS["borderColor"]),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ]
-        for i, c in enumerate(controls, start=1):
-            style_cmds.append(("TEXTCOLOR", (2, i), (2, i), _score_color(c["score"])))
-        detail_table.setStyle(TableStyle(style_cmds))
-        story.append(detail_table)
-        story.append(Spacer(1, 6 * mm))
+        for i, gap in enumerate(gaps, start=1):
+            bg, fg = _status_badge_colors(gap["status"])
+            gap_style_cmds.append(("BACKGROUND", (4, i), (4, i), bg))
+            gap_style_cmds.append(("TEXTCOLOR", (4, i), (4, i), fg))
+            gap_style_cmds.append(("TEXTCOLOR", (3, i), (3, i), _sim_color(gap["sim"])))
+        gap_table.setStyle(TableStyle(gap_style_cmds))
+        story.append(gap_table)
+        story.append(Spacer(1, 3 * mm))
 
-    if total_dp > 0:
-        story.append(Paragraph("Deployment Point Analysis", _SECTION))
-        story.append(
-            Paragraph(
-                f"Granular view of all {total_dp} deployment points, mapped to their best-matched framework point.",
-                _SMALL_MUTED,
-            )
+
+def generate_deployment_framework_report_pdf(framework: Any, package_data: dict[str, Any]) -> bytes:
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(A4),
+        topMargin=16 * mm,
+        bottomMargin=12 * mm,
+        leftMargin=14 * mm,
+        rightMargin=14 * mm,
+        title="Deployment Framework Report",
+    )
+
+    fw_name = getattr(framework, "frameworkName", None) or "Framework Report"
+    fw_version = getattr(framework, "frameworkVersion", None) or "N/A"
+
+    controls, dp_data = _parse_report_data(package_data)
+
+    total_impl = sum(c["impl"] for c in controls)
+    total_partial = sum(c["partial"] for c in controls)
+    total_not_impl = sum(c["notImpl"] for c in controls)
+    total_dp = total_impl + total_partial + total_not_impl
+
+    story: list[Any] = []
+
+    story.append(Paragraph("Deployment Framework Report", _H_TITLE))
+    story.append(HRFlowable(width="100%", color=_COLORS["borderColor"], thickness=1, spaceAfter=6))
+
+    badge_row = " &nbsp;&nbsp; ".join(
+        [
+            f"<font color='#1a73e8'><b>{fw_version}</b></font>",
+            f"<font color='#b06000'><b>{str(package_data.get('type', 'pre-release')).title()}</b></font>",
+            f"<font color='#137333'><b>v{package_data.get('packageVersion', '1.0.0')}</b></font>",
+            f"<font color='#1a73e8'><b>{str(package_data.get('status', 'pending')).title()}</b></font>",
+        ]
+    )
+    story.append(Paragraph(badge_row, _MUTED))
+    story.append(Spacer(1, 4 * mm))
+    story.append(Paragraph(fw_name, _H1))
+    story.append(
+        Paragraph(
+            f"{fw_name} Deployment Framework Gap Analysis &amp; Compliance Audit Report "
+            f"— Package v{package_data.get('packageVersion', '1.0.0')}, {package_data.get('trigger', '')}",
+            _MUTED,
         )
-        for ctrl in controls:
-            gaps = dp_data.get(ctrl["id"], [])
-            if not gaps:
-                continue
-            story.append(
-                Paragraph(
-                    f"Assigned: [{ctrl['assigned_id'] or 'N/A'}] {ctrl['assigned_name'] or '\u2014'}<br/>"
-                    f"Deployment: [{ctrl['deployment_id'] or 'N/A'}] {ctrl['deployment_name'] or '\u2014'}",
-                    ParagraphStyle(
-                        "DFRGapHeader",
-                        parent=_styles["Normal"],
-                        fontSize=8.5,
-                        textColor=_COLORS["primary"],
-                        backColor=_COLORS["primaryLight"],
-                        borderPadding=4,
-                    ),
-                )
-            )
-            gap_rows = [["DP", "Assigned Point", "Matched Point", "Sim", "Status"]]
-            for idx, gap in enumerate(gaps):
-                gap_rows.append(
-                    [
-                        f"D{idx + 1}",
-                        gap["clientDp"],
-                        gap["matchedFp"] or "No matching deployment point",
-                        f"{gap['sim']:.1f}%",
-                        gap["status"],
-                    ]
-                )
-            gap_table = Table(
-                gap_rows, colWidths=[10 * mm, 95 * mm, 95 * mm, 15 * mm, 25 * mm], hAlign="LEFT"
-            )
-            gap_style_cmds = [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f1f5f9")),
-                ("FONTSIZE", (0, 0), (-1, -1), 7.5),
-                ("GRID", (0, 0), (-1, -1), 0.5, _COLORS["borderColor"]),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ]
-            for i, gap in enumerate(gaps, start=1):
-                bg, fg = _status_badge_colors(gap["status"])
-                gap_style_cmds.append(("BACKGROUND", (4, i), (4, i), bg))
-                gap_style_cmds.append(("TEXTCOLOR", (4, i), (4, i), fg))
-                gap_style_cmds.append(("TEXTCOLOR", (3, i), (3, i), _sim_color(gap["sim"])))
-            gap_table.setStyle(TableStyle(gap_style_cmds))
-            story.append(gap_table)
-            story.append(Spacer(1, 3 * mm))
+    )
+
+    _add_expert_review_section(story, package_data.get("expertReview"))
+    story.append(PageBreak())
+
+    _add_document_table(story, package_data.get("documents") or [])
+    _add_implementation_status_table(story, controls, total_dp)
+    _add_charts(story, controls, total_dp, total_impl, total_partial, total_not_impl)
+    _add_merge_details(story, (package_data.get("mergeDocument") or {}).get("controls_data") or [])
+    _add_control_compliance_table(story, controls)
+    _add_deployment_point_analysis(story, controls, dp_data, total_dp)
 
     def _footer(canvas, doc_):
         canvas.saveState()

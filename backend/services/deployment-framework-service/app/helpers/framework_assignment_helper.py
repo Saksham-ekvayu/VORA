@@ -148,30 +148,30 @@ def format_deployment_point(dp: AssignmentDeploymentPoint) -> dict[str, Any]:
 
 
 def format_control(control: AssignmentControl) -> dict[str, Any]:
+    customization_data = None
+    if control.customization:
+        customization_data = {
+            "source": control.customization.source or "system",
+            "addedBy": control.customization.addedBy,
+            "addedAt": control.customization.addedAt,
+            "updatedAt": control.customization.updatedAt,
+            "is_applicable": (
+                control.customization.is_applicable
+                if control.customization.is_applicable is not None
+                else True
+            ),
+            "weightage": {
+                "framework_weightage": control.customization.weightage.framework_weightage or 0,
+                "customer_weightage": control.customization.weightage.customer_weightage or 0,
+            },
+        }
+
     return {
         "id": str(control.id) if control and getattr(control, "id", None) else None,
         "name": control.name,
         "description": control.description or "",
         "deployment_points": [format_deployment_point(dp) for dp in (control.deployment_points or [])],
-        "customization": (
-            {
-                "source": control.customization.source or "system",
-                "addedBy": control.customization.addedBy,
-                "addedAt": control.customization.addedAt,
-                "updatedAt": control.customization.updatedAt,
-                "is_applicable": (
-                    control.customization.is_applicable
-                    if control.customization.is_applicable is not None
-                    else True
-                ),
-                "weightage": {
-                    "framework_weightage": control.customization.weightage.framework_weightage or 0,
-                    "customer_weightage": control.customization.weightage.customer_weightage or 0,
-                },
-            }
-            if control.customization
-            else None
-        ),
+        "customization": customization_data,
     }
 
 
@@ -474,25 +474,28 @@ def is_valid_customer_weightage(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool) and 1 <= value <= 10
 
 
+def _get_invalid_weightage_info(section: Any, control: Any) -> dict[str, Any] | None:
+    value = (
+        control.customization.weightage.customer_weightage
+        if control.customization and control.customization.weightage
+        else None
+    )
+    if not is_valid_customer_weightage(value):
+        return {
+            "section": section.name,
+            "control": control.name,
+            "controlId": (str(control.id) if control and getattr(control, "id", None) else None),
+            "customer_weightage": value,
+        }
+    return None
+
+
 def collect_invalid_weightage_controls(file_versions: list[Any]) -> list[dict[str, Any]]:
     invalid = []
     for file_version in coerce_file_versions(file_versions):
         for section in file_version.aiExtraction or []:
             for control in section.controls or []:
-                value = (
-                    control.customization.weightage.customer_weightage
-                    if control.customization and control.customization.weightage
-                    else None
-                )
-                if not is_valid_customer_weightage(value):
-                    invalid.append(
-                        {
-                            "section": section.name,
-                            "control": control.name,
-                            "controlId": (
-                                str(control.id) if control and getattr(control, "id", None) else None
-                            ),
-                            "customer_weightage": value,
-                        }
-                    )
+                invalid_info = _get_invalid_weightage_info(section, control)
+                if invalid_info:
+                    invalid.append(invalid_info)
     return invalid

@@ -103,6 +103,175 @@ def _stat_card(label: str, value: Any) -> Table:
     return table
 
 
+def _add_header_section(story: list[Any], assignment: Any, file_version: Any, customer: Any):
+    story.append(Paragraph("Assigned Framework Report", _STYLE_TITLE))
+    story.append(HRFlowable(width="100%", color=COLORS["border"], thickness=1, spaceAfter=8))
+
+    fw_name = assignment.frameworkName or assignment.frameworkCode
+    story.append(Paragraph(fw_name, _STYLE_H1))
+    story.append(
+        Paragraph(
+            f"Version: {assignment.frameworkVersion or '-'} &nbsp;|&nbsp; Current: v{file_version.fileVersion}",
+            _STYLE_MUTED,
+        )
+    )
+    story.append(
+        Paragraph(
+            f"Created On: {_display_date(assignment.createdAt)} &nbsp;|&nbsp; "
+            f"Updated On: {_display_date(assignment.updatedAt)}",
+            _STYLE_MUTED,
+        )
+    )
+    story.append(
+        Paragraph(
+            f"Customer: {_display_user(customer)} &nbsp;|&nbsp; "
+            f"Assigned By: {_display_user(assignment.assignment.assignedBy if assignment.assignment else None)} "
+            f"on {_display_date(assignment.assignment.assignedAt if assignment.assignment else None)}",
+            _STYLE_MUTED,
+        )
+    )
+    story.append(
+        Paragraph(
+            f"Assignment Status: {str(assignment.status or 'assigned').upper()} &nbsp;|&nbsp; "
+            f"Finalization: {'FINALIZED' if assignment.finalization and assignment.finalization.isFinalized else 'PENDING'}",
+            _STYLE_MUTED,
+        )
+    )
+    story.append(Spacer(1, 10 * mm))
+
+
+def _add_stats_section(
+    story: list[Any],
+    sections: list[Any],
+    applicable_controls: list[Any],
+    controls: list[Any],
+    deployment_points: list[Any],
+    org_specific_controls: int,
+    avg_customer_weightage: float,
+):
+    stats = [
+        ("SECTIONS", len(sections)),
+        ("APPLICABLE CONTROLS", len(applicable_controls)),
+        ("NOT APPLICABLE", len(controls) - len(applicable_controls)),
+        ("DEPLOYMENT POINTS", len(deployment_points)),
+        ("ORG SPECIFIC CONTROLS", org_specific_controls),
+        ("AVG CUSTOMER WEIGHT", f"{avg_customer_weightage}/10"),
+    ]
+    stat_cards = [_stat_card(label, value) for label, value in stats]
+    rows = [stat_cards[i : i + 3] for i in range(0, len(stat_cards), 3)]
+    stats_table = Table(rows, hAlign="LEFT", spaceBefore=0, spaceAfter=0)
+    stats_table.setStyle(
+        TableStyle([("LEFTPADDING", (0, 0), (-1, -1), 4), ("RIGHTPADDING", (0, 0), (-1, -1), 4)])
+    )
+    story.append(stats_table)
+
+
+def _get_control_label_info(control: Any) -> tuple[str, Any]:
+    applicable = not control.customization or control.customization.is_applicable is not False
+    is_org_specific = bool(
+        control.customization and str(control.customization.source or "").lower() == "custom"
+    )
+    fw_weight = (
+        control.customization.weightage.framework_weightage
+        if control.customization and control.customization.weightage
+        else 0
+    )
+    cust_weight = (
+        control.customization.weightage.customer_weightage
+        if control.customization and control.customization.weightage
+        else 0
+    )
+
+    if not applicable:
+        return "NOT APPLICABLE", COLORS["danger"]
+    if is_org_specific:
+        return "ORG SPECIFIC CONTROL", COLORS["warning"]
+    return f"FW {fw_weight}/10 | Customer {cust_weight}/10", COLORS["primary"]
+
+
+def _add_control_header(story: list[Any], control: Any, doc_width: float, label_text: str, accent: Any):
+    title_style = ParagraphStyle("AFRCtrlTitleAccent", parent=_STYLE_CONTROL_TITLE)
+    label_style = ParagraphStyle(
+        "AFRCtrlLabel", parent=_styles["Normal"], fontSize=8, textColor=accent, alignment=2
+    )
+
+    header_row = Table(
+        [
+            [
+                Paragraph(f"[{control.id}] {control.name}", title_style),
+                Paragraph(label_text, label_style),
+            ]
+        ],
+        colWidths=[doc_width * 0.65, doc_width * 0.35],
+    )
+    header_row.setStyle(
+        TableStyle(
+            [
+                ("LINEBEFORE", (0, 0), (0, 0), 3, accent),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (0, 0), 6),
+            ]
+        )
+    )
+    story.append(header_row)
+
+
+def _add_control_deployment_points(story: list[Any], control: Any):
+    if not control.deployment_points:
+        return
+    story.append(
+        Paragraph(
+            "Deployment Points",
+            ParagraphStyle(
+                "AFRDpHeader", parent=_styles["Normal"], fontSize=8, fontName="Helvetica-Bold"
+            ),
+        )
+    )
+    for idx, point in enumerate(control.deployment_points):
+        remark_part = f" | Remark: {point.remark}" if point.remark else ""
+        story.append(Paragraph(f"{idx + 1}. {point.name}{remark_part}", _STYLE_DP))
+
+
+def _add_single_control(story: list[Any], control: Any, doc_width: float):
+    label_text, accent = _get_control_label_info(control)
+    _add_control_header(story, control, doc_width, label_text, accent)
+
+    if control.description:
+        story.append(Paragraph(control.description, _STYLE_DESC))
+
+    _add_control_deployment_points(story, control)
+
+    story.append(Spacer(1, 2 * mm))
+    story.append(HRFlowable(width="100%", color=COLORS["border"], thickness=0.5))
+    story.append(Spacer(1, 2 * mm))
+
+
+def _add_controls_section(story: list[Any], sections: list[Any], doc_width: float):
+    story.append(PageBreak())
+    story.append(Paragraph("Controls", _STYLE_SECTION))
+    story.append(Spacer(1, 4 * mm))
+
+    for section in sections:
+        section_title = f"{section.id or ''} {section.name or ''}".strip()
+        section_bar = Table([[Paragraph(section_title, _STYLE_SECTION)]], colWidths=[doc_width])
+        section_bar.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, -1), COLORS["primaryLight"]),
+                    ("TOPPADDING", (0, 0), (-1, -1), 6),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                ]
+            )
+        )
+        story.append(section_bar)
+        story.append(Spacer(1, 2 * mm))
+
+        for control in section.controls or []:
+            _add_single_control(story, control, doc_width)
+
+
+
 def generate_framework_assignment_report_pdf(assignment: Any, file_version: Any, customer: Any) -> bytes:
     buffer = BytesIO()
     doc = SimpleDocTemplate(
@@ -143,147 +312,17 @@ def generate_framework_assignment_report_pdf(assignment: Any, file_version: Any,
 
     story: list[Any] = []
 
-    story.append(Paragraph("Assigned Framework Report", _STYLE_TITLE))
-    story.append(HRFlowable(width="100%", color=COLORS["border"], thickness=1, spaceAfter=8))
-
-    fw_name = assignment.frameworkName or assignment.frameworkCode
-    story.append(Paragraph(fw_name, _STYLE_H1))
-    story.append(
-        Paragraph(
-            f"Version: {assignment.frameworkVersion or '-'} &nbsp;|&nbsp; Current: v{file_version.fileVersion}",
-            _STYLE_MUTED,
-        )
+    _add_header_section(story, assignment, file_version, customer)
+    _add_stats_section(
+        story,
+        sections,
+        applicable_controls,
+        controls,
+        deployment_points,
+        org_specific_controls,
+        avg_customer_weightage,
     )
-    story.append(
-        Paragraph(
-            f"Created On: {_display_date(assignment.createdAt)} &nbsp;|&nbsp; "
-            f"Updated On: {_display_date(assignment.updatedAt)}",
-            _STYLE_MUTED,
-        )
-    )
-    story.append(
-        Paragraph(
-            f"Customer: {_display_user(customer)} &nbsp;|&nbsp; "
-            f"Assigned By: {_display_user(assignment.assignment.assignedBy if assignment.assignment else None)} "
-            f"on {_display_date(assignment.assignment.assignedAt if assignment.assignment else None)}",
-            _STYLE_MUTED,
-        )
-    )
-    story.append(
-        Paragraph(
-            f"Assignment Status: {str(assignment.status or 'assigned').upper()} &nbsp;|&nbsp; "
-            f"Finalization: {'FINALIZED' if assignment.finalization and assignment.finalization.isFinalized else 'PENDING'}",
-            _STYLE_MUTED,
-        )
-    )
-    story.append(Spacer(1, 10 * mm))
-
-    stats = [
-        ("SECTIONS", len(sections)),
-        ("APPLICABLE CONTROLS", len(applicable_controls)),
-        ("NOT APPLICABLE", len(controls) - len(applicable_controls)),
-        ("DEPLOYMENT POINTS", len(deployment_points)),
-        ("ORG SPECIFIC CONTROLS", org_specific_controls),
-        ("AVG CUSTOMER WEIGHT", f"{avg_customer_weightage}/10"),
-    ]
-    stat_cards = [_stat_card(label, value) for label, value in stats]
-    rows = [stat_cards[i : i + 3] for i in range(0, len(stat_cards), 3)]
-    stats_table = Table(rows, hAlign="LEFT", spaceBefore=0, spaceAfter=0)
-    stats_table.setStyle(
-        TableStyle([("LEFTPADDING", (0, 0), (-1, -1), 4), ("RIGHTPADDING", (0, 0), (-1, -1), 4)])
-    )
-    story.append(stats_table)
-
-    story.append(PageBreak())
-    story.append(Paragraph("Controls", _STYLE_SECTION))
-    story.append(Spacer(1, 4 * mm))
-
-    for section in sections:
-        section_title = f"{section.id or ''} {section.name or ''}".strip()
-        section_bar = Table([[Paragraph(section_title, _STYLE_SECTION)]], colWidths=[doc.width])
-        section_bar.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (-1, -1), COLORS["primaryLight"]),
-                    ("TOPPADDING", (0, 0), (-1, -1), 6),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 8),
-                ]
-            )
-        )
-        story.append(section_bar)
-        story.append(Spacer(1, 2 * mm))
-
-        for control in section.controls or []:
-            applicable = not control.customization or control.customization.is_applicable is not False
-            is_org_specific = bool(
-                control.customization and str(control.customization.source or "").lower() == "custom"
-            )
-            fw_weight = (
-                control.customization.weightage.framework_weightage
-                if control.customization and control.customization.weightage
-                else 0
-            )
-            cust_weight = (
-                control.customization.weightage.customer_weightage
-                if control.customization and control.customization.weightage
-                else 0
-            )
-
-            if not applicable:
-                accent = COLORS["danger"]
-                label_text = "NOT APPLICABLE"
-            elif is_org_specific:
-                accent = COLORS["warning"]
-                label_text = "ORG SPECIFIC CONTROL"
-            else:
-                accent = COLORS["primary"]
-                label_text = f"FW {fw_weight}/10 | Customer {cust_weight}/10"
-
-            title_style = ParagraphStyle("AFRCtrlTitleAccent", parent=_STYLE_CONTROL_TITLE)
-            label_style = ParagraphStyle(
-                "AFRCtrlLabel", parent=_styles["Normal"], fontSize=8, textColor=accent, alignment=2
-            )
-
-            header_row = Table(
-                [
-                    [
-                        Paragraph(f"[{control.id}] {control.name}", title_style),
-                        Paragraph(label_text, label_style),
-                    ]
-                ],
-                colWidths=[doc.width * 0.65, doc.width * 0.35],
-            )
-            header_row.setStyle(
-                TableStyle(
-                    [
-                        ("LINEBEFORE", (0, 0), (0, 0), 3, accent),
-                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                        ("LEFTPADDING", (0, 0), (0, 0), 6),
-                    ]
-                )
-            )
-            story.append(header_row)
-
-            if control.description:
-                story.append(Paragraph(control.description, _STYLE_DESC))
-
-            if control.deployment_points:
-                story.append(
-                    Paragraph(
-                        "Deployment Points",
-                        ParagraphStyle(
-                            "AFRDpHeader", parent=_styles["Normal"], fontSize=8, fontName="Helvetica-Bold"
-                        ),
-                    )
-                )
-                for idx, point in enumerate(control.deployment_points):
-                    remark_part = f" | Remark: {point.remark}" if point.remark else ""
-                    story.append(Paragraph(f"{idx + 1}. {point.name}{remark_part}", _STYLE_DP))
-
-            story.append(Spacer(1, 2 * mm))
-            story.append(HRFlowable(width="100%", color=COLORS["border"], thickness=0.5))
-            story.append(Spacer(1, 2 * mm))
+    _add_controls_section(story, sections, doc.width)
 
     def _footer(canvas, doc_):
         canvas.saveState()
