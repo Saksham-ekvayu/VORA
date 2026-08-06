@@ -58,6 +58,35 @@ async def health_check():
     )
 
 
+def _extract_ai_data(
+    file_versions: list[Any],
+    status: str,
+    processing_time: int,
+    status_history: dict[str, Any],
+    controls: list[Any],
+) -> tuple[str, int, dict[str, Any], list[Any]]:
+    if not file_versions:
+        return status, processing_time, status_history, controls
+
+    aiupload = {}
+    for fv in reversed(file_versions):
+        if not isinstance(fv, dict):
+            continue
+        a = fv.get("aiUpload") or fv.get("aiExtraction") or {}
+        if a.get("status") in ("extracted", "completed"):
+            aiupload = a
+            break
+    if not aiupload and isinstance(file_versions[-1], dict):
+        aiupload = file_versions[-1].get("aiUpload") or file_versions[-1].get("aiExtraction") or {}
+
+    new_status = aiupload.get("status", status)
+    new_pt = aiupload.get("processing_time_seconds", processing_time)
+    new_sh = aiupload.get("status_history", status_history)
+    new_ctrls = (aiupload.get("controls") or {}).get("controls_data", controls)
+
+    return new_status, new_pt, new_sh, new_ctrls
+
+
 @router.get("/results/{id}")
 async def get_extraction_results(id: str):
     try:
@@ -80,23 +109,9 @@ async def get_extraction_results(id: str):
                 controls = result["controls"].get("controls_data") or []
                 processing_time = (result.get("status_history") or {}).get("processing_time_seconds", 0)
             file_versions = result.get("fileVersions") or []
-            if file_versions:
-                aiupload = {}
-                for fv in reversed(file_versions):
-                    if not isinstance(fv, dict):
-                        continue
-                    a = fv.get("aiUpload") or fv.get("aiExtraction") or {}
-                    if a.get("status") in ("extracted", "completed"):
-                        aiupload = a
-                        break
-                if not aiupload and isinstance(file_versions[-1], dict):
-                    aiupload = (
-                        file_versions[-1].get("aiUpload") or file_versions[-1].get("aiExtraction") or {}
-                    )
-                status = aiupload.get("status", status)
-                processing_time = aiupload.get("processing_time_seconds", processing_time)
-                status_history = aiupload.get("status_history", status_history)
-                controls = (aiupload.get("controls") or {}).get("controls_data", controls)
+            status, processing_time, status_history, controls = _extract_ai_data(
+                file_versions, status, processing_time, status_history, controls
+            )
 
             return success(
                 message="Extraction results retrieved successfully",
