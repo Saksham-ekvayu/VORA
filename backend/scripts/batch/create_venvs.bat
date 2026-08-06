@@ -12,7 +12,7 @@ echo Creating Virtual Environments
 echo =====================================================
 echo.
 
-python "%ROOT%\scripts\create_venvs.py" --install
+python "%ROOT%\scripts\create_venvs.py"
 
 if errorlevel 1 (
     echo.

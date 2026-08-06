@@ -116,13 +116,13 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     root = (Path(__file__).resolve().parent / args.root).resolve()
-    
+
     print()
     print("=" * 60)
     print("Creating Virtual Environments")
     print("=" * 60)
     print()
-    
+
     try:
         service_dirs = get_service_dirs(root)
     except FileNotFoundError as e:
@@ -166,10 +166,10 @@ def main() -> int:
     print("Done! Virtual environments created successfully.")
     print("=" * 60)
     print()
-    
+
     if not args.install:
         print("To install dependencies, run: install_venvs.bat")
-    
+
     print()
     print("To activate a service venv:")
     print("  Windows PowerShell: .\\services\\<service-name>\\.venv\\Scripts\\Activate.ps1")

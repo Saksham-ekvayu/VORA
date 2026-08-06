@@ -11,9 +11,9 @@ echo =====================================================
 echo.
 
 echo [1/3] Ensuring Black and Isort are installed...
-python -m pip install --upgrade black isort >nul 2>&1
+python -m pip install --quiet black isort 2>nul
 if errorlevel 1 (
-    echo WARNING: Could not install/upgrade black and isort. Make sure Python is in your PATH.
+    echo WARNING: Could not install black and isort. Make sure Python is in your PATH.
 ) else (
     echo OK.
 )
@@ -25,7 +25,7 @@ cd /d "%BACKEND_DIR%"
 echo.
 echo [2/3] Running Black (Code Formatter)...
 echo Formatting Python files...
-python -m black . --exclude ".venv,__pycache__"
+python -m black . --exclude ".venv,__pycache__" --extend-exclude "\.ipynb"
 if errorlevel 1 (
     echo ERROR: Black formatting failed.
     pause

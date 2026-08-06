@@ -5,7 +5,7 @@ import shutil
 
 def remove_venvs(base_dir):
     base_path = pathlib.Path(base_dir)
-    
+
     print()
     print("=" * 60)
     print("Removing Virtual Environments")
