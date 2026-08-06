@@ -142,7 +142,7 @@ export function uploadDeploymentFramework(formData) {
 /**
  * Upload deployment framework file to ai
  */
-export function uploadDeploymentFrameworkToAi(
+export function extractDeploymentFramework(
   frameworkId,
   packageVersion,
   fileId
@@ -470,7 +470,7 @@ export default {
   downloadDeploymentFrameworkFile,
   deleteDeploymentFramework,
   deleteDeploymentFrameworkPackage,
-  uploadDeploymentFrameworkToAi,
+  extractDeploymentFramework,
   runAnalysis,
   downloadDeploymentFrameworkReport,
   requestExpertReview,

@@ -6,7 +6,7 @@ import Icon from "@/components/custom/Icon";
 import { Button } from "@/components/ui/button";
 import {
   downloadDeploymentFrameworkFile,
-  uploadDeploymentFrameworkToAi,
+  extractDeploymentFramework,
 } from "@/services/deploymentFrameworkService";
 import { toast } from "sonner";
 import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
@@ -32,7 +32,7 @@ export default function DeploymentFrameworkPackageTable({
     }
   };
 
-  const handleUploadToAi = async (fileId) => {
+  const handleAiExtraction = async (fileId) => {
     if (!preReleasePackage?.packageVersion) {
       toast.error("Package version is missing");
       return;
@@ -42,7 +42,7 @@ export default function DeploymentFrameworkPackageTable({
       if (onExtractionTriggered) {
         onExtractionTriggered(fileId);
       }
-      const response = await uploadDeploymentFrameworkToAi(
+      const response = await extractDeploymentFramework(
         frameworkId,
         preReleasePackage.packageVersion,
         fileId
@@ -135,16 +135,14 @@ export default function DeploymentFrameworkPackageTable({
                   <td className="px-2.5 py-2">
                     <div className="flex items-center justify-center gap-1.5">
                       <span
-                        className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                          doc.replicated ? "bg-blue-500" : "bg-green-500"
-                        }`}
+                        className={`w-1.5 h-1.5 rounded-full shrink-0 ${doc.replicated ? "bg-blue-500" : "bg-green-500"
+                          }`}
                       />
                       <span
-                        className={`text-[11px] font-medium ${
-                          doc.replicated
-                            ? "text-blue-600 dark:text-blue-400"
-                            : "text-green-600 dark:text-green-400"
-                        }`}
+                        className={`text-[11px] font-medium ${doc.replicated
+                          ? "text-blue-600 dark:text-blue-400"
+                          : "text-green-600 dark:text-green-400"
+                          }`}
                       >
                         {doc.replicated ? "Yes" : "No"}
                       </span>
@@ -168,11 +166,10 @@ export default function DeploymentFrameworkPackageTable({
 
                   <td className="px-2.5 py-2">
                     <span
-                      className={`flex items-center justify-center gap-1 text-[11px] font-medium ${
-                        uploadingFileId === doc.fileId
-                          ? "text-blue-600 dark:text-blue-400"
-                          : status.textClass
-                      }`}
+                      className={`flex items-center justify-center gap-1 text-[11px] font-medium ${uploadingFileId === doc.fileId
+                        ? "text-blue-600 dark:text-blue-400"
+                        : status.textClass
+                        }`}
                     >
                       <Icon
                         name={
@@ -183,7 +180,7 @@ export default function DeploymentFrameworkPackageTable({
                         size={12}
                         className={
                           uploadingFileId === doc.fileId ||
-                          doc.aiExtraction?.status === "processing"
+                            doc.aiExtraction?.status === "processing"
                             ? "animate-spin"
                             : ""
                         }
@@ -203,7 +200,7 @@ export default function DeploymentFrameworkPackageTable({
                             uploadingFileId === doc.fileId
                           }
                           className={status.buttonClass}
-                          onClick={() => handleUploadToAi(doc.fileId)}
+                          onClick={() => handleAiExtraction(doc.fileId)}
                         >
                           <Icon name={status.buttonIcon} size={11} />
                           {status.buttonText}
