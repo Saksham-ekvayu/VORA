@@ -3,7 +3,7 @@
 
 import logging
 from datetime import datetime, timezone
-from typing import Any
+from typing import Annotated, Any
 
 from app.helpers import framework_assignment_helper as helper
 from app.helpers.framework_assignment_helper import (
@@ -13,7 +13,7 @@ from app.helpers.framework_assignment_helper import (
     dump_model,
 )
 from app.helpers.reports.framework_assignment_report import generate_framework_assignment_report_pdf
-from fastapi import APIRouter, Body, Depends, Query
+from fastapi import APIRouter, Body, Depends, Query, Path
 from sqlalchemy import select
 from vora_shared import query_builder
 from vora_shared.database import session_scope
@@ -68,18 +68,18 @@ async def _hydrate_customers(session, assignments: list[FrameworkAssignment]) ->
 
 @router.get("/assignments")
 async def get_all_framework_assignments(
-    ctx: RequestContext = Depends(get_context),
-    search: str | None = Query(default=None),
-    assignmentStatus: str | None = Query(default=None),
-    finalizationStatus: str | None = Query(default=None),
-    page: int | None = Query(default=None),
-    limit: int = Query(default=10),
-    sortBy: str | None = Query(default=None),
-    sortOrder: str | None = Query(default=None),
+    ctx: Annotated[RequestContext, Depends(get_context)],
+    search: Annotated[str | None, Query(default=None)] = None,
+    assignment_status: Annotated[str | None, Query(alias="assignmentStatus", default=None)] = None,
+    finalization_status: Annotated[str | None, Query(alias="finalizationStatus", default=None)] = None,
+    page: Annotated[int | None, Query(default=None)] = None,
+    limit: Annotated[int, Query(default=10)] = 10,
+    sort_by: Annotated[str | None, Query(alias="sortBy", default=None)] = None,
+    sort_order: Annotated[str | None, Query(alias="sortOrder", default=None)] = None,
 ):
     tenant_id = ctx.tenant_id
 
-    filter_result = helper.build_assignment_base_filters(tenant_id, assignmentStatus, finalizationStatus)
+    filter_result = helper.build_assignment_base_filters(tenant_id, assignment_status, finalization_status)
     if filter_result.get("invalidField") == "assignmentStatus":
         return error(BUSINESS_MESSAGES["INVALID_ASSIGNMENT_STATUS_FILTER"], 400)
     if filter_result.get("invalidField") == "finalizationStatus":
@@ -110,14 +110,14 @@ async def get_all_framework_assignments(
             search=search,
             search_fields=["frameworkCode", "frameworkName", "frameworkVersion"],
             base_filters=base_filters,
-            sort_by=sortBy,
-            sort_order=sortOrder,
+            sort_by=sort_by,
+            sort_order=sort_order,
             allowed_sort_fields=allowed_sort_fields,
             user_search={"tenant_id": tenant_id, "field_name": "customerId"},
             transform=transform,
         )
 
-        status_label = helper.resolve_status_label(assignmentStatus, finalizationStatus)
+        status_label = helper.resolve_status_label(assignment_status, finalization_status)
         message = format_message(BUSINESS_MESSAGES["ASSIGNED_FRAMEWORKS_RETRIEVED"], status=status_label)
 
         if not result["data"]:
@@ -136,7 +136,7 @@ async def get_all_framework_assignments(
 
 
 @router.get("/assignments/{id}")
-async def get_framework_assignment_by_id(id: str, ctx: RequestContext = Depends(get_context)):
+async def get_framework_assignment_by_id(id: str, ctx: Annotated[RequestContext, Depends(get_context)]):
     async with session_scope() as session:
         assignment = await session.get(FrameworkAssignment, str(id))
         if not assignment:
@@ -161,7 +161,7 @@ async def get_framework_assignment_by_id(id: str, ctx: RequestContext = Depends(
 
 @router.get("/assignments/{id}/report")
 async def download_framework_assignment_report(
-    id: str, ctx: RequestContext = Depends(get_context), fileVersion: str | None = Query(default=None)
+    id: str, ctx: Annotated[RequestContext, Depends(get_context)], file_version: Annotated[str | None, Query(alias="fileVersion", default=None)] = None
 ):
     tenant_id = ctx.tenant_id
 
@@ -188,10 +188,10 @@ async def download_framework_assignment_report(
                 info.model_copy(update={"assignedBy": users.get(str(info.assignedBy), info.assignedBy)})
             )
 
-        version = fileVersion or assignment.currentFileVersion
+        version = file_version or assignment.currentFileVersion
         file_versions = coerce_file_versions(assignment.fileVersions)
-        file_version = next((fv for fv in file_versions if fv.fileVersion == version), None)
-        if not file_version:
+        file_version_obj = next((fv for fv in file_versions if fv.fileVersion == version), None)
+        if not file_version_obj:
             return error(format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=version), 404)
 
         safe_name = "_".join(
@@ -204,7 +204,7 @@ async def download_framework_assignment_report(
         )
         filename = f"{safe_name}_assigned_v{version.replace('.', '_')}_report.pdf"
 
-        pdf_bytes = generate_framework_assignment_report_pdf(assignment, file_version, customer)
+        pdf_bytes = generate_framework_assignment_report_pdf(assignment, file_version_obj, customer)
 
         from fastapi import Response
 
@@ -220,7 +220,7 @@ async def download_framework_assignment_report(
 
 @router.patch("/assignments/{frameworkId}/{customerId}/revoke")
 async def revoke_framework_assignment(
-    frameworkId: str, customerId: str, ctx: RequestContext = Depends(get_context)
+    framework_id: Annotated[str, Path(alias="frameworkId")], customer_id: Annotated[str, Path(alias="customerId")], ctx: Annotated[RequestContext, Depends(get_context)]
 ):
     user = ctx.user
 
@@ -228,8 +228,8 @@ async def revoke_framework_assignment(
         assignment = (
             await session.execute(
                 select(FrameworkAssignment).where(
-                    FrameworkAssignment.frameworkId == str(frameworkId),
-                    FrameworkAssignment.customerId == str(customerId),
+                    FrameworkAssignment.frameworkId == str(framework_id),
+                    FrameworkAssignment.customerId == str(customer_id),
                 )
             )
         ).scalar_one_or_none()
@@ -279,7 +279,7 @@ def _find_file_version(file_versions: list, file_version: str):
 
 @router.post("/{id}/file-versions/{fileVersion}/controls")
 async def add_assigned_framework_control(
-    id: str, fileVersion: str, ctx: RequestContext = Depends(get_context), body: dict[str, Any] = Body(...)
+    id: str, file_version: Annotated[str, Path(alias="fileVersion")], ctx: Annotated[RequestContext, Depends(get_context)], body: Annotated[dict[str, Any], Body(...)]
 ):
     user = ctx.user
     section_id = body.get("sectionId")
@@ -297,10 +297,10 @@ async def add_assigned_framework_control(
             return not_found(BUSINESS_MESSAGES["ASSIGNMENT_NOT_FOUND"])
 
         file_versions = coerce_file_versions(assignment.fileVersions)
-        file_version_doc = _find_file_version(file_versions, fileVersion)
+        file_version_doc = _find_file_version(file_versions, file_version)
         if not file_version_doc:
             return error(
-                format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=fileVersion), 404
+                format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=file_version), 404
             )
 
         fin = as_finalization(assignment.finalization)
@@ -316,7 +316,7 @@ async def add_assigned_framework_control(
         if new_section:
             section_result = helper.handle_new_section(new_section, controls_data)
         else:
-            section_result = helper.handle_existing_section(section_id, controls_data, fileVersion)
+            section_result = helper.handle_existing_section(section_id, controls_data, file_version)
             section = section_result.get("section")
 
         if section_result.get("error"):
@@ -352,9 +352,9 @@ async def add_assigned_framework_control(
         assignment.updatedAt = _utcnow()
 
         return success(
-            {"control": dump_model(new_control), "sectionId": section_id_to_use, "fileVersion": fileVersion},
+            {"control": dump_model(new_control), "sectionId": section_id_to_use, "fileVersion": file_version},
             format_message(
-                BUSINESS_MESSAGES["CONTROL_ADDED_SUCCESS"], sectionId=section_id_to_use, version=fileVersion
+                BUSINESS_MESSAGES["CONTROL_ADDED_SUCCESS"], sectionId=section_id_to_use, version=file_version
             ),
         )
 
@@ -362,10 +362,10 @@ async def add_assigned_framework_control(
 @router.put("/{id}/file-versions/{fileVersion}/controls/{controlId}")
 async def update_assigned_framework_control(
     id: str,
-    fileVersion: str,
-    controlId: str,
-    ctx: RequestContext = Depends(get_context),
-    body: dict[str, Any] = Body(...),
+    file_version: Annotated[str, Path(alias="fileVersion")],
+    control_id: Annotated[str, Path(alias="controlId")],
+    ctx: Annotated[RequestContext, Depends(get_context)],
+    body: Annotated[dict[str, Any], Body(...)],
 ):
     name = body.get("name")
     description = body.get("description")
@@ -380,10 +380,10 @@ async def update_assigned_framework_control(
             return not_found(BUSINESS_MESSAGES["ASSIGNMENT_NOT_FOUND"])
 
         file_versions = coerce_file_versions(assignment.fileVersions)
-        file_version_doc = _find_file_version(file_versions, fileVersion)
+        file_version_doc = _find_file_version(file_versions, file_version)
         if not file_version_doc:
             return error(
-                format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=fileVersion), 404
+                format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=file_version), 404
             )
 
         fin = as_finalization(assignment.finalization)
@@ -393,11 +393,11 @@ async def update_assigned_framework_control(
         if not file_version_doc.aiExtraction:
             return error(BUSINESS_MESSAGES["AI_EXTRACTION_NOT_FOUND"], 400)
 
-        target_control = helper.find_assigned_control(file_version_doc.aiExtraction, controlId)
+        target_control = helper.find_assigned_control(file_version_doc.aiExtraction, control_id)
         if not target_control:
             return error(
                 format_message(
-                    BUSINESS_MESSAGES["CONTROL_NOT_FOUND"], controlId=controlId, version=fileVersion
+                    BUSINESS_MESSAGES["CONTROL_NOT_FOUND"], controlId=control_id, version=file_version
                 ),
                 404,
             )
@@ -444,16 +444,16 @@ async def update_assigned_framework_control(
         assignment.updatedAt = _utcnow()
 
         return success(
-            {"control": dump_model(target_control), "fileVersion": fileVersion},
+            {"control": dump_model(target_control), "fileVersion": file_version},
             format_message(
-                BUSINESS_MESSAGES["CONTROL_UPDATED_SUCCESS"], controlId=controlId, version=fileVersion
+                BUSINESS_MESSAGES["CONTROL_UPDATED_SUCCESS"], controlId=control_id, version=file_version
             ),
         )
 
 
 @router.delete("/{id}/file-versions/{fileVersion}/controls/{controlId}")
 async def delete_assigned_framework_control(
-    id: str, fileVersion: str, controlId: str, ctx: RequestContext = Depends(get_context)
+    id: str, file_version: Annotated[str, Path(alias="fileVersion")], control_id: Annotated[str, Path(alias="controlId")], ctx: Annotated[RequestContext, Depends(get_context)]
 ):
     async with session_scope() as session:
         assignment = await session.get(FrameworkAssignment, str(id))
@@ -461,10 +461,10 @@ async def delete_assigned_framework_control(
             return not_found(BUSINESS_MESSAGES["ASSIGNMENT_NOT_FOUND"])
 
         file_versions = coerce_file_versions(assignment.fileVersions)
-        file_version_doc = _find_file_version(file_versions, fileVersion)
+        file_version_doc = _find_file_version(file_versions, file_version)
         if not file_version_doc:
             return error(
-                format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=fileVersion), 404
+                format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=file_version), 404
             )
 
         fin = as_finalization(assignment.finalization)
@@ -475,7 +475,7 @@ async def delete_assigned_framework_control(
             return error(BUSINESS_MESSAGES["AI_EXTRACTION_NOT_FOUND"], 400)
 
         controls_data = list(file_version_doc.aiExtraction)
-        delete_result = helper.delete_control_from_section(controls_data, controlId, fileVersion)
+        delete_result = helper.delete_control_from_section(controls_data, control_id, file_version)
         if delete_result.get("error"):
             return error(delete_result["error"], delete_result.get("status", 400))
 
@@ -484,9 +484,9 @@ async def delete_assigned_framework_control(
         assignment.updatedAt = _utcnow()
 
         return success(
-            {"controlId": controlId, "fileVersion": fileVersion},
+            {"controlId": control_id, "fileVersion": file_version},
             format_message(
-                BUSINESS_MESSAGES["CONTROL_DELETED_SUCCESS"], controlId=controlId, version=fileVersion
+                BUSINESS_MESSAGES["CONTROL_DELETED_SUCCESS"], controlId=control_id, version=file_version
             ),
         )
 
@@ -494,10 +494,10 @@ async def delete_assigned_framework_control(
 @router.patch("/{id}/file-versions/{fileVersion}/controls/{controlId}/weightage")
 async def update_assigned_framework_control_weightage(
     id: str,
-    fileVersion: str,
-    controlId: str,
-    ctx: RequestContext = Depends(get_context),
-    body: dict[str, Any] = Body(...),
+    file_version: Annotated[str, Path(alias="fileVersion")],
+    control_id: Annotated[str, Path(alias="controlId")],
+    ctx: Annotated[RequestContext, Depends(get_context)],
+    body: Annotated[dict[str, Any], Body(...)],
 ):
     weightage = body.get("weightage")
     if not isinstance(weightage, dict):
@@ -509,10 +509,10 @@ async def update_assigned_framework_control_weightage(
             return not_found(BUSINESS_MESSAGES["ASSIGNMENT_NOT_FOUND"])
 
         file_versions = coerce_file_versions(assignment.fileVersions)
-        file_version_doc = _find_file_version(file_versions, fileVersion)
+        file_version_doc = _find_file_version(file_versions, file_version)
         if not file_version_doc:
             return error(
-                format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=fileVersion), 404
+                format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=file_version), 404
             )
 
         fin = as_finalization(assignment.finalization)
@@ -522,11 +522,11 @@ async def update_assigned_framework_control_weightage(
         if not file_version_doc.aiExtraction:
             return error(BUSINESS_MESSAGES["AI_EXTRACTION_NOT_FOUND"], 400)
 
-        target_control = helper.find_assigned_control(file_version_doc.aiExtraction, controlId)
+        target_control = helper.find_assigned_control(file_version_doc.aiExtraction, control_id)
         if not target_control:
             return error(
                 format_message(
-                    BUSINESS_MESSAGES["CONTROL_NOT_FOUND"], controlId=controlId, version=fileVersion
+                    BUSINESS_MESSAGES["CONTROL_NOT_FOUND"], controlId=control_id, version=file_version
                 ),
                 404,
             )
@@ -552,18 +552,18 @@ async def update_assigned_framework_control_weightage(
         assignment.updatedAt = _utcnow()
             
         return success(
-            {"control": dump_model(target_control), "fileVersion": fileVersion},
+            {"control": dump_model(target_control), "fileVersion": file_version},
             format_message(
                 BUSINESS_MESSAGES["CONTROL_WEIGHTAGE_UPDATED_SUCCESS"],
-                controlId=controlId,
-                version=fileVersion,
+                controlId=control_id,
+                version=file_version,
             ),
         )
 
 
 @router.patch("/{id}/file-versions/{fileVersion}/controls/applicability")
 async def update_control_applicability(
-    id: str, fileVersion: str, ctx: RequestContext = Depends(get_context), body: dict[str, Any] = Body(...)
+    id: str, file_version: Annotated[str, Path(alias="fileVersion")], ctx: Annotated[RequestContext, Depends(get_context)], body: Annotated[dict[str, Any], Body(...)]
 ):
     control_ids = body.get("controlIds")
     is_applicable = body.get("is_applicable")
@@ -580,10 +580,10 @@ async def update_control_applicability(
             return not_found(BUSINESS_MESSAGES["ASSIGNMENT_NOT_FOUND"])
 
         file_versions = coerce_file_versions(assignment.fileVersions)
-        file_version_doc = _find_file_version(file_versions, fileVersion)
+        file_version_doc = _find_file_version(file_versions, file_version)
         if not file_version_doc:
             return error(
-                format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=fileVersion), 404
+                format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=file_version), 404
             )
 
         fin = as_finalization(assignment.finalization)
@@ -608,14 +608,14 @@ async def update_control_applicability(
         return success(
             {
                 "controlIds": [c.id for c in existing_controls],
-                "fileVersion": fileVersion,
+                "fileVersion": file_version,
                 "is_applicable": is_applicable,
             },
             format_message(
                 BUSINESS_MESSAGES["CONTROL_APPLICABILITY_UPDATED_SUCCESS"],
                 controlId=display_control_id,
                 status=status_label,
-                version=fileVersion,
+                version=file_version,
             ),
         )
 
@@ -624,7 +624,7 @@ async def update_control_applicability(
 
 
 @router.patch("/assignments/{id}/finalize")
-async def finalize_framework_assignment(id: str, ctx: RequestContext = Depends(get_context)):
+async def finalize_framework_assignment(id: str, ctx: Annotated[RequestContext, Depends(get_context)]):
     user = ctx.user
 
     if user.role not in ("auditor", "customer-admin"):
