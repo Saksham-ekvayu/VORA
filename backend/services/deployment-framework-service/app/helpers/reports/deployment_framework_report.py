@@ -131,7 +131,9 @@ def _avg_sim(dp_rows: list[dict[str, Any]]) -> float:
     return sum(d["sim"] for d in dp_rows) / len(dp_rows)
 
 
-def _process_comparison_control(ctrl: dict[str, Any], dp_data: dict[str, list[dict[str, Any]]]) -> dict[str, Any]:
+def _process_comparison_control(
+    ctrl: dict[str, Any], dp_data: dict[str, list[dict[str, Any]]]
+) -> dict[str, Any]:
     control_id = (
         ctrl.get("deployment_framework_control_id") or ctrl.get("assigned_framework_control_id") or ""
     )

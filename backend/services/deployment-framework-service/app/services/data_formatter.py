@@ -50,6 +50,7 @@ def _collect_framework_refs(
             if doc.aiExtraction:
                 extraction_ids.add(str(doc.aiExtraction))
 
+
 async def hydrate_maps(
     session: AsyncSession, frameworks: list[DeploymentFramework]
 ) -> dict[str, dict[str, Any]]:
@@ -168,7 +169,11 @@ def _format_gap_analysis(gap_data: Any, exclude_details: bool) -> dict[str, Any]
             "status": _get(gap_data, "status"),
             "message": _get(gap_data, "message"),
             "timestamp": _get(gap_data, "timestamp"),
-            **({} if exclude_details else {"deployment_gap_results": _get(gap_data, "deployment_gap_results") or []}),
+            **(
+                {}
+                if exclude_details
+                else {"deployment_gap_results": _get(gap_data, "deployment_gap_results") or []}
+            ),
         }
     return {
         "status": "pending",
@@ -318,6 +323,7 @@ def _derive_ai_status(statuses: list[str]) -> str:
         status = "processing"
     return status
 
+
 def _derive_ai_timestamp(resolved: list[Any]) -> Any:
     timestamps = []
     for e in resolved:
@@ -325,6 +331,7 @@ def _derive_ai_timestamp(resolved: list[Any]) -> Any:
         if ai and ai.timestamp:
             timestamps.append(ai.timestamp)
     return max(timestamps) if timestamps else None
+
 
 def derive_package_ai_extraction(
     current_package: PackageVersion | None, extractions: dict[str, DocumentExtraction]

@@ -13,7 +13,7 @@ from app.helpers.framework_assignment_helper import (
     dump_model,
 )
 from app.helpers.reports.framework_assignment_report import generate_framework_assignment_report_pdf
-from fastapi import APIRouter, Body, Depends, Query, Path
+from fastapi import APIRouter, Body, Depends, Path, Query
 from sqlalchemy import select
 from vora_shared import query_builder
 from vora_shared.database import session_scope
@@ -161,7 +161,9 @@ async def get_framework_assignment_by_id(id: str, ctx: Annotated[RequestContext,
 
 @router.get("/assignments/{id}/report")
 async def download_framework_assignment_report(
-    id: str, ctx: Annotated[RequestContext, Depends(get_context)], file_version: Annotated[str | None, Query(alias="fileVersion", default=None)] = None
+    id: str,
+    ctx: Annotated[RequestContext, Depends(get_context)],
+    file_version: Annotated[str | None, Query(alias="fileVersion", default=None)] = None,
 ):
     tenant_id = ctx.tenant_id
 
@@ -220,7 +222,9 @@ async def download_framework_assignment_report(
 
 @router.patch("/assignments/{frameworkId}/{customerId}/revoke")
 async def revoke_framework_assignment(
-    framework_id: Annotated[str, Path(alias="frameworkId")], customer_id: Annotated[str, Path(alias="customerId")], ctx: Annotated[RequestContext, Depends(get_context)]
+    framework_id: Annotated[str, Path(alias="frameworkId")],
+    customer_id: Annotated[str, Path(alias="customerId")],
+    ctx: Annotated[RequestContext, Depends(get_context)],
 ):
     user = ctx.user
 
@@ -282,9 +286,10 @@ def _validate_assignment_for_modification(
 ) -> tuple[JSONResponse | None, Any | None]:
     file_version_doc = _find_file_version(file_versions, file_version)
     if not file_version_doc:
-        return error(
-            format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=file_version), 404
-        ), None
+        return (
+            error(format_message(BUSINESS_MESSAGES["FILE_VERSION_NOT_FOUND"], version=file_version), 404),
+            None,
+        )
 
     fin = as_finalization(assignment.finalization)
     if fin.isFinalized:
@@ -323,7 +328,10 @@ def _update_deployment_points(target_control: Any, deployment_points: list[dict[
 
 @router.post("/{id}/file-versions/{fileVersion}/controls")
 async def add_assigned_framework_control(
-    id: str, file_version: Annotated[str, Path(alias="fileVersion")], ctx: Annotated[RequestContext, Depends(get_context)], body: Annotated[dict[str, Any], Body(...)]
+    id: str,
+    file_version: Annotated[str, Path(alias="fileVersion")],
+    ctx: Annotated[RequestContext, Depends(get_context)],
+    body: Annotated[dict[str, Any], Body(...)],
 ):
     user = ctx.user
     section_id = body.get("sectionId")
@@ -341,7 +349,9 @@ async def add_assigned_framework_control(
             return not_found(BUSINESS_MESSAGES["ASSIGNMENT_NOT_FOUND"])
 
         file_versions = coerce_file_versions(assignment.fileVersions)
-        err_response, file_version_doc = _validate_assignment_for_modification(assignment, file_version, file_versions)
+        err_response, file_version_doc = _validate_assignment_for_modification(
+            assignment, file_version, file_versions
+        )
         if err_response:
             return err_response
 
@@ -415,7 +425,9 @@ async def update_assigned_framework_control(
             return not_found(BUSINESS_MESSAGES["ASSIGNMENT_NOT_FOUND"])
 
         file_versions = coerce_file_versions(assignment.fileVersions)
-        err_response, file_version_doc = _validate_assignment_for_modification(assignment, file_version, file_versions)
+        err_response, file_version_doc = _validate_assignment_for_modification(
+            assignment, file_version, file_versions
+        )
         if err_response:
             return err_response
 
@@ -458,7 +470,10 @@ async def update_assigned_framework_control(
 
 @router.delete("/{id}/file-versions/{fileVersion}/controls/{controlId}")
 async def delete_assigned_framework_control(
-    id: str, file_version: Annotated[str, Path(alias="fileVersion")], control_id: Annotated[str, Path(alias="controlId")], ctx: Annotated[RequestContext, Depends(get_context)]
+    id: str,
+    file_version: Annotated[str, Path(alias="fileVersion")],
+    control_id: Annotated[str, Path(alias="controlId")],
+    ctx: Annotated[RequestContext, Depends(get_context)],
 ):
     async with session_scope() as session:
         assignment = await session.get(FrameworkAssignment, str(id))
@@ -466,7 +481,9 @@ async def delete_assigned_framework_control(
             return not_found(BUSINESS_MESSAGES["ASSIGNMENT_NOT_FOUND"])
 
         file_versions = coerce_file_versions(assignment.fileVersions)
-        err_response, file_version_doc = _validate_assignment_for_modification(assignment, file_version, file_versions)
+        err_response, file_version_doc = _validate_assignment_for_modification(
+            assignment, file_version, file_versions
+        )
         if err_response:
             return err_response
 
@@ -505,7 +522,9 @@ async def update_assigned_framework_control_weightage(
             return not_found(BUSINESS_MESSAGES["ASSIGNMENT_NOT_FOUND"])
 
         file_versions = coerce_file_versions(assignment.fileVersions)
-        err_response, file_version_doc = _validate_assignment_for_modification(assignment, file_version, file_versions)
+        err_response, file_version_doc = _validate_assignment_for_modification(
+            assignment, file_version, file_versions
+        )
         if err_response:
             return err_response
 
@@ -537,7 +556,7 @@ async def update_assigned_framework_control_weightage(
 
         assignment.fileVersions = dump_file_versions(file_versions)
         assignment.updatedAt = _utcnow()
-            
+
         return success(
             {"control": dump_model(target_control), "fileVersion": file_version},
             format_message(
@@ -550,7 +569,10 @@ async def update_assigned_framework_control_weightage(
 
 @router.patch("/{id}/file-versions/{fileVersion}/controls/applicability")
 async def update_control_applicability(
-    id: str, file_version: Annotated[str, Path(alias="fileVersion")], ctx: Annotated[RequestContext, Depends(get_context)], body: Annotated[dict[str, Any], Body(...)]
+    id: str,
+    file_version: Annotated[str, Path(alias="fileVersion")],
+    ctx: Annotated[RequestContext, Depends(get_context)],
+    body: Annotated[dict[str, Any], Body(...)],
 ):
     control_ids = body.get("controlIds")
     is_applicable = body.get("is_applicable")
@@ -567,7 +589,9 @@ async def update_control_applicability(
             return not_found(BUSINESS_MESSAGES["ASSIGNMENT_NOT_FOUND"])
 
         file_versions = coerce_file_versions(assignment.fileVersions)
-        err_response, file_version_doc = _validate_assignment_for_modification(assignment, file_version, file_versions)
+        err_response, file_version_doc = _validate_assignment_for_modification(
+            assignment, file_version, file_versions
+        )
         if err_response:
             return err_response
 
@@ -579,7 +603,7 @@ async def update_control_applicability(
 
         assignment.fileVersions = dump_file_versions(file_versions)
         assignment.updatedAt = _utcnow()
-        
+
         display_control_id = helper.format_control_ids_for_display([c.id for c in existing_controls])
         status_label = "applicable" if is_applicable else "not applicable"
 

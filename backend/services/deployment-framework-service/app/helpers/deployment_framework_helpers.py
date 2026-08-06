@@ -64,7 +64,6 @@ def coerce_documents(documents: list[Any] | None) -> list[FrameworkPackageDocume
     return result
 
 
-
 def normalize_document_action(action: str | None) -> str | None:
     normalized = str(action or "").lower().strip()
     if normalized == "delete":
@@ -91,7 +90,9 @@ def parse_document_updates(raw_documents: list[dict] | None) -> list[dict]:
                 "fileId": doc.get("fileId"),
                 "originalFileName": doc.get("originalFileName"),
                 "fileSize": doc.get("fileSize"),
-                "fileType": file_storage.normalize_file_type(doc.get("fileType"), doc.get("originalFileName")),
+                "fileType": file_storage.normalize_file_type(
+                    doc.get("fileType"), doc.get("originalFileName")
+                ),
                 "fileVersion": doc.get("fileVersion"),
                 "fileUrl": doc.get("fileUrl"),
                 "fileHash": doc.get("fileHash"),

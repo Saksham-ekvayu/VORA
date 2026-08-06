@@ -222,9 +222,7 @@ def _add_control_deployment_points(story: list[Any], control: Any):
     story.append(
         Paragraph(
             "Deployment Points",
-            ParagraphStyle(
-                "AFRDpHeader", parent=_styles["Normal"], fontSize=8, fontName="Helvetica-Bold"
-            ),
+            ParagraphStyle("AFRDpHeader", parent=_styles["Normal"], fontSize=8, fontName="Helvetica-Bold"),
         )
     )
     for idx, point in enumerate(control.deployment_points):
@@ -269,7 +267,6 @@ def _add_controls_section(story: list[Any], sections: list[Any], doc_width: floa
 
         for control in section.controls or []:
             _add_single_control(story, control, doc_width)
-
 
 
 def generate_framework_assignment_report_pdf(assignment: Any, file_version: Any, customer: Any) -> bytes:

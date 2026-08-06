@@ -221,7 +221,7 @@ def normalize_file_type(file_type: str | None, original_file_name: str | None) -
         return matched_ext
 
     suffix = normalized_type.rsplit("/", 1)[-1]
-    
+
     # Check if the suffix matches the end of any known MIME type
     for k, v in PREVIEW_MIME_TYPES.items():
         if v.endswith(suffix):
@@ -237,4 +237,3 @@ def normalize_file_type(file_type: str | None, original_file_name: str | None) -
         return extension
 
     return "pdf"
-
