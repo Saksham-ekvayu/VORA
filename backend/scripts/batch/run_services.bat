@@ -20,7 +20,6 @@ if errorlevel 1 (
     start "compliance-agent-service" cmd /k "cd /d "%ROOT%\services\compliance-agent-service" && .venv\Scripts\activate.bat && python -m uvicorn app.main:app --host localhost --port 7009 --reload --reload-dir . --reload-dir ..\..\shared"
     start "deployment-gap-service" cmd /k "cd /d "%ROOT%\services\deployment-gap-service" && .venv\Scripts\activate.bat && python -m uvicorn app.main:app --host localhost --port 7010 --reload --reload-dir . --reload-dir ..\..\shared"
     start "extract-controls-service" cmd /k "cd /d "%ROOT%\services\extract-controls-service" && .venv\Scripts\activate.bat && python -m uvicorn app.main:app --host localhost --port 7011 --reload --reload-dir . --reload-dir ..\..\shared"
-    start "load-document-service" cmd /k "cd /d "%ROOT%\services\load-document-service" && .venv\Scripts\activate.bat && python -m uvicorn app.main:app --host localhost --port 7012 --reload --reload-dir . --reload-dir ..\..\shared"
     start "api-gateway" cmd /k "cd /d "%ROOT%\gateway" && .venv\Scripts\activate.bat && python -m uvicorn main:app --host localhost --port 8000 --reload"
     pause
     exit /b
@@ -37,5 +36,4 @@ wt -w new new-tab --title "authentication-service" -d "%ROOT%\services\authentic
     ; new-tab --title "compliance-agent-service" -d "%ROOT%\services\compliance-agent-service" cmd /k ".venv\Scripts\activate.bat && python -m uvicorn app.main:app --host localhost --port 7009 --reload --reload-dir . --reload-dir ..\..\shared" ^
     ; new-tab --title "deployment-gap-service" -d "%ROOT%\services\deployment-gap-service" cmd /k ".venv\Scripts\activate.bat && python -m uvicorn app.main:app --host localhost --port 7010 --reload --reload-dir . --reload-dir ..\..\shared" ^
     ; new-tab --title "extract-controls-service" -d "%ROOT%\services\extract-controls-service" cmd /k ".venv\Scripts\activate.bat && python -m uvicorn app.main:app --host localhost --port 7011 --reload --reload-dir . --reload-dir ..\..\shared" ^
-    ; new-tab --title "load-document-service" -d "%ROOT%\services\load-document-service" cmd /k ".venv\Scripts\activate.bat && python -m uvicorn app.main:app --host localhost --port 7012 --reload --reload-dir . --reload-dir ..\..\shared" ^
     ; new-tab --title "api-gateway" -d "%ROOT%\gateway" cmd /k ".venv\Scripts\activate.bat && python -m uvicorn main:app --host localhost --port 8000 --reload"

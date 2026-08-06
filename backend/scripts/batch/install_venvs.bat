@@ -52,9 +52,6 @@ if errorlevel 1 (
 
     cd /d "%ROOT%\services\extract-controls-service"
     call .venv\Scripts\activate.bat && pip install -r requirements.txt
-
-    cd /d "%ROOT%\services\load-document-service"
-    call .venv\Scripts\activate.bat && pip install -r requirements.txt
     
     cd /d "%ROOT%\gateway"
     call .venv\Scripts\activate.bat && pip install -r requirements.txt
@@ -75,9 +72,7 @@ wt -w new new-tab --title "authentication-service" -d "%ROOT%\services\authentic
     ; new-tab --title "compliance-agent-service" -d "%ROOT%\services\compliance-agent-service" cmd /k ".venv\Scripts\activate.bat && pip install -r requirements.txt && pause" ^
     ; new-tab --title "deployment-gap-service" -d "%ROOT%\services\deployment-gap-service" cmd /k ".venv\Scripts\activate.bat && pip install -r requirements.txt && pause" ^
     ; new-tab --title "extract-controls-service" -d "%ROOT%\services\extract-controls-service" cmd /k ".venv\Scripts\activate.bat && pip install -r requirements.txt && pause" ^
-    ; new-tab --title "load-document-service" -d "%ROOT%\services\load-document-service" cmd /k ".venv\Scripts\activate.bat && pip install -r requirements.txt && pause" ^
     ; new-tab --title "api-gateway" -d "%ROOT%\gateway" cmd /k ".venv\Scripts\activate.bat && pip install -r requirements.txt && pause"
-
 echo.
 echo Opening Windows Terminal with installation tabs for all services...
 pause

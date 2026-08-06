@@ -7,8 +7,7 @@ import logging
 from typing import Any, Optional
 
 from app.services.comparison_runner import run_comparison
-from app.utils.ws_manager import manager
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter
 from sqlalchemy import select
 from vora_shared.database import session_scope
 from vora_shared.models import ComparisonResult
@@ -62,60 +61,3 @@ async def get_compare_results(
         return server_error(str(exc))
 
 
-@router.websocket("/ws/comparison/{deployment_framework_id}/{package_version}")
-async def ws_comparison_auto(websocket: WebSocket, deployment_framework_id: str, package_version: str):
-    deployment_framework_id = deployment_framework_id.strip()
-    package_version = package_version.strip()
-    conn_key = f"comparison:{deployment_framework_id}:{package_version}"
-    await manager.connect(conn_key, websocket)
-
-    async def send_cb(msg: dict[str, Any]) -> None:
-        await manager.send_json(conn_key, msg)
-
-    task = asyncio.create_task(run_comparison(deployment_framework_id, package_version, send_cb))
-    try:
-        while True:
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        await manager.disconnect(conn_key, websocket)
-    except Exception as exc:  # noqa: BLE001
-        logger.error("WS comparison error | %s", exc, exc_info=True)
-        await manager.disconnect(conn_key, websocket)
-    finally:
-        _ = task
-
-
-@router.websocket("/ws/comparison/{deployment_framework_id}/{package_version}/{framework_assignment_id}")
-async def ws_comparison_with_assignment(
-    websocket: WebSocket,
-    deployment_framework_id: str,
-    package_version: str,
-    framework_assignment_id: str,
-):
-    deployment_framework_id = deployment_framework_id.strip()
-    package_version = package_version.strip()
-    framework_assignment_id = framework_assignment_id.strip()
-    conn_key = f"comparison:{deployment_framework_id}:{package_version}:{framework_assignment_id}"
-    await manager.connect(conn_key, websocket)
-
-    async def send_cb(msg: dict[str, Any]) -> None:
-        await manager.send_json(conn_key, msg)
-
-    task = asyncio.create_task(
-        run_comparison(
-            deployment_framework_id,
-            package_version,
-            send_cb,
-            framework_assignment_id=framework_assignment_id,
-        )
-    )
-    try:
-        while True:
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        await manager.disconnect(conn_key, websocket)
-    except Exception as exc:  # noqa: BLE001
-        logger.error("WS comparison(assignment) error | %s", exc, exc_info=True)
-        await manager.disconnect(conn_key, websocket)
-    finally:
-        _ = task

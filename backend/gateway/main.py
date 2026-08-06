@@ -56,10 +56,7 @@ ROUTES = {
     "/api/compliance-agent": "http://localhost:7009/api/compliance-agent",
     # deployment-gap-service (7010)
     "/api/deployment-gap": "http://localhost:7010/api/deployment-gap",
-    # extract-controls-service (7011)
     "/api/extract": "http://localhost:7011/api/extract",
-    # load-document-service (7012)
-    "/api/load": "http://localhost:7012/api/load",
 }
 
 # Sort by length descending to match most specific prefix first
