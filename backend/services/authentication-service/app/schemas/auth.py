@@ -1,5 +1,4 @@
 from pydantic import BaseModel, field_validator
-
 from vora_shared.validators import (
     validate_email,
     validate_otp,

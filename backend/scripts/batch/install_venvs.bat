@@ -41,9 +41,6 @@ if errorlevel 1 (
     cd /d "%ROOT%\services\deployment-framework-service"
     call .venv\Scripts\activate.bat && pip install -r requirements.txt
     
-    cd /d "%ROOT%\services\deployment-document-service"
-    call .venv\Scripts\activate.bat && pip install -r requirements.txt
-
     cd /d "%ROOT%\services\comparison-service"
     call .venv\Scripts\activate.bat && pip install -r requirements.txt
 
@@ -74,7 +71,6 @@ wt -w new new-tab --title "authentication-service" -d "%ROOT%\services\authentic
     ; new-tab --title "framework-category-service" -d "%ROOT%\services\framework-category-service" cmd /k ".venv\Scripts\activate.bat && pip install -r requirements.txt && pause" ^
     ; new-tab --title "framework-service" -d "%ROOT%\services\framework-service" cmd /k ".venv\Scripts\activate.bat && pip install -r requirements.txt && pause" ^
     ; new-tab --title "deployment-framework-service" -d "%ROOT%\services\deployment-framework-service" cmd /k ".venv\Scripts\activate.bat && pip install -r requirements.txt && pause" ^
-    ; new-tab --title "deployment-document-service" -d "%ROOT%\services\deployment-document-service" cmd /k ".venv\Scripts\activate.bat && pip install -r requirements.txt && pause" ^
     ; new-tab --title "comparison-service" -d "%ROOT%\services\comparison-service" cmd /k ".venv\Scripts\activate.bat && pip install -r requirements.txt && pause" ^
     ; new-tab --title "compliance-agent-service" -d "%ROOT%\services\compliance-agent-service" cmd /k ".venv\Scripts\activate.bat && pip install -r requirements.txt && pause" ^
     ; new-tab --title "deployment-gap-service" -d "%ROOT%\services\deployment-gap-service" cmd /k ".venv\Scripts\activate.bat && pip install -r requirements.txt && pause" ^

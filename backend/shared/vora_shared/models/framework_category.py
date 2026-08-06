@@ -6,7 +6,6 @@ from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, DateTime, Index, String, Text, true
 from sqlalchemy.orm import Mapped, mapped_column
-
 from vora_shared.database import Base
 from vora_shared.ids import new_id
 

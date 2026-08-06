@@ -2,11 +2,12 @@
 from pathlib import Path
 from typing import Annotated
 
-# Third-party Packages
-from fastapi import Depends, HTTPException
-
 # Project Imports
 import vora_shared
+from app.utils.temp_password import generate_temp_password
+
+# Third-party Packages
+from fastapi import Depends, HTTPException
 from vora_shared import messages as msg
 from vora_shared.auth import AuthenticatedUser, authenticate
 from vora_shared.email import load_template
@@ -15,8 +16,6 @@ from vora_shared.models.user import User, UserAddress, UserCreatedBy
 from vora_shared.query_builder import admin_tenant_query
 from vora_shared.responses import error
 from vora_shared.security import hash_password
-
-from app.utils.temp_password import generate_temp_password
 
 TEMPLATES_DIR = Path(vora_shared.__file__).resolve().parent / "templates"
 REGEX_OPTIONS_FIELD = "$options"
@@ -35,7 +34,7 @@ def address_from_blocks(permanent, temporary) -> UserAddress:
 
 
 async def batch_fetch_creators(docs: list) -> dict:
-    creator_ids = {d.createdBy.userId for d in docs if getattr(d, 'createdBy', None) and d.createdBy.userId}
+    creator_ids = {d.createdBy.userId for d in docs if getattr(d, "createdBy", None) and d.createdBy.userId}
     if not creator_ids:
         return {}
     creators = {}
@@ -61,10 +60,18 @@ def require_customer_admin(
 def build_customer_address(body_address) -> CustomerAddress:
     return CustomerAddress(
         permanentAddress=AddressBlock(
-            **(body_address.permanentAddress.model_dump(exclude_none=True) if body_address and body_address.permanentAddress else {})
+            **(
+                body_address.permanentAddress.model_dump(exclude_none=True)
+                if body_address and body_address.permanentAddress
+                else {}
+            )
         ),
         temporaryAddress=AddressBlock(
-            **(body_address.temporaryAddress.model_dump(exclude_none=True) if body_address and body_address.temporaryAddress else {})
+            **(
+                body_address.temporaryAddress.model_dump(exclude_none=True)
+                if body_address and body_address.temporaryAddress
+                else {}
+            )
         ),
     )
 
@@ -78,6 +85,7 @@ def add_address_updates(address, update_data: dict) -> None:
     if address.temporaryAddress:
         for key, value in address.temporaryAddress.model_dump(exclude_unset=True).items():
             update_data[f"address.temporaryAddress.{key}"] = value
+
 
 def build_customer_update_data(body) -> dict:
     update_data: dict = {}
@@ -93,7 +101,7 @@ def build_customer_update_data(body) -> dict:
         update_data["phone"] = body.phone
     if body.secondaryPhone is not None:
         update_data["secondaryPhone"] = body.secondaryPhone
-    
+
     add_address_updates(body.address, update_data)
     return update_data
 
@@ -126,13 +134,21 @@ def build_user_update_data(body, user) -> dict:
             update_data[f"address.temporaryAddress.{key}"] = value
     return update_data
 
-def build_users_filter(search: str | None, is_active: str | None, role: str | None, current_role: str, tenant_id: str, creator_ids: list) -> dict:
+
+def build_users_filter(
+    search: str | None,
+    is_active: str | None,
+    role: str | None,
+    current_role: str,
+    tenant_id: str,
+    creator_ids: list,
+) -> dict:
     base_filter = {} if current_role == "admin" else {"tenantId": tenant_id}
     if role:
         base_filter["role"] = role
     if is_active is not None:
         base_filter["isActive"] = is_active.lower() == "true"
-        
+
     additional_filters = {}
     if search:
         search_conditions = [
@@ -144,8 +160,9 @@ def build_users_filter(search: str | None, is_active: str | None, role: str | No
         if creator_ids:
             search_conditions.append({"createdBy.userId": {"$in": creator_ids}})
         additional_filters["$or"] = search_conditions
-        
+
     return {**base_filter, **additional_filters}
+
 
 def get_creator_search_query(search: str, current_role: str, tenant_id: str) -> dict:
     if current_role == "admin":
@@ -169,7 +186,14 @@ async def validate_and_build_user(body, ctx):
     creator_tenant_id = ctx.tenant_id
 
     if current_role == "customer-admin" and body.role in RESTRICTED_ROLES_FOR_CUSTOMER_ADMIN:
-        return error(msg.role_restriction(current_role, "custom roles (excluding admin, customer-admin, expert)"), 403), None, None
+        return (
+            error(
+                msg.role_restriction(current_role, "custom roles (excluding admin, customer-admin, expert)"),
+                403,
+            ),
+            None,
+            None,
+        )
 
     if current_role == "admin" and body.role in TENANT_SCOPED_ROLES and not body.tenantId:
         return error(f"Tenant ID is required for {body.role} role", 400, field="tenantId"), None, None
@@ -221,7 +245,12 @@ def validate_user_roles(body, user, current_role: str, current_id_str: str, targ
     ):
         return error(msg.ONLY_UPDATE_CREATED_USERS, 403)
 
-    if current_role == "customer-admin" and new_role and new_role != user.role and new_role in RESTRICTED_ROLES_FOR_CUSTOMER_ADMIN:
+    if (
+        current_role == "customer-admin"
+        and new_role
+        and new_role != user.role
+        and new_role in RESTRICTED_ROLES_FOR_CUSTOMER_ADMIN
+    ):
         return error(
             msg.role_assignment_restriction(
                 current_role, "custom roles (excluding admin, customer-admin, expert)"
@@ -239,6 +268,7 @@ def validate_user_roles(body, user, current_role: str, current_id_str: str, targ
         return error(msg.CANNOT_CHANGE_ADMIN_ROLE, 400)
 
     return None
+
 
 async def validate_user_update(body, user, ctx, target_id_str: str):
     current_user = ctx.user

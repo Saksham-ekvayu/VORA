@@ -32,6 +32,13 @@ export const validatePhone = (phone) => {
   return null;
 };
 
+export const validateOptionalPhone = (phone) => {
+  if (phone && !isValidPhoneNumber(phone)) {
+    return "Please enter a valid phone number";
+  }
+  return null;
+};
+
 export const validateSecondaryPhone = (phone) => {
   if (phone && !isValidPhoneNumber(phone)) {
     return "Please enter a valid secondary phone number";

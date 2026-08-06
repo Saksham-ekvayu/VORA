@@ -9,7 +9,6 @@ from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import select
-
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
 from vora_shared.models import (
@@ -63,9 +62,7 @@ def _mock_controls(label: str = "Extracted Controls") -> list[dict[str, Any]]:
 
 
 def _controls_payload(controls_data: list[dict[str, Any]]) -> dict[str, Any]:
-    total_controls = sum(
-        len(s.get("controls") or []) for s in controls_data if isinstance(s, dict)
-    )
+    total_controls = sum(len(s.get("controls") or []) for s in controls_data if isinstance(s, dict))
     return {
         "total_controls": total_controls,
         "total_sections": len(controls_data),
@@ -88,9 +85,7 @@ def _status_history(
             "history": history,
         }
     completed = completed or _iso()
-    history.append(
-        {"status": "completed", "timestamp": completed, "message": "Extraction completed"}
-    )
+    history.append({"status": "completed", "timestamp": completed, "message": "Extraction completed"})
     try:
         start = datetime.fromisoformat(uploaded.replace("Z", "+00:00"))
         end = datetime.fromisoformat(completed.replace("Z", "+00:00"))
@@ -152,9 +147,7 @@ async def _upsert_extraction_result(
         return row.id
 
 
-async def run_framework_extraction(
-    framework_id: str, file_id: str, send_cb: SendCb
-) -> None:
+async def run_framework_extraction(framework_id: str, file_id: str, send_cb: SendCb) -> None:
     """Load Framework, update fileVersions[].aiExtraction, push WS progress."""
     framework_id = str(framework_id).strip()
     file_id = str(file_id).strip()
@@ -274,9 +267,7 @@ async def run_framework_extraction(
                     "completedAt": history["completed_at"],
                     "history": [
                         {
-                            "status": (
-                                "extracted" if h["status"] == "completed" else h["status"]
-                            ),
+                            "status": ("extracted" if h["status"] == "completed" else h["status"]),
                             "timestamp": h["timestamp"],
                             "message": h.get("message"),
                         }
@@ -372,9 +363,7 @@ async def _get_or_create_doc_extraction(
             return row
     if file_hash:
         row = (
-            await session.execute(
-                select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash)
-            )
+            await session.execute(select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash))
         ).scalar_one_or_none()
         if row:
             return row
@@ -384,9 +373,7 @@ async def _get_or_create_doc_extraction(
     return row
 
 
-async def run_deployment_extraction(
-    df_id: str, pkg_ver: str, file_id: str, send_cb: SendCb
-) -> None:
+async def run_deployment_extraction(df_id: str, pkg_ver: str, file_id: str, send_cb: SendCb) -> None:
     """Load DeploymentFramework, update DocumentExtraction + packages JSONB, push WS."""
     df_id = str(df_id).strip()
     pkg_ver = str(pkg_ver).strip()
@@ -683,11 +670,7 @@ async def run_package_merge(df_id: str, pkg_ver: str, send_cb: SendCb) -> None:
 
             packages = list(df.packages or [])
             pkg = next(
-                (
-                    p
-                    for p in packages
-                    if isinstance(p, dict) and p.get("packageVersion") == pkg_ver
-                ),
+                (p for p in packages if isinstance(p, dict) and p.get("packageVersion") == pkg_ver),
                 None,
             )
             if not pkg:
@@ -766,9 +749,7 @@ async def run_package_merge(df_id: str, pkg_ver: str, send_cb: SendCb) -> None:
 
             # Upsert PackageMerge
             pm_row = (
-                await session.execute(
-                    select(PackageMerge).where(PackageMerge.frameworkId == df_id)
-                )
+                await session.execute(select(PackageMerge).where(PackageMerge.frameworkId == df_id))
             ).scalar_one_or_none()
             if pm_row is None:
                 pm_row = PackageMerge(

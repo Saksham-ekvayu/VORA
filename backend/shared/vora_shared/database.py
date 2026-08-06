@@ -22,7 +22,7 @@ class Base(DeclarativeBase):
     """Declarative base for all shared models."""
 
 
-async def connect_db(database_url: str, *_args: Any, **_kwargs: Any) -> None:
+def connect_db(database_url: str, *_args: Any, **_kwargs: Any) -> None:
     """Create engine, session factory, and ensure tables exist.
 
     Extra positional/keyword args are ignored for Beanie-era call compatibility
@@ -50,6 +50,7 @@ async def connect_db(database_url: str, *_args: Any, **_kwargs: Any) -> None:
     # Tables are now managed by Alembic migrations instead of create_all on startup
     # async with _engine.begin() as conn:
     #     await conn.run_sync(Base.metadata.create_all)
+
 
 async def disconnect_db() -> None:
     global _engine, _session_factory

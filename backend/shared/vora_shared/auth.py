@@ -8,7 +8,7 @@ import jwt
 from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
-
+from vora_shared import messages as msg
 from vora_shared.config import Settings, get_settings
 from vora_shared.database import session_scope
 from vora_shared.models.user import User
@@ -65,17 +65,13 @@ def verify_token(
     )
 
 
-def decode_unverified(token: str) -> dict[str, Any] | None:
-    return jwt.decode(token, options={"verify_signature": False})
-
-
-async def get_tenant_id(
+def get_tenant_id(
     x_tenant_id: str | None = Header(default=None, alias="x-tenant-id"),
 ) -> str | None:
     return x_tenant_id
 
 
-async def require_auth(
+def require_auth(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     tenant_id: str | None = Depends(get_tenant_id),
     settings: Settings = Depends(get_settings),
@@ -102,6 +98,75 @@ class AuthenticatedUser:
     tenant_id: str | None
 
 
+def _validate_token_with_tenant_fallback(
+    token: str,
+    header_tenant_id: str | None,
+    settings: Settings,
+) -> dict[str, Any]:
+    """
+    Verify JWT token by trying with different tenant secrets.
+    First tries with the header tenant ID, then falls back to the default secret.
+    Returns the verified payload.
+    """
+    # Try with header tenant ID first
+    if header_tenant_id:
+        try:
+            return verify_token(token, header_tenant_id, settings)
+        except jwt.PyJWTError:
+            # Continue to try with default secret
+            pass
+
+    # Try with default tenant secret (no tenant)
+    try:
+        return verify_token(token, None, settings)
+    except jwt.PyJWTError as exc:
+        # If both attempts fail, raise the error
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, msg.SESSION_INVALID) from exc
+
+
+def _validate_tenant_match(header_tenant_id: str | None, payload_tenant_id: str | None):
+    """Validate that header tenant ID matches payload tenant ID."""
+    if header_tenant_id and payload_tenant_id != header_tenant_id:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, msg.SESSION_INVALID)
+
+
+async def _fetch_user(user_id: str | None) -> User | None:
+    """Fetch user from database by ID."""
+    if not user_id:
+        return None
+
+    async with session_scope() as session:
+        result = await session.execute(select(User).where(User.id == str(user_id)))
+        user = result.scalar_one_or_none()
+        if user is not None:
+            # Detach-friendly: keep attrs loaded after session closes
+            session.expunge(user)
+        return user
+
+
+def _validate_user(user: User | None) -> User:
+    """Validate user exists and is active."""
+    if not user:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, msg.SESSION_INVALID)
+
+    if not user.isActive:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            {
+                "message": msg.ACCOUNT_DEACTIVATED,
+                "field": "account",
+            },
+        )
+    return user
+
+
+def _validate_token_version(payload: dict[str, Any], user: User):
+    """Validate token version matches user's current token version."""
+    token_version = payload.get("tokenVersion")
+    if token_version is not None and user.tokenVersion != token_version:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, msg.SESSION_EXPIRED)
+
+
 async def authenticate(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     header_tenant_id: str | None = Depends(get_tenant_id),
@@ -112,61 +177,22 @@ async def authenticate(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Please login to continue.")
 
     token = credentials.credentials
-    try:
-        unverified = decode_unverified(token)
-    except jwt.PyJWTError:
-        unverified = None
-    if not unverified:
-        raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED, "Your session is invalid. Please login again."
-        )
 
-    tenant_id = unverified.get("tenantId") or None
+    # Step 1: Verify token signature with appropriate tenant secret
+    # This tries header tenant first, then falls back to no tenant
+    payload = _validate_token_with_tenant_fallback(token, header_tenant_id, settings)
 
-    try:
-        payload = verify_token(token, tenant_id, settings)
-    except jwt.ExpiredSignatureError as exc:
-        raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED, "Your session has expired. Please login again."
-        ) from exc
-    except jwt.PyJWTError as exc:
-        raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED, "Your session is invalid. Please login again."
-        ) from exc
+    # Step 2: Validate tenant match
+    _validate_tenant_match(header_tenant_id, payload.get("tenantId"))
 
-    if header_tenant_id and payload.get("tenantId") != header_tenant_id:
-        raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED, "Your session is invalid. Please login again."
-        )
+    # Step 3: Fetch and validate user
+    user = await _fetch_user(payload.get("sub"))
+    user = _validate_user(user)
 
-    user_id = payload.get("sub")
-    user: User | None = None
-    if user_id:
-        async with session_scope() as session:
-            result = await session.execute(select(User).where(User.id == str(user_id)))
-            user = result.scalar_one_or_none()
-            if user is not None:
-                # Detach-friendly: keep attrs loaded after session closes
-                session.expunge(user)
+    # Step 4: Validate token version
+    _validate_token_version(payload, user)
 
-    if not user:
-        raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED, "Your session is invalid. Please login again."
-        )
+    # Get the tenant ID from the payload (after verification)
+    tenant_id_from_payload = payload.get("tenantId") or None
 
-    if not user.isActive:
-        raise HTTPException(
-            status.HTTP_403_FORBIDDEN,
-            {
-                "message": "Your account has been deactivated. Please contact administrator.",
-                "field": "account",
-            },
-        )
-
-    token_version = payload.get("tokenVersion")
-    if token_version is not None and user.tokenVersion != token_version:
-        raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED, "Your session has expired. Please login again."
-        )
-
-    return AuthenticatedUser(user=user, tenant_id=tenant_id)
+    return AuthenticatedUser(user=user, tenant_id=tenant_id_from_payload)

@@ -4,26 +4,33 @@ from typing import Any
 
 # --- Helper functions ---
 
+
 def format_message(template: str, **replacements: Any) -> str:
     message = template
     for key, value in replacements.items():
         message = message.replace(f"{{{key}}}", str(value))
     return message
 
+
 def role_restriction(current_role: str, allowed_roles: str) -> str:
     return f"{current_role} can only create users with roles: {allowed_roles}"
+
 
 def role_assignment_restriction(current_role: str, allowed_roles: str) -> str:
     return f"{current_role} can only assign roles: {allowed_roles}"
 
+
 def cannot_change_own_role(role: str) -> str:
     return f"{role} cannot change their own role"
+
 
 def cannot_change_own_status(role: str) -> str:
     return f"{role} cannot change their own account status"
 
+
 def cannot_delete_own_account(role: str) -> str:
     return f"{role} cannot delete their own account"
+
 
 # --- Flat Messages (Auth & Profile) ---
 USER_ALREADY_EXISTS = "An account with this email already exists."
@@ -57,6 +64,8 @@ PASSWORD_RESET_SUCCESS = "Password reset successful. Please login with your new 
 PASSWORD_CHANGED_SUCCESS = "Password changed successfully. Please login again with your new password."
 VERIFICATION_OTP_SENT = "Verification code sent to your email."
 EMAIL_ALREADY_VERIFIED = "Email is already verified."
+SESSION_INVALID = "Your session is invalid. Please login again."
+SESSION_EXPIRED = "Your session has expired. Please login again."
 
 PASSWORD_SAME_AS_OLD = "New password must be different from current password"
 PHONE_ALREADY_EXISTS = "Phone number already exists"
@@ -81,6 +90,7 @@ FAILED_TO_UPDATE_USER = "Failed to update user"
 FAILED_TO_UPDATE_USER_STATUS = "Failed to update user status"
 USER_ACTIVATED = "User activated successfully"
 USER_DEACTIVATED = "User deactivated successfully"
+CUSTOMER_NOT_FOUND = "Customer not found"
 
 NO_USERS_MATCH_CRITERIA = "No users match your search criteria. Try adjusting your filters."
 NO_USERS_AVAILABLE = "No users available yet. Create your first user to get started."
@@ -88,7 +98,9 @@ USER_LIST_RETRIEVED = "User list retrieved successfully"
 PROFILE_RETRIEVED = "Profile retrieved successfully"
 PROFILE_UPDATED = "Profile updated successfully"
 USER_CREATED = "User created successfully. Temporary password has been sent to their email address."
-USER_CREATED_EMAIL_FAILED = "User created successfully, but failed to send email. Please provide the temporary password manually."
+USER_CREATED_EMAIL_FAILED = (
+    "User created successfully, but failed to send email. Please provide the temporary password manually."
+)
 USER_DELETED = "User deleted successfully"
 
 TENANT_ID_REQUIRED = "Tenant ID is required in X-TENANT-ID header"
@@ -200,6 +212,8 @@ BUSINESS_MESSAGES = {
     "NO_CONTROLS_FOUND": "No matching controls found in this version",
     "USER_ID_REQUIRED": "User ID (_id) is required for sync",
     "CANNOT_MODIFY_FINALIZED": "Cannot modify a finalized framework version.",
+    "FRAMEWORK_ASSIGNMENT_FINALIZE_DENIED": "Access denied. You do not have permission to finalize framework versions.",
+    "FRAMEWORK_ASSIGNMENT_ALREADY_FINALIZED": "Framework assignment is already finalized.",
 }
 
 FRAMEWORK_MESSAGES = {
@@ -236,4 +250,66 @@ FRAMEWORK_MESSAGES = {
     "COMMENTS_REQUIRED_REJECTION": "Comments are required when rejecting a framework",
     "ONLY_REJECT_ASSIGNED": "You can only reject frameworks assigned to you",
     "FRAMEWORK_REJECTED": "Framework rejected successfully",
+}
+
+FRAMEWORK_SERVICE_MESSAGES = {
+    "FRAMEWORK_NOT_FOUND": "Framework not found",
+    "ONLY_THE_USER_WHO_UPLOADED_THE_FRAMEWORK": "Only the user who uploaded the framework can approve it.",
+    "FRAMEWORK_IS_ALREADY_APPROVED": "Framework is already approved",
+    "FRAMEWORK_MUST_BE_UPLOADED_TO_AI_BEFORE": "Framework must be uploaded to AI before approval",
+    "FRAMEWORK_AI_PROCESSING_IS_IN_PROGRESS_P": "Framework AI processing is in progress. Please wait for completion",
+    "FRAMEWORK_AI_PROCESSING_FAILED": "Framework AI processing failed",
+    "FRAMEWORK_IS_ALREADY_REJECTED": "Framework is already rejected",
+    "CUSTOMERID_TENANTID_AND_FRAMEWORKIDS_NON": "customerId, tenantId, and frameworkIds (non-empty array) are required fields.",
+    "CUSTOMER_ORGANIZATION_NOT_FOUND": "Customer organization not found.",
+    "CUSTOMER_ORGANIZATION_IS_NOT_ACTIVE": "Customer organization is not active.",
+    "FRAMEWORKS_NOT_FOUND": "Frameworks not found",
+    "ONE_OR_MORE_PROVIDED_FRAMEWORK_IDS_ARE_I": "One or more provided framework IDs are invalid.",
+    "INVALID_FRAMEWORK_CATEGORY_ID_FORMAT": "Invalid framework category ID format",
+    "FAILED_TO_SAVE_FILE": "Failed to save file",
+    "YOU_DON_T_HAVE_PERMISSION_TO_UPDATE_THIS": "You don't have permission to update this framework",
+    "YOU_DON_T_HAVE_PERMISSION_TO_DELETE_THIS": "You don't have permission to delete this file",
+    "CANNOT_DELETE_APPROVED_FRAMEWORK": "Cannot delete approved framework",
+    "YOU_DON_T_HAVE_PERMISSION_TO_ACCESS_THES": "You don't have permission to access these files",
+    "YOU_DON_T_HAVE_PERMISSION_TO_ACCESS_THIS": "You don't have permission to access this file",
+    "FILE_NOT_FOUND": "File not found",
+    "FILE_NOT_FOUND_ON_DISK": "File not found on disk",
+    "FILE_VERSION_NOT_FOUND": "File version not found",
+    "FILE_ON_DISK_NOT_FOUND": "File on disk not found",
+    "CANNOT_DELETE_FILES_FROM_APPROVED_FRAMEW": "Cannot delete files from approved framework",
+    "SECTIONID_OR_NEWSECTION_AND_NAME_ARE_REQ": "sectionId or newSection, and name are required",
+    "YOU_DON_T_HAVE_PERMISSION_TO_MODIFY_THIS": "You don't have permission to modify this framework",
+    "CANNOT_EDIT_CONTROLS_IN_APPROVED_FRAMEWO": "Cannot edit controls in approved frameworks",
+    "AI_EXTRACTION_DATA_NOT_FOUND_FOR_THIS_VE": "AI Extraction data not found for this version",
+    "AT_LEAST_ONE_OF_NAME_DESCRIPTION_OR_DEPL": "At least one of name, description, or deployment_points must be provided",
+    "VALID_WEIGHTAGE_MUST_BE_PROVIDED": "Valid weightage must be provided",
+    "CANNOT_DELETE_CONTROLS_FROM_APPROVED_FRA": "Cannot delete controls from approved frameworks",
+    "FRAMEWORK_RETRIEVED_SUCCESSFULLY": "Framework retrieved successfully",
+    "APPROVAL": "approval",
+    "FRAMEWORK_REJECTED_SUCCESSFULLY": "Framework rejected successfully",
+    "TENANTID": "tenantId",
+    "FRAMEWORK_CREATED_SUCCESSFULLY": "Framework created successfully",
+    "FRAMEWORK_UPDATED_SUCCESSFULLY": "Framework updated successfully",
+    "FRAMEWORK_DELETED_SUCCESSFULLY": "Framework deleted successfully",
+    "FRAMEWORK_FILES_RETRIEVED_SUCCESSFULLY": "Framework files retrieved successfully",
+    "FRAMEWORK_FILE_RETRIEVED_SUCCESSFULLY": "Framework file retrieved successfully",
+    "SECTIONID": "sectionId",
+    "FILEVERSION": "fileVersion",
+    "FRAMEWORK_CATEGORY_NOT_FOUND": "Framework category not found",
+    "FRAMEWORK_CATEGORY_IS_NOT_ACTIVE": "Framework category is not active",
+    "ID": "id",
+    "PACKAGE_MERGE_DOCUMENT_NOT_FOUND": "Package merge document not found",
+    "CONTROL_OR_DEPLOYMENT_POINT_NOT_FOUND": "Control or deployment point not found",
+    "INVALID_PATCH_TYPE": "Invalid patch type. Must be 'minor' or 'major'",
+    "AT_LEAST_ONE_FILE_REQUIRED": "At least one file is required",
+    "DOCUMENT_NOT_FOUND": "Document not found",
+    "PACKAGE_NOT_FOUND": "Package not found",
+    "PACKAGE_VERSION_REQUIRED": "Package version is required",
+    "ASSIGNED_USER_MUST_BE_INTERNAL_EXPERT": "Assigned user must be an internal-expert",
+    "COMPARISON_NOT_COMPLETED_FOR_PACKAGE": "Comparison not completed or not found for this package version",
+    "PACKAGE_COMPARISON_DATA_NOT_FOUND": "Package comparison data not found",
+    "CONTROL_ALIGNMENT_NOT_FOUND_COMPARISON": "Control alignment not found in comparison results",
+    "GAP_ANALYSIS_NOT_COMPLETED_FOR_PACKAGE": "Gap analysis not completed or not found for this package version",
+    "PACKAGE_GAP_ANALYSIS_DATA_NOT_FOUND": "Package gap analysis data not found",
+    "POINT_ALIGNMENT_NOT_FOUND_GAP_ANALYSIS": "Point alignment not found in gap analysis results",
 }
