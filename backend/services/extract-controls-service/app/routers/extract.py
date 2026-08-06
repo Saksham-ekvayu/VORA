@@ -13,8 +13,7 @@ from app.services.extraction_runner import (
     run_framework_extraction,
     run_package_merge,
 )
-from app.utils.ws_manager import manager
-from fastapi import APIRouter, Body, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Body
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from vora_shared.database import session_scope
@@ -385,117 +384,7 @@ async def delete_extraction(id: str):
 
 
 # ---------------------------------------------------------------------------
-# WebSockets — start engine on connect
-# ---------------------------------------------------------------------------
 
-
-@router.websocket("/ws/framework/{id}/fileid/{file_id}")
-async def ws_framework(websocket: WebSocket, id: str, file_id: str):
-    id = id.strip()
-    file_id = file_id.strip()
-    conn_key = f"framework:{id}:{file_id}"
-    await manager.connect(conn_key, websocket)
-
-    async def send_cb(msg: dict[str, Any]) -> None:
-        await manager.send_json(conn_key, msg)
-
-    task = asyncio.create_task(run_framework_extraction(id, file_id, send_cb))
-    try:
-        while True:
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        await manager.disconnect(conn_key, websocket)
-    except Exception as exc:  # noqa: BLE001
-        logger.error("WS framework error | %s", exc, exc_info=True)
-        await manager.disconnect(conn_key, websocket)
-    finally:
-        if not task.done():
-            # Let extraction finish even if client disconnects mid-flight
-            pass
-
-
-@router.websocket("/ws/deployment-framework/{id}/packageVersion/{pkg_ver}/fileid/{file_id}")
-async def ws_deployment_framework(websocket: WebSocket, id: str, pkg_ver: str, file_id: str):
-    id = id.strip()
-    pkg_ver = pkg_ver.strip()
-    file_id = file_id.strip()
-    conn_key = f"deployment-framework:{id}:{pkg_ver}:{file_id}"
-    await manager.connect(conn_key, websocket)
-
-    async def send_cb(msg: dict[str, Any]) -> None:
-        await manager.send_json(conn_key, msg)
-
-    task = asyncio.create_task(run_deployment_extraction(id, pkg_ver, file_id, send_cb))
-    try:
-        while True:
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        await manager.disconnect(conn_key, websocket)
-    except Exception as exc:  # noqa: BLE001
-        logger.error("WS deployment-framework error | %s", exc, exc_info=True)
-        await manager.disconnect(conn_key, websocket)
-    finally:
-        _ = task
-
-
-def _normalize_ws_param(value: str) -> str:
-    return (value or "").strip()
-
-
-@router.websocket("/ws/package-merge/{deployment_framework_id}/{package_version}")
-async def ws_package_merge(websocket: WebSocket, deployment_framework_id: str, package_version: str):
-    deployment_framework_id = _normalize_ws_param(deployment_framework_id)
-    package_version = _normalize_ws_param(package_version)
-
-    if not deployment_framework_id or not package_version:
-        await websocket.accept()
-        await websocket.send_json(
-            {
-                "event": "merge_url_failed",
-                "data": {
-                    "id": deployment_framework_id,
-                    "status": "validation_failed",
-                    "message": "WebSocket URL or parameter validation failed",
-                    "timestamp": _iso(),
-                },
-            }
-        )
-        await websocket.close(code=1008)
-        return
-
-    if package_version and not re.match(r"^[0-9]+\.[0-9]+\.[0-9]+$", package_version):
-        await websocket.accept()
-        await websocket.send_json(
-            {
-                "event": "merge_url_failed",
-                "data": {
-                    "id": deployment_framework_id,
-                    "status": "validation_failed",
-                    "message": "packageVersion must use semantic version format x.y.z",
-                    "timestamp": _iso(),
-                },
-            }
-        )
-        await websocket.close(code=1008)
-        return
-
-    conn_key = f"package-merge:{deployment_framework_id}:{package_version}"
-    await manager.connect(conn_key, websocket)
-
-    async def send_cb(msg: dict[str, Any]) -> None:
-        await manager.send_json(conn_key, msg)
-
-    task = asyncio.create_task(run_package_merge(deployment_framework_id, package_version, send_cb))
-    try:
-        while True:
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        await manager.disconnect(conn_key, websocket)
-    except Exception as exc:  # noqa: BLE001
-        logger.error("WS package-merge error | %s", exc, exc_info=True)
-        await manager.disconnect(conn_key, websocket)
-    finally:
-        _ = task
 
 
 # ---------------------------------------------------------------------------

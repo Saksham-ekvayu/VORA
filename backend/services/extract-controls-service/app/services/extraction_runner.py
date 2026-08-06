@@ -147,7 +147,7 @@ async def _upsert_extraction_result(
         return row.id
 
 
-async def run_framework_extraction(framework_id: str, file_id: str, send_cb: SendCb) -> None:
+async def run_framework_extraction(framework_id: str, file_id: str) -> None:
     """Load Framework, update fileVersions[].aiExtraction, push WS progress."""
     framework_id = str(framework_id).strip()
     file_id = str(file_id).strip()
@@ -157,33 +157,11 @@ async def run_framework_extraction(framework_id: str, file_id: str, send_cb: Sen
         async with session_scope() as session:
             fw = await session.get(Framework, framework_id)
             if not fw:
-                await send_cb(
-                    {
-                        "event": "extraction_failed",
-                        "data": {
-                            "id": framework_id,
-                            "status": "failed",
-                            "message": f"Framework not found: {framework_id}",
-                            "timestamp": _iso(),
-                        },
-                    }
-                )
                 return
 
             versions = list(fw.fileVersions or [])
             idx, fv = _find_file_version(versions, file_id)
             if idx is None or fv is None:
-                await send_cb(
-                    {
-                        "event": "extraction_failed",
-                        "data": {
-                            "id": framework_id,
-                            "status": "failed",
-                            "message": f"File version not found for fileId={file_id}",
-                            "timestamp": _iso(),
-                        },
-                    }
-                )
                 return
 
             ai = dict(fv.get("aiExtraction") or {})
@@ -198,17 +176,7 @@ async def run_framework_extraction(framework_id: str, file_id: str, send_cb: Sen
             versions[idx] = fv
             fw.fileVersions = versions
 
-        await send_cb(
-            {
-                "event": "extraction_uploaded",
-                "data": {
-                    "id": framework_id,
-                    "status": "uploaded",
-                    "timestamp": uploaded_ts,
-                },
-            }
-        )
-        await asyncio.sleep(0.05)
+        pass
 
         processing_ts = _iso()
         async with session_scope() as session:
@@ -231,20 +199,7 @@ async def run_framework_extraction(framework_id: str, file_id: str, send_cb: Sen
             versions[idx] = fv
             fw.fileVersions = versions
 
-        await send_cb(
-            {
-                "event": "extraction_processing",
-                "data": {
-                    "id": framework_id,
-                    "status": "processing",
-                    "message": "Extraction in progress",
-                    "timestamp": processing_ts,
-                },
-            }
-        )
-
         # Simulated / mock extraction pipeline
-        await asyncio.sleep(0.2)
         controls_data = _mock_controls(label=f"Framework Controls")
         controls = _controls_payload(controls_data)
         completed_ts = _iso()
@@ -304,20 +259,7 @@ async def run_framework_extraction(framework_id: str, file_id: str, send_cb: Sen
             },
         )
 
-        await send_cb(
-            {
-                "event": "extraction_completed",
-                "data": {
-                    "id": framework_id,
-                    "status": "completed",
-                    "timestamp": completed_ts,
-                    "message": "Extraction completed",
-                    "extraction_reused": False,
-                    "status_history": history,
-                    "controls": controls,
-                },
-            }
-        )
+        pass
     except Exception as exc:  # noqa: BLE001
         logger.exception("run_framework_extraction failed | id=%s", framework_id)
         fail_ts = _iso()
@@ -341,17 +283,7 @@ async def run_framework_extraction(framework_id: str, file_id: str, send_cb: Sen
                         fw.fileVersions = versions
         except Exception:  # noqa: BLE001
             pass
-        await send_cb(
-            {
-                "event": "extraction_failed",
-                "data": {
-                    "id": framework_id,
-                    "status": "failed",
-                    "message": str(exc),
-                    "timestamp": fail_ts,
-                },
-            }
-        )
+        pass
 
 
 async def _get_or_create_doc_extraction(
@@ -373,7 +305,7 @@ async def _get_or_create_doc_extraction(
     return row
 
 
-async def run_deployment_extraction(df_id: str, pkg_ver: str, file_id: str, send_cb: SendCb) -> None:
+async def run_deployment_extraction(df_id: str, pkg_ver: str, file_id: str) -> None:
     """Load DeploymentFramework, update DocumentExtraction + packages JSONB, push WS."""
     df_id = str(df_id).strip()
     pkg_ver = str(pkg_ver).strip()
@@ -384,17 +316,6 @@ async def run_deployment_extraction(df_id: str, pkg_ver: str, file_id: str, send
         async with session_scope() as session:
             df = await session.get(DeploymentFramework, df_id)
             if not df:
-                await send_cb(
-                    {
-                        "event": "extraction_failed",
-                        "data": {
-                            "id": df_id,
-                            "status": "failed",
-                            "message": f"DeploymentFramework not found: {df_id}",
-                            "timestamp": _iso(),
-                        },
-                    }
-                )
                 return
 
             packages = list(df.packages or [])
@@ -407,17 +328,6 @@ async def run_deployment_extraction(df_id: str, pkg_ver: str, file_id: str, send
                 None,
             )
             if pkg_idx is None:
-                await send_cb(
-                    {
-                        "event": "extraction_failed",
-                        "data": {
-                            "id": df_id,
-                            "status": "failed",
-                            "message": f"Package version not found: {pkg_ver}",
-                            "timestamp": _iso(),
-                        },
-                    }
-                )
                 return
 
             pkg = dict(packages[pkg_idx])
@@ -431,17 +341,6 @@ async def run_deployment_extraction(df_id: str, pkg_ver: str, file_id: str, send
                 None,
             )
             if doc_idx is None:
-                await send_cb(
-                    {
-                        "event": "extraction_failed",
-                        "data": {
-                            "id": df_id,
-                            "status": "failed",
-                            "message": f"Document not found: fileId={file_id}",
-                            "timestamp": _iso(),
-                        },
-                    }
-                )
                 return
 
             doc = documents[doc_idx]
@@ -461,17 +360,7 @@ async def run_deployment_extraction(df_id: str, pkg_ver: str, file_id: str, send
             packages[pkg_idx] = pkg
             df.packages = packages
 
-        await send_cb(
-            {
-                "event": "extraction_uploaded",
-                "data": {
-                    "id": df_id,
-                    "status": "uploaded",
-                    "timestamp": uploaded_ts,
-                },
-            }
-        )
-        await asyncio.sleep(0.05)
+        pass
 
         processing_ts = _iso()
         async with session_scope() as session:
@@ -512,19 +401,7 @@ async def run_deployment_extraction(df_id: str, pkg_ver: str, file_id: str, send
                         "message": "Extraction in progress",
                     }
 
-        await send_cb(
-            {
-                "event": "extraction_processing",
-                "data": {
-                    "id": df_id,
-                    "status": "processing",
-                    "message": "Extraction in progress",
-                    "timestamp": processing_ts,
-                },
-            }
-        )
-
-        await asyncio.sleep(0.2)
+        pass
         controls_data = _mock_controls(label="Deployment Controls")
         controls = _controls_payload(controls_data)
         completed_ts = _iso()
@@ -584,33 +461,10 @@ async def run_deployment_extraction(df_id: str, pkg_ver: str, file_id: str, send
             },
         )
 
-        await send_cb(
-            {
-                "event": "extraction_completed",
-                "data": {
-                    "id": df_id,
-                    "status": "completed",
-                    "timestamp": completed_ts,
-                    "message": "Extraction completed",
-                    "extraction_reused": False,
-                    "status_history": history,
-                    "controls": controls,
-                },
-            }
-        )
+        pass
     except Exception as exc:  # noqa: BLE001
         logger.exception("run_deployment_extraction failed | id=%s", df_id)
-        await send_cb(
-            {
-                "event": "extraction_failed",
-                "data": {
-                    "id": df_id,
-                    "status": "failed",
-                    "message": str(exc),
-                    "timestamp": _iso(),
-                },
-            }
-        )
+        pass
 
 
 def _extract_controls_from_ai(ai: Any) -> list[dict[str, Any]]:
@@ -634,38 +488,17 @@ def _extract_controls_from_ai(ai: Any) -> list[dict[str, Any]]:
     return []
 
 
-async def run_package_merge(df_id: str, pkg_ver: str, send_cb: SendCb) -> None:
+async def run_package_merge(df_id: str, pkg_ver: str) -> None:
     """Merge extracted document controls for a package; upsert PackageMerge* rows."""
     df_id = str(df_id).strip()
     pkg_ver = str(pkg_ver).strip()
 
     try:
-        await send_cb(
-            {
-                "event": "merge_processing",
-                "data": {
-                    "id": df_id,
-                    "status": "processing",
-                    "message": "Merging package controls",
-                    "timestamp": _iso(),
-                },
-            }
-        )
+        pass
 
         async with session_scope() as session:
             df = await session.get(DeploymentFramework, df_id)
             if not df:
-                await send_cb(
-                    {
-                        "event": "merge_failed",
-                        "data": {
-                            "id": df_id,
-                            "status": "failed",
-                            "message": f"DeploymentFramework not found: {df_id}",
-                            "timestamp": _iso(),
-                        },
-                    }
-                )
                 return
 
             packages = list(df.packages or [])
@@ -674,17 +507,6 @@ async def run_package_merge(df_id: str, pkg_ver: str, send_cb: SendCb) -> None:
                 None,
             )
             if not pkg:
-                await send_cb(
-                    {
-                        "event": "merge_failed",
-                        "data": {
-                            "id": df_id,
-                            "status": "failed",
-                            "message": f"Package version not found: {pkg_ver}",
-                            "timestamp": _iso(),
-                        },
-                    }
-                )
                 return
 
             documents = pkg.get("documents") or []
@@ -812,29 +634,7 @@ async def run_package_merge(df_id: str, pkg_ver: str, send_cb: SendCb) -> None:
                     break
             df.packages = packages
 
-        await send_cb(
-            {
-                "event": "merge_completed",
-                "data": {
-                    "id": df_id,
-                    "status": "merged",
-                    "message": "Merge data fetched",
-                    "mergeHistory": merge_history,
-                    "controls_data": merged_sections,
-                    "timestamp": _iso(),
-                },
-            }
-        )
+        pass
     except Exception as exc:  # noqa: BLE001
         logger.exception("run_package_merge failed | id=%s pkg=%s", df_id, pkg_ver)
-        await send_cb(
-            {
-                "event": "merge_failed",
-                "data": {
-                    "id": df_id,
-                    "status": "failed",
-                    "message": str(exc),
-                    "timestamp": _iso(),
-                },
-            }
-        )
+        pass
