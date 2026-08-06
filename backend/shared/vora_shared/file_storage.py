@@ -207,3 +207,34 @@ def validate_uploaded_file(filename: str, size: int) -> dict[str, Any]:
 
 def ensure_directory_exists(directory_path: str) -> None:
     os.makedirs(directory_path, exist_ok=True)
+
+
+def normalize_file_type(file_type: str | None, original_file_name: str | None) -> str:
+    normalized_type = str(file_type or "").lower().strip()
+    extension = str(original_file_name or "").rsplit(".", 1)[-1].lower()
+
+    if normalized_type in ALLOWED_EXTENSIONS:
+        return normalized_type
+
+    matched_ext = next((k for k, v in PREVIEW_MIME_TYPES.items() if v == normalized_type), None)
+    if matched_ext:
+        return matched_ext
+
+    suffix = normalized_type.rsplit("/", 1)[-1]
+    
+    # Check if the suffix matches the end of any known MIME type
+    for k, v in PREVIEW_MIME_TYPES.items():
+        if v.endswith(suffix):
+            return k
+    for k, v in CONTENT_TYPES.items():
+        if v.endswith(suffix):
+            return k
+
+    if suffix in ALLOWED_EXTENSIONS:
+        return suffix
+
+    if extension in ALLOWED_EXTENSIONS:
+        return extension
+
+    return "pdf"
+

@@ -15,14 +15,6 @@ from vora_shared import file_storage
 from vora_shared.ids import new_id
 from vora_shared.models.deployment_framework import FrameworkPackageDocument, PackageVersion
 
-_SUFFIX_MAP = {
-    "vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
-    "msword": "doc",
-    "officedocument.wordprocessingml.document": "docx",
-}
-
-_ALLOWED_TYPES = {"pdf", "doc", "docx"}
-
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
@@ -72,29 +64,6 @@ def coerce_documents(documents: list[Any] | None) -> list[FrameworkPackageDocume
     return result
 
 
-def normalize_file_type(file_type: str | None, original_file_name: str | None) -> str:
-    normalized_type = str(file_type or "").lower().strip()
-    extension = str(original_file_name or "").rsplit(".", 1)[-1].lower()
-
-    if normalized_type in _ALLOWED_TYPES:
-        return normalized_type
-
-    matched_ext = next((k for k, v in file_storage.PREVIEW_MIME_TYPES.items() if v == normalized_type), None)
-    if matched_ext:
-        return matched_ext
-
-    suffix = normalized_type.rsplit("/", 1)[-1]
-    if suffix in _SUFFIX_MAP:
-        return _SUFFIX_MAP[suffix]
-
-    if suffix in _ALLOWED_TYPES:
-        return suffix
-
-    if extension in _ALLOWED_TYPES:
-        return extension
-
-    return "pdf"
-
 
 def normalize_document_action(action: str | None) -> str | None:
     normalized = str(action or "").lower().strip()
@@ -122,7 +91,7 @@ def parse_document_updates(raw_documents: list[dict] | None) -> list[dict]:
                 "fileId": doc.get("fileId"),
                 "originalFileName": doc.get("originalFileName"),
                 "fileSize": doc.get("fileSize"),
-                "fileType": normalize_file_type(doc.get("fileType"), doc.get("originalFileName")),
+                "fileType": file_storage.normalize_file_type(doc.get("fileType"), doc.get("originalFileName")),
                 "fileVersion": doc.get("fileVersion"),
                 "fileUrl": doc.get("fileUrl"),
                 "fileHash": doc.get("fileHash"),
@@ -235,9 +204,7 @@ def _version_sort_key(v: str) -> tuple[int, int, int]:
         return (0, 0, 0)
 
 
-def process_and_save_file(
-    content: bytes, filename: str, user_id: str, version: str
-) -> dict[str, Any] | None:
+def process_and_save_file(content: bytes, filename: str, user_id: str, version: str) -> dict[str, Any] | None:
     path_info = file_storage.generate_deployment_file_path(filename, user_id, "deployment-framework", version)
 
     if not file_storage.save_file(content, path_info.absolute_path):
@@ -259,19 +226,12 @@ def process_and_save_file(
     }
 
 
-async def process_uploaded_files(
-    files: list[UploadFile], user_id: str, version: str
-) -> dict[str, Any]:
+async def process_uploaded_files(files: list[UploadFile], user_id: str, version: str) -> dict[str, Any]:
     document_data_array = []
     for file in files:
         content = await file.read()
-        validation = file_storage.validate_uploaded_file(file.filename or "", len(content))
-        if not validation.get("isValid"):
-            return {"error": {"message": validation.get("message"), "status": validation.get("status")}}
 
-        document_data = process_and_save_file(
-            content, file.filename or "file", user_id, version
-        )
+        document_data = process_and_save_file(content, file.filename or "file", user_id, version)
         if not document_data:
             return {"error": {"message": f"Failed to save file: {file.filename}", "status": 500}}
         document_data_array.append(document_data)
@@ -283,7 +243,6 @@ def save_uploaded_files_for_package(
 ) -> dict[str, Any]:
     if not uploaded_files_map:
         return {"success": True}
-
 
     remaining = dict(uploaded_files_map)
     version = framework.frameworkVersion if hasattr(framework, "frameworkVersion") else None

@@ -48,10 +48,6 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _ext(filename: str) -> str:
-    return Path(filename).suffix.lower().lstrip(".")
-
-
 async def _validate_upload(file: UploadFile | None) -> tuple[bytes | None, str | None]:
     """Returns (file_bytes, error_message). error_message is None on success."""
     if file is None or not file.filename:
@@ -657,7 +653,7 @@ async def upload_framework(
         fileHash=file_hash,
         originalFileName=file.filename,
         fileSize=len(content),
-        fileType=_ext(file.filename),
+        fileType=file_storage.normalize_file_type(getattr(file, "content_type", None), file.filename),
         uploadedAt=_now(),
         aiExtraction=AiExtraction(status="pending"),
     )
@@ -687,7 +683,9 @@ async def upload_framework(
                 "fileInfo": {
                     "originalFileName": file.filename,
                     "fileSize": data_format.format_file_size(len(content)),
-                    "fileType": _ext(file.filename),
+                    "fileType": file_storage.normalize_file_type(
+                        getattr(file, "content_type", None), file.filename
+                    ),
                     "fileUrl": file_storage.get_file_url(path_info.filename),
                 },
                 "uploadedBy": data_format.format_uploaded_by(user, user.id),
@@ -749,7 +747,7 @@ async def update_framework(
                 fileHash=file_hash,
                 originalFileName=file.filename,
                 fileSize=len(content),
-                fileType=_ext(file.filename),
+                fileType=file_storage.normalize_file_type(getattr(file, "content_type", None), file.filename),
                 uploadedAt=_now(),
                 aiExtraction=AiExtraction(status="pending"),
             )
