@@ -14,6 +14,7 @@ from app.helpers.framework_assignment_helper import (
 )
 from app.helpers.reports.framework_assignment_report import generate_framework_assignment_report_pdf
 from fastapi import APIRouter, Body, Depends, Path, Query
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from vora_shared import query_builder
 from vora_shared.database import session_scope
@@ -69,13 +70,13 @@ async def _hydrate_customers(session, assignments: list[FrameworkAssignment]) ->
 @router.get("/assignments")
 async def get_all_framework_assignments(
     ctx: Annotated[RequestContext, Depends(get_context)],
-    search: Annotated[str | None, Query(default=None)] = None,
-    assignment_status: Annotated[str | None, Query(alias="assignmentStatus", default=None)] = None,
-    finalization_status: Annotated[str | None, Query(alias="finalizationStatus", default=None)] = None,
-    page: Annotated[int | None, Query(default=None)] = None,
-    limit: Annotated[int, Query(default=10)] = 10,
-    sort_by: Annotated[str | None, Query(alias="sortBy", default=None)] = None,
-    sort_order: Annotated[str | None, Query(alias="sortOrder", default=None)] = None,
+    search: Annotated[str | None, Query()] = None,
+    assignment_status: Annotated[str | None, Query(alias="assignmentStatus")] = None,
+    finalization_status: Annotated[str | None, Query(alias="finalizationStatus")] = None,
+    page: Annotated[int | None, Query()] = None,
+    limit: Annotated[int, Query()] = 10,
+    sort_by: Annotated[str | None, Query(alias="sortBy")] = None,
+    sort_order: Annotated[str | None, Query(alias="sortOrder")] = None,
 ):
     tenant_id = ctx.tenant_id
 
@@ -163,7 +164,7 @@ async def get_framework_assignment_by_id(id: str, ctx: Annotated[RequestContext,
 async def download_framework_assignment_report(
     id: str,
     ctx: Annotated[RequestContext, Depends(get_context)],
-    file_version: Annotated[str | None, Query(alias="fileVersion", default=None)] = None,
+    file_version: Annotated[str | None, Query(alias="fileVersion")] = None,
 ):
     tenant_id = ctx.tenant_id
 

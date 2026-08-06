@@ -451,8 +451,8 @@ def _build_assign_response(results: list[dict], errors: list[dict], expert_id: s
 
 @router.post("/assign")
 async def assign_framework_access(
-    body: Annotated[dict, Body(default={})],
     auth: Annotated[AuthenticatedUser, Depends(authenticate)],
+    body: Annotated[dict, Body()] = {},
 ):
     try:
         expert_id_raw, framework_category_ids_raw = validate_assign_access(body)

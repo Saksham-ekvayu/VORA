@@ -34,8 +34,8 @@ def _format_category(category: FrameworkCategory, users_by_id: dict[str, User]) 
 
 @router.post("")
 async def create_framework_category(
-    body: Annotated[dict, Body(default={})],
     auth: Annotated[AuthenticatedUser, Depends(authenticate)],
+    body: Annotated[dict, Body()] = {},
 ):
     try:
         fields = validate_create_category(body)
@@ -147,8 +147,8 @@ async def get_framework_category_by_id(
 @router.put("/{id}")
 async def update_framework_category(
     id: str,
-    body: Annotated[dict, Body(default={})],
     auth: Annotated[AuthenticatedUser, Depends(authenticate)],
+    body: Annotated[dict, Body()] = {},
 ):
     try:
         fields = validate_update_category(body)

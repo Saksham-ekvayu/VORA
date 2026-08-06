@@ -118,13 +118,13 @@ def _get_list_response_message(
 @router.get("/")
 async def get_deployment_frameworks(
     ctx: Annotated[RequestContext, Depends(get_context)],
-    page: Annotated[int | None, Query(default=None)] = None,
-    limit: Annotated[int, Query(default=10)] = 10,
-    search: Annotated[str | None, Query(default=None)] = None,
-    sort_by: Annotated[str | None, Query(alias="sortBy", default=None)] = None,
-    sort_order: Annotated[str | None, Query(alias="sortOrder", default=None)] = None,
-    ai_extraction_status: Annotated[str | None, Query(alias="aiExtractionStatus", default=None)] = None,
-    request_review_status: Annotated[str | None, Query(alias="requestReviewStatus", default=None)] = None,
+    page: Annotated[int | None, Query()] = None,
+    limit: Annotated[int, Query()] = 10,
+    search: Annotated[str | None, Query()] = None,
+    sort_by: Annotated[str | None, Query(alias="sortBy")] = None,
+    sort_order: Annotated[str | None, Query(alias="sortOrder")] = None,
+    ai_extraction_status: Annotated[str | None, Query(alias="aiExtractionStatus")] = None,
+    request_review_status: Annotated[str | None, Query(alias="requestReviewStatus")] = None,
 ):
     user = ctx.user
     tenant_id = ctx.tenant_id
@@ -476,8 +476,8 @@ def _check_missing_files(new_package_documents: list[Any]) -> JSONResponse | Non
 async def update_deployment_framework(
     id: str,
     ctx: Annotated[RequestContext, Depends(get_context)],
-    files: Annotated[list[UploadFile], File(default=[])] = [],
-    metadata: Annotated[str | None, Form(default=None)] = None,
+    files: Annotated[list[UploadFile], File()] = [],
+    metadata: Annotated[str | None, Form()] = None,
 ):
     tenant_id = ctx.tenant_id
 
@@ -659,9 +659,9 @@ async def delete_deployment_framework(id: str, ctx: Annotated[RequestContext, De
 @router.post("/upload", status_code=201)
 async def upload_deployment_framework(
     ctx: Annotated[RequestContext, Depends(get_context)],
-    file: Annotated[list[UploadFile] | None, File(default=None)] = None,
-    files: Annotated[list[UploadFile] | None, File(default=None)] = None,
-    metadata: Annotated[str | None, Form(default=None)] = None,
+    file: Annotated[list[UploadFile] | None, File()] = None,
+    files: Annotated[list[UploadFile] | None, File()] = None,
+    metadata: Annotated[str | None, Form()] = None,
 ):
     import json
 
