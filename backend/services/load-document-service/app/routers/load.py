@@ -10,10 +10,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from app.services.notifier import notify_compliance_agent
 from fastapi import APIRouter, File, Form, Query, Request, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm.attributes import flag_modified
-
 from vora_shared.config import get_settings
 from vora_shared.database import session_scope
 from vora_shared.file_storage import calculate_file_hash
@@ -28,8 +28,6 @@ from vora_shared.models import (
 )
 from vora_shared.query_builder import build_pagination_meta, clamp_limit, clamp_page
 from vora_shared.responses import error, paginated, success
-
-from app.services.notifier import notify_compliance_agent
 
 logger = logging.getLogger(__name__)
 
@@ -301,17 +299,19 @@ async def list_files(page: int = 1, page_size: int = 10):
     page_num = clamp_page(page)
     limit_num = clamp_limit(page_size)
     async with session_scope() as session:
-        total = (
-            await session.execute(select(func.count()).select_from(LoadDocument))
-        ).scalar_one()
+        total = (await session.execute(select(func.count()).select_from(LoadDocument))).scalar_one()
         rows = (
-            await session.execute(
-                select(LoadDocument)
-                .order_by(LoadDocument.createdAt.desc())
-                .offset((page_num - 1) * limit_num)
-                .limit(limit_num)
+            (
+                await session.execute(
+                    select(LoadDocument)
+                    .order_by(LoadDocument.createdAt.desc())
+                    .offset((page_num - 1) * limit_num)
+                    .limit(limit_num)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         data = [_load_doc_to_dict(doc) for doc in rows]
     return paginated(
         data,
@@ -327,9 +327,7 @@ async def delete_file(identifier: str):
         if not document:
             document = (
                 await session.execute(
-                    select(LoadDocument).where(
-                        LoadDocument.document_name == identifier
-                    ).limit(1)
+                    select(LoadDocument).where(LoadDocument.document_name == identifier).limit(1)
                 )
             ).scalar_one_or_none()
         if not document:
@@ -551,9 +549,7 @@ async def delete_framework_file(id: str, file_id: str):
         _safe_unlink(matched.get("fileUrl"))
         updated = [fv for fv in versions if not (isinstance(fv, dict) and fv.get("fileId") == file_id)]
         fw.fileVersions = updated
-        fw.currentFileVersion = (
-            updated[-1].get("fileVersion", "1.0.0") if updated else "1.0.0"
-        )
+        fw.currentFileVersion = updated[-1].get("fileVersion", "1.0.0") if updated else "1.0.0"
         flag_modified(fw, "fileVersions")
     return success(
         message="Framework file version deleted successfully",
@@ -623,9 +619,7 @@ async def upload_deployment_framework(request: Request):
     field_counts: dict[str, int] = {}
 
     all_file_items = [
-        (k, v)
-        for k, v in form_data.multi_items()
-        if hasattr(v, "filename") and hasattr(v, "read")
+        (k, v) for k, v in form_data.multi_items() if hasattr(v, "filename") and hasattr(v, "read")
     ]
     for field_name, file in all_file_items:
         if _validate_filename(file.filename):
@@ -737,12 +731,12 @@ async def upload_deployment_framework(request: Request):
                 str(frameworkVersion) if frameworkVersion else existing.frameworkVersion
             )
             existing.uploadedBy = str(uploadedBy)
-            existing.currentPackageVersion = str(currentPackageVersion or existing.currentPackageVersion or "1.0.0")
+            existing.currentPackageVersion = str(
+                currentPackageVersion or existing.currentPackageVersion or "1.0.0"
+            )
 
             existing_packages = list(existing.packages or [])
-            existing_map = {
-                p.get("packageVersion"): p for p in existing_packages if isinstance(p, dict)
-            }
+            existing_map = {p.get("packageVersion"): p for p in existing_packages if isinstance(p, dict)}
             merged: list[dict[str, Any]] = []
             seen: set[str] = set()
             for new_pkg in parsed_packages:
@@ -769,7 +763,10 @@ async def upload_deployment_framework(request: Request):
                                 "uploadedAt",
                                 "aiExtraction",
                             ):
-                                if merged_doc.get(copy_key) in (None, "") and old_docs[key].get(copy_key) is not None:
+                                if (
+                                    merged_doc.get(copy_key) in (None, "")
+                                    and old_docs[key].get(copy_key) is not None
+                                ):
                                     merged_doc[copy_key] = old_docs[key][copy_key]
                             old_docs[key] = merged_doc
                         elif key:
@@ -1013,9 +1010,7 @@ async def delete_deployment_framework_package_version(id: str, package_version: 
     )
 
 
-@router.delete(
-    "/deployment-frameworks/{framework_id}/packageversion/{package_version}/fileid/{file_id}"
-)
+@router.delete("/deployment-frameworks/{framework_id}/packageversion/{package_version}/fileid/{file_id}")
 async def delete_deployment_framework_file_by_package_version(
     framework_id: str,
     package_version: str,

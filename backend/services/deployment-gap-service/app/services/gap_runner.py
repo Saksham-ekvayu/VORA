@@ -9,7 +9,6 @@ from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import select
-
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
 from vora_shared.models import (
@@ -66,14 +65,14 @@ async def _load_gap_config(session) -> tuple[dict[str, Any], dict[str, Any]]:
     statuses = dict(DEFAULT_STATUSES)
     thresholds = dict(DEFAULT_THRESHOLDS)
     rows = (
-        await session.execute(
-            select(GapConfig).where(
-                GapConfig.config_key.in_(
-                    ["implementation_status", "thresholds"]
-                )
+        (
+            await session.execute(
+                select(GapConfig).where(GapConfig.config_key.in_(["implementation_status", "thresholds"]))
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     for row in rows:
         if row.config_key == "implementation_status":
             statuses.update(row.config_value or {})
@@ -96,24 +95,26 @@ def _status_for_score(score: float, thresholds: dict[str, Any], statuses: dict[s
 
 async def _load_comparison_grouped(session, df_id: str, pkg_ver: str) -> list[dict[str, Any]]:
     row = (
-        await session.execute(
-            select(ComparisonResult)
-            .where(
-                ComparisonResult.deployment_framework_id == df_id,
-                ComparisonResult.package_version == pkg_ver,
+        (
+            await session.execute(
+                select(ComparisonResult)
+                .where(
+                    ComparisonResult.deployment_framework_id == df_id,
+                    ComparisonResult.package_version == pkg_ver,
+                )
+                .order_by(ComparisonResult.createdAt.desc())
             )
-            .order_by(ComparisonResult.createdAt.desc())
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     if row and isinstance(row.result, dict):
         grouped = row.result.get("grouped_results") or []
         if grouped:
             return grouped
 
     pc = (
-        await session.execute(
-            select(PackageComparison).where(PackageComparison.frameworkId == df_id)
-        )
+        await session.execute(select(PackageComparison).where(PackageComparison.frameworkId == df_id))
     ).scalar_one_or_none()
     if pc and isinstance(pc.comparison, dict):
         return pc.comparison.get("comparison_result") or []
@@ -199,9 +200,7 @@ async def run_gap(df_id: str, pkg_ver: str, send_cb: SendCb) -> None:
                 merge_controls = (track.data or {}).get("controls_data") if track else []
                 if not merge_controls:
                     pm = (
-                        await session.execute(
-                            select(PackageMerge).where(PackageMerge.frameworkId == df_id)
-                        )
+                        await session.execute(select(PackageMerge).where(PackageMerge.frameworkId == df_id))
                     ).scalar_one_or_none()
                     if pm and isinstance(pm.mergeExtraction, dict):
                         merge_controls = pm.mergeExtraction.get("controls_data") or []
@@ -235,10 +234,7 @@ async def run_gap(df_id: str, pkg_ver: str, send_cb: SendCb) -> None:
                             {
                                 "assigned_framework_control_id": str(ctrl.get("id") or ""),
                                 "assigned_framework_control_name": ctrl.get("name") or "",
-                                "assigned_framework_control_description": ctrl.get(
-                                    "description"
-                                )
-                                or "",
+                                "assigned_framework_control_description": ctrl.get("description") or "",
                                 "assigned_framework_deployment_points": [
                                     {
                                         "id": str(dp.get("id") or new_id()),
@@ -272,9 +268,7 @@ async def run_gap(df_id: str, pkg_ver: str, send_cb: SendCb) -> None:
             session.add(job)
             gap_job_id = job.id
 
-        await send_cb(
-            send_event("gap_processing", "processing", "Analyzing deployment gaps")
-        )
+        await send_cb(send_event("gap_processing", "processing", "Analyzing deployment gaps"))
         await asyncio.sleep(0.05)
 
         gap_results: list[dict[str, Any]] = []
@@ -289,9 +283,7 @@ async def run_gap(df_id: str, pkg_ver: str, send_cb: SendCb) -> None:
                 score = float(item.get("comparison_score") or 0)
                 impl_status = _status_for_score(score, thresholds, statuses)
                 assigned_id = str(
-                    item.get("assigned_framework_control_id")
-                    or item.get("Framework_control_id")
-                    or "Unknown"
+                    item.get("assigned_framework_control_id") or item.get("Framework_control_id") or "Unknown"
                 )
 
                 # One gap row per assigned deployment point (or one if none)
@@ -303,23 +295,15 @@ async def run_gap(df_id: str, pkg_ver: str, send_cb: SendCb) -> None:
                         continue
                     gap_row = {
                         "assigned_framework_control_id": assigned_id,
-                        "assigned_framework_control_name": item.get(
-                            "assigned_framework_control_name"
-                        )
-                        or "",
+                        "assigned_framework_control_name": item.get("assigned_framework_control_name") or "",
                         "assigned_framework_control_description": item.get(
                             "assigned_framework_control_description"
                         )
                         or "",
                         "assigned_framework_deployment_point_id": str(dp.get("id") or ""),
                         "assigned_framework_deployment_point": dp.get("point") or "",
-                        "deployment_framework_control_id": item.get(
-                            "deployment_framework_control_id"
-                        )
-                        or "",
-                        "deployment_framework_control_name": item.get(
-                            "deployment_framework_control_name"
-                        )
+                        "deployment_framework_control_id": item.get("deployment_framework_control_id") or "",
+                        "deployment_framework_control_name": item.get("deployment_framework_control_name")
                         or "",
                         "comparison_score": score,
                         "implementation_status": impl_status,

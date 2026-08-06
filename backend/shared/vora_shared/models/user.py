@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field
 from sqlalchemy import Boolean, DateTime, Index, Integer, String, Text, false, true
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
-
 from vora_shared.database import Base
 from vora_shared.ids import new_id
 from vora_shared.models.customer import AddressBlock

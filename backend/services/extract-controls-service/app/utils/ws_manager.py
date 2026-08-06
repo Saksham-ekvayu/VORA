@@ -35,9 +35,7 @@ class ConnectionManager:
                 del self.pending_messages[identifier]
 
         conn_count = len(self.active_connections.get(identifier, set()))
-        logger.info(
-            "WebSocket connected | identifier=%s | active=%s", identifier, conn_count
-        )
+        logger.info("WebSocket connected | identifier=%s | active=%s", identifier, conn_count)
 
     async def disconnect(self, identifier: str, websocket: WebSocket) -> None:
         async with self.connection_lock:

@@ -1,8 +1,6 @@
-from pydantic import BaseModel, field_validator
-
-from vora_shared.validators import validate_customer_name, validate_customer_phone, validate_email
-
 from app.schemas.common import AddressIn
+from pydantic import BaseModel, field_validator
+from vora_shared.validators import validate_customer_name, validate_customer_phone, validate_email
 
 
 class CreateCustomerRequest(BaseModel):

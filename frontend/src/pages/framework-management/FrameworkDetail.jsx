@@ -12,7 +12,7 @@ import { ControlModal, DeleteFrameworkModal } from "@/components/custom/modal";
 import {
   downloadFrameworkFile,
   getFrameworkById,
-  uploadFrameworkToAi,
+  extractFramework,
   deleteFrameworkVersion,
   approveFramework,
   rejectFramework,
@@ -93,7 +93,7 @@ function FrameworkDetail() {
         }
       } catch (error) {
         if (!isBackgroundRefresh) {
-          toast.error(error.message || "Failed to fetch framework details");
+          toast.error(error.message);
           navigate("/frameworks");
         }
       } finally {
@@ -140,17 +140,17 @@ function FrameworkDetail() {
       await downloadFrameworkFile(framework.id, fileId, fileName);
       toast.success("Download completed successfully");
     } catch (error) {
-      toast.error(error.message || "Failed to download file");
+      toast.error(error.message);
     }
   };
 
-  const handleUploadToAi = async (fileId) => {
+  const handleAiExtraction = async (fileId) => {
     try {
       setActiveAction("ai");
-      await uploadFrameworkToAi(framework.id, fileId);
+      await extractFramework(framework.id, fileId);
       fetchFrameworkDetails(true);
     } catch (error) {
-      toast.error(error.message || "Failed to upload to AI");
+      toast.error(error.message);
       setActiveAction(null);
       fetchFrameworkDetails(true);
     }
@@ -169,12 +169,12 @@ function FrameworkDetail() {
         versionToDelete.fileId
       );
       if (response.success) {
-        toast.success(response.message || "Version deleted successfully");
+        toast.success(response.message);
         fetchFrameworkDetails(true);
         setVersionToDelete(null);
       }
     } catch (error) {
-      toast.error(error.message || "Failed to delete version");
+      toast.error(error.message);
       throw error; // Re-throw to let modal handle loading state
     }
   };
@@ -191,12 +191,12 @@ function FrameworkDetail() {
     try {
       const response = await approveFramework(framework.id);
       if (response.success) {
-        toast.success(response.message || "Framework approved successfully");
+        toast.success(response.message);
         fetchFrameworkDetails(true);
         setShowApproveModal(false);
       }
     } catch (error) {
-      toast.error(error.message || "Failed to approve framework");
+      toast.error(error.message);
       throw error;
     }
   };
@@ -209,12 +209,12 @@ function FrameworkDetail() {
     try {
       const response = await rejectFramework(framework.id, rejectionReason);
       if (response.success) {
-        toast.success(response.message || "Framework rejected successfully");
+        toast.success(response.message);
         fetchFrameworkDetails(true);
         setShowRejectModal(false);
       }
     } catch (error) {
-      toast.error(error.message || "Failed to reject framework");
+      toast.error(error.message);
       throw error;
     }
   };
@@ -257,11 +257,11 @@ function FrameworkDetail() {
     if (!frameworkToDelete) return;
     try {
       const result = await deleteFramework(frameworkToDelete.id);
-      toast.success(result.message || "Framework deleted successfully");
+      toast.success(result.message);
       setFrameworkToDelete(null);
       navigate("/frameworks");
     } catch (error) {
-      toast.error(error.message || "Failed to delete framework");
+      toast.error(error.message);
       throw error;
     }
   };
@@ -305,7 +305,7 @@ function FrameworkDetail() {
       );
 
       if (response.success) {
-        toast.success(response.message || "Control updated successfully");
+        toast.success(response.message);
         fetchFrameworkDetails(true);
         setControlToEdit(null);
       }
@@ -334,12 +334,12 @@ function FrameworkDetail() {
       );
 
       if (response.success) {
-        toast.success(response.message || "Control deleted successfully");
+        toast.success(response.message);
         fetchFrameworkDetails(true);
         setControlToDelete(null);
       }
     } catch (error) {
-      toast.error(error.message || "Failed to delete control");
+      toast.error(error.message);
       throw error;
     }
   };
@@ -353,7 +353,7 @@ function FrameworkDetail() {
       );
 
       if (response.success) {
-        toast.success(response.message || "Control added successfully");
+        toast.success(response.message);
         await fetchFrameworkDetails(true);
         return response;
       }
@@ -658,18 +658,16 @@ function FrameworkDetail() {
               return (
                 <div
                   key={ver.fileVersion}
-                  className={`rounded overflow-hidden transition-all duration-300 hover:shadow-lg bg-card ${
-                    isCurrent ? "border border-primary" : "border border-border"
-                  }`}
+                  className={`rounded overflow-hidden transition-all duration-300 hover:shadow-lg bg-card ${isCurrent ? "border border-primary" : "border border-border"
+                    }`}
                 >
                   <div className="w-full flex items-center justify-between p-2 transition-colors duration-200 text-foreground ">
                     <div className="flex-1 flex items-center gap-5 flex-wrap">
                       <span
-                        className={`px-3 py-2 rounded text-xs font-bold ${
-                          isCurrent
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground"
-                        }`}
+                        className={`px-3 py-2 rounded text-xs font-bold ${isCurrent
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground"
+                          }`}
                       >
                         v{ver.fileVersion}
                         {isCurrent && " • Current"}
@@ -757,7 +755,7 @@ function FrameworkDetail() {
                           <Button
                             variant="secondary"
                             size="xs"
-                            onClick={() => handleUploadToAi(ver.fileId)}
+                            onClick={() => handleAiExtraction(ver.fileId)}
                             disabled={!hasAccess || isAiActive}
                           >
                             {isAiActive ? (
@@ -775,10 +773,10 @@ function FrameworkDetail() {
                               <>
                                 <Icon name="upload-cloud" size="13px" />
                                 {isAiFailed ||
-                                isApprovalRejected ||
-                                totaleControls === 0
-                                  ? "Retry AI Upload"
-                                  : "Upload to AI"}
+                                  isApprovalRejected ||
+                                  totaleControls === 0
+                                  ? "Retry Extraction"
+                                  : "Extract"}
                               </>
                             )}
                           </Button>

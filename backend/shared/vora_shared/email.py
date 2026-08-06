@@ -5,13 +5,12 @@ template placeholders), but using aiosmtplib so services stay fully async.
 """
 
 import logging
-import random
+import secrets
 from datetime import datetime
 from email.message import EmailMessage
 from pathlib import Path
 
 import aiosmtplib
-
 from vora_shared.config import Settings, get_settings
 
 logger = logging.getLogger(__name__)
@@ -20,8 +19,10 @@ _template_cache: dict[str, str] = {}
 
 
 def generate_otp() -> str:
-    """6-digit numeric OTP — matches Node's `Math.floor(100000 + Math.random() * 900000)`."""
-    return str(random.randint(100000, 999999))
+    """6-digit numeric OTP — cryptographically secure using secrets module.
+    Matches Node's `Math.floor(100000 + Math.random() * 900000)` but with
+    secure random number generation."""
+    return str(secrets.randbelow(900000) + 100000)
 
 
 def load_template(templates_dir: str | Path, name: str, variables: dict | None = None) -> str:

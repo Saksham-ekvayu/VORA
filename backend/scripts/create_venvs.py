@@ -12,11 +12,11 @@ def get_service_dirs(root: Path) -> list[Path]:
         raise FileNotFoundError(f"Missing services directory: {services_dir}")
 
     service_dirs = [p for p in services_dir.iterdir() if p.is_dir() and (p / "requirements.txt").is_file()]
-    
+
     gateway_dir = root / "gateway"
     if gateway_dir.is_dir() and (gateway_dir / "requirements.txt").is_file():
         service_dirs.append(gateway_dir)
-        
+
     return sorted(service_dirs)
 
 
@@ -73,9 +73,7 @@ def install_shared_package(venv_dir: Path, shared_dir: Path) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Create virtual environments in every service folder."
-    )
+    parser = argparse.ArgumentParser(description="Create virtual environments in every service folder.")
     parser.add_argument(
         "--install",
         action="store_true",
@@ -109,7 +107,7 @@ def main() -> int:
         return 1
 
     print(f"Found {len(service_dirs)} service(s) to process.")
-    
+
     # Install shared package first if requested
     if args.install_shared:
         shared_dir = root / "shared"
@@ -120,7 +118,7 @@ def main() -> int:
         except FileNotFoundError as e:
             print(f"Error: {e}")
             return 1
-    
+
     for service_dir in service_dirs:
         print(f"\n---\nProcessing {service_dir.name}")
         venv_dir = create_venv(service_dir, args.python)

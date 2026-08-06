@@ -155,11 +155,11 @@ export function uploadFramework(formData) {
 }
 
 /**
- * Upload framework file to ai
+ * Extract framework file by ai
  */
-export function uploadFrameworkToAi(frameworkId, fileId) {
+export function extractFramework(frameworkId, fileId) {
   return apiRequest(
-    `${FRAMEWORK_BASE}/${frameworkId}/files/${fileId}/ai-upload`,
+    `${FRAMEWORK_BASE}/${frameworkId}/files/${fileId}/ai-extract`,
     {
       method: "POST",
     },

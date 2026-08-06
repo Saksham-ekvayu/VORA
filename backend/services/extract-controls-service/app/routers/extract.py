@@ -8,10 +8,15 @@ import re
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+from app.services.extraction_runner import (
+    run_deployment_extraction,
+    run_framework_extraction,
+    run_package_merge,
+)
+from app.utils.ws_manager import manager
 from fastapi import APIRouter, Body, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
-
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
 from vora_shared.models import (
@@ -22,14 +27,7 @@ from vora_shared.models import (
     PackageMergeTracking,
 )
 from vora_shared.query_builder import build_pagination_meta, clamp_limit, clamp_page
-from vora_shared.responses import error, not_found, paginated, success, server_error
-
-from app.services.extraction_runner import (
-    run_deployment_extraction,
-    run_framework_extraction,
-    run_package_merge,
-)
-from app.utils.ws_manager import manager
+from vora_shared.responses import error, not_found, paginated, server_error, success
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["extract"])
@@ -88,9 +86,7 @@ async def get_extraction_results(id: str):
     try:
         async with session_scope() as session:
             row = (
-                await session.execute(
-                    select(ExtractionResult).where(ExtractionResult.ref_id == id)
-                )
+                await session.execute(select(ExtractionResult).where(ExtractionResult.ref_id == id))
             ).scalar_one_or_none()
             if not row:
                 # Fallback: treat id as ExtractionResult PK
@@ -105,9 +101,7 @@ async def get_extraction_results(id: str):
             processing_time = 0
             if isinstance(result.get("controls"), dict):
                 controls = result["controls"].get("controls_data") or []
-                processing_time = (result.get("status_history") or {}).get(
-                    "processing_time_seconds", 0
-                )
+                processing_time = (result.get("status_history") or {}).get("processing_time_seconds", 0)
             file_versions = result.get("fileVersions") or []
             if file_versions:
                 aiupload = {}
@@ -120,9 +114,7 @@ async def get_extraction_results(id: str):
                         break
                 if not aiupload and isinstance(file_versions[-1], dict):
                     aiupload = (
-                        file_versions[-1].get("aiUpload")
-                        or file_versions[-1].get("aiExtraction")
-                        or {}
+                        file_versions[-1].get("aiUpload") or file_versions[-1].get("aiExtraction") or {}
                     )
                 status = aiupload.get("status", status)
                 processing_time = aiupload.get("processing_time_seconds", processing_time)
@@ -136,9 +128,9 @@ async def get_extraction_results(id: str):
                     "resourceType": row.resource_type,
                     "status": status,
                     "started_at": _serialize_dt(row.createdAt),
-                    "completed_at": status_history.get("completed_at")
-                    if isinstance(status_history, dict)
-                    else None,
+                    "completed_at": (
+                        status_history.get("completed_at") if isinstance(status_history, dict) else None
+                    ),
                     "processing_time_seconds": processing_time,
                     "total_controls": len(controls) if isinstance(controls, list) else 0,
                     "controls": controls,
@@ -159,25 +151,25 @@ async def list_extractions(page: int = 1, page_size: int = 10):
         page = clamp_page(page)
         page_size = clamp_limit(page_size, default=10)
         async with session_scope() as session:
-            total = (
-                await session.execute(select(func.count()).select_from(ExtractionResult))
-            ).scalar_one()
+            total = (await session.execute(select(func.count()).select_from(ExtractionResult))).scalar_one()
             rows = (
-                await session.execute(
-                    select(ExtractionResult)
-                    .order_by(ExtractionResult.createdAt.desc())
-                    .offset((page - 1) * page_size)
-                    .limit(page_size)
+                (
+                    await session.execute(
+                        select(ExtractionResult)
+                        .order_by(ExtractionResult.createdAt.desc())
+                        .offset((page - 1) * page_size)
+                        .limit(page_size)
+                    )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
 
             items = []
             for e in rows:
                 result = e.result or {}
                 controls = result.get("controls") or {}
-                total_controls = (
-                    controls.get("total_controls", 0) if isinstance(controls, dict) else 0
-                )
+                total_controls = controls.get("total_controls", 0) if isinstance(controls, dict) else 0
                 items.append(
                     {
                         "id": e.ref_id,
@@ -297,17 +289,19 @@ async def get_package_merges(ref_id: Optional[str] = None, page: int = 1, page_s
             count_stmt = select(func.count()).select_from(PackageMergeTracking)
             if ref_id:
                 stmt = stmt.where(PackageMergeTracking.deployment_framework_id == ref_id)
-                count_stmt = count_stmt.where(
-                    PackageMergeTracking.deployment_framework_id == ref_id
-                )
+                count_stmt = count_stmt.where(PackageMergeTracking.deployment_framework_id == ref_id)
             total = (await session.execute(count_stmt)).scalar_one()
             rows = (
-                await session.execute(
-                    stmt.order_by(PackageMergeTracking.updatedAt.desc())
-                    .offset((page - 1) * page_size)
-                    .limit(page_size)
+                (
+                    await session.execute(
+                        stmt.order_by(PackageMergeTracking.updatedAt.desc())
+                        .offset((page - 1) * page_size)
+                        .limit(page_size)
+                    )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             merge_data = []
             for m in rows:
                 data = m.data or {}
@@ -341,8 +335,7 @@ async def get_package_merge_by_version(deployment_framework_id: str, package_ver
             track = (
                 await session.execute(
                     select(PackageMergeTracking).where(
-                        PackageMergeTracking.deployment_framework_id
-                        == deployment_framework_id,
+                        PackageMergeTracking.deployment_framework_id == deployment_framework_id,
                         PackageMergeTracking.package_version == package_version,
                     )
                 )
@@ -374,10 +367,10 @@ async def delete_extraction(id: str):
     try:
         async with session_scope() as session:
             rows = (
-                await session.execute(
-                    select(ExtractionResult).where(ExtractionResult.ref_id == id)
-                )
-            ).scalars().all()
+                (await session.execute(select(ExtractionResult).where(ExtractionResult.ref_id == id)))
+                .scalars()
+                .all()
+            )
             if not rows:
                 row = await session.get(ExtractionResult, id)
                 rows = [row] if row else []
@@ -421,12 +414,8 @@ async def ws_framework(websocket: WebSocket, id: str, file_id: str):
             pass
 
 
-@router.websocket(
-    "/ws/deployment-framework/{id}/packageVersion/{pkg_ver}/fileid/{file_id}"
-)
-async def ws_deployment_framework(
-    websocket: WebSocket, id: str, pkg_ver: str, file_id: str
-):
+@router.websocket("/ws/deployment-framework/{id}/packageVersion/{pkg_ver}/fileid/{file_id}")
+async def ws_deployment_framework(websocket: WebSocket, id: str, pkg_ver: str, file_id: str):
     id = id.strip()
     pkg_ver = pkg_ver.strip()
     file_id = file_id.strip()
@@ -436,9 +425,7 @@ async def ws_deployment_framework(
     async def send_cb(msg: dict[str, Any]) -> None:
         await manager.send_json(conn_key, msg)
 
-    task = asyncio.create_task(
-        run_deployment_extraction(id, pkg_ver, file_id, send_cb)
-    )
+    task = asyncio.create_task(run_deployment_extraction(id, pkg_ver, file_id, send_cb))
     try:
         while True:
             await websocket.receive_text()
@@ -456,9 +443,7 @@ def _normalize_ws_param(value: str) -> str:
 
 
 @router.websocket("/ws/package-merge/{deployment_framework_id}/{package_version}")
-async def ws_package_merge(
-    websocket: WebSocket, deployment_framework_id: str, package_version: str
-):
+async def ws_package_merge(websocket: WebSocket, deployment_framework_id: str, package_version: str):
     deployment_framework_id = _normalize_ws_param(deployment_framework_id)
     package_version = _normalize_ws_param(package_version)
 
@@ -500,9 +485,7 @@ async def ws_package_merge(
     async def send_cb(msg: dict[str, Any]) -> None:
         await manager.send_json(conn_key, msg)
 
-    task = asyncio.create_task(
-        run_package_merge(deployment_framework_id, package_version, send_cb)
-    )
+    task = asyncio.create_task(run_package_merge(deployment_framework_id, package_version, send_cb))
     try:
         while True:
             await websocket.receive_text()
@@ -536,9 +519,7 @@ def _get_controls_from_framework(fw: Framework, file_version: str) -> tuple[list
     return [], None, None
 
 
-def _set_controls_on_framework(
-    fw: Framework, fv_idx: int, fv: dict, controls_data: list
-) -> None:
+def _set_controls_on_framework(fw: Framework, fv_idx: int, fv: dict, controls_data: list) -> None:
     versions = list(fw.fileVersions or [])
     ai = dict(fv.get("aiExtraction") or {})
     total = sum(len(s.get("controls") or []) for s in controls_data if isinstance(s, dict))
@@ -568,9 +549,7 @@ async def _sync_extraction_result_controls(ref_id: str, file_version: str, contr
             return
         result = dict(row.result or {})
         controls = {
-            "total_controls": sum(
-                len(s.get("controls") or []) for s in controls_data if isinstance(s, dict)
-            ),
+            "total_controls": sum(len(s.get("controls") or []) for s in controls_data if isinstance(s, dict)),
             "total_sections": len(controls_data),
             "controls_data": controls_data,
         }
@@ -588,9 +567,7 @@ async def _sync_extraction_result_controls(ref_id: str, file_version: str, contr
 
 
 @router.patch("/ai/jobs/{id}/file-versions/{file_version}/controls/{control_id}")
-async def update_control(
-    id: str, file_version: str, control_id: str, body: ControlUpdateRequest
-):
+async def update_control(id: str, file_version: str, control_id: str, body: ControlUpdateRequest):
     try:
         async with session_scope() as session:
             fw = await session.get(Framework, id)
@@ -641,9 +618,7 @@ async def delete_control(id: str, file_version: str, control_id: str):
             for section in controls_data:
                 controls = section.get("controls") or []
                 new_controls = [
-                    c
-                    for c in controls
-                    if str(c.get("id") or c.get("Control_id")) != str(control_id)
+                    c for c in controls if str(c.get("id") or c.get("Control_id")) != str(control_id)
                 ]
                 if len(new_controls) != len(controls):
                     section["controls"] = new_controls
@@ -796,12 +771,8 @@ def _fa_sections(fv: dict) -> list:
     return []
 
 
-@router.patch(
-    "/framework-assignments/{id}/file-versions/{fileVersion}/controls/{controlId}/weightage"
-)
-async def update_fa_control_weightage(
-    id: str, fileVersion: str, controlId: str, body: dict = Body(...)
-):
+@router.patch("/framework-assignments/{id}/file-versions/{fileVersion}/controls/{controlId}/weightage")
+async def update_fa_control_weightage(id: str, fileVersion: str, controlId: str, body: dict = Body(...)):
     try:
         weightage = body.get("weightage", {})
         if not isinstance(weightage, dict):
@@ -881,12 +852,8 @@ async def finalize_framework_assignment(id: str, body: dict = Body(default=None)
         return server_error(str(exc))
 
 
-@router.patch(
-    "/framework-assignments/{id}/file-versions/{fileVersion}/controls/applicability"
-)
-async def update_fa_controls_applicability(
-    id: str, fileVersion: str, body: dict = Body(...)
-):
+@router.patch("/framework-assignments/{id}/file-versions/{fileVersion}/controls/applicability")
+async def update_fa_controls_applicability(id: str, fileVersion: str, body: dict = Body(...)):
     try:
         control_ids = body.get("controlIds") or []
         is_applicable = body.get("is_applicable", True)

@@ -1,14 +1,17 @@
 """Password hashing helpers & Context security."""
 
-import bcrypt
 import re
 from dataclasses import dataclass
+
+import bcrypt
 from fastapi import Depends, Header, HTTPException, status
 from vora_shared.auth import AuthenticatedUser, authenticate
 from vora_shared.models.user import User
 
+
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
 
 def verify_password(password: str, hashed: str) -> bool:
     if not hashed:
@@ -18,9 +21,11 @@ def verify_password(password: str, hashed: str) -> bool:
     except (ValueError, TypeError):
         return False
 
+
 from vora_shared import messages as msg
 
 _TENANT_ID_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
+
 
 @dataclass
 class RequestContext:
@@ -31,13 +36,15 @@ class RequestContext:
     def role(self) -> str:
         return self.user.role
 
+
 def _tenant_error(message: str) -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
         detail={"message": message, "field": "tenantId"},
     )
 
-async def get_context(
+
+def get_context(
     auth: AuthenticatedUser = Depends(authenticate),
     x_tenant_id: str | None = Header(default=None, alias="x-tenant-id"),
 ) -> RequestContext:
@@ -67,8 +74,9 @@ async def get_context(
 
     return RequestContext(user=auth.user, tenant_id=trimmed)
 
+
 def require_roles(*roles: str):
-    async def _dep(ctx: RequestContext = Depends(get_context)) -> RequestContext:
+    def _dep(ctx: RequestContext = Depends(get_context)) -> RequestContext:
         if ctx.role not in roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

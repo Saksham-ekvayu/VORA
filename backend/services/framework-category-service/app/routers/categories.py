@@ -1,6 +1,10 @@
+from typing import Annotated
+
+from app.helpers import code_exists, fetch_users_by_ids
+from app.validation import FieldError, validate_create_category, validate_update_category
 from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy import delete, or_, select
-
+from vora_shared import data_format
 from vora_shared.auth import AuthenticatedUser, authenticate
 from vora_shared.database import session_scope
 from vora_shared.ids import is_valid_id
@@ -9,15 +13,10 @@ from vora_shared.models import FrameworkAccess, FrameworkCategory, User
 from vora_shared.query_builder import apply_sort, paginate_stmt
 from vora_shared.responses import error, paginated, success
 
-from app.helpers import code_exists, fetch_users_by_ids, get_user_data
-from app.validation import FieldError, validate_create_category, validate_update_category
-
 router = APIRouter(tags=["framework-categories"])
 
 
-async def _format_category(
-    category: FrameworkCategory, users_by_id: dict[str, User]
-) -> dict:
+def _format_category(category: FrameworkCategory, users_by_id: dict[str, User]) -> dict:
     created_by_id = str(category.createdBy) if category.createdBy else None
     updated_by_id = str(category.updatedBy) if category.updatedBy else None
     return {
@@ -28,15 +27,15 @@ async def _format_category(
         "isActive": category.isActive,
         "createdAt": category.createdAt,
         "updatedAt": category.updatedAt,
-        "createdBy": get_user_data(users_by_id.get(created_by_id), category.createdBy),
-        "updatedBy": get_user_data(users_by_id.get(updated_by_id), category.updatedBy),
+        "createdBy": data_format.format_user_ref(users_by_id.get(created_by_id), category.createdBy),
+        "updatedBy": data_format.format_user_ref(users_by_id.get(updated_by_id), category.updatedBy),
     }
 
 
 @router.post("")
 async def create_framework_category(
-    body: dict = Body(default={}),
-    auth: AuthenticatedUser = Depends(authenticate),
+    auth: Annotated[AuthenticatedUser, Depends(authenticate)],
+    body: Annotated[dict, Body()] = {},
 ):
     try:
         fields = validate_create_category(body)
@@ -50,7 +49,7 @@ async def create_framework_category(
         category = FrameworkCategory(
             code=fields["code"],
             frameworkCategoryName=fields["frameworkCategoryName"],
-            description=fields["description"] or "",
+            description=fields.get("description", ""),
             isActive=True,
             createdBy=str(auth.user.id),
         )
@@ -63,16 +62,16 @@ async def create_framework_category(
 
 @router.get("")
 async def get_all_framework_categories(
-    page: int | None = Query(None),
-    limit: int | None = Query(None),
-    search: str | None = Query(None),
-    isActive: str | None = Query(None),
-    auth: AuthenticatedUser = Depends(authenticate),
+    auth: Annotated[AuthenticatedUser, Depends(authenticate)],
+    page: Annotated[int | None, Query()] = None,
+    limit: Annotated[int | None, Query()] = None,
+    search: Annotated[str | None, Query()] = None,
+    is_active: Annotated[str | None, Query(alias="isActive")] = None,
 ):
     async with session_scope() as session:
         stmt = select(FrameworkCategory)
-        if isActive is not None:
-            stmt = stmt.where(FrameworkCategory.isActive.is_(isActive == "true"))
+        if is_active is not None:
+            stmt = stmt.where(FrameworkCategory.isActive.is_(is_active == "true"))
 
         if search:
             or_conditions = [
@@ -81,27 +80,28 @@ async def get_all_framework_categories(
                 FrameworkCategory.description.ilike(f"%{search}%"),
             ]
             matching_users = (
-                await session.execute(
-                    select(User).where(
-                        or_(
-                            User.name.ilike(f"%{search}%"),
-                            User.email.ilike(f"%{search}%"),
+                (
+                    await session.execute(
+                        select(User).where(
+                            or_(
+                                User.name.ilike(f"%{search}%"),
+                                User.email.ilike(f"%{search}%"),
+                            )
                         )
                     )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             user_ids = [u.id for u in matching_users]
             if user_ids:
                 or_conditions.append(FrameworkCategory.createdBy.in_(user_ids))
                 or_conditions.append(FrameworkCategory.updatedBy.in_(user_ids))
-            stmt = stmt.where(or_(*or_conditions))
+            if or_conditions:
+                stmt = stmt.where(or_(*or_conditions))
 
-        stmt = apply_sort(
-            FrameworkCategory, stmt, "createdAt", "desc", ["createdAt"]
-        )
-        documents, pagination = await paginate_stmt(
-            session, stmt, page=page, limit=limit or 10
-        )
+        stmt = apply_sort(FrameworkCategory, stmt, "createdAt", "desc", ["createdAt"])
+        documents, pagination = await paginate_stmt(session, stmt, page=page, limit=limit or 10)
 
         user_ids_needed: set[str] = set()
         for doc in documents:
@@ -109,13 +109,12 @@ async def get_all_framework_categories(
                 user_ids_needed.add(str(doc.createdBy))
             if doc.updatedBy:
                 user_ids_needed.add(str(doc.updatedBy))
-
-    users_by_id = await fetch_users_by_ids(user_ids_needed)
-    data = [await _format_category(doc, users_by_id) for doc in documents]
+        users_by_id = await fetch_users_by_ids(user_ids_needed)
+    data = [_format_category(doc, users_by_id) for doc in documents]
 
     if data:
         message = MESSAGES["FRAMEWORK_CATEGORIES_SUCCESS"]
-    elif search or isActive is not None:
+    elif search or is_active is not None:
         message = MESSAGES["NO_CATEGORIES_SEARCH"]
     else:
         message = MESSAGES["NO_CATEGORIES_FIRST"]
@@ -126,7 +125,7 @@ async def get_all_framework_categories(
 @router.get("/{id}")
 async def get_framework_category_by_id(
     id: str,
-    auth: AuthenticatedUser = Depends(authenticate),
+    auth: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
     if not is_valid_id(id):
         return error(MESSAGES["FRAMEWORK_CATEGORY_NOT_FOUND"], 404)
@@ -140,7 +139,7 @@ async def get_framework_category_by_id(
     users_by_id = await fetch_users_by_ids(user_ids)
 
     return success(
-        {"category": await _format_category(category, users_by_id)},
+        {"category": _format_category(category, users_by_id)},
         MESSAGES["FRAMEWORK_CATEGORY_SUCCESS"],
     )
 
@@ -148,8 +147,8 @@ async def get_framework_category_by_id(
 @router.put("/{id}")
 async def update_framework_category(
     id: str,
-    body: dict = Body(default={}),
-    auth: AuthenticatedUser = Depends(authenticate),
+    auth: Annotated[AuthenticatedUser, Depends(authenticate)],
+    body: Annotated[dict, Body()] = {},
 ):
     try:
         fields = validate_update_category(body)
@@ -194,7 +193,7 @@ async def update_framework_category(
 @router.delete("/{id}")
 async def delete_framework_category(
     id: str,
-    auth: AuthenticatedUser = Depends(authenticate),
+    auth: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
     if not is_valid_id(id):
         return error(MESSAGES["FRAMEWORK_CATEGORY_NOT_FOUND"], 404)
@@ -210,9 +209,7 @@ async def delete_framework_category(
         deleted_count = delete_result.rowcount or 0
         await session.delete(category)
 
-    message = MESSAGES["FRAMEWORK_CATEGORY_DELETED_WITH_ACCESS"].replace(
-        "{count}", str(deleted_count)
-    )
+    message = MESSAGES["FRAMEWORK_CATEGORY_DELETED_WITH_ACCESS"].replace("{count}", str(deleted_count))
 
     return success(
         {"id": str(id), "deletedAccessRecords": deleted_count},

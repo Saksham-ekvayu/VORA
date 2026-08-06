@@ -11,7 +11,6 @@ from difflib import SequenceMatcher
 from typing import Any
 
 from sqlalchemy import select
-
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
 from vora_shared.models import (
@@ -316,9 +315,7 @@ async def run_comparison(
             )
             session.add(job)
 
-        await send_cb(
-            send_event("processing", "processing", "Comparing controls", {"progress": 10})
-        )
+        await send_cb(send_event("processing", "processing", "Comparing controls", {"progress": 10}))
         await asyncio.sleep(0.05)
 
         df_controls = _flatten_controls(df_sections)
@@ -349,13 +346,11 @@ async def run_comparison(
                 {
                     "deployment_framework_control_id": str(best_df.get("id") or ""),
                     "deployment_framework_control_name": best_df.get("name") or "",
-                    "deployment_framework_control_description": best_df.get("description")
-                    or "",
+                    "deployment_framework_control_description": best_df.get("description") or "",
                     "deployment_framework_deployment_points": _dp_list(best_df),
                     "assigned_framework_control_id": str(fa_ctrl.get("id") or ""),
                     "assigned_framework_control_name": fa_ctrl.get("name") or "",
-                    "assigned_framework_control_description": fa_ctrl.get("description")
-                    or "",
+                    "assigned_framework_control_description": fa_ctrl.get("description") or "",
                     "assigned_framework_deployment_points": _dp_list(fa_ctrl),
                     "comparison_score": best_score,
                     "reviewComment": "",
@@ -387,9 +382,7 @@ async def run_comparison(
             session.add(cr)
 
             pc = (
-                await session.execute(
-                    select(PackageComparison).where(PackageComparison.frameworkId == df_id)
-                )
+                await session.execute(select(PackageComparison).where(PackageComparison.frameworkId == df_id))
             ).scalar_one_or_none()
             if pc is None:
                 pc = PackageComparison(
@@ -405,15 +398,19 @@ async def run_comparison(
 
             # Update job status
             jobs = (
-                await session.execute(
-                    select(ComparisonJob)
-                    .where(
-                        ComparisonJob.deployment_framework_id == df_id,
-                        ComparisonJob.package_version == pkg_ver,
+                (
+                    await session.execute(
+                        select(ComparisonJob)
+                        .where(
+                            ComparisonJob.deployment_framework_id == df_id,
+                            ComparisonJob.package_version == pkg_ver,
+                        )
+                        .order_by(ComparisonJob.createdAt.desc())
                     )
-                    .order_by(ComparisonJob.createdAt.desc())
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             if jobs:
                 jobs[0].status = "completed"
                 jobs[0].data = {"comparison_result_id": cr.id}
