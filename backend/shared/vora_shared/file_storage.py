@@ -123,6 +123,16 @@ def delete_file(file_path: Path | str) -> bool:
         path = Path(file_path)
         if path.exists():
             path.unlink()
+            parent = path.parent
+            while parent != parent.parent:
+                try:
+                    if not any(parent.iterdir()):
+                        parent.rmdir()
+                        parent = parent.parent
+                    else:
+                        break
+                except OSError:
+                    break
             return True
         return False
     except OSError as exc:

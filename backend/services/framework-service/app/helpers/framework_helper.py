@@ -112,7 +112,7 @@ def transform_framework_doc(doc: Framework, uploaded_by_user=None) -> dict:
             "fileSize": data_format.format_file_size(current.fileSize if current else 0),
             "fileType": current.fileType if current else "pdf",
         },
-        "uploadedBy": data_format.format_uploaded_by(uploaded_by_user, current.uploadedBy),
+        "uploadedBy": data_format.format_uploaded_by(uploaded_by_user, doc.uploadedBy),
         "aiExtraction": {
             "status": (current.aiExtraction.status if current and current.aiExtraction else None),
         },
