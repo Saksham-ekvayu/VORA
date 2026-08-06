@@ -15,7 +15,7 @@ UPLOADS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "shared" / 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     settings = get_settings()
-    await connect_db(settings.resolved_database_url())
+    connect_db(settings.resolved_database_url())
     UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
     yield
     await disconnect_db()

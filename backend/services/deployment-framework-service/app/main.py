@@ -11,7 +11,7 @@ from vora_shared.server import create_vora_app
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     settings = get_settings()
-    await connect_db(settings.resolved_database_url())
+    connect_db(settings.resolved_database_url())
     yield
     await disconnect_db()
 
