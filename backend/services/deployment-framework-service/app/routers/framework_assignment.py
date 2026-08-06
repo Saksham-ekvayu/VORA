@@ -13,7 +13,6 @@ from app.helpers.framework_assignment_helper import (
     dump_model,
 )
 from app.helpers.reports.framework_assignment_report import generate_framework_assignment_report_pdf
-from app.services import ai_service
 from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy import select
 from vora_shared import query_builder
@@ -551,21 +550,7 @@ async def update_assigned_framework_control_weightage(
 
         assignment.fileVersions = dump_file_versions(file_versions)
         assignment.updatedAt = _utcnow()
-
-        try:
-            response = await ai_service.update_framework_assignment_control_weightage(
-                id,
-                fileVersion,
-                controlId,
-                {
-                    "framework_weightage": target_control.customization.weightage.framework_weightage,
-                    "customer_weightage": target_control.customization.weightage.customer_weightage,
-                },
-            )
-            logger.info("Framework assignment weightage update successfully in AI service: %s", response)
-        except Exception as ai_error:
-            logger.error("Failed to update weightage of framework assignment in AI service: %s", ai_error)
-
+            
         return success(
             {"control": dump_model(target_control), "fileVersion": fileVersion},
             format_message(
@@ -616,19 +601,7 @@ async def update_control_applicability(
 
         assignment.fileVersions = dump_file_versions(file_versions)
         assignment.updatedAt = _utcnow()
-
-        try:
-            response = await ai_service.update_framework_assignment_controls_applicability(
-                id, fileVersion, {"controlIds": control_ids, "is_applicable": is_applicable}
-            )
-            logger.info(
-                "Framework assignment controls applicability updated successfully in AI service: %s", response
-            )
-        except Exception as ai_error:
-            logger.error(
-                "Failed to update framework assignment controls applicability in AI service: %s", ai_error
-            )
-
+        
         display_control_id = helper.format_control_ids_for_display([c.id for c in existing_controls])
         status_label = "applicable" if is_applicable else "not applicable"
 
@@ -680,15 +653,6 @@ async def finalize_framework_assignment(id: str, ctx: RequestContext = Depends(g
         assignment.finalization = dump_model(
             AssignmentFinalization(isFinalized=True, finalizedBy=str(user.id), finalizedAt=_utcnow())
         )
-
-        try:
-            response = await ai_service.finalize_framework_assignment(
-                id, {"isFinalized": True, "finalizedBy": str(user.id)}
-            )
-            logger.info("Framework assignment finalized successfully in AI service: %s", response)
-        except Exception as ai_error:
-            logger.error("Failed to finalize framework assignment in AI service: %s", ai_error)
-
         users = await _hydrate_user_refs(session, [assignment])
         customers = await _hydrate_customers(session, [assignment])
         customer = customers.get(str(assignment.customerId)) if assignment.customerId else None

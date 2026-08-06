@@ -11,6 +11,7 @@ def to_title_case(value: str) -> str:
     """Mirrors Node's toTitleCase: lowercase everything, then capitalize each word."""
     return re.sub(r"\b\w", lambda m: m.group().upper(), value.lower())
 
+
 async def code_exists(code: str, exclude_id: str | None = None) -> bool:
     """Mirrors helpers/framework-category-query.helper.js#codeExists."""
     async with session_scope() as session:

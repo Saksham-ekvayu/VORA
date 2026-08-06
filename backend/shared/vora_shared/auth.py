@@ -8,10 +8,10 @@ import jwt
 from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
+from vora_shared import messages as msg
 from vora_shared.config import Settings, get_settings
 from vora_shared.database import session_scope
 from vora_shared.models.user import User
-from vora_shared import messages as msg
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -115,7 +115,7 @@ def _validate_token_with_tenant_fallback(
         except jwt.PyJWTError:
             # Continue to try with default secret
             pass
-    
+
     # Try with default tenant secret (no tenant)
     try:
         return verify_token(token, None, settings)
@@ -134,7 +134,7 @@ async def _fetch_user(user_id: str | None) -> User | None:
     """Fetch user from database by ID."""
     if not user_id:
         return None
-    
+
     async with session_scope() as session:
         result = await session.execute(select(User).where(User.id == str(user_id)))
         user = result.scalar_one_or_none()
@@ -148,7 +148,7 @@ def _validate_user(user: User | None) -> User:
     """Validate user exists and is active."""
     if not user:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, msg.SESSION_INVALID)
-    
+
     if not user.isActive:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
@@ -177,7 +177,7 @@ async def authenticate(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Please login to continue.")
 
     token = credentials.credentials
-    
+
     # Step 1: Verify token signature with appropriate tenant secret
     # This tries header tenant first, then falls back to no tenant
     payload = _validate_token_with_tenant_fallback(token, header_tenant_id, settings)
@@ -188,7 +188,7 @@ async def authenticate(
     # Step 3: Fetch and validate user
     user = await _fetch_user(payload.get("sub"))
     user = _validate_user(user)
-    
+
     # Step 4: Validate token version
     _validate_token_version(payload, user)
 

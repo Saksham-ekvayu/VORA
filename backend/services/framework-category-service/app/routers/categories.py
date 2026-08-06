@@ -1,7 +1,10 @@
+from typing import Annotated
+
 from app.helpers import code_exists, fetch_users_by_ids
 from app.validation import FieldError, validate_create_category, validate_update_category
 from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy import delete, or_, select
+from vora_shared import data_format
 from vora_shared.auth import AuthenticatedUser, authenticate
 from vora_shared.database import session_scope
 from vora_shared.ids import is_valid_id
@@ -9,8 +12,6 @@ from vora_shared.messages import MESSAGES
 from vora_shared.models import FrameworkAccess, FrameworkCategory, User
 from vora_shared.query_builder import apply_sort, paginate_stmt
 from vora_shared.responses import error, paginated, success
-from vora_shared import data_format
-from typing import Annotated
 
 router = APIRouter(tags=["framework-categories"])
 

@@ -15,20 +15,6 @@ from vora_shared import file_storage
 from vora_shared.ids import new_id
 from vora_shared.models.deployment_framework import FrameworkPackageDocument, PackageVersion
 
-MIME_TYPES = {
-    "pdf": "application/pdf",
-    "png": "image/png",
-    "jpg": "image/jpeg",
-    "jpeg": "image/jpeg",
-    "gif": "image/gif",
-    "webp": "image/webp",
-    "svg": "image/svg+xml",
-    "txt": "text/plain",
-    "csv": "text/csv",
-    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "doc": "application/msword",
-}
-
 _SUFFIX_MAP = {
     "vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
     "msword": "doc",
@@ -93,7 +79,7 @@ def normalize_file_type(file_type: str | None, original_file_name: str | None) -
     if normalized_type in _ALLOWED_TYPES:
         return normalized_type
 
-    matched_ext = next((k for k, v in MIME_TYPES.items() if v == normalized_type), None)
+    matched_ext = next((k for k, v in file_storage.PREVIEW_MIME_TYPES.items() if v == normalized_type), None)
     if matched_ext:
         return matched_ext
 
@@ -235,11 +221,10 @@ def get_latest_package(packages: list[Any]) -> Any | None:
     if not packages:
         return None
     coerced = coerce_packages(packages)
-    return sorted(
+    return max(
         coerced,
         key=lambda p: _version_sort_key(p.packageVersion),
-        reverse=True,
-    )[0]
+    )
 
 
 def _version_sort_key(v: str) -> tuple[int, int, int]:
@@ -251,7 +236,7 @@ def _version_sort_key(v: str) -> tuple[int, int, int]:
 
 
 def process_and_save_file(
-    content: bytes, filename: str, framework_id: str | None, user_id: str, version: str
+    content: bytes, filename: str, user_id: str, version: str
 ) -> dict[str, Any] | None:
     path_info = file_storage.generate_deployment_file_path(filename, user_id, "deployment-framework", version)
 
@@ -275,7 +260,7 @@ def process_and_save_file(
 
 
 async def process_uploaded_files(
-    files: list[UploadFile], framework_id: str | None, user_id: str, version: str
+    files: list[UploadFile], user_id: str, version: str
 ) -> dict[str, Any]:
     document_data_array = []
     for file in files:
@@ -285,7 +270,7 @@ async def process_uploaded_files(
             return {"error": {"message": validation.get("message"), "status": validation.get("status")}}
 
         document_data = process_and_save_file(
-            content, file.filename or "file", framework_id, user_id, version
+            content, file.filename or "file", user_id, version
         )
         if not document_data:
             return {"error": {"message": f"Failed to save file: {file.filename}", "status": 500}}
@@ -299,7 +284,6 @@ def save_uploaded_files_for_package(
     if not uploaded_files_map:
         return {"success": True}
 
-    framework_id_for_path = framework.frameworkId or f"temp-{framework.id}"
 
     remaining = dict(uploaded_files_map)
     version = framework.frameworkVersion if hasattr(framework, "frameworkVersion") else None

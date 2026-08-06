@@ -75,10 +75,10 @@ def _get_deployment_points_from_package(pkg: dict) -> list:
     """Extract deployment points from a package."""
     live_package = pkg if _get(pkg, "status") == "live" else None
     merge_doc_id = _get(live_package, "mergeDocument") if live_package else None
-    
+
     if not merge_doc_id:
         return []
-    
+
     # We need the package_merges dict to get the actual merge object
     # This function is called from _calculate_framework_progress which has access
     return []
@@ -88,19 +88,19 @@ def _count_deployment_points(controls_data: list) -> tuple[int, int]:
     """Count total and configured deployment points from controls data."""
     total = 0
     configured = 0
-    
+
     all_deployment_points = [
         dp
         for section in (controls_data or [])
         for control in (_get(section, "controls") or [])
         for dp in (_get(control, "deployment_points") or [])
     ]
-    
+
     for dp in all_deployment_points:
         total += 1
         if (_get(dp, "path") or "").strip():
             configured += 1
-    
+
     return total, configured
 
 
@@ -111,18 +111,18 @@ def _calculate_single_framework_progress(
     """Calculate progress for a single deployment framework."""
     fw_configured = 0
     fw_total = 0
-    
+
     live_package = next((p for p in (df.packages or []) if _get(p, "status") == "live"), None)
     merge_doc_id = _get(live_package, "mergeDocument") if live_package else None
     pm = package_merges.get(str(merge_doc_id)) if merge_doc_id else None
-    
+
     merge_extraction = _get(pm, "mergeExtraction") if pm else None
     controls_data = _get(merge_extraction, "controls_data") if merge_extraction else []
-    
+
     total, configured = _count_deployment_points(controls_data)
     fw_total += total
     fw_configured += configured
-    
+
     return fw_total, fw_configured
 
 
@@ -279,7 +279,7 @@ def _add_assignment_created_activity(
     assigned_by_id = _get(assignment_info, "assignedBy")
     assigned_by = users.get(str(assigned_by_id)) if assigned_by_id else None
     assign_date = _get(assignment_info, "assignedAt") or assignment.created_at
-    
+
     if assign_date:
         name = assigned_by.name if assigned_by else "Admin"
         email = assigned_by.email if assigned_by else "admin@example.com"
@@ -302,7 +302,7 @@ def _add_assignment_revoked_activity(
     revoked_by_id = _get(revocation, "revokedBy")
     revoked_by = users.get(str(revoked_by_id)) if revoked_by_id else None
     revoke_date = _get(revocation, "revokedAt") or assignment.updated_at
-    
+
     if assignment.status == "revoked" and revoke_date:
         email = revoked_by.email if revoked_by else "admin@example.com"
         _add_activity_entry(
@@ -377,15 +377,17 @@ def _add_package_created_activity(
     package_version = _get(pkg, "packageVersion")
     trigger = _get(pkg, "trigger")
     pkg_created = _get(pkg, "createdAt")
-    
+
     if pkg_created:
         patch_type = f" ({trigger} patch)" if trigger else ""
         _add_framework_activity_entry(
-            df, recent_activity, pkg,
+            df,
+            recent_activity,
+            pkg,
             f"pkg-created-{df.id}",
             f"Package {package_version}{patch_type} uploaded in {df.framework_version or df.framework_name}",
             uploaded_by.email if uploaded_by else "User",
-            pkg_created
+            pkg_created,
         )
 
 
@@ -406,22 +408,26 @@ def _add_package_review_activities(
     requested_at = _get(expert_review, "requestedAt")
     if expert_review and requested_at:
         _add_framework_activity_entry(
-            df, recent_activity, pkg,
+            df,
+            recent_activity,
+            pkg,
             f"pkg-review-req-{df.id}",
             f"Package {package_version} requested review from expert {expert_name}",
             uploaded_by.email if uploaded_by else "User",
-            requested_at
+            requested_at,
         )
 
     reviewed_at = _get(expert_review, "reviewedAt")
     review_status = _get(expert_review, "status")
     if expert_review and reviewed_at and review_status in ("approved", "returned"):
         _add_framework_activity_entry(
-            df, recent_activity, pkg,
+            df,
+            recent_activity,
+            pkg,
             f"pkg-review-res-{df.id}",
             f"Expert {expert_name} {review_status} package {package_version}",
             expert.email if expert else "Expert",
-            reviewed_at
+            reviewed_at,
         )
 
 
@@ -435,11 +441,13 @@ def _add_package_live_activity(
     if _get(pkg, "status") == "live":
         live_date = _get(pkg, "updatedAt") or _get(pkg, "createdAt")
         _add_framework_activity_entry(
-            df, recent_activity, pkg,
+            df,
+            recent_activity,
+            pkg,
             f"pkg-live-{df.id}",
             f"Deployment framework package {package_version} deployed (live)",
             "System",
-            live_date
+            live_date,
         )
 
 
@@ -676,9 +684,11 @@ async def _fetch_document_extractions(session, file_hashes: set) -> list[Documen
     if not file_hashes:
         return []
     return list(
-        (await session.execute(
-            select(DocumentExtraction).where(DocumentExtraction.file_hash.in_(list(file_hashes)))
-        ))
+        (
+            await session.execute(
+                select(DocumentExtraction).where(DocumentExtraction.file_hash.in_(list(file_hashes)))
+            )
+        )
         .scalars()
         .all()
     )
@@ -688,25 +698,27 @@ async def _fetch_package_analyses(session, framework_ids: list) -> tuple:
     """Fetch package comparisons, gap analyses, and merges."""
     if not framework_ids:
         return [], [], []
-    
+
     comparisons = list(
-        (await session.execute(
-            select(PackageComparison).where(PackageComparison.framework_id.in_(framework_ids))
-        ))
+        (
+            await session.execute(
+                select(PackageComparison).where(PackageComparison.framework_id.in_(framework_ids))
+            )
+        )
         .scalars()
         .all()
     )
     gap_analyses = list(
-        (await session.execute(
-            select(PackageGapAnalysis).where(PackageGapAnalysis.framework_id.in_(framework_ids))
-        ))
+        (
+            await session.execute(
+                select(PackageGapAnalysis).where(PackageGapAnalysis.framework_id.in_(framework_ids))
+            )
+        )
         .scalars()
         .all()
     )
     merges = list(
-        (await session.execute(
-            select(PackageMerge).where(PackageMerge.framework_id.in_(framework_ids))
-        ))
+        (await session.execute(select(PackageMerge).where(PackageMerge.framework_id.in_(framework_ids))))
         .scalars()
         .all()
     )
@@ -763,35 +775,38 @@ async def get_customer_admin_dashboard(
 
         async with session_scope() as session:
             users = list(
-                (await session.execute(
-                    select(User).where(User.tenant_id == tenant_id, User.id != user.id)
-                ))
+                (await session.execute(select(User).where(User.tenant_id == tenant_id, User.id != user.id)))
                 .scalars()
                 .all()
             )
             customer = (
-                await session.execute(
-                    select(Customer).where(Customer.tenant_id == tenant_id)
-                )
+                await session.execute(select(Customer).where(Customer.tenant_id == tenant_id))
             ).scalar_one_or_none()
             deployment_frameworks = list(
-                (await session.execute(
-                    select(DeploymentFramework).where(DeploymentFramework.tenant_id == tenant_id)
-                ))
+                (
+                    await session.execute(
+                        select(DeploymentFramework).where(DeploymentFramework.tenant_id == tenant_id)
+                    )
+                )
                 .scalars()
                 .all()
             )
             assignments = list(
-                (await session.execute(
-                    select(FrameworkAssignment).where(
-                        or_(
-                            FrameworkAssignment.tenant_id == tenant_id,
-                            FrameworkAssignment.customer_id == str(getattr(user, "customer_id", None) or "")
-                            if getattr(user, "customer_id", None)
-                            else FrameworkAssignment.tenant_id == tenant_id
+                (
+                    await session.execute(
+                        select(FrameworkAssignment).where(
+                            or_(
+                                FrameworkAssignment.tenant_id == tenant_id,
+                                (
+                                    FrameworkAssignment.customer_id
+                                    == str(getattr(user, "customer_id", None) or "")
+                                    if getattr(user, "customer_id", None)
+                                    else FrameworkAssignment.tenant_id == tenant_id
+                                ),
+                            )
                         )
                     )
-                ))
+                )
                 .scalars()
                 .all()
             )
@@ -822,11 +837,7 @@ async def get_customer_admin_dashboard(
             activity_users_map: dict[str, User] = {}
             if user_ids:
                 fetched = (
-                    (await session.execute(
-                        select(User).where(User.id.in_(list(user_ids)))
-                    ))
-                    .scalars()
-                    .all()
+                    (await session.execute(select(User).where(User.id.in_(list(user_ids))))).scalars().all()
                 )
                 activity_users_map = {str(u.id): u for u in fetched}
 

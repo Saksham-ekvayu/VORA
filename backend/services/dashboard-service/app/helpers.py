@@ -85,9 +85,7 @@ def get_effective_start_date(default_start: datetime, user_start_date: datetime 
     return user_start_date if user_start_date > default_start else default_start
 
 
-async def _count_model(
-    model: type, start_date: datetime | None, end_date: datetime | None, **extra
-) -> int:
+async def _count_model(model: type, start_date: datetime | None, end_date: datetime | None, **extra) -> int:
     async with session_scope() as session:
         stmt = select(func.count()).select_from(model)
         stmt = apply_date_filters(stmt, model, start_date, end_date)
@@ -96,9 +94,7 @@ async def _count_model(
         return (await session.execute(stmt)).scalar_one()
 
 
-async def get_model_counts(
-    start_date: datetime | None, end_date: datetime | None
-) -> dict[str, int]:
+async def get_model_counts(start_date: datetime | None, end_date: datetime | None) -> dict[str, int]:
     (
         total_frameworks,
         total_deployment_frameworks,
@@ -159,9 +155,7 @@ def format_recent_users(all_users: list[User]) -> list[dict[str, Any]]:
     ]
 
 
-def generate_chart_labels(
-    start_date: datetime | None = None, end_date: datetime | None = None
-) -> list[str]:
+def generate_chart_labels(start_date: datetime | None = None, end_date: datetime | None = None) -> list[str]:
     end = end_date or utcnow()
     start = start_date or (end - timedelta(days=29))
 
@@ -190,9 +184,7 @@ def get_creation_type(user: User) -> str:
     return getattr(created_by, "type", None) or "self"
 
 
-def populate_chart_data(
-    recent_users: list[User], chart_labels: list[str]
-) -> dict[str, dict[str, int]]:
+def populate_chart_data(recent_users: list[User], chart_labels: list[str]) -> dict[str, dict[str, int]]:
     total_data = initialize_chart_data(chart_labels)
 
     label_set = set(chart_labels)

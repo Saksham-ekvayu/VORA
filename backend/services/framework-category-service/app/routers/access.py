@@ -1,10 +1,12 @@
 from datetime import datetime, timezone
+from typing import Annotated
 
 from app.helpers import fetch_users_by_ids
 from app.validation import FieldError, validate_assign_access
 from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy import or_, select
 from sqlalchemy.orm.attributes import flag_modified
+from vora_shared import data_format
 from vora_shared.auth import AuthenticatedUser, authenticate
 from vora_shared.database import session_scope
 from vora_shared.ids import is_valid_id
@@ -13,9 +15,6 @@ from vora_shared.models import FrameworkAccess, FrameworkCategory, User
 from vora_shared.models.framework_access import ApprovalInfo, RejectionInfo, RevocationInfo
 from vora_shared.query_builder import apply_sort, paginate_stmt
 from vora_shared.responses import error, paginated, success
-from vora_shared import data_format
-from typing import Annotated
-
 
 router = APIRouter(tags=["framework-access"])
 
@@ -197,7 +196,9 @@ def _build_access_list_query(stmt, status: str, expert_id: str | None, framework
     return stmt
 
 
-def _get_access_list_message(data: list, search: str | None, status: str, expert_id: str | None, framework_code: str | None) -> str:
+def _get_access_list_message(
+    data: list, search: str | None, status: str, expert_id: str | None, framework_code: str | None
+) -> str:
     """Determine appropriate message for access list response."""
     if not data:
         if search:
@@ -243,7 +244,7 @@ async def get_framework_access_list(
     async with session_scope() as session:
         stmt = select(FrameworkAccess)
         stmt = _build_access_list_query(stmt, status, expert_id, framework_code)
-        
+
         if search:
             conditions = await _search_or_conditions(session, search)
             stmt = stmt.where(or_(*conditions))
@@ -326,16 +327,18 @@ def _validate_assign_inputs(expert_id_raw, framework_category_ids_raw):
     """Validate expert ID and category IDs."""
     if not is_valid_id(str(expert_id_raw)):
         return None, format_message(MESSAGES["INVALID_OBJECT_ID"], field="expertId", value=expert_id_raw)
-    
+
     expert_id = str(expert_id_raw)
     category_ids: list[str] = []
-    
+
     for raw_id in framework_category_ids_raw:
         sid = str(raw_id)
         if not is_valid_id(sid):
-            return None, format_message(MESSAGES["INVALID_OBJECT_ID"], field="frameworkCategoryIds", value=raw_id)
+            return None, format_message(
+                MESSAGES["INVALID_OBJECT_ID"], field="frameworkCategoryIds", value=raw_id
+            )
         category_ids.append(sid)
-    
+
     return expert_id, category_ids
 
 

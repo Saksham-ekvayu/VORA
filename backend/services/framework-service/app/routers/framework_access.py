@@ -248,9 +248,7 @@ def _get_response_message(
     if search or status or framework_category_id:
         return "No framework access records match your criteria. Try adjusting your filters."
 
-    return (
-        "You haven't requested access to any frameworks yet. Request access to start uploading frameworks."
-    )
+    return "You haven't requested access to any frameworks yet. Request access to start uploading frameworks."
 
 
 @router.post("/{framework_category_id}/request")
