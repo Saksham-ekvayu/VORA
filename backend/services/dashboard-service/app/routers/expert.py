@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
@@ -30,32 +31,31 @@ MONTH_NAMES = [
 ]
 
 
-def _approval_status(fw: Framework) -> str | None:
+def _get_approval_field(fw: Framework, field: str) -> str | None:
+    """Get a field from the approval object safely."""
     approval = fw.approval or {}
     if isinstance(approval, dict):
-        return approval.get("status")
-    return getattr(approval, "status", None)
+        return approval.get(field)
+    return getattr(approval, field, None)
+
+
+def _approval_status(fw: Framework) -> str | None:
+    return _get_approval_field(fw, "status")
 
 
 def _approval_by(fw: Framework) -> str | None:
-    approval = fw.approval or {}
-    if isinstance(approval, dict):
-        return approval.get("by")
-    return getattr(approval, "by", None)
+    return _get_approval_field(fw, "by")
 
 
 def _approval_date(fw: Framework):
-    approval = fw.approval or {}
-    if isinstance(approval, dict):
-        return approval.get("date")
-    return getattr(approval, "date", None)
+    return _get_approval_field(fw, "date")
 
 
 def _apply_date_filter(stmt, model, start_date: str | None, end_date: str | None):
     if start_date:
-        stmt = stmt.where(model.createdAt >= datetime.fromisoformat(start_date))
+        stmt = stmt.where(model.created_at >= datetime.fromisoformat(start_date))
     if end_date:
-        stmt = stmt.where(model.createdAt <= datetime.fromisoformat(end_date))
+        stmt = stmt.where(model.created_at <= datetime.fromisoformat(end_date))
     return stmt
 
 
@@ -84,6 +84,16 @@ def _subtract_months(d: datetime, months: int) -> datetime:
     return datetime(year, month + 1, 1)
 
 
+def _add_month(d: datetime) -> datetime:
+    if d.month == 12:
+        return datetime(d.year + 1, 1, 1)
+    return datetime(d.year, d.month + 1, 1)
+
+
+def _naive(dt: datetime) -> datetime:
+    return dt.replace(tzinfo=None) if dt.tzinfo else dt
+
+
 def _generate_upload_trend(
     frameworks: list[Framework], start_date: str | None, end_date: str | None
 ) -> list[dict]:
@@ -106,7 +116,7 @@ def _generate_upload_trend(
         month_start = datetime(month_date.year, month_date.month, 1)
         month_end = _add_month(month_start)
         uploads = sum(
-            1 for fw in frameworks if fw.createdAt and month_start <= _naive(fw.createdAt) < month_end
+            1 for fw in frameworks if fw.created_at and month_start <= _naive(fw.created_at) < month_end
         )
         label = (
             f"{MONTH_NAMES[month_date.month - 1]} {month_date.year}"
@@ -115,16 +125,6 @@ def _generate_upload_trend(
         )
         result.append({"month": label, "uploads": uploads})
     return result
-
-
-def _naive(dt: datetime) -> datetime:
-    return dt.replace(tzinfo=None) if dt.tzinfo else dt
-
-
-def _add_month(d: datetime) -> datetime:
-    if d.month == 12:
-        return datetime(d.year + 1, 1, 1)
-    return datetime(d.year, d.month + 1, 1)
 
 
 def _build_access_status_counts(access_records: list) -> dict:
@@ -139,83 +139,101 @@ def _build_access_status_counts(access_records: list) -> dict:
 def _format_recent_uploads(frameworks: list[Framework], users_by_id: dict) -> list[dict]:
     sorted_fw = sorted(
         frameworks,
-        key=lambda f: f.createdAt or datetime.min.replace(tzinfo=timezone.utc),
+        key=lambda f: f.created_at or datetime.min.replace(tzinfo=timezone.utc),
         reverse=True,
     )[:5]
     return [
         {
             "id": str(fw.id) if fw and getattr(fw, "id", None) else None,
-            "frameworkName": fw.frameworkName,
-            "frameworkCode": fw.frameworkCode or "",
-            "frameworkVersion": fw.frameworkVersion or "",
+            "frameworkName": fw.framework_name,
+            "frameworkCode": fw.framework_code or "",
+            "frameworkVersion": fw.framework_version or "",
             "uploadedBy": (
-                users_by_id.get(fw.uploadedBy).name if users_by_id.get(fw.uploadedBy) else "Unknown"
+                users_by_id.get(fw.uploaded_by).name if users_by_id.get(fw.uploaded_by) else "Unknown"
             ),
-            "date": _fmt_date(fw.createdAt),
+            "date": _fmt_date(fw.created_at),
             "status": _title_case(_approval_status(fw)),
         }
         for fw in sorted_fw
     ]
 
 
-def _format_approved_frameworks(frameworks: list[Framework], users_by_id: dict) -> list[dict]:
-    approved = [fw for fw in frameworks if _approval_status(fw) == "approved"]
+def _get_approved_frameworks(frameworks: list[Framework]) -> list[Framework]:
+    """Filter and return only approved frameworks."""
+    return [fw for fw in frameworks if _approval_status(fw) == "approved"]
 
-    def _sort_key(f: Framework):
-        date_val = _approval_date(f) or f.updatedAt
-        if isinstance(date_val, str):
-            try:
-                date_val = datetime.fromisoformat(date_val.replace("Z", "+00:00"))
-            except ValueError:
-                date_val = datetime.min.replace(tzinfo=timezone.utc)
-        if date_val is None:
+
+def _get_approval_sort_key(f: Framework):
+    """Get sort key for approved frameworks based on approval date."""
+    date_val = _approval_date(f) or f.updated_at
+    if isinstance(date_val, str):
+        try:
+            date_val = datetime.fromisoformat(date_val.replace("Z", "+00:00"))
+        except ValueError:
             date_val = datetime.min.replace(tzinfo=timezone.utc)
-        if getattr(date_val, "tzinfo", None) is None:
-            date_val = date_val.replace(tzinfo=timezone.utc)
-        return date_val
+    if date_val is None:
+        date_val = datetime.min.replace(tzinfo=timezone.utc)
+    if getattr(date_val, "tzinfo", None) is None:
+        date_val = date_val.replace(tzinfo=timezone.utc)
+    return date_val
 
-    approved.sort(key=_sort_key, reverse=True)
-    approved = approved[:5]
-    return [
-        {
-            "id": str(fw.id) if fw and getattr(fw, "id", None) else None,
-            "frameworkName": fw.frameworkName,
-            "frameworkCode": fw.frameworkCode or "",
-            "frameworkVersion": fw.frameworkVersion or "",
-            "approvedBy": (
-                users_by_id.get(_approval_by(fw)).name
-                if _approval_by(fw) and users_by_id.get(_approval_by(fw))
-                else "Unknown"
-            ),
-            "date": _fmt_date(_approval_date(fw) or fw.updatedAt),
-            "status": "Approved",
-        }
-        for fw in approved
-    ]
+
+def _sort_approved_frameworks(approved: list[Framework]) -> list[Framework]:
+    """Sort approved frameworks by approval date descending."""
+    approved.sort(key=_get_approval_sort_key, reverse=True)
+    return approved[:5]
+
+
+def _get_approver_name(fw: Framework, users_by_id: dict) -> str:
+    """Get the approver's name for a framework."""
+    approver_id = _approval_by(fw)
+    if approver_id and users_by_id.get(approver_id):
+        return users_by_id[approver_id].name
+    return "Unknown"
+
+
+def _format_single_approved_framework(fw: Framework, users_by_id: dict) -> dict:
+    """Format a single approved framework."""
+    return {
+        "id": str(fw.id) if fw and getattr(fw, "id", None) else None,
+        "frameworkName": fw.framework_name,
+        "frameworkCode": fw.framework_code or "",
+        "frameworkVersion": fw.framework_version or "",
+        "approvedBy": _get_approver_name(fw, users_by_id),
+        "date": _fmt_date(_approval_date(fw) or fw.updated_at),
+        "status": "Approved",
+    }
+
+
+def _format_approved_frameworks(frameworks: list[Framework], users_by_id: dict) -> list[dict]:
+    """Format approved frameworks for the dashboard."""
+    approved = _get_approved_frameworks(frameworks)
+    approved = _sort_approved_frameworks(approved)
+    return [_format_single_approved_framework(fw, users_by_id) for fw in approved]
 
 
 @router.get("/analytics")
 async def get_expert_dashboard_analytics(
-    auth: AuthenticatedUser = Depends(authenticate),
-    startDate: str | None = Query(default=None),
-    endDate: str | None = Query(default=None),
+    auth: Annotated[AuthenticatedUser, Depends(authenticate)],
+    start_date: Annotated[str | None, Query(alias="startDate")] = None,
+    end_date: Annotated[str | None, Query(alias="endDate")] = None,
 ):
     user = auth.user
 
     async with session_scope() as session:
-        fw_stmt = select(Framework).where(Framework.uploadedBy == user.id)
-        fw_stmt = _apply_date_filter(fw_stmt, Framework, startDate, endDate)
+        fw_stmt = select(Framework).where(Framework.uploaded_by == user.id)
+        fw_stmt = _apply_date_filter(fw_stmt, Framework, start_date, end_date)
         frameworks = list((await session.execute(fw_stmt)).scalars().all())
 
-        access_stmt = select(FrameworkAccess).where(FrameworkAccess.expertId == user.id)
-        access_stmt = _apply_date_filter(access_stmt, FrameworkAccess, startDate, endDate)
+        access_stmt = select(FrameworkAccess).where(FrameworkAccess.expert_id == user.id)
+        access_stmt = _apply_date_filter(access_stmt, FrameworkAccess, start_date, end_date)
         access_records = list((await session.execute(access_stmt)).scalars().all())
 
         total_categories = (
             await session.execute(select(func.count()).select_from(FrameworkCategory))
         ).scalar_one()
 
-        user_ids = {fw.uploadedBy for fw in frameworks}
+        user_ids = {fw.uploaded_by for fw in frameworks}
         for fw in frameworks:
             by_id = _approval_by(fw)
             if by_id:
@@ -237,7 +255,7 @@ async def get_expert_dashboard_analytics(
                 "approvedUploads": approved_uploads,
                 "approvalProgress": approval_progress,
             },
-            "uploadTrend": _generate_upload_trend(frameworks, startDate, endDate),
+            "uploadTrend": _generate_upload_trend(frameworks, start_date, end_date),
             "accessStatus": _build_access_status_counts(access_records),
             "recentUploads": _format_recent_uploads(frameworks, users_by_id),
             "approvedFrameworks": _format_approved_frameworks(frameworks, users_by_id),
