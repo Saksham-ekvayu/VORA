@@ -212,6 +212,8 @@ BUSINESS_MESSAGES = {
     "NO_CONTROLS_FOUND": "No matching controls found in this version",
     "USER_ID_REQUIRED": "User ID (_id) is required for sync",
     "CANNOT_MODIFY_FINALIZED": "Cannot modify a finalized framework version.",
+    "FRAMEWORK_ASSIGNMENT_FINALIZE_DENIED": "Access denied. You do not have permission to finalize framework versions.",
+    "FRAMEWORK_ASSIGNMENT_ALREADY_FINALIZED": "Framework assignment is already finalized.",
 }
 
 FRAMEWORK_MESSAGES = {
@@ -296,4 +298,18 @@ FRAMEWORK_SERVICE_MESSAGES = {
     "FRAMEWORK_CATEGORY_NOT_FOUND": "Framework category not found",
     "FRAMEWORK_CATEGORY_IS_NOT_ACTIVE": "Framework category is not active",
     "ID": "id",
+    "PACKAGE_MERGE_DOCUMENT_NOT_FOUND": "Package merge document not found",
+    "CONTROL_OR_DEPLOYMENT_POINT_NOT_FOUND": "Control or deployment point not found",
+    "INVALID_PATCH_TYPE": "Invalid patch type. Must be 'minor' or 'major'",
+    "AT_LEAST_ONE_FILE_REQUIRED": "At least one file is required",
+    "DOCUMENT_NOT_FOUND": "Document not found",
+    "PACKAGE_NOT_FOUND": "Package not found",
+    "PACKAGE_VERSION_REQUIRED": "Package version is required",
+    "ASSIGNED_USER_MUST_BE_INTERNAL_EXPERT": "Assigned user must be an internal-expert",
+    "COMPARISON_NOT_COMPLETED_FOR_PACKAGE": "Comparison not completed or not found for this package version",
+    "PACKAGE_COMPARISON_DATA_NOT_FOUND": "Package comparison data not found",
+    "CONTROL_ALIGNMENT_NOT_FOUND_COMPARISON": "Control alignment not found in comparison results",
+    "GAP_ANALYSIS_NOT_COMPLETED_FOR_PACKAGE": "Gap analysis not completed or not found for this package version",
+    "PACKAGE_GAP_ANALYSIS_DATA_NOT_FOUND": "Package gap analysis data not found",
+    "POINT_ALIGNMENT_NOT_FOUND_GAP_ANALYSIS": "Point alignment not found in gap analysis results",
 }

@@ -606,7 +606,7 @@ async def finalize_framework_assignment(id: str, ctx: Annotated[RequestContext, 
     user = ctx.user
 
     if user.role not in ("auditor", "customer-admin"):
-        return error("Access denied. You do not have permission to finalize framework versions.", 403)
+        return error(BUSINESS_MESSAGES["FRAMEWORK_ASSIGNMENT_FINALIZE_DENIED"], 403)
 
     async with session_scope() as session:
         assignment = await session.get(FrameworkAssignment, str(id))
@@ -615,7 +615,7 @@ async def finalize_framework_assignment(id: str, ctx: Annotated[RequestContext, 
 
         fin = as_finalization(assignment.finalization)
         if fin.isFinalized:
-            return error("Framework assignment is already finalized.", 400)
+            return error(BUSINESS_MESSAGES["FRAMEWORK_ASSIGNMENT_ALREADY_FINALIZED"], 400)
 
         invalid_controls = helper.collect_invalid_weightage_controls(assignment.fileVersions)
         if invalid_controls:

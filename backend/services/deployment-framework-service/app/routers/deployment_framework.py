@@ -321,7 +321,7 @@ async def update_deployment_package_point_path(
             return not_found(_RESOURCE_PACKAGE_VERSION)
 
         if not target_package.mergeDocument:
-            return not_found("Package merge document")
+            return not_found(FRAMEWORK_SERVICE_MESSAGES["PACKAGE_MERGE_DOCUMENT_NOT_FOUND"])
 
         package_merge = (
             await session.execute(
@@ -332,7 +332,7 @@ async def update_deployment_package_point_path(
             )
         ).scalar_one_or_none()
         if not package_merge:
-            return not_found("Package merge document")
+            return not_found(FRAMEWORK_SERVICE_MESSAGES["PACKAGE_MERGE_DOCUMENT_NOT_FOUND"])
 
         merge_data = dict(package_merge.mergeExtraction or {})
         controls_data = list(merge_data.get("controls_data") or [])
@@ -342,7 +342,7 @@ async def update_deployment_package_point_path(
         )
 
         if not point_found:
-            return not_found("Control or deployment point")
+            return not_found(FRAMEWORK_SERVICE_MESSAGES["CONTROL_OR_DEPLOYMENT_POINT_NOT_FOUND"])
 
         merge_data["controls_data"] = controls_data
         package_merge.mergeExtraction = merge_data
@@ -371,16 +371,16 @@ async def get_deployment_framework_by_id(id: str, ctx: Annotated[RequestContext,
     async with session_scope() as session:
         framework = await session.get(DeploymentFramework, str(id))
         if not framework:
-            return not_found("Framework")
+            return not_found(FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"])
 
         if user.role != "expert" and framework.tenantId != ctx.tenant_id:
-            return not_found("Framework")
+            return not_found(FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"])
 
         packages = coerce_packages(framework.packages)
         if user.role in ("expert", "internal-expert"):
             assigned_packages = [p for p in packages if _expert_assigned(p, str(user.id))]
             if not assigned_packages:
-                return not_found("Framework")
+                return not_found(FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"])
             framework.packages = dump_packages(assigned_packages)
             latest = helpers.get_latest_package(assigned_packages)
             if latest:
@@ -418,7 +418,7 @@ def _validate_package_access(user_role: str, user_id: str, found_package: Any) -
             else False
         )
         if assigned_expert_id != str(user_id) or not is_not_pending:
-            return not_found("Framework")
+            return not_found(FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"])
     elif user_role == "user":
         if not found_package.expertReview or found_package.expertReview.status != "approved":
             return error(BUSINESS_MESSAGES["FRAMEWORK_ACCESS_DENIED"], 403)
@@ -433,10 +433,10 @@ async def get_deployment_framework_package_by_version(
     async with session_scope() as session:
         framework = await session.get(DeploymentFramework, str(id))
         if not framework:
-            return not_found("Framework")
+            return not_found(FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"])
 
         if user.role != "expert" and framework.tenantId != ctx.tenant_id:
-            return not_found("Framework")
+            return not_found(FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"])
 
         packages = coerce_packages(framework.packages)
         found_package = next((p for p in packages if p.packageVersion == package_version), None)
@@ -539,7 +539,7 @@ async def update_deployment_framework(
 
         patch_type = meta_dict.get("patchType", "minor")
         if patch_type not in ("minor", "major"):
-            return error("Invalid patch type. Must be 'minor' or 'major'", 400)
+            return error(FRAMEWORK_SERVICE_MESSAGES["INVALID_PATCH_TYPE"], 400)
 
         try:
             file_entries = await _process_uploaded_files(files)
@@ -715,7 +715,7 @@ async def upload_deployment_framework(
 
     all_files: list[UploadFile] = [*(file or []), *(files or [])]
     if not all_files:
-        return error("At least one file is required", 400)
+        return error(FRAMEWORK_SERVICE_MESSAGES["AT_LEAST_ONE_FILE_REQUIRED"], 400)
 
     version = meta.get("fileVersion") or "1.0.0"
 
@@ -802,15 +802,15 @@ async def preview_framework_file(
     async with session_scope() as session:
         framework = await session.get(DeploymentFramework, str(framework_id))
         if not framework or not helpers.find_framework_document(framework, file_id):
-            return not_found("Framework")
+            return not_found(FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"])
 
         document = helpers.find_framework_document(framework, file_id)
         if not document:
-            return not_found("Document")
+            return not_found(FRAMEWORK_SERVICE_MESSAGES["DOCUMENT_NOT_FOUND"])
 
         actual_file_path = helpers.get_upload_file_path(document.fileUrl)
         if not actual_file_path or not os.path.exists(actual_file_path):
-            return not_found("File on disk")
+            return not_found(FRAMEWORK_SERVICE_MESSAGES["FILE_ON_DISK_NOT_FOUND"])
 
         mime = helpers.MIME_TYPES.get(str(document.fileType).lower(), "application/octet-stream")
         return FileResponse(
@@ -831,15 +831,15 @@ async def download_framework_file(
     async with session_scope() as session:
         framework = await session.get(DeploymentFramework, str(framework_id))
         if not framework or not helpers.find_framework_document(framework, file_id):
-            return not_found("Framework")
+            return not_found(FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"])
 
         document = helpers.find_framework_document(framework, file_id)
         if not document:
-            return not_found("Document")
+            return not_found(FRAMEWORK_SERVICE_MESSAGES["DOCUMENT_NOT_FOUND"])
 
         actual_file_path = helpers.get_upload_file_path(document.fileUrl)
         if not actual_file_path or not os.path.exists(actual_file_path):
-            return not_found("File on disk")
+            return not_found(FRAMEWORK_SERVICE_MESSAGES["FILE_ON_DISK_NOT_FOUND"])
 
         mime = helpers.MIME_TYPES.get(str(document.fileType).lower(), "application/octet-stream")
         return FileResponse(
@@ -876,7 +876,7 @@ async def delete_deployment_framework_package(
             (i for i, p in enumerate(packages) if p.packageVersion == package_version), -1
         )
         if package_index == -1:
-            return not_found("Package")
+            return not_found(FRAMEWORK_SERVICE_MESSAGES["PACKAGE_NOT_FOUND"])
 
         package_to_delete = packages[package_index]
 
@@ -1014,7 +1014,7 @@ async def request_expert_review(
         return forbidden("Only auditors can request expert reviews")
 
     if not package_version:
-        return error("Package version is required", 400)
+        return error(FRAMEWORK_SERVICE_MESSAGES["PACKAGE_VERSION_REQUIRED"], 400)
     if not expert_id:
         return error(FRAMEWORK_MESSAGES["EXPERT_ID_REQUIRED"], 400)
 
@@ -1047,7 +1047,7 @@ async def request_expert_review(
             return not_found(FRAMEWORK_MESSAGES["EXPERT_NOT_FOUND"])
 
         if expert_user.role != "internal-expert":
-            return error("Assigned user must be an internal-expert", 400)
+            return error(FRAMEWORK_SERVICE_MESSAGES["ASSIGNED_USER_MUST_BE_INTERNAL_EXPERT"], 400)
 
         if expert_user.tenantId != tenant_id:
             return forbidden("Expert not exist in your organization")
@@ -1256,11 +1256,11 @@ async def add_review_remark(
             return not_found(_RESOURCE_PACKAGE_VERSION)
 
         if not found_package.comparison:
-            return error("Comparison not completed or not found for this package version", 400)
+            return error(FRAMEWORK_SERVICE_MESSAGES["COMPARISON_NOT_COMPLETED_FOR_PACKAGE"], 400)
 
         package_comparison = await session.get(PackageComparison, str(found_package.comparison))
         if not package_comparison:
-            return not_found("Package comparison data")
+            return not_found(FRAMEWORK_SERVICE_MESSAGES["PACKAGE_COMPARISON_DATA_NOT_FOUND"])
 
         comp = dict(package_comparison.comparison or {})
         results = list(comp.get("comparison_result") or [])
@@ -1269,7 +1269,7 @@ async def add_review_remark(
         )
 
         if not control_found:
-            return not_found("Control alignment not found in comparison results")
+            return not_found(FRAMEWORK_SERVICE_MESSAGES["CONTROL_ALIGNMENT_NOT_FOUND_COMPARISON"])
 
         comp["comparison_result"] = results
         package_comparison.comparison = comp
@@ -1315,11 +1315,11 @@ async def add_gap_review_remark(
             return not_found(_RESOURCE_PACKAGE_VERSION)
 
         if not found_package.gapAnalysis:
-            return error("Gap analysis not completed or not found for this package version", 400)
+            return error(FRAMEWORK_SERVICE_MESSAGES["GAP_ANALYSIS_NOT_COMPLETED_FOR_PACKAGE"], 400)
 
         package_gap_analysis = await session.get(PackageGapAnalysis, str(found_package.gapAnalysis))
         if not package_gap_analysis:
-            return not_found("Package gap analysis data")
+            return not_found(FRAMEWORK_SERVICE_MESSAGES["PACKAGE_GAP_ANALYSIS_DATA_NOT_FOUND"])
 
         gap = dict(package_gap_analysis.gapAnalysis or {})
         results = list(gap.get("deployment_gap_results") or [])
@@ -1333,7 +1333,7 @@ async def add_gap_review_remark(
             comment,
         )
         if not point_found:
-            return not_found("Point alignment not found in gap analysis results")
+            return not_found(FRAMEWORK_SERVICE_MESSAGES["POINT_ALIGNMENT_NOT_FOUND_GAP_ANALYSIS"])
 
         gap["deployment_gap_results"] = results
         package_gap_analysis.gapAnalysis = gap
