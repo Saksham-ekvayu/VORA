@@ -17,18 +17,18 @@ router = APIRouter(tags=["framework-categories"])
 
 
 def _format_category(category: FrameworkCategory, users_by_id: dict[str, User]) -> dict:
-    created_by_id = str(category.created_by) if category.created_by else None
-    updated_by_id = str(category.updated_by) if category.updated_by else None
+    created_by_id = str(category.createdBy) if category.createdBy else None
+    updated_by_id = str(category.updatedBy) if category.updatedBy else None
     return {
         "id": str(category.id),
         "code": category.code,
-        "frameworkCategoryName": category.framework_category_name,
+        "frameworkCategoryName": category.frameworkCategoryName,
         "description": category.description,
-        "isActive": category.is_active,
+        "isActive": category.isActive,
         "createdAt": category.createdAt,
         "updatedAt": category.updatedAt,
-        "createdBy": data_format.format_user_ref(users_by_id.get(created_by_id), category.created_by),
-        "updatedBy": data_format.format_user_ref(users_by_id.get(updated_by_id), category.updated_by),
+        "createdBy": data_format.format_user_ref(users_by_id.get(created_by_id), category.createdBy),
+        "updatedBy": data_format.format_user_ref(users_by_id.get(updated_by_id), category.updatedBy),
     }
 
 
@@ -48,10 +48,10 @@ async def create_framework_category(
     async with session_scope() as session:
         category = FrameworkCategory(
             code=fields["code"],
-            framework_category_name=fields["frameworkCategoryName"],
-            description=fields["description"] or "",
-            is_active=True,
-            created_by=str(auth.user.id),
+            frameworkCategoryName=fields["frameworkCategoryName"],
+            description=fields.get("description", ""),
+            isActive=True,
+            createdBy=str(auth.user.id),
         )
         session.add(category)
         await session.flush()
@@ -71,11 +71,11 @@ async def get_all_framework_categories(
     async with session_scope() as session:
         stmt = select(FrameworkCategory)
         if is_active is not None:
-            stmt = stmt.where(FrameworkCategory.is_active.is_(is_active == "true"))
+            stmt = stmt.where(FrameworkCategory.isActive.is_(is_active == "true"))
 
         if search:
             or_conditions = [
-                FrameworkCategory.framework_category_name.ilike(f"%{search}%"),
+                FrameworkCategory.frameworkCategoryName.ilike(f"%{search}%"),
                 FrameworkCategory.code.ilike(f"%{search}%"),
                 FrameworkCategory.description.ilike(f"%{search}%"),
             ]
@@ -95,22 +95,22 @@ async def get_all_framework_categories(
             )
             user_ids = [u.id for u in matching_users]
             if user_ids:
-                or_conditions.append(FrameworkCategory.created_by.in_(user_ids))
-                or_conditions.append(FrameworkCategory.updated_by.in_(user_ids))
-            stmt = stmt.where(or_(*or_conditions))
+                or_conditions.append(FrameworkCategory.createdBy.in_(user_ids))
+                or_conditions.append(FrameworkCategory.updatedBy.in_(user_ids))
+            if or_conditions:
+                stmt = stmt.where(or_(*or_conditions))
 
-        stmt = apply_sort(FrameworkCategory, stmt, "created_at", "desc", ["created_at"])
+        stmt = apply_sort(FrameworkCategory, stmt, "createdAt", "desc", ["createdAt"])
         documents, pagination = await paginate_stmt(session, stmt, page=page, limit=limit or 10)
 
         user_ids_needed: set[str] = set()
         for doc in documents:
-            if doc.created_by:
-                user_ids_needed.add(str(doc.created_by))
-            if doc.updated_by:
-                user_ids_needed.add(str(doc.updated_by))
-
-    users_by_id = await fetch_users_by_ids(user_ids_needed)
-    data = [await _format_category(doc, users_by_id) for doc in documents]
+            if doc.createdBy:
+                user_ids_needed.add(str(doc.createdBy))
+            if doc.updatedBy:
+                user_ids_needed.add(str(doc.updatedBy))
+        users_by_id = await fetch_users_by_ids(user_ids_needed)
+    data = [_format_category(doc, users_by_id) for doc in documents]
 
     if data:
         message = MESSAGES["FRAMEWORK_CATEGORIES_SUCCESS"]
@@ -134,12 +134,12 @@ async def get_framework_category_by_id(
         category = await session.get(FrameworkCategory, id)
         if not category:
             return error(MESSAGES["FRAMEWORK_CATEGORY_NOT_FOUND"], 404)
-        user_ids = {str(uid) for uid in (category.created_by, category.updated_by) if uid}
+        user_ids = {str(uid) for uid in (category.createdBy, category.updatedBy) if uid}
 
     users_by_id = await fetch_users_by_ids(user_ids)
 
     return success(
-        {"category": await _format_category(category, users_by_id)},
+        {"category": _format_category(category, users_by_id)},
         MESSAGES["FRAMEWORK_CATEGORY_SUCCESS"],
     )
 
@@ -176,15 +176,15 @@ async def update_framework_category(
             if dup:
                 return error(MESSAGES["FRAMEWORK_CATEGORY_CODE_EXISTS"], 400, "code")
 
-        category.updated_by = str(auth.user.id)
+        category.updatedBy = str(auth.user.id)
         if "code" in fields:
             category.code = fields["code"]
         if "frameworkCategoryName" in fields:
-            category.framework_category_name = fields["frameworkCategoryName"]
+            category.frameworkCategoryName = fields["frameworkCategoryName"]
         if "description" in fields:
             category.description = fields["description"]
         if "isActive" in fields:
-            category.is_active = fields["isActive"]
+            category.isActive = fields["isActive"]
         category_id = str(category.id)
 
     return success({"id": category_id}, MESSAGES["FRAMEWORK_CATEGORY_UPDATED"])

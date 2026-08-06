@@ -43,22 +43,24 @@ def _format_access_record(
     if approved_by_id:
         approved_by_id = str(approved_by_id)
 
-    return {
+    result = {
         "id": str(record.id),
         "expert": data_format.format_user_ref(users_by_id.get(str(record.expertId)), record.expertId),
-        "frameworkCategory": (
-            {
-                "frameworkId": str(category.id),
-                "frameworkCode": category.code,
-                "frameworkCategoryName": category.framework_category_name,
-                "description": category.description,
-                "isActive": category.is_active,
-            }
-            if category
-            else None
-        ),
+        "frameworkCategory": None,
         "status": record.status,
-        "requestedBy": str(record.requested_by) if record and getattr(record, "requested_by", None) else None,
+    }
+    if category:
+        result["frameworkCategory"] = {
+            "frameworkId": str(category.id),
+            "frameworkCode": category.code,
+            "frameworkCategoryName": category.frameworkCategoryName,
+            "description": category.description,
+            "isActive": category.isActive,
+        }
+
+    return {
+        **result,
+        "requestedBy": str(record.requestedBy) if record and getattr(record, "requestedBy", None) else None,
         "rejection": (
             {
                 "rejectedBy": data_format.format_user_ref(users_by_id.get(rejected_by_id), rejected_by_id),
@@ -121,7 +123,7 @@ async def _batch_format(records: list[FrameworkAccess]) -> list[dict]:
             )
             categories_by_id = {str(c.id): c for c in categories}
 
-    return [await _format_access_record(r, users_by_id, categories_by_id) for r in records]
+    return [_format_access_record(r, users_by_id, categories_by_id) for r in records]
 
 
 async def _search_or_conditions(session, search: str) -> list:
@@ -145,7 +147,7 @@ async def _search_or_conditions(session, search: str) -> list:
                 select(FrameworkCategory).where(
                     or_(
                         FrameworkCategory.code.ilike(f"%{search}%"),
-                        FrameworkCategory.framework_category_name.ilike(f"%{search}%"),
+                        FrameworkCategory.frameworkCategoryName.ilike(f"%{search}%"),
                         FrameworkCategory.description.ilike(f"%{search}%"),
                     )
                 )
@@ -347,7 +349,7 @@ async def _validate_expert_and_categories(session, expert_id: str, category_ids:
     expert = await session.get(User, expert_id)
     if not expert:
         return None, None, MESSAGES["EXPERT_NOT_FOUND"]
-    if not expert.is_active:
+    if not expert.isActive:
         return None, None, MESSAGES["EXPERT_NOT_ACTIVE"]
 
     framework_categories = (
@@ -361,7 +363,7 @@ async def _validate_expert_and_categories(session, expert_id: str, category_ids:
         missing_ids = [i for i in category_ids if i not in found_ids]
         return None, None, f"{MESSAGES['FRAMEWORK_CATEGORIES_NOT_FOUND_PREFIX']}: {', '.join(missing_ids)}"
 
-    inactive = [c for c in framework_categories if not c.is_active]
+    inactive = [c for c in framework_categories if not c.isActive]
     if inactive:
         return None, None, MESSAGES["FRAMEWORK_CATEGORY_INACTIVE"]
 
@@ -389,19 +391,19 @@ async def _create_or_update_access_record(session, expert_id: str, category, aut
             }, None
 
         existing.status = "approved"
-        existing.requested_by = "admin"
-        existing.approval = ApprovalInfo(approved_by=auth_user_id, approved_at=now).model_dump(mode="json")
+        existing.requestedBy = "admin"
+        existing.approval = ApprovalInfo(approvedBy=auth_user_id, approvedAt=now).model_dump(mode="json")
         flag_modified(existing, "approval")
         access_record = existing
         is_update = True
     else:
         access_record = FrameworkAccess(
-            expert_id=expert_id,
-            framework_category_id=category.id,
-            framework_code=category.code,
+            expertId=expert_id,
+            frameworkCategoryId=category.id,
+            frameworkCode=category.code,
             status="approved",
-            requested_by="admin",
-            approval=ApprovalInfo(approved_by=auth_user_id, approved_at=now).model_dump(mode="json"),
+            requestedBy="admin",
+            approval=ApprovalInfo(approvedBy=auth_user_id, approvedAt=now).model_dump(mode="json"),
         )
         session.add(access_record)
         await session.flush()
@@ -466,7 +468,7 @@ async def assign_framework_access(
 
     async with session_scope() as session:
         # Validate expert and categories
-        framework_categories, error_msg = await _validate_expert_and_categories(
+        _, framework_categories, error_msg = await _validate_expert_and_categories(
             session, expert_id, category_ids
         )
         if error_msg:
@@ -518,8 +520,8 @@ async def approve_framework_access(
 
         record.status = "approved"
         record.approval = ApprovalInfo(
-            approved_by=str(auth.user.id),
-            approved_at=datetime.now(timezone.utc),
+            approvedBy=str(auth.user.id),
+            approvedAt=datetime.now(timezone.utc),
         ).model_dump(mode="json")
         flag_modified(record, "approval")
         record_id = str(record.id)
@@ -544,8 +546,8 @@ async def reject_framework_access(
 
         record.status = "rejected"
         record.rejection = RejectionInfo(
-            rejected_by=str(auth.user.id),
-            rejected_at=datetime.now(timezone.utc),
+            rejectedBy=str(auth.user.id),
+            rejectedAt=datetime.now(timezone.utc),
         ).model_dump(mode="json")
         flag_modified(record, "rejection")
         record_id = str(record.id)
@@ -566,7 +568,7 @@ async def revoke_framework_access(
 
     async with session_scope() as session:
         expert = (
-            await session.execute(select(User).where(User.id == expert_id, User.is_active.is_(True)))
+            await session.execute(select(User).where(User.id == expert_id, User.isActive.is_(True)))
         ).scalar_one_or_none()
         if not expert:
             return error(MESSAGES["EXPERT_NOT_FOUND"], 404)
@@ -591,8 +593,8 @@ async def revoke_framework_access(
 
         record.status = "revoked"
         record.revocation = RevocationInfo(
-            revoked_by=str(auth.user.id),
-            revoked_at=datetime.now(timezone.utc),
+            revokedBy=str(auth.user.id),
+            revokedAt=datetime.now(timezone.utc),
         ).model_dump(mode="json")
         flag_modified(record, "revocation")
         result = {

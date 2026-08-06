@@ -277,9 +277,9 @@ async def get_all_customers(
     page: Annotated[int, Query()] = 1,
     limit: Annotated[int, Query()] = 10,
     search: Annotated[str | None, Query()] = None,
-    is_active: Annotated[str | None, Query()] = None,
-    sort_by: Annotated[str | None, Query()] = None,
-    sort_order: Annotated[str | None, Query()] = None,
+    is_active: Annotated[str | None, Query(alias="isActive")] = None,
+    sort_by: Annotated[str | None, Query(alias="sortBy")] = None,
+    sort_order: Annotated[str | None, Query(alias="sortOrder")] = None,
 ):
     allowed_sort_fields = ["name", "email", "tenantId", "createdAt", "updatedAt"]
     allowed_search_fields = ["name", "email", "tenantId", "phone"]
@@ -305,9 +305,9 @@ async def get_customer_by_id(
     page: Annotated[int, Query()] = 1,
     limit: Annotated[int, Query()] = 10,
     search: Annotated[str | None, Query()] = None,
-    is_active: Annotated[str | None, Query()] = None,
-    sort_by: Annotated[str | None, Query()] = None,
-    sort_order: Annotated[str | None, Query()] = None,
+    is_active: Annotated[str | None, Query(alias="isActive")] = None,
+    sort_by: Annotated[str | None, Query(alias="sortBy")] = None,
+    sort_order: Annotated[str | None, Query(alias="sortOrder")] = None,
 ):
     if not is_valid_id(id):
         return error(msg.CUSTOMER_NOT_FOUND, 404)
