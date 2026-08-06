@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from app.routers import comparison as comparison_router
+from app.routers import gap as gap_router
 from fastapi import FastAPI
 from vora_shared.config import get_settings
 from vora_shared.database import connect_db, disconnect_db
@@ -15,5 +16,6 @@ async def lifespan(_: FastAPI):
     await disconnect_db()
 
 
-app = create_vora_app(title="Comparison Service", lifespan=lifespan)
+app = create_vora_app(title="AI Analysis Service", lifespan=lifespan)
 app.include_router(comparison_router.router, prefix="/api/comparison")
+app.include_router(gap_router.router, prefix="/api/deployment-gap")

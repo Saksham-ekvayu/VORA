@@ -50,12 +50,11 @@ ROUTES = {
     "/api/deployment-frameworks": "http://localhost:7006/deployment-frameworks",
     # deployment-document-service (7007)
     "/api/deployment-documents": "http://localhost:7007/deployment-documents",
-    # comparison-service (7008)
+    # ai-analysis-service (7008)
     "/api/comparison": "http://localhost:7008/api/comparison",
+    "/api/deployment-gap": "http://localhost:7008/api/deployment-gap",
     # compliance-agent-service (7009)
     "/api/compliance-agent": "http://localhost:7009/api/compliance-agent",
-    # deployment-gap-service (7010)
-    "/api/deployment-gap": "http://localhost:7010/api/deployment-gap",
     "/api/extract": "http://localhost:7011/api/extract",
 }
 

@@ -41,14 +41,13 @@ if errorlevel 1 (
     cd /d "%ROOT%\services\deployment-framework-service"
     call .venv\Scripts\activate.bat && pip install -r requirements.txt
     
-    cd /d "%ROOT%\services\comparison-service"
+    cd /d "%ROOT%\services\ai-analysis-service"
     call .venv\Scripts\activate.bat && pip install -r requirements.txt
 
     cd /d "%ROOT%\services\compliance-agent-service"
     call .venv\Scripts\activate.bat && pip install -r requirements.txt
 
-    cd /d "%ROOT%\services\deployment-gap-service"
-    call .venv\Scripts\activate.bat && pip install -r requirements.txt
+
 
     cd /d "%ROOT%\services\extract-controls-service"
     call .venv\Scripts\activate.bat && pip install -r requirements.txt
@@ -68,9 +67,8 @@ wt -w new new-tab --title "authentication-service" -d "%ROOT%\services\authentic
     ; new-tab --title "framework-category-service" -d "%ROOT%\services\framework-category-service" cmd /k ".venv\Scripts\activate.bat && pip install -r requirements.txt && pause" ^
     ; new-tab --title "framework-service" -d "%ROOT%\services\framework-service" cmd /k ".venv\Scripts\activate.bat && pip install -r requirements.txt && pause" ^
     ; new-tab --title "deployment-framework-service" -d "%ROOT%\services\deployment-framework-service" cmd /k ".venv\Scripts\activate.bat && pip install -r requirements.txt && pause" ^
-    ; new-tab --title "comparison-service" -d "%ROOT%\services\comparison-service" cmd /k ".venv\Scripts\activate.bat && pip install -r requirements.txt && pause" ^
+    ; new-tab --title "ai-analysis-service" -d "%ROOT%\services\ai-analysis-service" cmd /k ".venv\Scripts\activate.bat && pip install -r requirements.txt && pause" ^
     ; new-tab --title "compliance-agent-service" -d "%ROOT%\services\compliance-agent-service" cmd /k ".venv\Scripts\activate.bat && pip install -r requirements.txt && pause" ^
-    ; new-tab --title "deployment-gap-service" -d "%ROOT%\services\deployment-gap-service" cmd /k ".venv\Scripts\activate.bat && pip install -r requirements.txt && pause" ^
     ; new-tab --title "extract-controls-service" -d "%ROOT%\services\extract-controls-service" cmd /k ".venv\Scripts\activate.bat && pip install -r requirements.txt && pause" ^
     ; new-tab --title "api-gateway" -d "%ROOT%\gateway" cmd /k ".venv\Scripts\activate.bat && pip install -r requirements.txt && pause"
 echo.
