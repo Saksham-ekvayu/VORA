@@ -76,11 +76,10 @@ def resolve_document_file_version(framework: Any, document_data: dict[str, Any])
     if not document_history:
         return "1.0.0"
 
-    latest_document_version = sorted(
+    latest_document_version = max(
         (_g(doc, "fileVersion") or "1.0.0" for doc in document_history),
         key=lambda v: _version_sort_key(v),
-        reverse=True,
-    )[0]
+    )
 
     occurrence_based_version = _g(document_history[0], "fileVersion") or "1.0.0"
     for _ in document_history[1:]:
@@ -206,10 +205,6 @@ def apply_document_updates(base_documents: list[dict], updates: list[dict] | Non
             result = [apply_replace_update(doc, update) for doc in result]
         elif action == "remove":
             result = [doc for doc in result if not matches_update(doc, update)]
-        elif action == "replicate":
-            pass
-        else:
-            pass
     return result
 
 
@@ -300,6 +295,19 @@ def build_major_patch(framework: Any, new_files: list[dict], document_updates: l
     return {"newPackage": new_package}
 
 
+def _validate_package_documents(documents: Any, errors: list[str]) -> None:
+    if isinstance(documents, list):
+        for index, doc in enumerate(documents):
+            if not doc.get("fileId"):
+                errors.append(f"Document {index + 1}: fileId is required")
+            if not doc.get("originalFileName"):
+                errors.append(f"Document {index + 1}: originalFileName is required")
+            if not doc.get("fileType"):
+                errors.append(f"Document {index + 1}: fileType is required")
+    else:
+        errors.append("Documents must be an array")
+
+
 def validate_package(package_data: dict[str, Any]) -> dict[str, Any]:
     errors: list[str] = []
 
@@ -314,16 +322,6 @@ def validate_package(package_data: dict[str, Any]) -> dict[str, Any]:
     if not package_data.get("type"):
         errors.append("Package type is required")
 
-    documents = package_data.get("documents")
-    if isinstance(documents, list):
-        for index, doc in enumerate(documents):
-            if not doc.get("fileId"):
-                errors.append(f"Document {index + 1}: fileId is required")
-            if not doc.get("originalFileName"):
-                errors.append(f"Document {index + 1}: originalFileName is required")
-            if not doc.get("fileType"):
-                errors.append(f"Document {index + 1}: fileType is required")
-    else:
-        errors.append("Documents must be an array")
+    _validate_package_documents(package_data.get("documents"), errors)
 
     return {"isValid": len(errors) == 0, "errors": errors}

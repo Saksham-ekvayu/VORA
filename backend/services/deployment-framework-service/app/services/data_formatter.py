@@ -24,6 +24,27 @@ from vora_shared.models import (
 from vora_shared.models.document_extraction import AiExtractionInfo
 
 
+def _collect_package_refs(
+    pkg: Any,
+    user_ids: set[str],
+    comparison_ids: set[str],
+    gap_ids: set[str],
+    merge_ids: set[str],
+    extraction_ids: set[str],
+) -> None:
+    if getattr(pkg, "expertReview", None) and pkg.expertReview.assignedExpert:
+        user_ids.add(str(pkg.expertReview.assignedExpert))
+    if getattr(pkg, "comparison", None):
+        comparison_ids.add(str(pkg.comparison))
+    if getattr(pkg, "gapAnalysis", None):
+        gap_ids.add(str(pkg.gapAnalysis))
+    if getattr(pkg, "mergeDocument", None):
+        merge_ids.add(str(pkg.mergeDocument))
+    for doc in pkg.documents or []:
+        if getattr(doc, "aiExtraction", None):
+            extraction_ids.add(str(doc.aiExtraction))
+
+
 def _collect_framework_refs(
     fw: Any,
     user_ids: set[str],
@@ -38,17 +59,7 @@ def _collect_framework_refs(
     if fw.assignedFrameworkId:
         assigned_framework_ids.add(str(fw.assignedFrameworkId))
     for pkg in coerce_packages(fw.packages):
-        if pkg.expertReview and pkg.expertReview.assignedExpert:
-            user_ids.add(str(pkg.expertReview.assignedExpert))
-        if pkg.comparison:
-            comparison_ids.add(str(pkg.comparison))
-        if pkg.gapAnalysis:
-            gap_ids.add(str(pkg.gapAnalysis))
-        if pkg.mergeDocument:
-            merge_ids.add(str(pkg.mergeDocument))
-        for doc in pkg.documents or []:
-            if doc.aiExtraction:
-                extraction_ids.add(str(doc.aiExtraction))
+        _collect_package_refs(pkg, user_ids, comparison_ids, gap_ids, merge_ids, extraction_ids)
 
 
 async def hydrate_maps(
@@ -132,6 +143,16 @@ def format_document(
     extraction = extractions.get(str(doc.aiExtraction)) if doc.aiExtraction else None
     ai = _as_ai(extraction.aiExtraction) if extraction else None
 
+    ai_extraction = None
+    if ai:
+        ai_details = {} if exclude_details else {"statusHistory": ai.statusHistory, "controls": ai.controls}
+        ai_extraction = {
+            "status": ai.status,
+            "timestamp": ai.timestamp,
+            "message": ai.message,
+            **ai_details,
+        }
+
     return {
         "fileId": str(doc.fileId) if doc and getattr(doc, "fileId", None) else None,
         "fileUrl": doc.fileUrl,
@@ -140,16 +161,7 @@ def format_document(
         "fileSize": doc.fileSize,
         "fileType": doc.fileType,
         "fileVersion": doc.fileVersion,
-        "aiExtraction": (
-            {
-                "status": ai.status,
-                "timestamp": ai.timestamp,
-                "message": ai.message,
-                **({} if exclude_details else {"statusHistory": ai.statusHistory, "controls": ai.controls}),
-            }
-            if ai
-            else None
-        ),
+        "aiExtraction": ai_extraction,
         "replicated": doc.replicated,
         "uploadedAt": doc.uploadedAt,
     }
@@ -203,33 +215,32 @@ def _format_comparison(comp_data: Any, exclude_details: bool) -> dict[str, Any]:
 
 def _format_merge_document(merge_data: Any, merge: Any, exclude_details: bool) -> dict[str, Any]:
     if merge_data:
+        details = {}
+        if not exclude_details:
+            source_docs = []
+            if merge and merge.sourceDocuments:
+                source_docs = merge.sourceDocuments
+            details["controls_data"] = _get(merge_data, "controls_data") or []
+            details["sourceDocuments"] = source_docs
+
         return {
             "status": _get(merge_data, "status"),
             "message": _get(merge_data, "message"),
             "timestamp": _get(merge_data, "timestamp"),
-            **(
-                {}
-                if exclude_details
-                else {
-                    "controls_data": _get(merge_data, "controls_data") or [],
-                    "sourceDocuments": (merge.sourceDocuments if merge else []) or [],
-                }
-            ),
+            **details,
         }
+
+    details = {}
+    if not exclude_details:
+        details["controls_data"] = []
+        details["sourceDocuments"] = []
+
     return {
         "status": "pending",
         "message": None,
         "timestamp": None,
-        **({} if exclude_details else {"controls_data": [], "sourceDocuments": []}),
+        **details,
     }
-
-
-def _json_status(blob: Any, key: str = "status") -> Any:
-    if blob is None:
-        return None
-    if isinstance(blob, dict):
-        return blob.get(key)
-    return getattr(blob, key, None)
 
 
 def format_package(
@@ -278,6 +289,19 @@ def format_deployment_framework(
         else None
     )
 
+    assigned_framework_dict = {}
+    if assigned_framework:
+        assigned_framework_dict = {
+            "id": (
+                str(assigned_framework.id)
+                if getattr(assigned_framework, "id", None)
+                else None
+            ),
+            "frameworkName": assigned_framework.frameworkName,
+            "frameworkCode": assigned_framework.frameworkCode,
+            "frameworkVersion": assigned_framework.frameworkVersion,
+        }
+
     return {
         "id": str(framework.id) if framework and getattr(framework, "id", None) else None,
         "tenantId": str(framework.tenantId) if framework and getattr(framework, "tenantId", None) else None,
@@ -290,20 +314,7 @@ def format_deployment_framework(
         "currentPackageVersion": framework.currentPackageVersion,
         "packages": formatted_packages,
         "uploadedBy": format_uploaded_by(framework, maps.get("users", {})),
-        "assignedFramework": (
-            {
-                "id": (
-                    str(assigned_framework.id)
-                    if assigned_framework and getattr(assigned_framework, "id", None)
-                    else None
-                ),
-                "frameworkName": assigned_framework.frameworkName,
-                "frameworkCode": assigned_framework.frameworkCode,
-                "frameworkVersion": assigned_framework.frameworkVersion,
-            }
-            if assigned_framework
-            else {}
-        ),
+        "assignedFramework": assigned_framework_dict,
         "createdAt": framework.createdAt,
         "updatedAt": framework.updatedAt,
     }
@@ -361,6 +372,18 @@ def derive_package_ai_extraction(
     return {"status": status, "timestamp": timestamp}
 
 
+def _count_document_types(package: Any) -> tuple[int, list[str]]:
+    if not package or not package.documents:
+        return 0, []
+    
+    type_counts: dict[str, int] = {}
+    for doc in package.documents:
+        t = doc.fileType or "unknown"
+        type_counts[t] = type_counts.get(t, 0) + 1
+        
+    return len(package.documents), [f"{count} {t}" for t, count in type_counts.items()]
+
+
 def format_deployment_framework_list_item(framework: Any, maps: dict[str, dict[str, Any]]) -> dict[str, Any]:
     packages = coerce_packages(framework.packages)
     current_package = next(
@@ -368,10 +391,7 @@ def format_deployment_framework_list_item(framework: Any, maps: dict[str, dict[s
         packages[0] if packages else None,
     )
 
-    type_counts: dict[str, int] = {}
-    for doc in (current_package.documents if current_package else None) or []:
-        t = doc.fileType or "unknown"
-        type_counts[t] = type_counts.get(t, 0) + 1
+    doc_count, doc_types = _count_document_types(current_package)
 
     return {
         "id": str(framework.id) if framework and getattr(framework, "id", None) else None,
@@ -384,8 +404,8 @@ def format_deployment_framework_list_item(framework: Any, maps: dict[str, dict[s
         "frameworkVersion": framework.frameworkVersion,
         "currentPackageVersion": framework.currentPackageVersion,
         "document": {
-            "count": len(current_package.documents) if current_package else 0,
-            "types": [f"{count} {t}" for t, count in type_counts.items()],
+            "count": doc_count,
+            "types": doc_types,
         },
         "package": {
             "type": current_package.type if current_package else None,
