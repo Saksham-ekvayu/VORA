@@ -17,7 +17,7 @@ from app.utils.formatting import (
 )
 from app.utils.temp_password import generate_temp_password
 from fastapi import APIRouter, Body, Depends, File, Query, UploadFile
-from sqlalchemy import or_, select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.orm.attributes import flag_modified
 from vora_shared import messages as msg
 from vora_shared.auth import AuthenticatedUser, authenticate
@@ -26,6 +26,7 @@ from vora_shared.database import session_scope
 from vora_shared.email import load_template, send_email
 from vora_shared.ids import is_valid_id
 from vora_shared.models.customer import AddressBlock, Customer, CustomerAddress, CustomerCreatedBy
+from vora_shared.models.framework_access import FrameworkAccess
 from vora_shared.models.user import User, UserAddress, UserCreatedBy
 from vora_shared.query_builder import apply_search_filter, apply_sort, paginate_stmt
 from vora_shared.responses import error, forbidden, paginated, success
@@ -461,9 +462,7 @@ async def create_user(
     creator_tenant_id = ctx.tenant_id
 
     # Validate permissions
-    new_tenant_id, error_response = _validate_user_creation_permissions(
-        current_role, body, creator_tenant_id
-    )
+    new_tenant_id, error_response = _validate_user_creation_permissions(current_role, body, creator_tenant_id)
     if error_response:
         return error_response
 
@@ -545,9 +544,7 @@ async def update_user(
             return error(msg.USER_NOT_FOUND, 404, field="user")
 
         # Validate permissions
-        is_valid, error_msg, status_code = _validate_user_update_permissions(
-            current_user, user, body.role
-        )
+        is_valid, error_msg, status_code = _validate_user_update_permissions(current_user, user, body.role)
         if not is_valid:
             return error(error_msg, status_code)
 
@@ -716,6 +713,9 @@ async def delete_user(id: str, ctx: Annotated[AuthenticatedUser, Depends(authent
         if current_role == "customer-admin":
             if not _validate_customer_admin_permission(user, str(ctx.user.id)):
                 return error(msg.ONLY_DELETE_CREATED_USERS, 403)
+
+        if user.role == "expert":
+            await session.execute(delete(FrameworkAccess).where(FrameworkAccess.expertId == id))
 
         result = {
             "id": str(user.id),
