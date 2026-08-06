@@ -25,8 +25,8 @@ def _format_category(category: FrameworkCategory, users_by_id: dict[str, User]) 
         "frameworkCategoryName": category.framework_category_name,
         "description": category.description,
         "isActive": category.is_active,
-        "createdAt": category.created_at,
-        "updatedAt": category.updated_at,
+        "createdAt": category.createdAt,
+        "updatedAt": category.updatedAt,
         "createdBy": data_format.format_user_ref(users_by_id.get(created_by_id), category.created_by),
         "updatedBy": data_format.format_user_ref(users_by_id.get(updated_by_id), category.updated_by),
     }
@@ -204,7 +204,7 @@ async def delete_framework_category(
             return error(MESSAGES["FRAMEWORK_CATEGORY_NOT_FOUND"], 404)
 
         delete_result = await session.execute(
-            delete(FrameworkAccess).where(FrameworkAccess.framework_code == category.code)
+            delete(FrameworkAccess).where(FrameworkAccess.frameworkCode == category.code)
         )
         deleted_count = delete_result.rowcount or 0
         await session.delete(category)

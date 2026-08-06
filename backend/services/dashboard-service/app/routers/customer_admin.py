@@ -138,7 +138,7 @@ def _calculate_framework_progress(
     dfs_for_assignment = [
         d
         for d in deployment_frameworks
-        if d.assigned_framework_id and str(d.assigned_framework_id) == str(assignment.id)
+        if d.assignedFrameworkId and str(d.assignedFrameworkId) == str(assignment.id)
     ]
 
     for df in dfs_for_assignment:
@@ -150,9 +150,9 @@ def _calculate_framework_progress(
 
     progress_data = {
         "id": str(assignment.id) if assignment and getattr(assignment, "id", None) else None,
-        "frameworkName": assignment.framework_name or assignment.framework_code,
-        "frameworkVersion": assignment.framework_version,
-        "frameworkCode": assignment.framework_code,
+        "frameworkName": assignment.frameworkName or assignment.frameworkCode,
+        "frameworkVersion": assignment.frameworkVersion,
+        "frameworkCode": assignment.frameworkCode,
         "configured": fw_configured,
         "total": fw_total,
         "percentage": percentage,
@@ -169,7 +169,7 @@ def _get_deployed_framework_info(
         (
             d
             for d in deployment_frameworks
-            if d.assigned_framework_id and str(d.assigned_framework_id) == str(assignment.id)
+            if d.assignedFrameworkId and str(d.assignedFrameworkId) == str(assignment.id)
         ),
         None,
     )
@@ -181,10 +181,10 @@ def _get_deployed_framework_info(
 
     assignment_info = assignment.assignment or {}
     return {
-        "name": assignment.framework_name,
-        "version": assignment.framework_version,
+        "name": assignment.frameworkName,
+        "version": assignment.frameworkVersion,
         "count": 1,
-        "assignedOn": _get(assignment_info, "assignedAt") or assignment.created_at,
+        "assignedOn": _get(assignment_info, "assignedAt") or assignment.createdAt,
         "deployedOn": deployed_on,
     }
 
@@ -216,12 +216,12 @@ def _process_assignments_and_progress(
         assigned_frameworks_list.append(
             {
                 "id": str(assignment.id) if assignment and getattr(assignment, "id", None) else None,
-                "code": assignment.framework_code,
-                "name": assignment.framework_name,
-                "version": assignment.framework_version,
+                "code": assignment.frameworkCode,
+                "name": assignment.frameworkName,
+                "version": assignment.frameworkVersion,
                 "assignmentStatus": assignment.status,
                 "finalizationStatus": ("finalized" if _get(finalization, "isFinalized") else "pending"),
-                "assignedAt": assignment.created_at,
+                "assignedAt": assignment.createdAt,
             }
         )
 
@@ -278,7 +278,7 @@ def _add_assignment_created_activity(
     assignment_info = assignment.assignment or {}
     assigned_by_id = _get(assignment_info, "assignedBy")
     assigned_by = users.get(str(assigned_by_id)) if assigned_by_id else None
-    assign_date = _get(assignment_info, "assignedAt") or assignment.created_at
+    assign_date = _get(assignment_info, "assignedAt") or assignment.createdAt
 
     if assign_date:
         name = assigned_by.name if assigned_by else "Admin"
@@ -286,7 +286,7 @@ def _add_assignment_created_activity(
         _add_activity_entry(
             recent_activity,
             f"assign-{assignment.id}",
-            f"{name} assigned framework {assignment.framework_version}",
+            f"{name} assigned framework {assignment.frameworkVersion}",
             email,
             assign_date,
         )
@@ -301,14 +301,14 @@ def _add_assignment_revoked_activity(
     revocation = assignment.revocation or {}
     revoked_by_id = _get(revocation, "revokedBy")
     revoked_by = users.get(str(revoked_by_id)) if revoked_by_id else None
-    revoke_date = _get(revocation, "revokedAt") or assignment.updated_at
+    revoke_date = _get(revocation, "revokedAt") or assignment.updatedAt
 
     if assignment.status == "revoked" and revoke_date:
         email = revoked_by.email if revoked_by else "admin@example.com"
         _add_activity_entry(
             recent_activity,
             f"revoke-{assignment.id}",
-            f"Framework {assignment.framework_version} was revoked",
+            f"Framework {assignment.frameworkVersion} was revoked",
             email,
             revoke_date,
         )
@@ -328,7 +328,7 @@ def _add_assignment_finalized_activity(
         _add_activity_entry(
             recent_activity,
             f"final-{assignment.id}",
-            f"Framework {assignment.framework_version} finalized",
+            f"Framework {assignment.frameworkVersion} finalized",
             email,
             _get(finalization, "finalizedAt"),
         )
@@ -385,7 +385,7 @@ def _add_package_created_activity(
             recent_activity,
             pkg,
             f"pkg-created-{df.id}",
-            f"Package {package_version}{patch_type} uploaded in {df.framework_version or df.framework_name}",
+            f"Package {package_version}{patch_type} uploaded in {df.frameworkVersion or df.frameworkName}",
             uploaded_by.email if uploaded_by else "User",
             pkg_created,
         )
@@ -471,15 +471,15 @@ def _add_framework_activities(
 ) -> None:
     """Add framework-related activity entries."""
     for df in deployment_frameworks:
-        uploaded_by = users.get(str(df.uploaded_by)) if df.uploaded_by else None
-        if df.created_at:
+        uploaded_by = users.get(str(df.uploadedBy)) if df.uploadedBy else None
+        if df.createdAt:
             recent_activity.append(
                 {
                     "id": f"df-created-{df.id}",
-                    "message": f"Deployment framework {df.framework_version or df.framework_name} uploaded",
+                    "message": f"Deployment framework {df.frameworkVersion or df.frameworkName} uploaded",
                     "actor": uploaded_by.email if uploaded_by else "User",
-                    "timeAgo": _get_time_ago(df.created_at),
-                    "timestamp": df.created_at,
+                    "timeAgo": _get_time_ago(df.createdAt),
+                    "timestamp": df.createdAt,
                 }
             )
 
@@ -489,25 +489,25 @@ def _add_framework_activities(
 
 def _add_user_activity(user: User, recent_activity: list[dict]) -> None:
     """Add user-related activity entries."""
-    if user.created_at:
+    if user.createdAt:
         recent_activity.append(
             {
                 "id": f"user-created-{user.id}",
                 "message": f"User {user.name} joined as {user.role}",
                 "actor": user.email,
-                "timeAgo": _get_time_ago(user.created_at),
-                "timestamp": user.created_at,
+                "timeAgo": _get_time_ago(user.createdAt),
+                "timestamp": user.createdAt,
             }
         )
-    if user.updated_at and user.created_at and (user.updated_at - user.created_at).total_seconds() > 1:
+    if user.updatedAt and user.createdAt and (user.updatedAt - user.createdAt).total_seconds() > 1:
         action = "deactivated" if user.is_active is False else "updated"
         recent_activity.append(
             {
                 "id": f"user-updated-{user.id}",
                 "message": f"User profile {user.name} was {action}",
                 "actor": user.email,
-                "timeAgo": _get_time_ago(user.updated_at),
-                "timestamp": user.updated_at,
+                "timeAgo": _get_time_ago(user.updatedAt),
+                "timestamp": user.updatedAt,
             }
         )
 
@@ -516,28 +516,28 @@ def _add_customer_activity(customer: Customer | None, recent_activity: list[dict
     """Add customer-related activity entries."""
     if not customer:
         return
-    if customer.created_at:
+    if customer.createdAt:
         recent_activity.append(
             {
                 "id": f"cust-created-{customer.id}",
                 "message": f"Customer account {customer.name} created",
                 "actor": "System",
-                "timeAgo": _get_time_ago(customer.created_at),
-                "timestamp": customer.created_at,
+                "timeAgo": _get_time_ago(customer.createdAt),
+                "timestamp": customer.createdAt,
             }
         )
     if (
-        customer.updated_at
-        and customer.created_at
-        and (customer.updated_at - customer.created_at).total_seconds() > 1
+        customer.updatedAt
+        and customer.createdAt
+        and (customer.updatedAt - customer.createdAt).total_seconds() > 1
     ):
         recent_activity.append(
             {
                 "id": f"cust-updated-{customer.id}",
                 "message": f"Customer profile {customer.name} was updated",
                 "actor": "System",
-                "timeAgo": _get_time_ago(customer.updated_at),
-                "timestamp": customer.updated_at,
+                "timeAgo": _get_time_ago(customer.updatedAt),
+                "timestamp": customer.updatedAt,
             }
         )
 
@@ -548,7 +548,7 @@ def _get_activity_suffix(info: dict) -> str:
         return ""
     trigger = _get(info["pkg"], "trigger")
     patch_type = f" ({trigger} patch)" if trigger else ""
-    fw_label = info["df"].framework_version or info["df"].framework_name
+    fw_label = info["df"].frameworkVersion or info["df"].frameworkName
     return f" for Package {_get(info['pkg'], 'packageVersion')}{patch_type} in {fw_label}"
 
 
@@ -558,14 +558,14 @@ def _add_document_extraction_activities(
 ) -> None:
     """Add document extraction activities."""
     for dex in document_extractions:
-        if dex.created_at:
+        if dex.createdAt:
             ai_status = _get(dex.ai_extraction, "status") or "completed"
             _add_activity_entry(
                 recent_activity,
                 f"dex-{dex.id}",
                 f"Document AI extraction {ai_status}",
                 "AI Engine",
-                dex.created_at,
+                dex.createdAt,
             )
 
 
@@ -576,7 +576,7 @@ def _add_comparison_activities(
 ) -> None:
     """Add package comparison activities."""
     for pc in package_comparisons:
-        if pc.created_at:
+        if pc.createdAt:
             suffix = _get_activity_suffix(pc_map.get(str(pc.id)))
             status = _get(pc.comparison, "status") or "started"
             _add_activity_entry(
@@ -584,7 +584,7 @@ def _add_comparison_activities(
                 f"pc-{pc.id}",
                 f"Package comparison {status}{suffix}",
                 "System",
-                pc.created_at,
+                pc.createdAt,
             )
 
 
@@ -595,7 +595,7 @@ def _add_gap_analysis_activities(
 ) -> None:
     """Add gap analysis activities."""
     for pga in package_gap_analyses:
-        if pga.created_at:
+        if pga.createdAt:
             suffix = _get_activity_suffix(pga_map.get(str(pga.id)))
             status = _get(pga.gap_analysis, "status") or "started"
             _add_activity_entry(
@@ -603,7 +603,7 @@ def _add_gap_analysis_activities(
                 f"pga-{pga.id}",
                 f"Gap analysis {status}{suffix}",
                 "System",
-                pga.created_at,
+                pga.createdAt,
             )
 
 
@@ -614,7 +614,7 @@ def _add_merge_activities(
 ) -> None:
     """Add package merge activities."""
     for pm in package_merges:
-        if pm.created_at:
+        if pm.createdAt:
             suffix = _get_activity_suffix(pm_map.get(str(pm.id)))
             status = _get(pm.merge_extraction, "status") or "started"
             _add_activity_entry(
@@ -622,7 +622,7 @@ def _add_merge_activities(
                 f"pm-{pm.id}",
                 f"Package merge {status}{suffix}",
                 "System",
-                pm.created_at,
+                pm.createdAt,
             )
 
 
@@ -702,7 +702,7 @@ async def _fetch_package_analyses(session, framework_ids: list) -> tuple:
     comparisons = list(
         (
             await session.execute(
-                select(PackageComparison).where(PackageComparison.framework_id.in_(framework_ids))
+                select(PackageComparison).where(PackageComparison.frameworkId.in_(framework_ids))
             )
         )
         .scalars()
@@ -711,14 +711,14 @@ async def _fetch_package_analyses(session, framework_ids: list) -> tuple:
     gap_analyses = list(
         (
             await session.execute(
-                select(PackageGapAnalysis).where(PackageGapAnalysis.framework_id.in_(framework_ids))
+                select(PackageGapAnalysis).where(PackageGapAnalysis.frameworkId.in_(framework_ids))
             )
         )
         .scalars()
         .all()
     )
     merges = list(
-        (await session.execute(select(PackageMerge).where(PackageMerge.framework_id.in_(framework_ids))))
+        (await session.execute(select(PackageMerge).where(PackageMerge.frameworkId.in_(framework_ids))))
         .scalars()
         .all()
     )
@@ -745,8 +745,8 @@ def _collect_user_ids_from_frameworks(deployment_frameworks: list[DeploymentFram
     """Collect user IDs from deployment frameworks."""
     user_ids: set[str] = set()
     for df in deployment_frameworks:
-        if df.uploaded_by:
-            user_ids.add(str(df.uploaded_by))
+        if df.uploadedBy:
+            user_ids.add(str(df.uploadedBy))
         for pkg in df.packages or []:
             expert_review = _get(pkg, "expertReview") or {}
             assigned_expert = _get(expert_review, "assignedExpert")
@@ -770,22 +770,22 @@ async def get_customer_admin_dashboard(
     ctx: Annotated[RequestContext, Depends(get_context)],
 ):
     try:
-        tenant_id = ctx.tenant_id
+        tenant_id = ctx.tenantId
         user = ctx.user
 
         async with session_scope() as session:
             users = list(
-                (await session.execute(select(User).where(User.tenant_id == tenant_id, User.id != user.id)))
+                (await session.execute(select(User).where(User.tenantId == tenant_id, User.id != user.id)))
                 .scalars()
                 .all()
             )
             customer = (
-                await session.execute(select(Customer).where(Customer.tenant_id == tenant_id))
+                await session.execute(select(Customer).where(Customer.tenantId == tenant_id))
             ).scalar_one_or_none()
             deployment_frameworks = list(
                 (
                     await session.execute(
-                        select(DeploymentFramework).where(DeploymentFramework.tenant_id == tenant_id)
+                        select(DeploymentFramework).where(DeploymentFramework.tenantId == tenant_id)
                     )
                 )
                 .scalars()
@@ -796,12 +796,12 @@ async def get_customer_admin_dashboard(
                     await session.execute(
                         select(FrameworkAssignment).where(
                             or_(
-                                FrameworkAssignment.tenant_id == tenant_id,
+                                FrameworkAssignment.tenantId == tenant_id,
                                 (
-                                    FrameworkAssignment.customer_id
-                                    == str(getattr(user, "customer_id", None) or "")
-                                    if getattr(user, "customer_id", None)
-                                    else FrameworkAssignment.tenant_id == tenant_id
+                                    FrameworkAssignment.customerId
+                                    == str(getattr(user, "customerId", None) or "")
+                                    if getattr(user, "customerId", None)
+                                    else FrameworkAssignment.tenantId == tenant_id
                                 ),
                             )
                         )

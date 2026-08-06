@@ -16,7 +16,7 @@ from app.utils.formatting import (
     user_admin_dict,
 )
 from app.utils.temp_password import generate_temp_password
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Query, UploadFile
 from sqlalchemy import or_, select
 from sqlalchemy.orm.attributes import flag_modified
 from vora_shared import messages as msg
@@ -232,7 +232,7 @@ def _validate_user_update_permissions(
 
 @router.post("/customers")
 async def create_customer(
-    body: Annotated[CreateCustomerRequest, Depends()],
+    body: Annotated[CreateCustomerRequest, Body()],
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
     async with session_scope() as session:
@@ -344,7 +344,7 @@ async def get_customer_by_id(
 @router.patch("/customers/{id}")
 async def update_customer(
     id: str,
-    body: Annotated[UpdateCustomerRequest, Depends()],
+    body: Annotated[UpdateCustomerRequest, Body()],
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
     if not is_valid_id(id):
@@ -455,13 +455,13 @@ async def update_customer_avatar_by_admin(
 
 @router.post("/create")
 async def create_user(
-    body: Annotated[CreateUserRequest, Depends()], ctx: Annotated[AuthenticatedUser, Depends(authenticate)]
+    body: Annotated[CreateUserRequest, Body()], ctx: Annotated[AuthenticatedUser, Depends(authenticate)]
 ):
     current_role = ctx.user.role
     creator_tenant_id = ctx.tenant_id
 
     # Validate permissions
-    new_tenant_id, error_response = await _validate_user_creation_permissions(
+    new_tenant_id, error_response = _validate_user_creation_permissions(
         current_role, body, creator_tenant_id
     )
     if error_response:
@@ -530,7 +530,7 @@ def _render_temp_password_email(name: str, email: str, temp_password: str) -> st
 @router.patch("/{id}")
 async def update_user(
     id: str,
-    body: Annotated[UpdateUserRequest, Depends()],
+    body: Annotated[UpdateUserRequest, Body()],
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
     current_user = ctx.user
@@ -545,7 +545,7 @@ async def update_user(
             return error(msg.USER_NOT_FOUND, 404, field="user")
 
         # Validate permissions
-        is_valid, error_msg, status_code = await _validate_user_update_permissions(
+        is_valid, error_msg, status_code = _validate_user_update_permissions(
             current_user, user, body.role
         )
         if not is_valid:
@@ -574,10 +574,10 @@ async def get_all_users(
     page: Annotated[int, Query()] = 1,
     limit: Annotated[int, Query()] = 10,
     search: Annotated[str | None, Query()] = None,
-    is_active: Annotated[str | None, Query()] = None,
+    is_active: Annotated[str | None, Query(alias="isActive")] = None,
     role: Annotated[str | None, Query()] = None,
-    sort_by: Annotated[str | None, Query()] = None,
-    sort_order: Annotated[str | None, Query()] = None,
+    sort_by: Annotated[str | None, Query(alias="sortBy")] = None,
+    sort_order: Annotated[str | None, Query(alias="sortOrder")] = None,
 ):
     current_role = ctx.user.role
     tenant_id = ctx.tenant_id

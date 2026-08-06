@@ -32,7 +32,7 @@ def _format_access_record(
     users_by_id: dict[str, User],
     categories_by_id: dict[str, FrameworkCategory],
 ) -> dict:
-    category = categories_by_id.get(str(record.framework_category_id))
+    category = categories_by_id.get(str(record.frameworkCategoryId))
     rejected_by_id = _json_get(record.rejection, "rejectedBy")
     revoked_by_id = _json_get(record.revocation, "revokedBy")
     approved_by_id = _json_get(record.approval, "approvedBy")
@@ -45,7 +45,7 @@ def _format_access_record(
 
     return {
         "id": str(record.id),
-        "expert": data_format.format_user_ref(users_by_id.get(str(record.expert_id)), record.expert_id),
+        "expert": data_format.format_user_ref(users_by_id.get(str(record.expertId)), record.expertId),
         "frameworkCategory": (
             {
                 "frameworkId": str(category.id),
@@ -83,8 +83,8 @@ def _format_access_record(
             if approved_by_id
             else None
         ),
-        "createdAt": record.created_at,
-        "updatedAt": record.updated_at,
+        "createdAt": record.createdAt,
+        "updatedAt": record.updatedAt,
     }
 
 
@@ -92,8 +92,8 @@ async def _batch_format(records: list[FrameworkAccess]) -> list[dict]:
     user_ids: set[str] = set()
     category_ids: set[str] = set()
     for r in records:
-        if r.expert_id:
-            user_ids.add(str(r.expert_id))
+        if r.expertId:
+            user_ids.add(str(r.expertId))
         approved_by = _json_get(r.approval, "approvedBy")
         rejected_by = _json_get(r.rejection, "rejectedBy")
         revoked_by = _json_get(r.revocation, "revokedBy")
@@ -103,8 +103,8 @@ async def _batch_format(records: list[FrameworkAccess]) -> list[dict]:
             user_ids.add(str(rejected_by))
         if revoked_by:
             user_ids.add(str(revoked_by))
-        if r.framework_category_id:
-            category_ids.add(str(r.framework_category_id))
+        if r.frameworkCategoryId:
+            category_ids.add(str(r.frameworkCategoryId))
 
     users_by_id = await fetch_users_by_ids(user_ids)
     categories_by_id: dict[str, FrameworkCategory] = {}
@@ -158,16 +158,16 @@ async def _search_or_conditions(session, search: str) -> list:
     user_ids = [u.id for u in matching_users]
     category_ids = [c.id for c in matching_categories]
 
-    conditions = [FrameworkAccess.framework_code.ilike(f"%{search}%")]
+    conditions = [FrameworkAccess.frameworkCode.ilike(f"%{search}%")]
     if user_ids:
         conditions += [
-            FrameworkAccess.expert_id.in_(user_ids),
+            FrameworkAccess.expertId.in_(user_ids),
             FrameworkAccess.approval["approvedBy"].astext.in_(user_ids),
             FrameworkAccess.rejection["rejectedBy"].astext.in_(user_ids),
             FrameworkAccess.revocation["revokedBy"].astext.in_(user_ids),
         ]
     if category_ids:
-        conditions.append(FrameworkAccess.framework_category_id.in_(category_ids))
+        conditions.append(FrameworkAccess.frameworkCategoryId.in_(category_ids))
     return conditions
 
 
@@ -190,9 +190,9 @@ def _build_access_list_query(stmt, status: str, expert_id: str | None, framework
     if status and status != "all":
         stmt = stmt.where(FrameworkAccess.status == status)
     if expert_id:
-        stmt = stmt.where(FrameworkAccess.expert_id == expert_id)
+        stmt = stmt.where(FrameworkAccess.expertId == expert_id)
     if framework_code:
-        stmt = stmt.where(FrameworkAccess.framework_code == framework_code.lower())
+        stmt = stmt.where(FrameworkAccess.frameworkCode == framework_code.lower())
     return stmt
 
 
@@ -277,7 +277,7 @@ async def get_framework_access_by_user_id(
         if not expert:
             return error(MESSAGES["EXPERT_NOT_FOUND"], 404)
 
-        stmt = select(FrameworkAccess).where(FrameworkAccess.expert_id == user_id)
+        stmt = select(FrameworkAccess).where(FrameworkAccess.expertId == user_id)
         if status and status != "all":
             if status not in VALID_STATUSES:
                 return error(
@@ -373,8 +373,8 @@ async def _create_or_update_access_record(session, expert_id: str, category, aut
     existing = (
         await session.execute(
             select(FrameworkAccess).where(
-                FrameworkAccess.expert_id == expert_id,
-                FrameworkAccess.framework_category_id == category.id,
+                FrameworkAccess.expertId == expert_id,
+                FrameworkAccess.frameworkCategoryId == category.id,
             )
         )
     ).scalar_one_or_none()
@@ -409,8 +409,8 @@ async def _create_or_update_access_record(session, expert_id: str, category, aut
 
     result = {
         "id": str(access_record.id),
-        "frameworkCategoryId": str(access_record.framework_category_id),
-        "frameworkCode": access_record.framework_code,
+        "frameworkCategoryId": str(access_record.frameworkCategoryId),
+        "frameworkCode": access_record.frameworkCode,
         "status": "assigned",
         "isUpdate": is_update,
     }
@@ -578,8 +578,8 @@ async def revoke_framework_access(
         record = (
             await session.execute(
                 select(FrameworkAccess).where(
-                    FrameworkAccess.expert_id == expert_id,
-                    FrameworkAccess.framework_category_id == framework_category_id,
+                    FrameworkAccess.expertId == expert_id,
+                    FrameworkAccess.frameworkCategoryId == framework_category_id,
                 )
             )
         ).scalar_one_or_none()
@@ -597,8 +597,8 @@ async def revoke_framework_access(
         flag_modified(record, "revocation")
         result = {
             "id": str(record.id),
-            "expertId": str(record.expert_id),
-            "frameworkCode": record.framework_code,
+            "expertId": str(record.expertId),
+            "frameworkCode": record.frameworkCode,
             "status": record.status,
         }
 

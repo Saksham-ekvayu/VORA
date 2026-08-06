@@ -53,9 +53,9 @@ def _approval_date(fw: Framework):
 
 def _apply_date_filter(stmt, model, start_date: str | None, end_date: str | None):
     if start_date:
-        stmt = stmt.where(model.created_at >= datetime.fromisoformat(start_date))
+        stmt = stmt.where(model.createdAt >= datetime.fromisoformat(start_date))
     if end_date:
-        stmt = stmt.where(model.created_at <= datetime.fromisoformat(end_date))
+        stmt = stmt.where(model.createdAt <= datetime.fromisoformat(end_date))
     return stmt
 
 
@@ -116,7 +116,7 @@ def _generate_upload_trend(
         month_start = datetime(month_date.year, month_date.month, 1)
         month_end = _add_month(month_start)
         uploads = sum(
-            1 for fw in frameworks if fw.created_at and month_start <= _naive(fw.created_at) < month_end
+            1 for fw in frameworks if fw.createdAt and month_start <= _naive(fw.createdAt) < month_end
         )
         label = (
             f"{MONTH_NAMES[month_date.month - 1]} {month_date.year}"
@@ -139,19 +139,19 @@ def _build_access_status_counts(access_records: list) -> dict:
 def _format_recent_uploads(frameworks: list[Framework], users_by_id: dict) -> list[dict]:
     sorted_fw = sorted(
         frameworks,
-        key=lambda f: f.created_at or datetime.min.replace(tzinfo=timezone.utc),
+        key=lambda f: f.createdAt or datetime.min.replace(tzinfo=timezone.utc),
         reverse=True,
     )[:5]
     return [
         {
             "id": str(fw.id) if fw and getattr(fw, "id", None) else None,
-            "frameworkName": fw.framework_name,
-            "frameworkCode": fw.framework_code or "",
-            "frameworkVersion": fw.framework_version or "",
+            "frameworkName": fw.frameworkName,
+            "frameworkCode": fw.frameworkCode or "",
+            "frameworkVersion": fw.frameworkVersion or "",
             "uploadedBy": (
-                users_by_id.get(fw.uploaded_by).name if users_by_id.get(fw.uploaded_by) else "Unknown"
+                users_by_id.get(fw.uploadedBy).name if users_by_id.get(fw.uploadedBy) else "Unknown"
             ),
-            "date": _fmt_date(fw.created_at),
+            "date": _fmt_date(fw.createdAt),
             "status": _title_case(_approval_status(fw)),
         }
         for fw in sorted_fw
@@ -165,7 +165,7 @@ def _get_approved_frameworks(frameworks: list[Framework]) -> list[Framework]:
 
 def _get_approval_sort_key(f: Framework):
     """Get sort key for approved frameworks based on approval date."""
-    date_val = _approval_date(f) or f.updated_at
+    date_val = _approval_date(f) or f.updatedAt
     if isinstance(date_val, str):
         try:
             date_val = datetime.fromisoformat(date_val.replace("Z", "+00:00"))
@@ -196,11 +196,11 @@ def _format_single_approved_framework(fw: Framework, users_by_id: dict) -> dict:
     """Format a single approved framework."""
     return {
         "id": str(fw.id) if fw and getattr(fw, "id", None) else None,
-        "frameworkName": fw.framework_name,
-        "frameworkCode": fw.framework_code or "",
-        "frameworkVersion": fw.framework_version or "",
+        "frameworkName": fw.frameworkName,
+        "frameworkCode": fw.frameworkCode or "",
+        "frameworkVersion": fw.frameworkVersion or "",
         "approvedBy": _get_approver_name(fw, users_by_id),
-        "date": _fmt_date(_approval_date(fw) or fw.updated_at),
+        "date": _fmt_date(_approval_date(fw) or fw.updatedAt),
         "status": "Approved",
     }
 
@@ -221,11 +221,11 @@ async def get_expert_dashboard_analytics(
     user = auth.user
 
     async with session_scope() as session:
-        fw_stmt = select(Framework).where(Framework.uploaded_by == user.id)
+        fw_stmt = select(Framework).where(Framework.uploadedBy == user.id)
         fw_stmt = _apply_date_filter(fw_stmt, Framework, start_date, end_date)
         frameworks = list((await session.execute(fw_stmt)).scalars().all())
 
-        access_stmt = select(FrameworkAccess).where(FrameworkAccess.expert_id == user.id)
+        access_stmt = select(FrameworkAccess).where(FrameworkAccess.expertId == user.id)
         access_stmt = _apply_date_filter(access_stmt, FrameworkAccess, start_date, end_date)
         access_records = list((await session.execute(access_stmt)).scalars().all())
 
@@ -233,7 +233,7 @@ async def get_expert_dashboard_analytics(
             await session.execute(select(func.count()).select_from(FrameworkCategory))
         ).scalar_one()
 
-        user_ids = {fw.uploaded_by for fw in frameworks}
+        user_ids = {fw.uploadedBy for fw in frameworks}
         for fw in frameworks:
             by_id = _approval_by(fw)
             if by_id:
