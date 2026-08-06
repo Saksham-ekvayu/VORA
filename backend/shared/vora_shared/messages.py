@@ -64,6 +64,8 @@ PASSWORD_RESET_SUCCESS = "Password reset successful. Please login with your new 
 PASSWORD_CHANGED_SUCCESS = "Password changed successfully. Please login again with your new password."
 VERIFICATION_OTP_SENT = "Verification code sent to your email."
 EMAIL_ALREADY_VERIFIED = "Email is already verified."
+SESSION_INVALID = "Your session is invalid. Please login again."
+SESSION_EXPIRED = "Your session has expired. Please login again."
 
 PASSWORD_SAME_AS_OLD = "New password must be different from current password"
 PHONE_ALREADY_EXISTS = "Phone number already exists"

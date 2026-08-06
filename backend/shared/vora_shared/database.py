@@ -22,7 +22,7 @@ class Base(DeclarativeBase):
     """Declarative base for all shared models."""
 
 
-async def connect_db(database_url: str, *_args: Any, **_kwargs: Any) -> None:
+def connect_db(database_url: str, *_args: Any, **_kwargs: Any) -> None:
     """Create engine, session factory, and ensure tables exist.
 
     Extra positional/keyword args are ignored for Beanie-era call compatibility

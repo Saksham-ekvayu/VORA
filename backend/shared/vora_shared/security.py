@@ -44,7 +44,7 @@ def _tenant_error(message: str) -> HTTPException:
     )
 
 
-async def get_context(
+def get_context(
     auth: AuthenticatedUser = Depends(authenticate),
     x_tenant_id: str | None = Header(default=None, alias="x-tenant-id"),
 ) -> RequestContext:
@@ -76,7 +76,7 @@ async def get_context(
 
 
 def require_roles(*roles: str):
-    async def _dep(ctx: RequestContext = Depends(get_context)) -> RequestContext:
+    def _dep(ctx: RequestContext = Depends(get_context)) -> RequestContext:
         if ctx.role not in roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

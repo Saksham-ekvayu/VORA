@@ -11,7 +11,7 @@ the Node-style `{success, message, field}` envelope.
 import re
 
 _NAME_RE = re.compile(r"^[A-Za-z]+(?:[ '\-][A-Za-z]+)*$")
-_EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s.]+(?:\.[^@\s.]+)+$")
 _OTP_RE = re.compile(r"^\d{6}$")
 _PHONE_STRIP_RE = re.compile(r"[\s\-()+]")
 

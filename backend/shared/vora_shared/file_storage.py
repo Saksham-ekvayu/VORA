@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any
 
 from vora_shared import data_format
-from vora_shared.ids import new_id
 
 _BACKEND_ROOT = Path(__file__).resolve().parent.parent.parent
 UPLOAD_BASE_PATH = os.environ.get("DEPLOYMENT_UPLOAD_BASE_PATH", str(_BACKEND_ROOT / "shared" / "uploads"))
