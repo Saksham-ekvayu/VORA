@@ -52,7 +52,7 @@ export default function UploadFrameworkModal({ isOpen, onClose, onSuccess }) {
   // Transform accessible categories to dropdown format
   const approvedCategories = accessibleCategories.map((cat) => ({
     value: cat.id || cat._id,
-    label: `${cat.frameworkCategoryName} (${cat.code})`,
+    label: `${cat.frameworkCategoryName} (${cat.code?.toUpperCase()})`,
     code: cat.code,
     name: cat.frameworkCategoryName,
   }));
@@ -308,7 +308,7 @@ export default function UploadFrameworkModal({ isOpen, onClose, onSuccess }) {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
-                    className="w-(--radix-dropdown-menu-trigger-width) border-border dark:border-gray-600 dark:bg-gray-800 z-10001"
+                    className="w-(--radix-dropdown-menu-trigger-width) h-70 border-border dark:border-gray-600 dark:bg-gray-800 z-10001"
                     align="start"
                     sideOffset={4}
                   >
@@ -328,7 +328,7 @@ export default function UploadFrameworkModal({ isOpen, onClose, onSuccess }) {
                         className={cn(
                           "cursor-pointer dark:focus:bg-gray-700 dark:focus:text-white",
                           formData.frameworkCategoryId === category.value &&
-                            "bg-primary/10 text-primary font-medium"
+                          "bg-primary/10 text-primary font-medium"
                         )}
                       >
                         {category.label}
