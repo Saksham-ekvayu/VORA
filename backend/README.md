@@ -97,14 +97,23 @@ Located in `backend/scripts/`:
 
 If you prefer to set up services individually:
 
-### 1. Create a Virtual Environment
+### 1. Install Shared Package (Required)
+
+Before running any service, you should install the shared package locally:
 
 ```bash
-cd backend/services/authentication-service
+cd backend/shared
+pip install -e .
+```
+
+### 2. Create a Virtual Environment
+
+```bash
+cd ../services/authentication-service
 python -m venv .venv
 ```
 
-### 2. Activate Virtual Environment
+### 3. Activate Virtual Environment
 
 ```bash
 # Windows CMD
@@ -117,13 +126,13 @@ python -m venv .venv
 source .venv/bin/activate
 ```
 
-### 3. Install Dependencies
+### 4. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Run the Service
+### 5. Run the Service
 
 ```bash
 python -m uvicorn app.main:app --host localhost --port 7001 --reload

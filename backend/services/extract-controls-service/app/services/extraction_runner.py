@@ -95,9 +95,7 @@ def _status_history(
             "history": history,
         }
     completed = completed or _iso()
-    history.append(
-        {"status": "completed", "timestamp": completed, "message": MSG_EXTRACTION_COMPLETED}
-    )
+    history.append({"status": "completed", "timestamp": completed, "message": MSG_EXTRACTION_COMPLETED})
     try:
         start = datetime.fromisoformat(uploaded.replace("Z", "+00:00"))
         end = datetime.fromisoformat(completed.replace("Z", "+00:00"))
@@ -267,7 +265,9 @@ async def _upsert_extraction_result(
         return row.id
 
 
-async def _update_framework_ai_status(session: Any, framework_id: str, file_id: str, status_data: dict[str, Any], replace: bool = False) -> None:
+async def _update_framework_ai_status(
+    session: Any, framework_id: str, file_id: str, status_data: dict[str, Any], replace: bool = False
+) -> None:
     fw = await session.get(Framework, framework_id)
     if not fw:
         return
@@ -275,14 +275,14 @@ async def _update_framework_ai_status(session: Any, framework_id: str, file_id: 
     idx, fv = _find_file_version(versions, file_id)
     if idx is None or fv is None:
         return
-    
+
     if replace:
         fv["aiExtraction"] = status_data
     else:
         ai = dict(fv.get("aiExtraction") or {})
         ai.update(status_data)
         fv["aiExtraction"] = ai
-    
+
     versions[idx] = fv
     fw.fileVersions = versions
 
@@ -478,9 +478,7 @@ async def _get_or_create_doc_extraction(
             return row
     if file_hash:
         row = (
-            await session.execute(
-                select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash)
-            )
+            await session.execute(select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash))
         ).scalar_one_or_none()
         if row:
             return row
@@ -495,11 +493,7 @@ def _find_package_and_doc(
 ) -> tuple[list[Any], int | None, list[Any], int | None]:
     packages = list(df.packages or [])
     pkg_idx = next(
-        (
-            i
-            for i, p in enumerate(packages)
-            if isinstance(p, dict) and p.get("packageVersion") == pkg_ver
-        ),
+        (i for i, p in enumerate(packages) if isinstance(p, dict) and p.get("packageVersion") == pkg_ver),
         None,
     )
     if pkg_idx is None:
@@ -508,17 +502,15 @@ def _find_package_and_doc(
     pkg = dict(packages[pkg_idx])
     documents = [dict(d) if isinstance(d, dict) else d for d in (pkg.get("documents") or [])]
     doc_idx = next(
-        (
-            i
-            for i, d in enumerate(documents)
-            if isinstance(d, dict) and str(d.get("fileId")) == file_id
-        ),
+        (i for i, d in enumerate(documents) if isinstance(d, dict) and str(d.get("fileId")) == file_id),
         None,
     )
     return packages, pkg_idx, documents, doc_idx
 
 
-async def _update_deployment_ai_status(session: Any, df_id: str, pkg_ver: str, file_id: str, status_data: dict[str, Any]) -> None:
+async def _update_deployment_ai_status(
+    session: Any, df_id: str, pkg_ver: str, file_id: str, status_data: dict[str, Any]
+) -> None:
     df = await session.get(DeploymentFramework, df_id)
     if not df:
         return
@@ -532,10 +524,10 @@ async def _update_deployment_ai_status(session: Any, df_id: str, pkg_ver: str, f
     file_hash = str(doc.get("fileHash") or "")
     existing_ai = doc.get("aiExtraction")
     existing_id = existing_ai if isinstance(existing_ai, str) else None
-    
+
     extraction = await _get_or_create_doc_extraction(session, file_hash, existing_id)
     extraction.aiExtraction = status_data
-    
+
     doc["aiExtraction"] = extraction.id
     documents[doc_idx] = doc
     pkg["documents"] = documents
@@ -552,19 +544,31 @@ async def run_deployment_extraction(df_id: str, pkg_ver: str, file_id: str) -> N
 
     try:
         async with session_scope() as session:
-            await _update_deployment_ai_status(session, df_id, pkg_ver, file_id, {
-                "status": "uploaded",
-                "timestamp": uploaded_ts,
-                "message": MSG_DOCUMENT_UPLOADED,
-            })
+            await _update_deployment_ai_status(
+                session,
+                df_id,
+                pkg_ver,
+                file_id,
+                {
+                    "status": "uploaded",
+                    "timestamp": uploaded_ts,
+                    "message": MSG_DOCUMENT_UPLOADED,
+                },
+            )
 
         processing_ts = _iso()
         async with session_scope() as session:
-            await _update_deployment_ai_status(session, df_id, pkg_ver, file_id, {
-                "status": "processing",
-                "timestamp": processing_ts,
-                "message": MSG_EXTRACTION_IN_PROGRESS,
-            })
+            await _update_deployment_ai_status(
+                session,
+                df_id,
+                pkg_ver,
+                file_id,
+                {
+                    "status": "processing",
+                    "timestamp": processing_ts,
+                    "message": MSG_EXTRACTION_IN_PROGRESS,
+                },
+            )
 
         controls_data = _mock_controls(label="Deployment Controls")
         controls = _controls_payload(controls_data)
@@ -572,13 +576,19 @@ async def run_deployment_extraction(df_id: str, pkg_ver: str, file_id: str) -> N
         history = _status_history(uploaded_ts, processing_ts, completed_ts)
 
         async with session_scope() as session:
-            await _update_deployment_ai_status(session, df_id, pkg_ver, file_id, {
-                "status": "extracted",
-                "timestamp": completed_ts,
-                "message": MSG_EXTRACTION_COMPLETED,
-                "statusHistory": [history],
-                "controls": [controls],
-            })
+            await _update_deployment_ai_status(
+                session,
+                df_id,
+                pkg_ver,
+                file_id,
+                {
+                    "status": "extracted",
+                    "timestamp": completed_ts,
+                    "message": MSG_EXTRACTION_COMPLETED,
+                    "statusHistory": [history],
+                    "controls": [controls],
+                },
+            )
 
         await _upsert_extraction_result(
             ref_id=df_id,
@@ -706,7 +716,7 @@ async def _upsert_package_merge_records(
             )
         )
     ).scalar_one_or_none()
-    
+
     track_data = {
         "mergeHistory": merge_history,
         "controls_data": merged_sections,
@@ -768,7 +778,14 @@ async def run_package_merge(df_id: str, pkg_ver: str) -> None:
             }
 
             pm_row_id = await _upsert_package_merge_records(
-                session, df_id, pkg_ver, file_hashes, source_documents, merge_history, merged_sections, merge_extraction
+                session,
+                df_id,
+                pkg_ver,
+                file_hashes,
+                source_documents,
+                merge_history,
+                merged_sections,
+                merge_extraction,
             )
 
             # Annotate package with mergedControls for convenience

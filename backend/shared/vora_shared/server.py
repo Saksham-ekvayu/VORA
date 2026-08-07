@@ -9,9 +9,9 @@ from vora_shared.responses import http_exception_handler, request_validation_exc
 
 
 def create_vora_app(title: str, lifespan: Callable[[FastAPI], Any] = None) -> FastAPI:
-    from contextlib import asynccontextmanager
-    import sys
     import logging
+    import sys
+    from contextlib import asynccontextmanager
 
     @asynccontextmanager
     async def custom_lifespan(app_instance: FastAPI):
@@ -21,11 +21,11 @@ def create_vora_app(title: str, lifespan: Callable[[FastAPI], Any] = None) -> Fa
                 port = int(sys.argv[sys.argv.index("--port") + 1])
             except (ValueError, IndexError):
                 pass
-        
+
         logger = logging.getLogger("uvicorn.error")
         logger.info(f"Service URL: http://localhost:{port}")
         logger.info(f"Docs URL: http://localhost:{port}/docs")
-        
+
         if lifespan:
             # We call the user's lifespan context manager
             async with lifespan(app_instance):

@@ -45,7 +45,6 @@ async def _upsert_config(session, key: str, value: dict[str, Any]) -> GapConfig:
     return row
 
 
-
 @router.get("/status")
 async def service_status():
     try:

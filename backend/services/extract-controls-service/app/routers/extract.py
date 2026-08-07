@@ -39,8 +39,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["extract"])
 
 
-
-
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -190,8 +188,6 @@ async def list_extractions(page: int = 1, page_size: int = 10):
     except Exception as exc:  # noqa: BLE001
         logger.exception("list_extractions error")
         return server_error(str(exc))
-
-
 
 
 @router.get("/package-merges")

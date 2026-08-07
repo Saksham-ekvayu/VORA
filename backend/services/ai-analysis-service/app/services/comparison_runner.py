@@ -27,7 +27,6 @@ from vora_shared.models import (
 logger = logging.getLogger(__name__)
 
 
-
 _st_model = None
 _st_tried = False
 
@@ -38,9 +37,6 @@ def _utcnow() -> datetime:
 
 def _iso(dt: datetime | None = None) -> str:
     return (dt or _utcnow()).isoformat()
-
-
-
 
 
 def _tokenize(text: str) -> set[str]:
@@ -255,8 +251,6 @@ async def run_comparison(
                 data={},
             )
             session.add(job)
-
-
 
         df_controls = _flatten_controls(df_sections)
         fa_controls = _flatten_controls(assignment_sections)

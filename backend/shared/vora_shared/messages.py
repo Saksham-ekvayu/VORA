@@ -98,9 +98,7 @@ USER_LIST_RETRIEVED = "User list retrieved successfully"
 PROFILE_RETRIEVED = "Profile retrieved successfully"
 PROFILE_UPDATED = "Profile updated successfully"
 USER_CREATED = "User created successfully. Temporary password has been sent to their email address."
-USER_CREATED_EMAIL_FAILED = (
-    "User created successfully, but failed to send email. Please provide the temporary password manually."
-)
+USER_CREATED_EMAIL_FAILED = "User created successfully, but failed to send password email. Now user can forgot password to set password."
 USER_DELETED = "User deleted successfully"
 
 TENANT_ID_REQUIRED = "Tenant ID is required in X-TENANT-ID header"
