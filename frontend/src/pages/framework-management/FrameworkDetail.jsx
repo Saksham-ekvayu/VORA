@@ -658,16 +658,18 @@ function FrameworkDetail() {
               return (
                 <div
                   key={ver.fileVersion}
-                  className={`rounded overflow-hidden transition-all duration-300 hover:shadow-lg bg-card ${isCurrent ? "border border-primary" : "border border-border"
-                    }`}
+                  className={`rounded overflow-hidden transition-all duration-300 hover:shadow-lg bg-card ${
+                    isCurrent ? "border border-primary" : "border border-border"
+                  }`}
                 >
                   <div className="w-full flex items-center justify-between p-2 transition-colors duration-200 text-foreground ">
                     <div className="flex-1 flex items-center gap-5 flex-wrap">
                       <span
-                        className={`px-3 py-2 rounded text-xs font-bold ${isCurrent
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground"
-                          }`}
+                        className={`px-3 py-2 rounded text-xs font-bold ${
+                          isCurrent
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground"
+                        }`}
                       >
                         v{ver.fileVersion}
                         {isCurrent && " • Current"}
@@ -773,8 +775,8 @@ function FrameworkDetail() {
                               <>
                                 <Icon name="upload-cloud" size="13px" />
                                 {isAiFailed ||
-                                  isApprovalRejected ||
-                                  totaleControls === 0
+                                isApprovalRejected ||
+                                totaleControls === 0
                                   ? "Retry Extraction"
                                   : "Extract"}
                               </>

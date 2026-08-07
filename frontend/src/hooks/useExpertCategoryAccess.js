@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@/context/authContext/useAuth";
 import { isExpert } from "@/utils/commonUtils";
-import { getFrameworkCategoryAccess } from "@/services/frameworkService";
+import { getFrameworkCategoryAccess } from "@/services/adminService";
 
 /**
  * useExpertCategoryAccess

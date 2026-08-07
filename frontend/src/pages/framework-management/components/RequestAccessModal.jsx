@@ -3,10 +3,10 @@
 import { useModalState } from "@/hooks/useModalState";
 import Icon from "@/components/custom/Icon";
 import { ModalFooter, ModalHeader } from "@/components/custom/modal";
-import { requestFrameworkAccess } from "@/services/frameworkService";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 import { useErrorHandler } from "@/hooks/useErrorHandler";
+import { requestFrameworkAccess } from "@/services/adminService";
 
 /**
  * RequestAccessModal Component - Modal for requesting framework access

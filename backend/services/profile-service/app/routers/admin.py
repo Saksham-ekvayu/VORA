@@ -32,7 +32,7 @@ from vora_shared.query_builder import apply_search_filter, apply_sort, paginate_
 from vora_shared.responses import error, forbidden, paginated, success
 from vora_shared.security import hash_password
 
-router = APIRouter(tags=["admin"])
+router = APIRouter()
 logger = logging.getLogger(__name__)
 
 import vora_shared
@@ -231,7 +231,7 @@ def _validate_user_update_permissions(
 # ------------------------------------------------------------------------
 
 
-@router.post("/customers")
+@router.post("/customers", tags=["admin/customers"])
 async def create_customer(
     body: Annotated[CreateCustomerRequest, Body()],
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
@@ -272,7 +272,7 @@ async def create_customer(
     return success(result, "Customer created successfully")
 
 
-@router.get("/customers")
+@router.get("/customers", tags=["admin/customers"])
 async def get_all_customers(
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
     page: Annotated[int, Query()] = 1,
@@ -299,7 +299,7 @@ async def get_all_customers(
     return paginated(result, pagination, "Customers retrieved successfully")
 
 
-@router.get("/customers/{id}")
+@router.get("/customers/{id}", tags=["admin/customers"])
 async def get_customer_by_id(
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
     id: str,
@@ -342,7 +342,7 @@ async def get_customer_by_id(
     return success(customer_details, "Customer details retrieved successfully")
 
 
-@router.patch("/customers/{id}")
+@router.patch("/customers/{id}", tags=["admin/customers"])
 async def update_customer(
     id: str,
     body: Annotated[UpdateCustomerRequest, Body()],
@@ -375,7 +375,7 @@ async def update_customer(
     return success(result, "Customer updated successfully")
 
 
-@router.patch("/customers/{id}/toggle-status")
+@router.patch("/customers/{id}/toggle-status", tags=["admin/customers"])
 async def toggle_customer_status(id: str, ctx: Annotated[AuthenticatedUser, Depends(authenticate)]):
     if not is_valid_id(id):
         return error(msg.CUSTOMER_NOT_FOUND, 404)
@@ -398,7 +398,7 @@ async def toggle_customer_status(id: str, ctx: Annotated[AuthenticatedUser, Depe
     return success(result, f"Customer {action} successfully")
 
 
-@router.delete("/customers/{id}")
+@router.delete("/customers/{id}", tags=["admin/customers"])
 async def delete_customer(id: str, ctx: Annotated[AuthenticatedUser, Depends(authenticate)]):
     if not is_valid_id(id):
         return error(msg.CUSTOMER_NOT_FOUND, 404)
@@ -412,7 +412,7 @@ async def delete_customer(id: str, ctx: Annotated[AuthenticatedUser, Depends(aut
     return success(None, "Customer deleted successfully")
 
 
-@router.post("/customers/{id}/avatar")
+@router.post("/customers/{id}/avatar", tags=["admin/customers"])
 async def update_customer_avatar_by_admin(
     id: str,
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
@@ -454,7 +454,7 @@ async def update_customer_avatar_by_admin(
 # ------------------------------------------------------------------------
 
 
-@router.post("/create")
+@router.post("/users", tags=["admin/users"])
 async def create_user(
     body: Annotated[CreateUserRequest, Body()], ctx: Annotated[AuthenticatedUser, Depends(authenticate)]
 ):
@@ -526,7 +526,7 @@ def _render_temp_password_email(name: str, email: str, temp_password: str) -> st
     )
 
 
-@router.patch("/{id}")
+@router.patch("/users/{id}", tags=["admin/users"])
 async def update_user(
     id: str,
     body: Annotated[UpdateUserRequest, Body()],
@@ -565,7 +565,7 @@ async def update_user(
     return success(result, "User updated successfully")
 
 
-@router.get("/all-users")
+@router.get("/users", tags=["admin/users"])
 async def get_all_users(
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
     page: Annotated[int, Query()] = 1,
@@ -625,7 +625,7 @@ async def get_all_users(
     return paginated(users_list, pagination, message)
 
 
-@router.get("/{id}")
+@router.get("/users/{id}", tags=["admin/users"])
 async def get_user_by_id(id: str, ctx: Annotated[AuthenticatedUser, Depends(authenticate)]):
     current_role = ctx.user.role
     tenant_id = ctx.tenant_id
@@ -658,7 +658,7 @@ async def get_user_by_id(id: str, ctx: Annotated[AuthenticatedUser, Depends(auth
     return success(response_data, "User detail retrieved successfully")
 
 
-@router.patch("/{id}/toggle-status")
+@router.patch("/users/{id}/toggle-status", tags=["admin/users"])
 async def toggle_user_status(id: str, ctx: Annotated[AuthenticatedUser, Depends(authenticate)]):
     current_role = ctx.user.role
     if current_role not in ("admin", "customer-admin"):
@@ -694,7 +694,7 @@ async def toggle_user_status(id: str, ctx: Annotated[AuthenticatedUser, Depends(
     return success(result, action)
 
 
-@router.delete("/{id}")
+@router.delete("/users/{id}", tags=["admin/users"])
 async def delete_user(id: str, ctx: Annotated[AuthenticatedUser, Depends(authenticate)]):
     current_role = ctx.user.role
     tenant_id = ctx.tenant_id
