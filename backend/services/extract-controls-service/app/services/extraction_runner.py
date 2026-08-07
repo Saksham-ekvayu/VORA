@@ -7,6 +7,8 @@ import logging
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 from typing import Any
+import os
+from pathlib import Path
 
 from sqlalchemy import select
 from vora_shared.database import session_scope
@@ -18,6 +20,10 @@ from vora_shared.models import (
     Framework,
     PackageMerge,
     PackageMergeTracking,
+)
+from app.services.control_extractor import (
+    extract_framework_controls,
+    convert_to_section_structure,
 )
 
 logger = logging.getLogger(__name__)
@@ -103,6 +109,114 @@ def _status_history(
     }
 
 
+def _load_document_chunks(file_path: str, chunk_size: int = 1000) -> list[str]:
+    """Load document from file and chunk it for processing"""
+    try:
+        if not file_path or not os.path.exists(file_path):
+            logger.error(f"[LOAD] File not found: {file_path}")
+            return []
+
+        ext = Path(file_path).suffix.lower()
+        logger.info(f"[LOAD] Loading document | ext={ext} | path={file_path}")
+
+        text_lines = []
+
+        # Handle PDF
+        if ext == ".pdf":
+            try:
+                import pdfplumber
+                with pdfplumber.open(file_path) as pdf:
+                    for page in pdf.pages:
+                        # Extract tables
+                        tables = page.extract_tables()
+                        if tables:
+                            for table in tables:
+                                for row in table:
+                                    row_text = " ".join([cell or "" for cell in row if cell])
+                                    if row_text.strip():
+                                        text_lines.append(row_text.strip())
+                        # Extract text
+                        page_text = page.extract_text()
+                        if page_text:
+                            for line in page_text.split("\n"):
+                                if line.strip():
+                                    text_lines.append(line.strip())
+            except ImportError:
+                logger.warning("[LOAD] pdfplumber not available, trying pypdf")
+                import pypdf
+                reader = pypdf.PdfReader(file_path)
+                for page in reader.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        for line in page_text.split("\n"):
+                            if line.strip():
+                                text_lines.append(line.strip())
+
+        # Handle Word documents
+        elif ext == ".docx":
+            try:
+                from docx import Document
+                doc = Document(file_path)
+                for para in doc.paragraphs:
+                    if para.text.strip():
+                        text_lines.append(para.text.strip())
+            except Exception as e:
+                logger.error(f"[LOAD] Failed to load docx: {e}")
+                return []
+
+        # Handle Excel
+        elif ext in [".xls", ".xlsx"]:
+            try:
+                import pandas as pd
+                xls = pd.ExcelFile(file_path)
+                for sheet in xls.sheet_names:
+                    df = pd.read_excel(xls, sheet_name=sheet)
+                    text_lines.append(df.to_string(index=False))
+            except Exception as e:
+                logger.error(f"[LOAD] Failed to load excel: {e}")
+                return []
+
+        # Handle text files
+        elif ext in [".txt", ".csv"]:
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        if line.strip():
+                            text_lines.append(line.strip())
+            except Exception as e:
+                logger.error(f"[LOAD] Failed to load text file: {e}")
+                return []
+
+        else:
+            logger.error(f"[LOAD] Unsupported file type: {ext}")
+            return []
+
+        if not text_lines:
+            logger.warning(f"[LOAD] No text extracted from {file_path}")
+            return []
+
+        # Chunk the text
+        chunks = []
+        current = ""
+        for line in text_lines:
+            if len(current) + len(line) <= chunk_size:
+                current += " " + line
+            else:
+                if current.strip():
+                    chunks.append(current.strip())
+                current = line
+
+        if current.strip():
+            chunks.append(current.strip())
+
+        logger.info(f"[LOAD] ✅ Loaded {len(text_lines)} lines into {len(chunks)} chunks")
+        return chunks
+
+    except Exception as e:
+        logger.error(f"[LOAD] ❌ Failed to load document: {e}", exc_info=True)
+        return []
+
+
 def _find_file_version(file_versions: list[Any], file_id: str) -> tuple[int | None, dict | None]:
     for i, fv in enumerate(file_versions or []):
         if not isinstance(fv, dict):
@@ -174,110 +288,185 @@ async def _update_framework_ai_status(
 
 
 async def run_framework_extraction(framework_id: str, file_id: str) -> None:
-    """Load Framework, update fileVersions[].aiExtraction, push WS progress."""
+    """Load Framework, extract controls using AI, save to document_extraction table"""
     framework_id = str(framework_id).strip()
     file_id = str(file_id).strip()
     uploaded_ts = _iso()
 
-    try:
-        async with session_scope() as session:
-            await _update_framework_ai_status(
-                session,
-                framework_id,
-                file_id,
-                {
-                    "status": "uploaded",
-                    "timestamp": uploaded_ts,
-                    "message": MSG_DOCUMENT_UPLOADED,
-                },
-            )
+    logger.info(f"{'='*80}")
+    logger.info(f"[EXTRACT-START] Framework Extraction Started")
+    logger.info(f"  Framework ID: {framework_id}")
+    logger.info(f"  File ID: {file_id}")
+    logger.info(f"  Timestamp: {uploaded_ts}")
+    logger.info(f"{'='*80}")
 
-        processing_ts = _iso()
+    try:
+        # Get framework and file info
+        logger.info(f"[EXTRACT] Step 1: Loading framework from database...")
         async with session_scope() as session:
+            framework = await session.get(Framework, framework_id)
+            if not framework:
+                logger.error(f"[EXTRACT] ❌ Framework not found: {framework_id}")
+                return
+
+            logger.info(f"[EXTRACT] ✅ Framework found: {framework.frameworkName}")
+
+            # Find file version
+            file_versions = framework.fileVersions or []
+            logger.info(f"[EXTRACT] Found {len(file_versions)} file versions in framework")
+            
+            file_info = None
+            for fv in file_versions:
+                if isinstance(fv, dict) and str(fv.get("fileId")) == file_id:
+                    file_info = fv
+                    break
+
+            if not file_info:
+                logger.error(f"[EXTRACT] ❌ File not found in framework: {file_id}")
+                return
+
+            file_path = file_info.get("fileUrl")
+            file_hash = file_info.get("fileHash")
+            logger.info(f"[EXTRACT] ✅ File found")
+            logger.info(f"  File Path: {file_path}")
+            logger.info(f"  File Hash: {file_hash}")
+
+            # Update status to processing
+            logger.info(f"[EXTRACT] Step 2: Updating status to 'processing'...")
             await _update_framework_ai_status(
-                session,
-                framework_id,
-                file_id,
+                session, framework_id, file_id,
                 {
                     "status": "processing",
-                    "timestamp": processing_ts,
-                    "message": MSG_EXTRACTION_IN_PROGRESS,
+                    "timestamp": uploaded_ts,
+                    "message": "AI extraction in progress",
                 },
             )
+            logger.info(f"[EXTRACT] ✅ Status updated to 'processing'")
 
-        # Simulated / mock extraction pipeline
-        controls_data = _mock_controls(label="Framework Controls")
-        controls = _controls_payload(controls_data)
-        completed_ts = _iso()
-        history = _status_history(uploaded_ts, processing_ts, completed_ts)
-
-        async with session_scope() as session:
-            await _update_framework_ai_status(
-                session,
-                framework_id,
-                file_id,
-                {
-                    "status": "extracted",
-                    "timestamp": completed_ts,
-                    "message": MSG_EXTRACTION_COMPLETED,
-                    "statusHistory": {
-                        "processingTimeSeconds": history["processing_time_seconds"],
-                        "completedAt": history["completed_at"],
-                        "history": [
-                            {
-                                "status": ("extracted" if h["status"] == "completed" else h["status"]),
-                                "timestamp": h["timestamp"],
-                                "message": h.get("message"),
-                            }
-                            for h in history["history"]
-                        ],
-                    },
-                    "controls": controls,
-                },
-                replace=True,
-            )
-
-        await _upsert_extraction_result(
-            ref_id=framework_id,
-            resource_type="framework",
-            file_id=file_id,
-            package_version=None,
-            status="extracted",
-            result={
-                "status": "extracted",
-                "controls": controls,
-                "status_history": history,
-                "fileVersions": [
+        # Load document from file
+        logger.info(f"[EXTRACT] Step 3: Loading document from disk...")
+        chunks = _load_document_chunks(file_path)
+        if not chunks:
+            logger.error(f"[EXTRACT] ❌ No text extracted from document")
+            async with session_scope() as session:
+                await _update_framework_ai_status(
+                    session, framework_id, file_id,
                     {
-                        "fileId": file_id,
-                        "aiUpload": {
-                            "status": "extracted",
-                            "controls": controls,
-                            "status_history": history,
-                            "processing_time_seconds": history["processing_time_seconds"],
-                        },
+                        "status": "failed",
+                        "timestamp": _iso(),
+                        "message": "Failed to extract text from document",
+                    },
+                )
+            return
+
+        logger.info(f"[EXTRACT] ✅ Document loaded: {len(chunks)} chunks extracted")
+
+        # Extract controls using AI
+        logger.info(f"[EXTRACT] Step 4: Running AI extraction...")
+        controls_flat = extract_framework_controls(chunks, framework_id)
+        logger.info(f"[EXTRACT] ✅ AI extraction complete: {len(controls_flat)} controls extracted")
+
+        # Convert to section structure
+        logger.info(f"[EXTRACT] Step 5: Converting to section structure...")
+        controls_structured = convert_to_section_structure(controls_flat, resource_type="framework")
+        logger.info(f"[EXTRACT] ✅ Structure converted: {len(controls_structured)} sections")
+
+        # Build controls payload
+        total_controls = sum(len(s.get("controls", [])) for s in controls_structured)
+        controls_payload = {
+            "total_controls": total_controls,
+            "total_sections": len(controls_structured),
+            "controls_data": controls_structured,
+        }
+        logger.info(f"[EXTRACT] Total controls: {total_controls}")
+
+        completed_ts = _iso()
+        history = _status_history(uploaded_ts, uploaded_ts, completed_ts)
+
+        # Prepare extraction data
+        extraction_data = {
+            "status": "extracted",
+            "timestamp": completed_ts,
+            "message": "AI extraction completed",
+            "statusHistory": {
+                "processingTimeSeconds": history["processing_time_seconds"],
+                "completedAt": history["completed_at"],
+                "history": [
+                    {
+                        "status": ("extracted" if h["status"] == "completed" else h["status"]),
+                        "timestamp": h["timestamp"],
+                        "message": h.get("message"),
                     }
+                    for h in history["history"]
                 ],
             },
-        )
+            "controls": controls_payload,
+        }
 
-    except Exception as exc:  # noqa: BLE001
-        logger.exception("run_framework_extraction failed | id=%s", framework_id)
+        # Update framework with extracted data
+        logger.info(f"[EXTRACT] Step 6: Saving to database...")
+        async with session_scope() as session:
+            # Update framework's aiExtraction
+            logger.info(f"[EXTRACT] 6a: Updating framework's aiExtraction...")
+            await _update_framework_ai_status(
+                session, framework_id, file_id,
+                extraction_data,
+                replace=True,
+            )
+            logger.info(f"[EXTRACT] ✅ Framework updated")
+
+            # Save to document_extraction table (by fileHash) - PRIMARY TABLE
+            if file_hash:
+                logger.info(f"[EXTRACT] 6b: Saving to document_extraction table...")
+                doc_extraction = await _get_or_create_doc_extraction(
+                    session, file_hash, None
+                )
+                doc_extraction.aiExtraction = extraction_data
+                session.add(doc_extraction)
+                await session.flush()
+                await session.commit()
+                logger.info(f"[EXTRACT] ✅ Saved to document_extractions table")
+                logger.info(f"  Table: document_extractions")
+                logger.info(f"  ID: {doc_extraction.id}")
+                logger.info(f"  FileHash: {file_hash}")
+                logger.info(f"  Status: extracted")
+                logger.info(f"  Total Controls: {total_controls}")
+            else:
+                logger.warning(f"[EXTRACT] ⚠️ No fileHash - skipping document_extraction save")
+
+        logger.info(f"{'='*80}")
+        logger.info(f"[EXTRACT-SUCCESS] ✅ Framework extraction complete!")
+        logger.info(f"  Framework ID: {framework_id}")
+        logger.info(f"  File ID: {file_id}")
+        logger.info(f"  Total Controls: {total_controls}")
+        logger.info(f"  Total Sections: {len(controls_structured)}")
+        logger.info(f"  Processing Time: {history['processing_time_seconds']:.2f}s")
+        logger.info(f"[EXTRACT-SAVED] ✅ Data saved to: document_extractions table")
+        logger.info(f"{'='*80}")
+
+    except Exception as exc:
+        logger.error(f"{'='*80}")
+        logger.error(f"[EXTRACT-ERROR] ❌ Framework extraction failed!")
+        logger.error(f"  Framework ID: {framework_id}")
+        logger.error(f"  File ID: {file_id}")
+        logger.error(f"  Error: {str(exc)}")
+        logger.error(f"{'='*80}")
+        logger.exception(f"[EXTRACT] Exception traceback:")
+        
         fail_ts = _iso()
         try:
             async with session_scope() as session:
                 await _update_framework_ai_status(
-                    session,
-                    framework_id,
-                    file_id,
+                    session, framework_id, file_id,
                     {
                         "status": "failed",
                         "timestamp": fail_ts,
-                        "message": str(exc),
+                        "message": f"Extraction failed: {str(exc)}",
                     },
                 )
-        except Exception:  # noqa: BLE001
-            pass
+                logger.info(f"[EXTRACT] Updated status to 'failed' in database")
+        except Exception as db_exc:
+            logger.error(f"[EXTRACT] Failed to update status in database: {db_exc}")
 
 
 async def _get_or_create_doc_extraction(
