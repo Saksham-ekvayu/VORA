@@ -84,7 +84,7 @@ async def proxy_request(request: Request, target_url: str):
             headers=response_headers,
         )
     except httpx.RequestError as exc:
-        logger.error(f"Error proxying request to {target_url}: {exc}")
+        logger.exception(f"Error proxying request to {target_url}: {exc}")
         return Response(content="Gateway Timeout", status_code=504)
 
 

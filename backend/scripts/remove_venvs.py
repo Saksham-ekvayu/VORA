@@ -20,14 +20,14 @@ def remove_venvs(base_dir):
         # Ignore specific folders to speed up the process
         dirs[:] = [d for d in dirs if d not in (".git", "node_modules", "__pycache__")]
 
-        for d in list(dirs):
+        for d in dirs[:]:
             if d in ("venv", ".venv"):
                 venv_path = os.path.join(root, d)
                 print(f"Removing {venv_path}...")
                 try:
                     # Remove the virtual environment directory
                     shutil.rmtree(venv_path)
-                    print(f"  OK.")
+                    print("  OK.")
                     count += 1
                     # Remove from dirs so os.walk doesn't try to traverse into it
                     dirs.remove(d)
