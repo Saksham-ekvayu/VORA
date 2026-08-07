@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from app.routers import framework, framework_access
+from app.routers import framework
 from fastapi import FastAPI
 from vora_shared.config import get_settings
 from vora_shared.database import connect_db, disconnect_db
@@ -17,5 +17,4 @@ async def lifespan(_: FastAPI):
 
 app = create_vora_app(title="framework-service", lifespan=lifespan)
 
-app.include_router(framework_access.router, prefix="/framework-access")
 app.include_router(framework.router, prefix="/framework")

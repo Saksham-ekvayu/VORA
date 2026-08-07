@@ -196,9 +196,9 @@ export default function CustomerUserModal({
                   type="email"
                   className={cn(
                     modalState.errors.email &&
-                    "border-red-500 focus-visible:ring-red-500/20",
+                      "border-red-500 focus-visible:ring-red-500/20",
                     mode === "update" &&
-                    "bg-muted/50 opacity-60 cursor-not-allowed"
+                      "bg-muted/50 opacity-60 cursor-not-allowed"
                   )}
                   value={formData.email}
                   onChange={(e) => handleChange("email", e.target.value)}
@@ -208,9 +208,7 @@ export default function CustomerUserModal({
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="customer-phone">
-                  Phone Number
-                </Label>
+                <Label htmlFor="customer-phone">Phone Number</Label>
                 <PhoneInputField
                   id="customer-phone"
                   value={formData.phone}
@@ -231,10 +229,12 @@ export default function CustomerUserModal({
                       className={cn(
                         "w-full justify-between font-normal bg-background border-input text-foreground hover:bg-accent hover:text-accent-foreground",
                         modalState.errors.role &&
-                        "border-red-500 focus:ring-red-500/20"
+                          "border-red-500 focus:ring-red-500/20"
                       )}
                     >
-                      {formData.role ? getRoleLabel(formData.role) : "Select a role"}
+                      {formData.role
+                        ? getRoleLabel(formData.role)
+                        : "Select a role"}
                       <ChevronDown className="h-4 w-4 opacity-50" />
                     </Button>
                   </DropdownMenuTrigger>

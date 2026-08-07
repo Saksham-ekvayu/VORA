@@ -131,6 +131,19 @@ export function rejectFrameworkAccessRequest(requestId) {
 }
 
 /**
+ * Request framework access
+ */
+export function requestFrameworkAccess(frameworkId) {
+  return apiRequest(
+    `${ACCESS_BASE}/${frameworkId}/request`,
+    {
+      method: "POST",
+    },
+    true
+  );
+}
+
+/**
  * Assign framework access directly (supports multiple frameworks)
  */
 export function assignFrameworkAccess(expertId, frameworkCategoryIds) {
@@ -262,6 +275,27 @@ export function getFrameworkAccessByUserId(userId) {
   };
 }
 
+/**
+ * Get available frameworks category access
+ */
+export function getFrameworkCategoryAccess({
+  page = 1,
+  limit = 10,
+  search = "",
+  sortBy = "",
+  sortOrder = "",
+} = {}) {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+    ...(search && { search }),
+    ...(sortBy && { sortBy }),
+    ...(sortOrder && { sortOrder }),
+  });
+
+  return apiRequest(`${ACCESS_BASE}/my-access?${params.toString()}`, true);
+}
+
 export default {
   getAdminFrameworkCategory,
   getAdminFrameworkAccess,
@@ -269,8 +303,10 @@ export default {
   updateFrameworkCategory,
   deleteFrameworkCategory,
   revokeFrameworkAccess,
+  requestFrameworkAccess,
   approveFrameworkAccessRequest,
   rejectFrameworkAccessRequest,
   assignFrameworkAccess,
   getFrameworkAccessByUserId,
+  getFrameworkCategoryAccess,
 };

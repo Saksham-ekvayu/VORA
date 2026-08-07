@@ -412,9 +412,9 @@ export default function CustomerManageModal({
                       type="email"
                       className={cn(
                         modalState.errors.email &&
-                        "border-red-500 focus-visible:ring-red-500/20",
+                          "border-red-500 focus-visible:ring-red-500/20",
                         mode === "update" &&
-                        "bg-muted/50 opacity-60 cursor-not-allowed"
+                          "bg-muted/50 opacity-60 cursor-not-allowed"
                       )}
                       value={formData.email}
                       onChange={(e) => handleChange("email", e.target.value)}
@@ -424,7 +424,10 @@ export default function CustomerManageModal({
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="customer-phone" className="text-sm font-medium">
+                    <Label
+                      htmlFor="customer-phone"
+                      className="text-sm font-medium"
+                    >
                       Phone Number
                     </Label>
                     <PhoneInputField
