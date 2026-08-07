@@ -14,12 +14,8 @@ from sqlalchemy import select
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
 from vora_shared.models import (
-    DeploymentFramework,
     DocumentExtraction,
-    ExtractionResult,
     Framework,
-    PackageMerge,
-    PackageMergeTracking,
 )
 from app.services.control_extractor import (
     extract_framework_controls,
@@ -29,10 +25,6 @@ from app.services.control_extractor import (
 logger = logging.getLogger(__name__)
 
 MSG_EXTRACTION_COMPLETED = "Extraction completed"
-MSG_EXTRACTION_IN_PROGRESS = "Extraction in progress"
-MSG_DOCUMENT_UPLOADED = "Document uploaded"
-
-SendCb = Callable[[dict[str, Any]], Awaitable[None]]
 
 
 def _utcnow() -> datetime:
@@ -43,41 +35,7 @@ def _iso(dt: datetime | None = None) -> str:
     return (dt or _utcnow()).isoformat()
 
 
-def _mock_controls(label: str = "Extracted Controls") -> list[dict[str, Any]]:
-    """Simplified mock controls matching expected section/control shape."""
-    section_id = new_id()
-    controls = []
-    for i, name in enumerate(
-        ("Access Control Policy", "Data Retention Requirement", "Incident Response Plan"),
-        start=1,
-    ):
-        controls.append(
-            {
-                "id": new_id(),
-                "name": f"{name}",
-                "description": f"Mock {label.lower()} control #{i}: {name}",
-                "deployment_points": [
-                    {
-                        "id": new_id(),
-                        "name": f"DP-{i}",
-                        "status": "pending",
-                        "path": "",
-                        "weightage": 10,
-                        "remark": "",
-                    }
-                ],
-            }
-        )
-    return [{"id": section_id, "name": label, "controls": controls}]
 
-
-def _controls_payload(controls_data: list[dict[str, Any]]) -> dict[str, Any]:
-    total_controls = sum(len(s.get("controls") or []) for s in controls_data if isinstance(s, dict))
-    return {
-        "total_controls": total_controls,
-        "total_sections": len(controls_data),
-        "controls_data": controls_data,
-    }
 
 
 def _status_history(
@@ -224,45 +182,6 @@ def _find_file_version(file_versions: list[Any], file_id: str) -> tuple[int | No
         if str(fv.get("fileId")) == str(file_id):
             return i, dict(fv)
     return None, None
-
-
-async def _upsert_extraction_result(
-    *,
-    ref_id: str,
-    resource_type: str,
-    file_id: str | None,
-    package_version: str | None,
-    status: str,
-    result: dict[str, Any],
-) -> str:
-    async with session_scope() as session:
-        stmt = select(ExtractionResult).where(
-            ExtractionResult.ref_id == ref_id,
-            ExtractionResult.resource_type == resource_type,
-        )
-        if file_id:
-            stmt = stmt.where(ExtractionResult.file_id == str(file_id))
-        if package_version:
-            stmt = stmt.where(ExtractionResult.package_version == package_version)
-        row = (await session.execute(stmt)).scalar_one_or_none()
-        if row is None:
-            row = ExtractionResult(
-                id=new_id(),
-                ref_id=ref_id,
-                resource_type=resource_type,
-                file_id=str(file_id) if file_id else None,
-                package_version=package_version,
-                status=status,
-                result=result,
-                meta={},
-            )
-            session.add(row)
-        else:
-            row.status = status
-            row.result = result
-            row.updatedAt = _utcnow()
-        await session.flush()
-        return row.id
 
 
 async def _update_framework_ai_status(
