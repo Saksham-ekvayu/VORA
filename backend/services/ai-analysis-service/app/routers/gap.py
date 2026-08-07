@@ -7,8 +7,7 @@ import logging
 from typing import Any
 
 from app.services.gap_runner import DEFAULT_STATUSES, DEFAULT_THRESHOLDS, run_gap
-from app.utils.ws_manager import manager
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from vora_shared.database import session_scope
@@ -45,13 +44,6 @@ async def _upsert_config(session, key: str, value: dict[str, Any]) -> GapConfig:
         row.config_value = value
     return row
 
-
-@router.get("/health")
-async def health_check():
-    return success(
-        message="Service is healthy",
-        data={"service": "deployment-gap-service", "status": "healthy"},
-    )
 
 
 @router.get("/status")
@@ -240,29 +232,6 @@ async def get_available_controls_for_deployment_gap(deployment_gap_id: str):
     except Exception as exc:  # noqa: BLE001
         logger.exception("get_available_controls error")
         return server_error(str(exc))
-
-
-@router.websocket("/ws/gap/{deployment_framework_id}/{package_version}")
-async def ws_gap_auto(websocket: WebSocket, deployment_framework_id: str, package_version: str):
-    deployment_framework_id = deployment_framework_id.strip()
-    package_version = package_version.strip()
-    conn_key = f"gap:{deployment_framework_id}:{package_version}"
-    await manager.connect(conn_key, websocket)
-
-    async def send_cb(msg: dict[str, Any]) -> None:
-        await manager.send_json(conn_key, msg)
-
-    task = asyncio.create_task(run_gap(deployment_framework_id, package_version, send_cb))
-    try:
-        while True:
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        await manager.disconnect(conn_key, websocket)
-    except Exception as exc:  # noqa: BLE001
-        logger.error("WS gap error | %s", exc, exc_info=True)
-        await manager.disconnect(conn_key, websocket)
-    finally:
-        _ = task
 
 
 # ---------------------------------------------------------------------------

@@ -23,12 +23,17 @@ def get_service_dirs(root: Path) -> list[Path]:
 def create_venv(service_dir: Path, python_executable: str) -> Path:
     venv_dir = service_dir / ".venv"
     if venv_dir.exists():
-        print(f"Skipping existing venv: {venv_dir}")
+        print(f"  Skipping existing venv: {venv_dir}")
         return venv_dir
 
-    print(f"Creating venv in {service_dir}")
-    subprocess.run([python_executable, "-m", "venv", str(venv_dir)], check=True)
-    return venv_dir
+    print(f"  Creating venv...")
+    try:
+        subprocess.run([python_executable, "-m", "venv", str(venv_dir)], check=True)
+        print(f"  OK.")
+        return venv_dir
+    except subprocess.CalledProcessError as e:
+        print(f"  ERROR: Failed to create venv. {e}")
+        raise
 
 
 def install_requirements(venv_dir: Path, service_dir: Path) -> None:
@@ -44,12 +49,17 @@ def install_requirements(venv_dir: Path, service_dir: Path) -> None:
     if not requirements_file.exists():
         raise FileNotFoundError(f"requirements.txt not found in {service_dir}")
 
-    print(f"Installing dependencies for {service_dir.name}")
-    subprocess.run(
-        [str(python_path), "-m", "pip", "install", "-r", str(requirements_file)],
-        check=True,
-        cwd=service_dir,
-    )
+    print(f"  Installing dependencies...")
+    try:
+        subprocess.run(
+            [str(python_path), "-m", "pip", "install", "-r", str(requirements_file)],
+            check=True,
+            cwd=service_dir,
+        )
+        print(f"  OK.")
+    except subprocess.CalledProcessError as e:
+        print(f"  ERROR: Failed to install dependencies. {e}")
+        raise
 
 
 def install_shared_package(venv_dir: Path, shared_dir: Path) -> None:
@@ -62,14 +72,20 @@ def install_shared_package(venv_dir: Path, shared_dir: Path) -> None:
         raise FileNotFoundError(f"Python executable not found in venv: {python_path}")
 
     if not shared_dir.is_dir():
-        raise FileNotFoundError(f"Shared directory not found: {shared_dir}")
+        print(f"  WARNING: Shared directory not found: {shared_dir}")
+        return
 
-    print(f"Installing shared package in editable mode")
-    subprocess.run(
-        [str(python_path), "-m", "pip", "install", "-e", str(shared_dir)],
-        check=True,
-        cwd=shared_dir,
-    )
+    print(f"  Installing shared package in editable mode...")
+    try:
+        subprocess.run(
+            [str(python_path), "-m", "pip", "install", "-e", str(shared_dir)],
+            check=True,
+            cwd=shared_dir,
+        )
+        print(f"  OK.")
+    except subprocess.CalledProcessError as e:
+        print(f"  ERROR: Failed to install shared package. {e}")
+        raise
 
 
 def parse_args() -> argparse.Namespace:
@@ -100,35 +116,66 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     root = (Path(__file__).resolve().parent / args.root).resolve()
-    service_dirs = get_service_dirs(root)
+
+    print()
+    print("=" * 60)
+    print("Creating Virtual Environments")
+    print("=" * 60)
+    print()
+
+    try:
+        service_dirs = get_service_dirs(root)
+    except FileNotFoundError as e:
+        print(f"ERROR: {e}")
+        return 1
 
     if not service_dirs:
         print("No service directories with requirements.txt found.")
         return 1
 
-    print(f"Found {len(service_dirs)} service(s) to process.")
+    print(f"Found {len(service_dirs)} service(s):")
+    for service_dir in service_dirs:
+        print(f"  - {service_dir.relative_to(root)}")
+    print()
 
     # Install shared package first if requested
     if args.install_shared:
         shared_dir = root / "shared"
-        venv_dir = service_dirs[0] / ".venv"
-        print(f"\n---\nInstalling shared package")
-        try:
-            install_shared_package(venv_dir, shared_dir)
-        except FileNotFoundError as e:
-            print(f"Error: {e}")
-            return 1
+        if service_dirs:
+            venv_dir = service_dirs[0] / ".venv"
+            print("Installing shared package...")
+            try:
+                install_shared_package(venv_dir, shared_dir)
+            except FileNotFoundError as e:
+                print(f"ERROR: {e}")
+                return 1
+            print()
 
     for service_dir in service_dirs:
-        print(f"\n---\nProcessing {service_dir.name}")
-        venv_dir = create_venv(service_dir, args.python)
-        if args.install:
-            install_requirements(venv_dir, service_dir)
+        print(f"Processing {service_dir.name}...")
+        try:
+            venv_dir = create_venv(service_dir, args.python)
+            if args.install:
+                install_requirements(venv_dir, service_dir)
+        except Exception as e:
+            print(f"ERROR: {e}")
+            return 1
+        print()
 
-    print("\nDone. To activate a service venv:")
-    print("Windows PowerShell: .\\.venv\\Scripts\\Activate.ps1")
-    print("Windows CMD: .\\.venv\\Scripts\\activate")
-    print("macOS/Linux: source .venv/bin/activate")
+    print("=" * 60)
+    print("Done! Virtual environments created successfully.")
+    print("=" * 60)
+    print()
+
+    if not args.install:
+        print("To install dependencies, run: install_venvs.bat")
+
+    print()
+    print("To activate a service venv:")
+    print("  Windows PowerShell: .\\services\\<service-name>\\.venv\\Scripts\\Activate.ps1")
+    print("  Windows CMD: .\\services\\<service-name>\\.venv\\Scripts\\activate.bat")
+    print("  macOS/Linux: source ./services/<service-name>/.venv/bin/activate")
+    print()
     return 0
 
 

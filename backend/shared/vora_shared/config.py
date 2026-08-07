@@ -18,7 +18,6 @@ class Settings(BaseSettings):
     jwt_project_salt: str = "change-me"
     jwt_expires_in: str = "7d"
     cors_origin: str = ""
-    compliance_agent_url: str = "http://localhost:7009"
     email_user: str = ""
     email_pass: str = ""
     email_from: str = ""

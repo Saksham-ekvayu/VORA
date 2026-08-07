@@ -5,7 +5,14 @@ import shutil
 
 def remove_venvs(base_dir):
     base_path = pathlib.Path(base_dir)
+
+    print()
+    print("=" * 60)
+    print("Removing Virtual Environments")
+    print("=" * 60)
+    print()
     print(f"Scanning for 'venv' or '.venv' directories in {base_path}...")
+    print()
 
     count = 0
     # Walk through the directory tree
@@ -20,14 +27,18 @@ def remove_venvs(base_dir):
                 try:
                     # Remove the virtual environment directory
                     shutil.rmtree(venv_path)
-                    print(f"  -> Successfully removed")
+                    print(f"  OK.")
                     count += 1
                     # Remove from dirs so os.walk doesn't try to traverse into it
                     dirs.remove(d)
                 except Exception as e:
-                    print(f"  -> Error removing {venv_path}: {e}")
+                    print(f"  ERROR: {e}")
 
-    print(f"\nDone! Removed {count} virtual environment(s).")
+    print()
+    print("=" * 60)
+    print(f"Done! Removed {count} virtual environment(s).")
+    print("=" * 60)
+    print()
 
 
 if __name__ == "__main__":

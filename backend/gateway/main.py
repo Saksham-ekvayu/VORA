@@ -48,18 +48,13 @@ ROUTES = {
     # deployment-framework-service (7006)
     "/api/assignment-frameworks": "http://localhost:7006/assignment-frameworks",
     "/api/deployment-frameworks": "http://localhost:7006/deployment-frameworks",
-    # deployment-document-service (7007)
-    "/api/deployment-documents": "http://localhost:7007/deployment-documents",
-    # comparison-service (7008)
-    "/api/comparison": "http://localhost:7008/api/comparison",
-    # compliance-agent-service (7009)
-    "/api/compliance-agent": "http://localhost:7009/api/compliance-agent",
-    # deployment-gap-service (7010)
-    "/api/deployment-gap": "http://localhost:7010/api/deployment-gap",
-    # extract-controls-service (7011)
-    "/api/extract": "http://localhost:7011/api/extract",
-    # load-document-service (7012)
-    "/api/load": "http://localhost:7012/api/load",
+    # extract-controls-service (7007)
+    "/api/extract": "http://localhost:7007/api/extract",
+    # compliance-agent-service (7008)
+    "/api/compliance-agent": "http://localhost:7008/api/compliance-agent",
+    # ai-analysis-service (7009)
+    "/api/comparison": "http://localhost:7009/api/comparison",
+    "/api/deployment-gap": "http://localhost:7009/api/deployment-gap",
 }
 
 # Sort by length descending to match most specific prefix first

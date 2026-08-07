@@ -196,20 +196,3 @@ class UploadedFile(Base):
     meta: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     createdAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updatedAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
-
-
-class LoadDocument(Base):
-    """Generic documents uploaded via load-document-service."""
-
-    __tablename__ = "load_documents"
-    __table_args__ = (Index("ix_load_documents_tenant", "tenant_id"),)
-
-    id: Mapped[str] = mapped_column(String(24), primary_key=True, default=new_id)
-    tenant_id: Mapped[str | None] = mapped_column(String, nullable=True)
-    document_name: Mapped[str] = mapped_column(String, nullable=False)
-    resource_type: Mapped[str] = mapped_column(String, nullable=False, default="document")
-    file_path: Mapped[str | None] = mapped_column(String, nullable=True)
-    file_hash: Mapped[str | None] = mapped_column(String, nullable=True)
-    meta: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
-    createdAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
-    updatedAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
