@@ -1,21 +1,27 @@
 from datetime import datetime, timezone
 from typing import Annotated
 
-from app.helpers import fetch_users_by_ids
-from app.validation import FieldError, validate_assign_access
+from app.helpers.helpers import fetch_users_by_ids
+from app.validations.validation import FieldError, validate_assign_access
 from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm.attributes import flag_modified
 from vora_shared import data_format
+from vora_shared import messages as msg
 from vora_shared.auth import AuthenticatedUser, authenticate
 from vora_shared.database import session_scope
 from vora_shared.ids import is_valid_id
 from vora_shared.messages import MESSAGES, VALID_STATUSES, format_message
 from vora_shared.models import FrameworkAccess, FrameworkCategory, User
 from vora_shared.models.framework_access import ApprovalInfo, RejectionInfo, RevocationInfo
-from vora_shared.query_builder import apply_sort, build_pagination_meta, clamp_limit, clamp_page, paginate_stmt
+from vora_shared.query_builder import (
+    apply_sort,
+    build_pagination_meta,
+    clamp_limit,
+    clamp_page,
+    paginate_stmt,
+)
 from vora_shared.responses import error, paginated, success
-from vora_shared import messages as msg
 
 router = APIRouter(tags=["framework-access"])
 
@@ -61,7 +67,7 @@ def _format_access_record(
 
     return {
         **result,
-        "requestedBy": str(record.requestedBy) if record and getattr(record, "requestedBy", None) else None,
+        "requestedBy": (str(record.requestedBy) if record and getattr(record, "requestedBy", None) else None),
         "rejection": (
             {
                 "rejectedBy": data_format.format_user_ref(users_by_id.get(rejected_by_id), rejected_by_id),
@@ -308,6 +314,21 @@ async def get_framework_access_by_user_id(
     return paginated(data, pagination, message)
 
 
+def _build_request_access_response(access_request: FrameworkAccess) -> dict:
+    id_key = msg.FRAMEWORK_SERVICE_MESSAGES["ID"]
+    req_id = getattr(access_request, id_key, None) or getattr(access_request, "id", None)
+    return {
+        id_key: str(req_id) if req_id else None,
+        "frameworkCategoryId": (
+            str(access_request.frameworkCategoryId) if access_request.frameworkCategoryId else None
+        ),
+        "frameworkCode": access_request.frameworkCode,
+        "status": access_request.status,
+        "requestedBy": str(access_request.requestedBy) if access_request.requestedBy else None,
+        "createdAt": access_request.createdAt,
+    }
+
+
 @router.post("/{framework_category_id}/request")
 async def request_framework_access(
     framework_category_id: str,
@@ -321,7 +342,7 @@ async def request_framework_access(
             return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_CATEGORY_NOT_FOUND"], 404)
         if not category.isActive:
             return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_CATEGORY_IS_NOT_ACTIVE"], 400)
-    
+
         expert_id_str = str(user.id)
         category_id_str = str(framework_category_id)
 
@@ -336,9 +357,20 @@ async def request_framework_access(
 
         if existing_access:
             if existing_access.status == "approved":
-                return error(msg.MESSAGES.get("ALREADY_HAS_ACCESS", "You already have approved access to this framework"), 400)
+                return error(
+                    msg.MESSAGES.get(
+                        "ALREADY_HAS_ACCESS", "You already have approved access to this framework"
+                    ),
+                    400,
+                )
             if existing_access.status == "pending":
-                return error(msg.MESSAGES.get("ACCESS_ALREADY_PROCESSED", "You already have a pending request for this framework"), 400)
+                return error(
+                    msg.MESSAGES.get(
+                        "ACCESS_ALREADY_PROCESSED",
+                        "You already have a pending request for this framework",
+                    ),
+                    400,
+                )
             if existing_access.status in ("rejected", "revoked"):
                 existing_access.status = "pending"
                 existing_access.requestedBy = "expert"
@@ -347,7 +379,7 @@ async def request_framework_access(
                 await session.flush()
                 await session.refresh(existing_access)
                 access_request = existing_access
-        
+
         if not existing_access:
             access_request = FrameworkAccess(
                 expertId=expert_id_str,
@@ -364,26 +396,7 @@ async def request_framework_access(
             await session.refresh(access_request)
 
     return success(
-        {
-            msg.FRAMEWORK_SERVICE_MESSAGES["ID"]: (
-                str(access_request.id)
-                if access_request and getattr(access_request, msg.FRAMEWORK_SERVICE_MESSAGES["ID"], None)
-                else None
-            ),
-            "frameworkCategoryId": (
-                str(access_request.frameworkCategoryId)
-                if access_request and getattr(access_request, "frameworkCategoryId", None)
-                else None
-            ),
-            "frameworkCode": access_request.frameworkCode,
-            "status": access_request.status,
-            "requestedBy": (
-                str(access_request.requestedBy)
-                if access_request and getattr(access_request, "requestedBy", None)
-                else None
-            ),
-            "createdAt": access_request.createdAt,
-        },
+        _build_request_access_response(access_request),
         "Framework access request submitted successfully",
     )
 
@@ -481,7 +494,11 @@ async def _validate_expert_and_categories(session, expert_id: str, category_ids:
     if len(framework_categories) != len(category_ids):
         found_ids = {str(c.id) for c in framework_categories}
         missing_ids = [i for i in category_ids if i not in found_ids]
-        return None, None, f"{MESSAGES['FRAMEWORK_CATEGORIES_NOT_FOUND_PREFIX']}: {', '.join(missing_ids)}"
+        return (
+            None,
+            None,
+            f"{MESSAGES['FRAMEWORK_CATEGORIES_NOT_FOUND_PREFIX']}: {', '.join(missing_ids)}",
+        )
 
     inactive = [c for c in framework_categories if not c.isActive]
     if inactive:
@@ -728,8 +745,9 @@ async def revoke_framework_access(
 
 
 # ---------------------------------------------------------------------------
-# Ported from framework-service 
+# Ported from framework-service
 # ---------------------------------------------------------------------------
+
 
 def _nested_user_id(blob: dict | None, key: str) -> str | None:
     if not blob or not isinstance(blob, dict):
@@ -962,6 +980,3 @@ def _get_response_message(
         return "No framework access records match your criteria. Try adjusting your filters."
 
     return "You haven't requested access to any frameworks yet. Request access to start uploading frameworks."
-
-
-

@@ -51,5 +51,3 @@ async def get_compare_results(
     except Exception as exc:  # noqa: BLE001
         logger.exception("get_compare_results error")
         return server_error(str(exc))
-
-

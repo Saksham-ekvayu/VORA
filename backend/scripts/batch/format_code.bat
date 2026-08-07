@@ -25,7 +25,7 @@ cd /d "%BACKEND_DIR%"
 echo.
 echo [2/3] Running Black (Code Formatter)...
 echo Formatting Python files...
-python -m black . --exclude ".venv,__pycache__" --extend-exclude "\.ipynb"
+python -m black . --extend-exclude "\.venv|__pycache__|\.ipynb"
 if errorlevel 1 (
     echo ERROR: Black formatting failed.
     pause

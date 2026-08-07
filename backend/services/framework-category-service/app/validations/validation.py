@@ -9,7 +9,7 @@ replicate that exact "first failing field, in declared order" behaviour.
 import re
 from typing import Any
 
-from app.helpers import to_title_case
+from app.helpers.helpers import to_title_case
 from vora_shared.messages import VALIDATION_MESSAGES as VM
 
 CODE_RE = re.compile(r"^[a-z0-9_]+$")
