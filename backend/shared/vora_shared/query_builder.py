@@ -10,7 +10,6 @@ from fastapi import HTTPException, status
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase
-
 from vora_shared.models.user import User
 
 T = TypeVar("T")
@@ -25,9 +24,7 @@ async def find_by_id_or_fail(
     result = await session.execute(select(model).where(model.id == doc_id))  # type: ignore[attr-defined]
     document = result.scalar_one_or_none()
     if not document:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"{resource_name} not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"{resource_name} not found")
     return document
 
 
@@ -65,9 +62,7 @@ async def build_search_filter_with_user(
     user_rows = await session.execute(user_stmt)
     matching_user_ids = [row[0] for row in user_rows.all()]
     if matching_user_ids:
-        field_names = (
-            user_field_name if isinstance(user_field_name, list) else [user_field_name]
-        )
+        field_names = user_field_name if isinstance(user_field_name, list) else [user_field_name]
         for field_name in field_names:
             col = getattr(model, field_name, None)
             if col is not None:
@@ -78,7 +73,9 @@ async def build_search_filter_with_user(
     return stmt
 
 
-def apply_search_filter(model: type, search_term: str | None, search_fields: list[str], stmt: Select) -> Select:
+def apply_search_filter(
+    model: type, search_term: str | None, search_fields: list[str], stmt: Select
+) -> Select:
     if not search_term or not search_fields:
         return stmt
     conditions = _ilike_filters(model, search_term, search_fields)
@@ -202,6 +199,7 @@ async def paginate_with_search(
 
 # ---- Compatibility shims used by older call sites ----
 
+
 def build_search_filter(
     search_term: str | None,
     search_fields: list[str],
@@ -229,7 +227,12 @@ def build_filter(
     base_filter: dict[str, Any] | None = None,
     additional_filters: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    return {**(base_filter or {}), **(additional_filters or {}), "_search": search, "_search_fields": search_fields}
+    return {
+        **(base_filter or {}),
+        **(additional_filters or {}),
+        "_search": search,
+        "_search_fields": search_fields,
+    }
 
 
 def self_tenant_query(tenant_id: str | None, extra: dict[str, Any] | None = None) -> dict[str, Any]:

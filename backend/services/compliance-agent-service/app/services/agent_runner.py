@@ -8,7 +8,6 @@ from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm.attributes import flag_modified
-
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
 from vora_shared.models import EvidenceOutput, UploadedFile
@@ -42,9 +41,7 @@ async def process_ingest(payload: dict[str, Any]) -> None:
             if uploaded is None and document_uuid:
                 uploaded = (
                     await session.execute(
-                        select(UploadedFile)
-                        .where(UploadedFile.ref_id == str(document_uuid))
-                        .limit(1)
+                        select(UploadedFile).where(UploadedFile.ref_id == str(document_uuid)).limit(1)
                     )
                 ).scalar_one_or_none()
 
@@ -75,8 +72,7 @@ async def process_ingest(payload: dict[str, Any]) -> None:
                 "frameworkCode": payload.get("frameworkCode") or meta.get("frameworkCode"),
                 "frameworkName": payload.get("frameworkName") or meta.get("frameworkName"),
                 "frameworkId": payload.get("frameworkId") or meta.get("frameworkId"),
-                "frameworkVersion": payload.get("frameworkVersion")
-                or meta.get("frameworkVersion"),
+                "frameworkVersion": payload.get("frameworkVersion") or meta.get("frameworkVersion"),
                 "source": payload.get("source") or meta.get("source") or "Load Service",
                 "fileVersions": [
                     {
@@ -88,8 +84,7 @@ async def process_ingest(payload: dict[str, Any]) -> None:
                                 "control_id": control_id,
                                 "status": "placeholder",
                                 "summary": (
-                                    "Stub evidence output — full OCR/LLM pipeline "
-                                    "not run in this port."
+                                    "Stub evidence output — full OCR/LLM pipeline " "not run in this port."
                                 ),
                                 "filename": filename,
                             }
@@ -100,9 +95,7 @@ async def process_ingest(payload: dict[str, Any]) -> None:
 
             existing = (
                 await session.execute(
-                    select(EvidenceOutput)
-                    .where(EvidenceOutput.control_id == str(control_id))
-                    .limit(1)
+                    select(EvidenceOutput).where(EvidenceOutput.control_id == str(control_id)).limit(1)
                 )
             ).scalar_one_or_none()
             if existing:

@@ -6,7 +6,7 @@ import Icon from "@/components/custom/Icon";
 import { Button } from "@/components/ui/button";
 import {
   downloadDeploymentFrameworkFile,
-  uploadDeploymentFrameworkToAi,
+  extractDeploymentFramework,
 } from "@/services/deploymentFrameworkService";
 import { toast } from "sonner";
 import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
@@ -32,7 +32,7 @@ export default function DeploymentFrameworkPackageTable({
     }
   };
 
-  const handleUploadToAi = async (fileId) => {
+  const handleAiExtraction = async (fileId) => {
     if (!preReleasePackage?.packageVersion) {
       toast.error("Package version is missing");
       return;
@@ -42,7 +42,7 @@ export default function DeploymentFrameworkPackageTable({
       if (onExtractionTriggered) {
         onExtractionTriggered(fileId);
       }
-      const response = await uploadDeploymentFrameworkToAi(
+      const response = await extractDeploymentFramework(
         frameworkId,
         preReleasePackage.packageVersion,
         fileId
@@ -203,7 +203,7 @@ export default function DeploymentFrameworkPackageTable({
                             uploadingFileId === doc.fileId
                           }
                           className={status.buttonClass}
-                          onClick={() => handleUploadToAi(doc.fileId)}
+                          onClick={() => handleAiExtraction(doc.fileId)}
                         >
                           <Icon name={status.buttonIcon} size={11} />
                           {status.buttonText}

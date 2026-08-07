@@ -1,7 +1,6 @@
 import { apiRequest } from "./apiService";
 
 const FRAMEWORK_BASE = "/framework";
-const ACCESS_BASE = "/framework-service/framework-access";
 const DASHBOARD_BASE = "/dashboard";
 
 /**
@@ -83,27 +82,6 @@ export function getFrameworkCategory({
 }
 
 /**
- * Get available frameworks category access
- */
-export function getFrameworkCategoryAccess({
-  page = 1,
-  limit = 10,
-  search = "",
-  sortBy = "",
-  sortOrder = "",
-} = {}) {
-  const params = new URLSearchParams({
-    page: page.toString(),
-    limit: limit.toString(),
-    ...(search && { search }),
-    ...(sortBy && { sortBy }),
-    ...(sortOrder && { sortOrder }),
-  });
-
-  return apiRequest(`${ACCESS_BASE}/my-access?${params.toString()}`, true);
-}
-
-/**
  * Get existing frameworks to check used categories
  */
 export function getExistingFrameworks({
@@ -128,19 +106,6 @@ export function getExistingFrameworks({
 }
 
 /**
- * Request framework access
- */
-export function requestFrameworkAccess(frameworkId) {
-  return apiRequest(
-    `${ACCESS_BASE}/${frameworkId}/request`,
-    {
-      method: "POST",
-    },
-    true
-  );
-}
-
-/**
  * Upload framework file
  */
 export function uploadFramework(formData) {
@@ -155,11 +120,11 @@ export function uploadFramework(formData) {
 }
 
 /**
- * Upload framework file to ai
+ * Extract framework file by ai
  */
-export function uploadFrameworkToAi(frameworkId, fileId) {
+export function extractFramework(frameworkId, fileId) {
   return apiRequest(
-    `${FRAMEWORK_BASE}/${frameworkId}/files/${fileId}/ai-upload`,
+    `${FRAMEWORK_BASE}/${frameworkId}/files/${fileId}/ai-extract`,
     {
       method: "POST",
     },

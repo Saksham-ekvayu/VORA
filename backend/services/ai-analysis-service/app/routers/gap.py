@@ -6,18 +6,15 @@ import asyncio
 import logging
 from typing import Any
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from app.services.gap_runner import DEFAULT_STATUSES, DEFAULT_THRESHOLDS, run_gap
+from fastapi import APIRouter
 from pydantic import BaseModel
 from sqlalchemy import func, select
-
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
 from vora_shared.models import DeploymentGapJob, DeploymentGapResult, GapConfig
 from vora_shared.query_builder import build_pagination_meta, clamp_limit, clamp_page
 from vora_shared.responses import error, not_found, paginated, server_error, success
-
-from app.services.gap_runner import DEFAULT_STATUSES, DEFAULT_THRESHOLDS, run_gap
-from app.utils.ws_manager import manager
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["gap"])
@@ -35,9 +32,7 @@ class ThresholdConfigUpdate(BaseModel):
 
 
 async def _get_config(session, key: str) -> GapConfig | None:
-    return (
-        await session.execute(select(GapConfig).where(GapConfig.config_key == key))
-    ).scalar_one_or_none()
+    return (await session.execute(select(GapConfig).where(GapConfig.config_key == key))).scalar_one_or_none()
 
 
 async def _upsert_config(session, key: str, value: dict[str, Any]) -> GapConfig:
@@ -49,13 +44,6 @@ async def _upsert_config(session, key: str, value: dict[str, Any]) -> GapConfig:
         row.config_value = value
     return row
 
-
-@router.get("/health")
-async def health_check():
-    return success(
-        message="Service is healthy",
-        data={"service": "deployment-gap-service", "status": "healthy"},
-    )
 
 
 @router.get("/status")
@@ -88,18 +76,20 @@ async def list_deployment_gap_analyses(page: int = 1, page_size: int = 10):
         page_size = clamp_limit(page_size, default=10)
         async with session_scope() as session:
             total = (
-                await session.execute(
-                    select(func.count()).select_from(DeploymentGapResult)
-                )
+                await session.execute(select(func.count()).select_from(DeploymentGapResult))
             ).scalar_one()
             rows = (
-                await session.execute(
-                    select(DeploymentGapResult)
-                    .order_by(DeploymentGapResult.createdAt.desc())
-                    .offset((page - 1) * page_size)
-                    .limit(page_size)
+                (
+                    await session.execute(
+                        select(DeploymentGapResult)
+                        .order_by(DeploymentGapResult.createdAt.desc())
+                        .offset((page - 1) * page_size)
+                        .limit(page_size)
+                    )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             items = []
             for row in rows:
                 result = row.result or {}
@@ -130,10 +120,14 @@ async def get_deployment_gap_results_by_id(deployment_gap_id: str):
         async with session_scope() as session:
             # Match by job id stored in result, or by result PK
             rows = (
-                await session.execute(
-                    select(DeploymentGapResult).order_by(DeploymentGapResult.createdAt.desc())
+                (
+                    await session.execute(
+                        select(DeploymentGapResult).order_by(DeploymentGapResult.createdAt.desc())
+                    )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             match: DeploymentGapResult | None = None
             for row in rows:
                 if row.id == deployment_gap_id:
@@ -153,9 +147,7 @@ async def get_deployment_gap_results_by_id(deployment_gap_id: str):
                             match = row
                             break
             if not match:
-                return not_found(
-                    f"Deployment gap results not found for: {deployment_gap_id}"
-                )
+                return not_found(f"Deployment gap results not found for: {deployment_gap_id}")
 
             result = match.result or {}
             grouped = result.get("grouped_gap_results")
@@ -193,21 +185,24 @@ async def get_available_controls_for_deployment_gap(deployment_gap_id: str):
     try:
         async with session_scope() as session:
             rows = (
-                await session.execute(
-                    select(DeploymentGapResult).order_by(DeploymentGapResult.createdAt.desc())
+                (
+                    await session.execute(
+                        select(DeploymentGapResult).order_by(DeploymentGapResult.createdAt.desc())
+                    )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             match: DeploymentGapResult | None = None
             for row in rows:
-                if row.id == deployment_gap_id or (row.result or {}).get(
-                    "deployment_gap_id"
-                ) == deployment_gap_id:
+                if (
+                    row.id == deployment_gap_id
+                    or (row.result or {}).get("deployment_gap_id") == deployment_gap_id
+                ):
                     match = row
                     break
             if not match:
-                return not_found(
-                    f"Deployment gap results not found for: {deployment_gap_id}"
-                )
+                return not_found(f"Deployment gap results not found for: {deployment_gap_id}")
 
             flat = (match.result or {}).get("deployment_gap_results") or []
             controls = []
@@ -237,31 +232,6 @@ async def get_available_controls_for_deployment_gap(deployment_gap_id: str):
     except Exception as exc:  # noqa: BLE001
         logger.exception("get_available_controls error")
         return server_error(str(exc))
-
-
-@router.websocket("/ws/gap/{deployment_framework_id}/{package_version}")
-async def ws_gap_auto(
-    websocket: WebSocket, deployment_framework_id: str, package_version: str
-):
-    deployment_framework_id = deployment_framework_id.strip()
-    package_version = package_version.strip()
-    conn_key = f"gap:{deployment_framework_id}:{package_version}"
-    await manager.connect(conn_key, websocket)
-
-    async def send_cb(msg: dict[str, Any]) -> None:
-        await manager.send_json(conn_key, msg)
-
-    task = asyncio.create_task(run_gap(deployment_framework_id, package_version, send_cb))
-    try:
-        while True:
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        await manager.disconnect(conn_key, websocket)
-    except Exception as exc:  # noqa: BLE001
-        logger.error("WS gap error | %s", exc, exc_info=True)
-        await manager.disconnect(conn_key, websocket)
-    finally:
-        _ = task
 
 
 # ---------------------------------------------------------------------------

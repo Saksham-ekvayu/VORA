@@ -6,13 +6,19 @@ import Icon from "@/components/custom/Icon";
 import { ModalFooter, ModalHeader } from "@/components/custom/modal";
 import { useExpertCategoryAccess } from "@/hooks/useExpertCategoryAccess";
 import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import { ChevronDown } from "lucide-react";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ChevronDown, Check } from "lucide-react";
 import FileTypeCard from "@/components/custom/FileTypeCard";
 import { uploadFramework } from "@/services/frameworkService";
 import {
@@ -52,7 +58,7 @@ export default function UploadFrameworkModal({ isOpen, onClose, onSuccess }) {
   // Transform accessible categories to dropdown format
   const approvedCategories = accessibleCategories.map((cat) => ({
     value: cat.id || cat._id,
-    label: `${cat.frameworkCategoryName} (${cat.code})`,
+    label: `${cat.frameworkCategoryName} (${cat.code?.toUpperCase()})`,
     code: cat.code,
     name: cat.frameworkCategoryName,
   }));
@@ -67,6 +73,7 @@ export default function UploadFrameworkModal({ isOpen, onClose, onSuccess }) {
   });
 
   const [errors, setErrors] = useState({});
+  const [open, setOpen] = useState(false);
 
   // Initialize form data when framework prop changes (removed fetchApprovedCategories function)
 
@@ -289,10 +296,12 @@ export default function UploadFrameworkModal({ isOpen, onClose, onSuccess }) {
                 <Label htmlFor="framework-category">
                   Framework Category <span className="required">*</span>
                 </Label>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
+                <Popover open={open} onOpenChange={setOpen} modal={true}>
+                  <PopoverTrigger asChild>
                     <Button
                       variant="outline"
+                      role="combobox"
+                      aria-expanded={open}
                       className={cn(
                         "w-full justify-between font-normal bg-background hover:bg-background",
                         errors.frameworkCategoryId
@@ -306,36 +315,51 @@ export default function UploadFrameworkModal({ isOpen, onClose, onSuccess }) {
                       </span>
                       <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
                     </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    className="w-(--radix-dropdown-menu-trigger-width) border-border dark:border-gray-600 dark:bg-gray-800 z-10001"
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-[--radix-popover-trigger-width] p-0 border-border dark:border-gray-600 dark:bg-gray-800 z-[10001]"
                     align="start"
-                    sideOffset={4}
                   >
-                    <DropdownMenuItem
-                      onClick={() => handleChange("frameworkCategoryId", "")}
-                      className="cursor-pointer dark:focus:bg-gray-700 dark:focus:text-white"
-                    >
-                      Select a category
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    {approvedCategories.map((category) => (
-                      <DropdownMenuItem
-                        key={category.value}
-                        onClick={() =>
-                          handleChange("frameworkCategoryId", category.value)
-                        }
-                        className={cn(
-                          "cursor-pointer dark:focus:bg-gray-700 dark:focus:text-white",
-                          formData.frameworkCategoryId === category.value &&
-                            "bg-primary/10 text-primary font-medium"
-                        )}
-                      >
-                        {category.label}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                    <Command>
+                      <CommandInput placeholder="Search category..." />
+                      <CommandList className="max-h-[250px] overflow-y-auto">
+                        <CommandEmpty>No category found.</CommandEmpty>
+                        <CommandGroup>
+                          {approvedCategories.map((category) => (
+                            <CommandItem
+                              key={category.value}
+                              value={category.label}
+                              onSelect={() => {
+                                handleChange(
+                                  "frameworkCategoryId",
+                                  category.value
+                                );
+                                setOpen(false);
+                              }}
+                              className={cn(
+                                "cursor-pointer dark:focus:bg-gray-700 dark:focus:text-white",
+                                formData.frameworkCategoryId ===
+                                  category.value &&
+                                  "bg-primary/10 text-primary font-medium"
+                              )}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  formData.frameworkCategoryId ===
+                                    category.value
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                )}
+                              />
+                              {category.label}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               {/* Framework Version */}

@@ -8,16 +8,14 @@ import os
 from datetime import datetime, timezone
 from typing import Any
 
+from app.services.agent_runner import process_ingest
 from fastapi import APIRouter, Request
 from sqlalchemy import func, select
-
 from vora_shared.config import get_settings
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
 from vora_shared.models import AgentPrompt, EvidenceOutput, UploadedFile
 from vora_shared.responses import error, success
-
-from app.services.agent_runner import process_ingest
 
 logger = logging.getLogger(__name__)
 
@@ -83,14 +81,6 @@ def _evidence_to_dict(row: EvidenceOutput) -> dict[str, Any]:
     return output
 
 
-@router.get("/health")
-async def health_check():
-    return success(
-        message="Service is healthy",
-        data={"status": "healthy", "service": "compliance-agent-service"},
-    )
-
-
 @router.get("/agents")
 async def list_agents():
     try:
@@ -109,10 +99,10 @@ async def list_uploads():
     try:
         async with session_scope() as session:
             rows = (
-                await session.execute(
-                    select(UploadedFile).order_by(UploadedFile.createdAt.desc())
-                )
-            ).scalars().all()
+                (await session.execute(select(UploadedFile).order_by(UploadedFile.createdAt.desc())))
+                .scalars()
+                .all()
+            )
             formatted = [_uploaded_to_dict(r) for r in rows]
         return success(
             message=f"Returned {len(formatted)} uploads",
@@ -128,10 +118,10 @@ async def get_all_output():
     try:
         async with session_scope() as session:
             rows = (
-                await session.execute(
-                    select(EvidenceOutput).order_by(EvidenceOutput.createdAt.desc())
-                )
-            ).scalars().all()
+                (await session.execute(select(EvidenceOutput).order_by(EvidenceOutput.createdAt.desc())))
+                .scalars()
+                .all()
+            )
             data = [_evidence_to_dict(r) for r in rows]
         return success(
             message=f"Returned {len(data)} evidence documents",
@@ -148,9 +138,7 @@ async def get_output_by_control(control_id: str):
         async with session_scope() as session:
             row = (
                 await session.execute(
-                    select(EvidenceOutput)
-                    .where(EvidenceOutput.control_id == control_id)
-                    .limit(1)
+                    select(EvidenceOutput).where(EvidenceOutput.control_id == control_id).limit(1)
                 )
             ).scalar_one_or_none()
             if not row:
@@ -186,17 +174,13 @@ async def status():
 
     try:
         async with session_scope() as session:
-            count = (
-                await session.execute(select(func.count()).select_from(EvidenceOutput))
-            ).scalar_one()
+            count = (await session.execute(select(func.count()).select_from(EvidenceOutput))).scalar_one()
     except Exception as exc:
         logger.error("GET /status | evidence count failed: %s", exc)
         count = 0
 
     settings = get_settings()
-    evidence_folder = os.environ.get(
-        "UPLOAD_DIR", getattr(settings, "upload_dir", None) or "uploads"
-    )
+    evidence_folder = os.environ.get("UPLOAD_DIR", getattr(settings, "upload_dir", None) or "uploads")
     return success(
         message="Service status",
         data={

@@ -25,14 +25,14 @@ export function getAllUsers({
     ...(isActive && { isActive }),
   });
 
-  return apiRequest(`${ADMIN_BASE}/all-users?${params.toString()}`, true);
+  return apiRequest(`${ADMIN_BASE}/users?${params.toString()}`, true);
 }
 
 /**
  * Get user by ID
  */
 export function getUserById(userId) {
-  return apiRequest(`${ADMIN_BASE}/${userId}`, true); // ✅ GET with auth
+  return apiRequest(`${ADMIN_BASE}/users/${userId}`, true); // ✅ GET with auth
 }
 
 /**
@@ -40,7 +40,7 @@ export function getUserById(userId) {
  */
 export function createUser(userData) {
   return apiRequest(
-    `${ADMIN_BASE}/create`,
+    `${ADMIN_BASE}/users`,
     {
       method: "POST",
       body: JSON.stringify(userData),
@@ -54,7 +54,7 @@ export function createUser(userData) {
  */
 export function updateUserByAdmin(userId, userData) {
   return apiRequest(
-    `${ADMIN_BASE}/${userId}`,
+    `${ADMIN_BASE}/users/${userId}`,
     {
       method: "PATCH",
       body: JSON.stringify(userData),
@@ -89,7 +89,7 @@ export function updateUser(userData) {
  */
 export function deleteUser(userId) {
   return apiRequest(
-    `${ADMIN_BASE}/${userId}`,
+    `${ADMIN_BASE}/users/${userId}`,
     {
       method: "DELETE",
     },
@@ -102,7 +102,7 @@ export function deleteUser(userId) {
  */
 export function toggleUserStatus(userId) {
   return apiRequest(
-    `${ADMIN_BASE}/${userId}/toggle-status`,
+    `${ADMIN_BASE}/users/${userId}/toggle-status`,
     {
       method: "PATCH",
     },

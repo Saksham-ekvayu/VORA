@@ -9,7 +9,6 @@ from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import select
-
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
 from vora_shared.models import (
@@ -27,7 +26,7 @@ from vora_shared.models import (
 
 logger = logging.getLogger(__name__)
 
-SendCb = Callable[[dict[str, Any]], Awaitable[None]]
+
 
 DEFAULT_STATUSES = {
     "implemented": "Implemented",
@@ -49,31 +48,21 @@ def _iso(dt: datetime | None = None) -> str:
     return (dt or _utcnow()).isoformat()
 
 
-def send_event(
-    event_name: str, status: str, message: str, extra: dict[str, Any] | None = None
-) -> dict[str, Any]:
-    data: dict[str, Any] = {
-        "status": status,
-        "message": message,
-        "timestamp": _iso(),
-    }
-    if extra:
-        data.update(extra)
-    return {"event": event_name, "data": data}
+
 
 
 async def _load_gap_config(session) -> tuple[dict[str, Any], dict[str, Any]]:
     statuses = dict(DEFAULT_STATUSES)
     thresholds = dict(DEFAULT_THRESHOLDS)
     rows = (
-        await session.execute(
-            select(GapConfig).where(
-                GapConfig.config_key.in_(
-                    ["implementation_status", "thresholds"]
-                )
+        (
+            await session.execute(
+                select(GapConfig).where(GapConfig.config_key.in_(["implementation_status", "thresholds"]))
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     for row in rows:
         if row.config_key == "implementation_status":
             statuses.update(row.config_value or {})
@@ -96,24 +85,26 @@ def _status_for_score(score: float, thresholds: dict[str, Any], statuses: dict[s
 
 async def _load_comparison_grouped(session, df_id: str, pkg_ver: str) -> list[dict[str, Any]]:
     row = (
-        await session.execute(
-            select(ComparisonResult)
-            .where(
-                ComparisonResult.deployment_framework_id == df_id,
-                ComparisonResult.package_version == pkg_ver,
+        (
+            await session.execute(
+                select(ComparisonResult)
+                .where(
+                    ComparisonResult.deployment_framework_id == df_id,
+                    ComparisonResult.package_version == pkg_ver,
+                )
+                .order_by(ComparisonResult.createdAt.desc())
             )
-            .order_by(ComparisonResult.createdAt.desc())
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     if row and isinstance(row.result, dict):
         grouped = row.result.get("grouped_results") or []
         if grouped:
             return grouped
 
     pc = (
-        await session.execute(
-            select(PackageComparison).where(PackageComparison.frameworkId == df_id)
-        )
+        await session.execute(select(PackageComparison).where(PackageComparison.frameworkId == df_id))
     ).scalar_one_or_none()
     if pc and isinstance(pc.comparison, dict):
         return pc.comparison.get("comparison_result") or []
@@ -135,52 +126,21 @@ async def _load_assignment_controls(session, assignment_id: str) -> list[dict[st
     return []
 
 
-async def run_gap(df_id: str, pkg_ver: str, send_cb: SendCb) -> None:
+async def run_gap(df_id: str, pkg_ver: str) -> None:
     df_id = str(df_id).strip()
     pkg_ver = str(pkg_ver).strip()
     started = _utcnow()
 
     try:
-        await send_cb(
-            send_event(
-                "connected",
-                "connected",
-                "WebSocket connected. Gap analysis starting.",
-            )
-        )
-        await send_cb(send_event("gap_started", "started", "Starting gap analysis ..."))
-
         async with session_scope() as session:
             df = await session.get(DeploymentFramework, df_id)
             if not df:
-                await send_cb(
-                    {
-                        "event": "gap_failed",
-                        "data": {
-                            "error": "DEPLOYMENT_FRAMEWORK_NOT_FOUND",
-                            "message": f"DeploymentFramework not found with id: {df_id}",
-                            "deployment_framework_id": df_id,
-                            "package_version": pkg_ver,
-                            "timestamp": _iso(),
-                        },
-                    }
-                )
+                logger.error(f"DeploymentFramework not found with id: {df_id}")
                 return
 
             fa_id = df.assignedFrameworkId or df.frameworkId
             if not fa_id:
-                await send_cb(
-                    {
-                        "event": "gap_failed",
-                        "data": {
-                            "error": "FRAMEWORK_ASSIGNMENT_ID_NOT_FOUND",
-                            "message": "No assignedFrameworkId or frameworkId found",
-                            "deployment_framework_id": df_id,
-                            "package_version": pkg_ver,
-                            "timestamp": _iso(),
-                        },
-                    }
-                )
+                logger.error("No assignedFrameworkId or frameworkId found")
                 return
 
             statuses, thresholds = await _load_gap_config(session)
@@ -199,27 +159,14 @@ async def run_gap(df_id: str, pkg_ver: str, send_cb: SendCb) -> None:
                 merge_controls = (track.data or {}).get("controls_data") if track else []
                 if not merge_controls:
                     pm = (
-                        await session.execute(
-                            select(PackageMerge).where(PackageMerge.frameworkId == df_id)
-                        )
+                        await session.execute(select(PackageMerge).where(PackageMerge.frameworkId == df_id))
                     ).scalar_one_or_none()
                     if pm and isinstance(pm.mergeExtraction, dict):
                         merge_controls = pm.mergeExtraction.get("controls_data") or []
 
                 assignment_sections = await _load_assignment_controls(session, str(fa_id))
                 if not assignment_sections and not merge_controls:
-                    await send_cb(
-                        {
-                            "event": "gap_failed",
-                            "data": {
-                                "error": "NO_COMPARISON_OR_CONTROLS",
-                                "message": "No comparison results or controls available for gap analysis",
-                                "deployment_framework_id": df_id,
-                                "package_version": pkg_ver,
-                                "timestamp": _iso(),
-                            },
-                        }
-                    )
+                    logger.error("No comparison results or controls available for gap analysis")
                     return
 
                 # Build minimal comparison-like structure from assignment controls
@@ -235,10 +182,7 @@ async def run_gap(df_id: str, pkg_ver: str, send_cb: SendCb) -> None:
                             {
                                 "assigned_framework_control_id": str(ctrl.get("id") or ""),
                                 "assigned_framework_control_name": ctrl.get("name") or "",
-                                "assigned_framework_control_description": ctrl.get(
-                                    "description"
-                                )
-                                or "",
+                                "assigned_framework_control_description": ctrl.get("description") or "",
                                 "assigned_framework_deployment_points": [
                                     {
                                         "id": str(dp.get("id") or new_id()),
@@ -272,10 +216,7 @@ async def run_gap(df_id: str, pkg_ver: str, send_cb: SendCb) -> None:
             session.add(job)
             gap_job_id = job.id
 
-        await send_cb(
-            send_event("gap_processing", "processing", "Analyzing deployment gaps")
-        )
-        await asyncio.sleep(0.05)
+
 
         gap_results: list[dict[str, Any]] = []
         grouped_by_control: dict[str, list[dict[str, Any]]] = {}
@@ -289,9 +230,7 @@ async def run_gap(df_id: str, pkg_ver: str, send_cb: SendCb) -> None:
                 score = float(item.get("comparison_score") or 0)
                 impl_status = _status_for_score(score, thresholds, statuses)
                 assigned_id = str(
-                    item.get("assigned_framework_control_id")
-                    or item.get("Framework_control_id")
-                    or "Unknown"
+                    item.get("assigned_framework_control_id") or item.get("Framework_control_id") or "Unknown"
                 )
 
                 # One gap row per assigned deployment point (or one if none)
@@ -303,23 +242,15 @@ async def run_gap(df_id: str, pkg_ver: str, send_cb: SendCb) -> None:
                         continue
                     gap_row = {
                         "assigned_framework_control_id": assigned_id,
-                        "assigned_framework_control_name": item.get(
-                            "assigned_framework_control_name"
-                        )
-                        or "",
+                        "assigned_framework_control_name": item.get("assigned_framework_control_name") or "",
                         "assigned_framework_control_description": item.get(
                             "assigned_framework_control_description"
                         )
                         or "",
                         "assigned_framework_deployment_point_id": str(dp.get("id") or ""),
                         "assigned_framework_deployment_point": dp.get("point") or "",
-                        "deployment_framework_control_id": item.get(
-                            "deployment_framework_control_id"
-                        )
-                        or "",
-                        "deployment_framework_control_name": item.get(
-                            "deployment_framework_control_name"
-                        )
+                        "deployment_framework_control_id": item.get("deployment_framework_control_id") or "",
+                        "deployment_framework_control_name": item.get("deployment_framework_control_name")
                         or "",
                         "comparison_score": score,
                         "implementation_status": impl_status,
@@ -392,21 +323,5 @@ async def run_gap(df_id: str, pkg_ver: str, send_cb: SendCb) -> None:
                         break
                 df.packages = packages
 
-        await send_cb(
-            send_event(
-                "gap_completed",
-                "completed",
-                "Gap analysis completed",
-                {
-                    "deployment_framework_id": df_id,
-                    "package_version": pkg_ver,
-                    "deployment_gap_id": gap_job_id,
-                    "gap_time_seconds": elapsed,
-                    "deployment_gap_results": gap_results,
-                    "grouped_gap_results": grouped_array,
-                },
-            )
-        )
     except Exception as exc:  # noqa: BLE001
         logger.exception("run_gap failed | df=%s pkg=%s", df_id, pkg_ver)
-        await send_cb(send_event("gap_failed", "failed", str(exc)))

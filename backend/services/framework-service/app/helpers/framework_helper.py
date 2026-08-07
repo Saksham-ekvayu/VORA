@@ -6,6 +6,8 @@ import json
 import re
 from typing import Any
 
+from vora_shared import data_format
+from vora_shared import messages as msg
 from vora_shared.models.framework import (
     ControlItem,
     DeploymentPoint,
@@ -13,21 +15,6 @@ from vora_shared.models.framework import (
     Framework,
     Section,
 )
-from app.services import data_formatter
-
-BUSINESS_MESSAGES = {
-    "EXPERT_FRAMEWORKS_SUCCESS": "Your frameworks retrieved successfully",
-    "NO_FRAMEWORKS_SEARCH": "No frameworks match your search criteria. Try adjusting your filters.",
-    "NO_FRAMEWORKS_UPLOADED": "You haven't uploaded any frameworks yet. Upload your first framework to get started.",
-    "VERSION_NOT_FOUND": "Version {version} not found in this framework",
-    "VERSION_NO_CONTROLS": "Version {version} does not have any controls",
-    "SECTION_NOT_FOUND": "Section with ID {sectionId} not found in version {version}",
-    "CONTROL_ID_ALREADY_EXISTS": "A control with ID {controlId} already exists in this version",
-    "CONTROL_NOT_FOUND": "Control with ID {controlId} not found in version {version}",
-    "CONTROL_ADDED_SUCCESS": "Control added successfully to section {sectionId} in version {version}",
-    "CONTROL_UPDATED_SUCCESS": "Control {controlId} updated successfully in version {version}",
-    "CONTROL_DELETED_SUCCESS": "Control {controlId} deleted successfully from version {version}",
-}
 
 
 def format_message(template: str, **replacements: Any) -> str:
@@ -115,17 +102,17 @@ def transform_framework_doc(doc: Framework, uploaded_by_user=None) -> dict:
         "frameworkName": doc.frameworkName,
         "frameworkVersion": doc.frameworkVersion,
         "frameworkCode": doc.frameworkCode,
-        "frameworkCategoryId": str(doc.frameworkCategoryId) if doc and getattr(doc, "frameworkCategoryId", None) else None,
+        "frameworkCategoryId": (
+            str(doc.frameworkCategoryId) if doc and getattr(doc, "frameworkCategoryId", None) else None
+        ),
         "currentFileVersion": doc.currentFileVersion,
         "fileInfo": {
             "fileId": str(current.fileId) if current and getattr(current, "fileId", None) else None,
             "originalFileName": current.originalFileName if current else "Unknown",
-            "fileSize": data_formatter.format_file_size(
-                current.fileSize if current else 0
-            ),
+            "fileSize": data_format.format_file_size(current.fileSize if current else 0),
             "fileType": current.fileType if current else "pdf",
         },
-        "uploadedBy": data_formatter.format_uploaded_by(uploaded_by_user, doc.uploadedBy),
+        "uploadedBy": data_format.format_uploaded_by(uploaded_by_user, doc.uploadedBy),
         "aiExtraction": {
             "status": (current.aiExtraction.status if current and current.aiExtraction else None),
         },
@@ -139,10 +126,18 @@ def get_framework_message(
     data_length: int, search: str | None, ai_status: str | None, approval_status_filter: str | None
 ) -> str:
     if data_length > 0:
-        return BUSINESS_MESSAGES["EXPERT_FRAMEWORKS_SUCCESS"]
+        return msg.BUSINESS_MESSAGES.get(
+            "USER_FRAMEWORKS_RETRIEVED", "Your frameworks retrieved successfully"
+        )
     if search or ai_status or approval_status_filter:
-        return BUSINESS_MESSAGES["NO_FRAMEWORKS_SEARCH"]
-    return BUSINESS_MESSAGES["NO_FRAMEWORKS_UPLOADED"]
+        return msg.BUSINESS_MESSAGES.get(
+            "NO_FRAMEWORKS_MATCH_CRITERIA",
+            "No frameworks match your search criteria. Try adjusting your filters.",
+        )
+    return msg.BUSINESS_MESSAGES.get(
+        "NO_USER_FRAMEWORKS",
+        "You haven't uploaded any frameworks yet. Upload your first framework to get started.",
+    )
 
 
 def get_next_section_id(existing_sections: list[Section]) -> str:
@@ -159,7 +154,12 @@ def get_next_section_id(existing_sections: list[Section]) -> str:
 def resolve_new_section(new_section: str, controls_data: list[Section]) -> dict:
     trimmed = new_section.strip()
     if not trimmed:
-        return {"error": {"message": "newSection name cannot be empty", "statusCode": 400}}
+        return {
+            "error": {
+                "message": msg.BUSINESS_MESSAGES.get("NEW_SECTION_EMPTY", "New section name cannot be empty"),
+                "statusCode": 400,
+            }
+        }
 
     existing = next(
         (s for s in controls_data if (s.name or "").strip().lower() == trimmed.lower()),
@@ -168,7 +168,12 @@ def resolve_new_section(new_section: str, controls_data: list[Section]) -> dict:
     if existing:
         return {
             "error": {
-                "message": f'Section with name "{trimmed}" already exists',
+                "message": msg.format_message(
+                    msg.BUSINESS_MESSAGES.get(
+                        "SECTION_ALREADY_EXISTS", 'Section with name "{sectionName}" already exists'
+                    ),
+                    sectionName=trimmed,
+                ),
                 "statusCode": 409,
             }
         }
@@ -177,7 +182,12 @@ def resolve_new_section(new_section: str, controls_data: list[Section]) -> dict:
     if any(s.id == new_section_id for s in controls_data):
         return {
             "error": {
-                "message": f'Generated Section ID "{new_section_id}" already exists',
+                "message": msg.format_message(
+                    msg.BUSINESS_MESSAGES.get(
+                        "SECTION_ID_EXISTS", 'Generated Section ID "{sectionId}" already exists'
+                    ),
+                    sectionId=new_section_id,
+                ),
                 "statusCode": 409,
             }
         }
@@ -193,14 +203,15 @@ def resolve_new_section(new_section: str, controls_data: list[Section]) -> dict:
     }
 
 
-def resolve_existing_section(
-    section_id: str, controls_data: list[Section], file_version: str
-) -> dict:
+def resolve_existing_section(section_id: str, controls_data: list[Section], file_version: str) -> dict:
     if len(controls_data) == 0:
         return {
             "error": {
                 "message": format_message(
-                    BUSINESS_MESSAGES["VERSION_NO_CONTROLS"], version=file_version
+                    msg.BUSINESS_MESSAGES.get(
+                        "VERSION_NO_CONTROLS", "No controls found in version {version}"
+                    ),
+                    version=file_version,
                 ),
                 "statusCode": 404,
             }
@@ -211,7 +222,9 @@ def resolve_existing_section(
         return {
             "error": {
                 "message": format_message(
-                    BUSINESS_MESSAGES["SECTION_NOT_FOUND"],
+                    msg.BUSINESS_MESSAGES.get(
+                        "SECTION_NOT_FOUND", "Section {sectionId} not found in version {version}"
+                    ),
                     sectionId=section_id,
                     version=file_version,
                 ),

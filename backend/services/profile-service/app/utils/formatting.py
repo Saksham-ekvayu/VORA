@@ -89,16 +89,12 @@ def merge_address(
     addr = address_dict(existing)
     if permanent is not None:
         updates = (
-            permanent.model_dump(exclude_unset=True)
-            if hasattr(permanent, "model_dump")
-            else dict(permanent)
+            permanent.model_dump(exclude_unset=True) if hasattr(permanent, "model_dump") else dict(permanent)
         )
         addr["permanentAddress"] = {**addr["permanentAddress"], **updates}
     if temporary is not None:
         updates = (
-            temporary.model_dump(exclude_unset=True)
-            if hasattr(temporary, "model_dump")
-            else dict(temporary)
+            temporary.model_dump(exclude_unset=True) if hasattr(temporary, "model_dump") else dict(temporary)
         )
         addr["temporaryAddress"] = {**addr["temporaryAddress"], **updates}
     return addr

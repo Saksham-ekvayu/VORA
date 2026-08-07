@@ -1,18 +1,7 @@
 import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
-
-from fastapi import APIRouter, Depends
-from sqlalchemy import func, select
-
-from vora_shared import messages as msg
-from vora_shared.auth import AuthenticatedUser, authenticate, sign_token
-from vora_shared.database import session_scope
-from vora_shared.email import generate_otp, load_template, send_email
-from vora_shared.models.user import User, UserCreatedBy, UserOtp
-from vora_shared.responses import error, success
-from vora_shared.security import hash_password, verify_password
+from typing import Annotated, Any
 
 from app.schemas.auth import (
     ChangePasswordRequest,
@@ -22,6 +11,15 @@ from app.schemas.auth import (
     RegisterRequest,
     ResetPasswordRequest,
 )
+from fastapi import APIRouter, Depends
+from sqlalchemy import func, select
+from vora_shared import messages as msg
+from vora_shared.auth import AuthenticatedUser, authenticate, sign_token
+from vora_shared.database import session_scope
+from vora_shared.email import generate_otp, load_template, send_email
+from vora_shared.models.user import User, UserCreatedBy, UserOtp
+from vora_shared.responses import error, success
+from vora_shared.security import hash_password, verify_password
 
 router = APIRouter(tags=["auth"])
 logger = logging.getLogger(__name__)
@@ -131,9 +129,7 @@ async def register(body: RegisterRequest):
 @router.post("/verify-otp")
 async def verify_otp(body: OtpVerifyRequest):
     async with session_scope() as session:
-        user = (
-            await session.execute(select(User).where(User.email == body.email))
-        ).scalar_one_or_none()
+        user = (await session.execute(select(User).where(User.email == body.email))).scalar_one_or_none()
         if not user:
             return error(msg.USER_NOT_FOUND_EMAIL, 400, field="email")
 
@@ -164,9 +160,7 @@ async def resend_otp(body: EmailOnlyRequest):
     otp = generate_otp()
     otp_expiry = datetime.now(timezone.utc) + timedelta(minutes=10)
     async with session_scope() as session:
-        user = (
-            await session.execute(select(User).where(User.email == body.email))
-        ).scalar_one_or_none()
+        user = (await session.execute(select(User).where(User.email == body.email))).scalar_one_or_none()
         if not user:
             return error(msg.USER_NOT_FOUND_EMAIL, 400, field="email")
         user.otp = _otp_dict(UserOtp(code=otp, expiresAt=otp_expiry))
@@ -187,9 +181,7 @@ async def resend_otp(body: EmailOnlyRequest):
 @router.post("/login")
 async def login(body: LoginRequest):
     async with session_scope() as session:
-        user = (
-            await session.execute(select(User).where(User.email == body.email))
-        ).scalar_one_or_none()
+        user = (await session.execute(select(User).where(User.email == body.email))).scalar_one_or_none()
         if not user:
             return error(msg.USER_NOT_FOUND_EMAIL, 400, field="email")
 
@@ -230,15 +222,11 @@ async def forgot_password(body: EmailOnlyRequest):
     otp_expiry = datetime.now(timezone.utc) + timedelta(minutes=5)
     async with session_scope() as session:
         user = (
-            await session.execute(
-                select(User).where(User.email == body.email, User.isActive.is_(True))
-            )
+            await session.execute(select(User).where(User.email == body.email, User.isActive.is_(True)))
         ).scalar_one_or_none()
         if not user:
             return error(msg.USER_NOT_FOUND_EMAIL, 400, field="email")
-        user.otp = _otp_dict(
-            UserOtp(code=otp, expiresAt=otp_expiry, purpose="password_reset")
-        )
+        user.otp = _otp_dict(UserOtp(code=otp, expiresAt=otp_expiry, purpose="password_reset"))
         user.updatedAt = datetime.now(timezone.utc)
         user_name = user.name
 
@@ -257,9 +245,7 @@ async def forgot_password(body: EmailOnlyRequest):
 async def reset_password(body: ResetPasswordRequest):
     async with session_scope() as session:
         user = (
-            await session.execute(
-                select(User).where(User.email == body.email, User.isActive.is_(True))
-            )
+            await session.execute(select(User).where(User.email == body.email, User.isActive.is_(True)))
         ).scalar_one_or_none()
         if not user:
             return error(msg.USER_NOT_FOUND_EMAIL, 400, field="email")
@@ -296,9 +282,7 @@ async def send_verification_otp(body: EmailOnlyRequest):
     otp = generate_otp()
     otp_expiry = datetime.now(timezone.utc) + timedelta(minutes=5)
     async with session_scope() as session:
-        user = (
-            await session.execute(select(User).where(User.email == body.email))
-        ).scalar_one_or_none()
+        user = (await session.execute(select(User).where(User.email == body.email))).scalar_one_or_none()
         if not user:
             return error(msg.USER_NOT_FOUND_EMAIL, 400, field="email")
 
@@ -308,18 +292,14 @@ async def send_verification_otp(body: EmailOnlyRequest):
         if user.isEmailVerified:
             return error(msg.EMAIL_ALREADY_VERIFIED, 400, field="email")
 
-        user.otp = _otp_dict(
-            UserOtp(code=otp, expiresAt=otp_expiry, purpose="email_verification")
-        )
+        user.otp = _otp_dict(UserOtp(code=otp, expiresAt=otp_expiry, purpose="email_verification"))
         user.updatedAt = datetime.now(timezone.utc)
         user_name = user.name
 
     email_sent = await send_email(
         body.email,
         msg.EMAIL_SUBJECT_EMAIL_VERIFICATION,
-        load_template(
-            TEMPLATES_DIR, "email-verification-otp", {"otp": otp, "userName": user_name}
-        ),
+        load_template(TEMPLATES_DIR, "email-verification-otp", {"otp": otp, "userName": user_name}),
     )
     if not email_sent:
         return error(msg.EMAIL_SEND_FAILED, 500)
@@ -328,7 +308,7 @@ async def send_verification_otp(body: EmailOnlyRequest):
 
 
 @router.post("/logout")
-async def logout(ctx: AuthenticatedUser = Depends(authenticate)):
+async def logout(ctx: Annotated[AuthenticatedUser, Depends(authenticate)]):
     await _invalidate_tokens(ctx.user.id)
     return success(None, msg.LOGOUT_SUCCESS)
 
@@ -336,7 +316,7 @@ async def logout(ctx: AuthenticatedUser = Depends(authenticate)):
 @router.post("/change-password")
 async def change_password(
     body: ChangePasswordRequest,
-    ctx: AuthenticatedUser = Depends(authenticate),
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
     async with session_scope() as session:
         user = await session.get(User, ctx.user.id)

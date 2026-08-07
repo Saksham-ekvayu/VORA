@@ -15,7 +15,7 @@ import { useErrorHandler } from "@/hooks/useErrorHandler";
 import {
   validateEmail,
   validateName,
-  validatePhone,
+  validateOptionalPhone,
   validateSecondaryPhone,
   validateAddressFields,
 } from "@/utils/formValidation";
@@ -276,7 +276,7 @@ export default function CustomerManageModal({
     const nameError = validateName(formData.name);
     if (nameError) newErrors.name = nameError;
 
-    const phoneError = validatePhone(formData.phone);
+    const phoneError = validateOptionalPhone(formData.phone);
     if (phoneError) newErrors.phone = phoneError;
 
     const secondaryPhoneError = validateSecondaryPhone(formData.secondaryPhone);
@@ -424,8 +424,11 @@ export default function CustomerManageModal({
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="customer-phone">
-                      Phone Number <span className="required">*</span>
+                    <Label
+                      htmlFor="customer-phone"
+                      className="text-sm font-medium"
+                    >
+                      Phone Number
                     </Label>
                     <PhoneInputField
                       id="customer-phone"

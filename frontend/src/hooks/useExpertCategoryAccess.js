@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@/context/authContext/useAuth";
 import { isExpert } from "@/utils/commonUtils";
-import { getFrameworkCategoryAccess } from "@/services/frameworkService";
+import { getFrameworkCategoryAccess } from "@/services/adminService";
 
 /**
  * useExpertCategoryAccess
@@ -24,16 +24,46 @@ export function useExpertCategoryAccess() {
 
     try {
       setLoading(true);
-      const response = await getFrameworkCategoryAccess({
+      const firstResponse = await getFrameworkCategoryAccess({
         page: 1,
         limit: 100,
       });
-      if (response.success) {
-        const approved = (response.data || [])
-          .filter((access) => access.status === "approved")
-          .map((access) => access.frameworkCategory);
-        setAccessibleCategories(approved);
+
+      if (!firstResponse.success) {
+        setAccessibleCategories([]);
+        setLoading(false);
+        return;
       }
+
+      let allApproved = (firstResponse.data || [])
+        .filter((access) => access.status === "approved")
+        .map((access) => access.frameworkCategory);
+
+      if (firstResponse.pagination && firstResponse.pagination.totalPages > 1) {
+        const totalPages = firstResponse.pagination.totalPages;
+        const promises = [];
+
+        for (let i = 2; i <= totalPages; i++) {
+          promises.push(
+            getFrameworkCategoryAccess({
+              page: i,
+              limit: 100,
+            })
+          );
+        }
+
+        const responses = await Promise.all(promises);
+        responses.forEach((response) => {
+          if (response.success) {
+            const approved = (response.data || [])
+              .filter((access) => access.status === "approved")
+              .map((access) => access.frameworkCategory);
+            allApproved = [...allApproved, ...approved];
+          }
+        });
+      }
+
+      setAccessibleCategories(allApproved);
     } catch (err) {
       console.error("Error fetching accessible categories:", err);
       setAccessibleCategories([]);

@@ -133,6 +133,25 @@ export default function ExpertModal({
         />
         <form onSubmit={handleSubmit}>
           <div className="flex flex-col gap-4 p-3">
+            {/* Name Field */}
+            <div className="space-y-1.5">
+              <Label htmlFor="expert-name">
+                Full Name <span className="required">*</span>
+              </Label>
+              <Input
+                id="expert-name"
+                type="text"
+                className={
+                  modalState.errors.name &&
+                  "border-red-500 focus-visible:ring-red-500/20"
+                }
+                value={formData.name}
+                onChange={(e) => handleChange("name", e.target.value)}
+                placeholder="Enter full name"
+                required
+              />
+            </div>
+
             {/* Email Field */}
             <div className="space-y-1.5">
               <Label htmlFor="expert-email">
@@ -151,25 +170,6 @@ export default function ExpertModal({
                 onChange={(e) => handleChange("email", e.target.value)}
                 placeholder="Enter email address"
                 disabled={mode === "update"}
-              />
-            </div>
-
-            {/* Name Field */}
-            <div className="space-y-1.5">
-              <Label htmlFor="expert-name">
-                Full Name <span className="required">*</span>
-              </Label>
-              <Input
-                id="expert-name"
-                type="text"
-                className={
-                  modalState.errors.name &&
-                  "border-red-500 focus-visible:ring-red-500/20"
-                }
-                value={formData.name}
-                onChange={(e) => handleChange("name", e.target.value)}
-                placeholder="Enter full name"
-                required
               />
             </div>
 

@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field
 from sqlalchemy import Boolean, DateTime, Index, String, true
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
-
 from vora_shared.database import Base
 from vora_shared.ids import new_id
 
@@ -55,4 +54,6 @@ class Customer(Base):
     address: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     createdBy: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     createdAt: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=_utcnow)
-    updatedAt: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+    updatedAt: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )

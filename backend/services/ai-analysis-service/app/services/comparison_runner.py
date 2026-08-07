@@ -11,7 +11,6 @@ from difflib import SequenceMatcher
 from typing import Any
 
 from sqlalchemy import select
-
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
 from vora_shared.models import (
@@ -27,7 +26,7 @@ from vora_shared.models import (
 
 logger = logging.getLogger(__name__)
 
-SendCb = Callable[[dict[str, Any]], Awaitable[None]]
+
 
 _st_model = None
 _st_tried = False
@@ -41,17 +40,7 @@ def _iso(dt: datetime | None = None) -> str:
     return (dt or _utcnow()).isoformat()
 
 
-def send_event(
-    event_name: str, status: str, message: str, extra: dict[str, Any] | None = None
-) -> dict[str, Any]:
-    data: dict[str, Any] = {
-        "status": status,
-        "message": message,
-        "timestamp": _iso(),
-    }
-    if extra:
-        data.update(extra)
-    return {"event": event_name, "data": data}
+
 
 
 def _tokenize(text: str) -> set[str]:
@@ -229,7 +218,6 @@ async def _load_assignment_sections(session, assignment_id: str) -> list[dict[st
 async def run_comparison(
     df_id: str,
     pkg_ver: str,
-    send_cb: SendCb,
     framework_assignment_id: str | None = None,
 ) -> None:
     df_id = str(df_id).strip()
@@ -237,73 +225,25 @@ async def run_comparison(
     started = _utcnow()
 
     try:
-        await send_cb(send_event("connected", "connected", "Initial connection"))
-        await send_cb(send_event("started", "started", "Processing begins"))
-
         async with session_scope() as session:
             df = await session.get(DeploymentFramework, df_id)
             if not df:
-                await send_cb(
-                    {
-                        "event": "failed",
-                        "data": {
-                            "error": "DEPLOYMENT_FRAMEWORK_NOT_FOUND",
-                            "message": f"DeploymentFramework not found with id: {df_id}",
-                            "deployment_framework_id": df_id,
-                            "package_version": pkg_ver,
-                            "timestamp": _iso(),
-                        },
-                    }
-                )
+                logger.error(f"DeploymentFramework not found with id: {df_id}")
                 return
 
             fa_id = framework_assignment_id or df.assignedFrameworkId or df.frameworkId
             if not fa_id:
-                await send_cb(
-                    {
-                        "event": "failed",
-                        "data": {
-                            "error": "FRAMEWORK_ASSIGNMENT_ID_NOT_FOUND",
-                            "message": "No assignedFrameworkId or frameworkId found",
-                            "deployment_framework_id": df_id,
-                            "package_version": pkg_ver,
-                            "timestamp": _iso(),
-                        },
-                    }
-                )
+                logger.error("No assignedFrameworkId or frameworkId found")
                 return
 
             df_sections = await _load_merge_sections(session, df_id, pkg_ver, df)
             if not df_sections:
-                await send_cb(
-                    {
-                        "event": "failed",
-                        "data": {
-                            "error": "MERGE_CONTROLS_NOT_FOUND",
-                            "message": f"No merge controls found for package '{pkg_ver}'",
-                            "deployment_framework_id": df_id,
-                            "package_version": pkg_ver,
-                            "timestamp": _iso(),
-                        },
-                    }
-                )
+                logger.error(f"No merge controls found for package '{pkg_ver}'")
                 return
 
             assignment_sections = await _load_assignment_sections(session, str(fa_id))
             if not assignment_sections:
-                await send_cb(
-                    {
-                        "event": "failed",
-                        "data": {
-                            "error": "FRAMEWORK_ASSIGNMENT_NOT_FOUND",
-                            "message": f"No assignment controls for id: {fa_id}",
-                            "deployment_framework_id": df_id,
-                            "package_version": pkg_ver,
-                            "framework_assignment_id": fa_id,
-                            "timestamp": _iso(),
-                        },
-                    }
-                )
+                logger.error(f"No assignment controls for id: {fa_id}")
                 return
 
             job = ComparisonJob(
@@ -316,10 +256,7 @@ async def run_comparison(
             )
             session.add(job)
 
-        await send_cb(
-            send_event("processing", "processing", "Comparing controls", {"progress": 10})
-        )
-        await asyncio.sleep(0.05)
+
 
         df_controls = _flatten_controls(df_sections)
         fa_controls = _flatten_controls(assignment_sections)
@@ -349,13 +286,11 @@ async def run_comparison(
                 {
                     "deployment_framework_control_id": str(best_df.get("id") or ""),
                     "deployment_framework_control_name": best_df.get("name") or "",
-                    "deployment_framework_control_description": best_df.get("description")
-                    or "",
+                    "deployment_framework_control_description": best_df.get("description") or "",
                     "deployment_framework_deployment_points": _dp_list(best_df),
                     "assigned_framework_control_id": str(fa_ctrl.get("id") or ""),
                     "assigned_framework_control_name": fa_ctrl.get("name") or "",
-                    "assigned_framework_control_description": fa_ctrl.get("description")
-                    or "",
+                    "assigned_framework_control_description": fa_ctrl.get("description") or "",
                     "assigned_framework_deployment_points": _dp_list(fa_ctrl),
                     "comparison_score": best_score,
                     "reviewComment": "",
@@ -387,9 +322,7 @@ async def run_comparison(
             session.add(cr)
 
             pc = (
-                await session.execute(
-                    select(PackageComparison).where(PackageComparison.frameworkId == df_id)
-                )
+                await session.execute(select(PackageComparison).where(PackageComparison.frameworkId == df_id))
             ).scalar_one_or_none()
             if pc is None:
                 pc = PackageComparison(
@@ -405,15 +338,19 @@ async def run_comparison(
 
             # Update job status
             jobs = (
-                await session.execute(
-                    select(ComparisonJob)
-                    .where(
-                        ComparisonJob.deployment_framework_id == df_id,
-                        ComparisonJob.package_version == pkg_ver,
+                (
+                    await session.execute(
+                        select(ComparisonJob)
+                        .where(
+                            ComparisonJob.deployment_framework_id == df_id,
+                            ComparisonJob.package_version == pkg_ver,
+                        )
+                        .order_by(ComparisonJob.createdAt.desc())
                     )
-                    .order_by(ComparisonJob.createdAt.desc())
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             if jobs:
                 jobs[0].status = "completed"
                 jobs[0].data = {"comparison_result_id": cr.id}
@@ -430,20 +367,5 @@ async def run_comparison(
                         break
                 df.packages = packages
 
-        await send_cb(
-            send_event(
-                "completed",
-                "completed",
-                "Comparison completed",
-                {
-                    "deployment_framework_id": df_id,
-                    "package_version": pkg_ver,
-                    "framework_assignment_id": str(fa_id),
-                    "comparison_time_seconds": elapsed,
-                    "comparison_result": grouped,
-                },
-            )
-        )
     except Exception as exc:  # noqa: BLE001
         logger.exception("run_comparison failed | df=%s pkg=%s", df_id, pkg_ver)
-        await send_cb(send_event("failed", "failed", str(exc)))
