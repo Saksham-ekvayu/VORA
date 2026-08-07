@@ -264,7 +264,7 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
 
         # Load document from file
         logger.info(f"[EXTRACT] Step 3: Loading document from disk...")
-        chunks = _load_document_chunks(file_path)
+        chunks = await asyncio.to_thread(_load_document_chunks, file_path)
         if not chunks:
             logger.error(f"[EXTRACT] ❌ No text extracted from document")
             async with session_scope() as session:
@@ -282,12 +282,12 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
 
         # Extract controls using AI
         logger.info(f"[EXTRACT] Step 4: Running AI extraction...")
-        controls_flat = extract_framework_controls(chunks, framework_id)
+        controls_flat = await asyncio.to_thread(extract_framework_controls, chunks, framework_id)
         logger.info(f"[EXTRACT] ✅ AI extraction complete: {len(controls_flat)} controls extracted")
 
         # Convert to section structure
         logger.info(f"[EXTRACT] Step 5: Converting to section structure...")
-        controls_structured = convert_to_section_structure(controls_flat, resource_type="framework")
+        controls_structured = await asyncio.to_thread(convert_to_section_structure, controls_flat, resource_type="framework")
         logger.info(f"[EXTRACT] ✅ Structure converted: {len(controls_structured)} sections")
 
         # Build controls payload
