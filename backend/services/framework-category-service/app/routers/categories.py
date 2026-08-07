@@ -1,7 +1,11 @@
 from typing import Annotated
 
 from app.helpers import code_exists, fetch_users_by_ids
-from app.validation import FieldError, validate_create_category, validate_update_category
+from app.validations.validation import (
+    FieldError,
+    validate_create_category,
+    validate_update_category,
+)
 from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy import delete, or_, select
 from vora_shared import data_format, file_storage
@@ -9,7 +13,14 @@ from vora_shared.auth import AuthenticatedUser, authenticate
 from vora_shared.database import session_scope
 from vora_shared.ids import is_valid_id
 from vora_shared.messages import MESSAGES
-from vora_shared.models import FrameworkAccess, FrameworkCategory, User, Framework, DeploymentFramework, FrameworkAssignment
+from vora_shared.models import (
+    FrameworkAccess,
+    FrameworkCategory,
+    User,
+    Framework,
+    DeploymentFramework,
+    FrameworkAssignment,
+)
 from vora_shared.query_builder import apply_sort, paginate_stmt
 from vora_shared.responses import error, paginated, success
 
@@ -27,8 +38,12 @@ def _format_category(category: FrameworkCategory, users_by_id: dict[str, User]) 
         "isActive": category.isActive,
         "createdAt": category.createdAt,
         "updatedAt": category.updatedAt,
-        "createdBy": data_format.format_user_ref(users_by_id.get(created_by_id), category.createdBy),
-        "updatedBy": data_format.format_user_ref(users_by_id.get(updated_by_id), category.updatedBy),
+        "createdBy": data_format.format_user_ref(
+            users_by_id.get(created_by_id), category.createdBy
+        ),
+        "updatedBy": data_format.format_user_ref(
+            users_by_id.get(updated_by_id), category.updatedBy
+        ),
     }
 
 
@@ -67,15 +82,19 @@ async def _apply_search_filter(stmt, search: str, session):
         FrameworkCategory.description.ilike(f"%{search}%"),
     ]
     matching_users = (
-        await session.execute(
-            select(User).where(
-                or_(
-                    User.name.ilike(f"%{search}%"),
-                    User.email.ilike(f"%{search}%"),
+        (
+            await session.execute(
+                select(User).where(
+                    or_(
+                        User.name.ilike(f"%{search}%"),
+                        User.email.ilike(f"%{search}%"),
+                    )
                 )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     user_ids = [u.id for u in matching_users]
     if user_ids:
         or_conditions.append(FrameworkCategory.createdBy.in_(user_ids))
@@ -191,6 +210,7 @@ async def update_framework_category(
 
     return success({"id": category_id}, MESSAGES["FRAMEWORK_CATEGORY_UPDATED"])
 
+
 def _delete_physical_file(file_url: str | None, user_id: str | None):
     if not file_url:
         return
@@ -241,25 +261,43 @@ async def delete_framework_category(
 
         # 1. Cascade physical file deletions for Frameworks
         frameworks_to_delete = (
-            await session.execute(select(Framework).where(Framework.frameworkCategoryId == id))
-        ).scalars().all()
+            (await session.execute(select(Framework).where(Framework.frameworkCategoryId == id)))
+            .scalars()
+            .all()
+        )
         _cascade_framework_files(frameworks_to_delete)
 
         # 2. Cascade physical file deletions for DeploymentFrameworks
         deployment_frameworks_to_delete = (
-            await session.execute(select(DeploymentFramework).where(DeploymentFramework.frameworkCategoryId == id))
-        ).scalars().all()
+            (
+                await session.execute(
+                    select(DeploymentFramework).where(DeploymentFramework.frameworkCategoryId == id)
+                )
+            )
+            .scalars()
+            .all()
+        )
         _cascade_deployment_framework_files(deployment_frameworks_to_delete)
 
         # 3. Cascade physical file deletions for FrameworkAssignments
         assignments_to_delete = (
-            await session.execute(select(FrameworkAssignment).where(FrameworkAssignment.frameworkCategoryId == id))
-        ).scalars().all()
+            (
+                await session.execute(
+                    select(FrameworkAssignment).where(FrameworkAssignment.frameworkCategoryId == id)
+                )
+            )
+            .scalars()
+            .all()
+        )
         _cascade_assignment_files(assignments_to_delete)
 
         # 4. Perform database deletions
-        await session.execute(delete(FrameworkAssignment).where(FrameworkAssignment.frameworkCategoryId == id))
-        await session.execute(delete(DeploymentFramework).where(DeploymentFramework.frameworkCategoryId == id))
+        await session.execute(
+            delete(FrameworkAssignment).where(FrameworkAssignment.frameworkCategoryId == id)
+        )
+        await session.execute(
+            delete(DeploymentFramework).where(DeploymentFramework.frameworkCategoryId == id)
+        )
         await session.execute(delete(Framework).where(Framework.frameworkCategoryId == id))
 
         delete_result = await session.execute(
@@ -268,7 +306,9 @@ async def delete_framework_category(
         deleted_count = delete_result.rowcount or 0
         await session.delete(category)
 
-    message = MESSAGES["FRAMEWORK_CATEGORY_DELETED_WITH_ACCESS"].replace("{count}", str(deleted_count))
+    message = MESSAGES["FRAMEWORK_CATEGORY_DELETED_WITH_ACCESS"].replace(
+        "{count}", str(deleted_count)
+    )
 
     return success(
         {"id": str(id), "deletedAccessRecords": deleted_count},

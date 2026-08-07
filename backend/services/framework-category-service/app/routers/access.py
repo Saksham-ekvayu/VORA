@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Annotated
 
 from app.helpers import fetch_users_by_ids
-from app.validation import FieldError, validate_assign_access
+from app.validations.validation import FieldError, validate_assign_access
 from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm.attributes import flag_modified
@@ -308,6 +308,19 @@ async def get_framework_access_by_user_id(
     return paginated(data, pagination, message)
 
 
+def _build_request_access_response(access_request: FrameworkAccess) -> dict:
+    id_key = msg.FRAMEWORK_SERVICE_MESSAGES["ID"]
+    req_id = getattr(access_request, id_key, None) or getattr(access_request, "id", None)
+    return {
+        id_key: str(req_id) if req_id else None,
+        "frameworkCategoryId": str(access_request.frameworkCategoryId) if access_request.frameworkCategoryId else None,
+        "frameworkCode": access_request.frameworkCode,
+        "status": access_request.status,
+        "requestedBy": str(access_request.requestedBy) if access_request.requestedBy else None,
+        "createdAt": access_request.createdAt,
+    }
+
+
 @router.post("/{framework_category_id}/request")
 async def request_framework_access(
     framework_category_id: str,
@@ -364,26 +377,7 @@ async def request_framework_access(
             await session.refresh(access_request)
 
     return success(
-        {
-            msg.FRAMEWORK_SERVICE_MESSAGES["ID"]: (
-                str(access_request.id)
-                if access_request and getattr(access_request, msg.FRAMEWORK_SERVICE_MESSAGES["ID"], None)
-                else None
-            ),
-            "frameworkCategoryId": (
-                str(access_request.frameworkCategoryId)
-                if access_request and getattr(access_request, "frameworkCategoryId", None)
-                else None
-            ),
-            "frameworkCode": access_request.frameworkCode,
-            "status": access_request.status,
-            "requestedBy": (
-                str(access_request.requestedBy)
-                if access_request and getattr(access_request, "requestedBy", None)
-                else None
-            ),
-            "createdAt": access_request.createdAt,
-        },
+        _build_request_access_response(access_request),
         "Framework access request submitted successfully",
     )
 
