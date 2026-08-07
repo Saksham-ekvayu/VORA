@@ -46,16 +46,8 @@ def _serialize_dt(value: Any) -> Any:
 
 
 # ---------------------------------------------------------------------------
-# Health / reads
+# Reads
 # ---------------------------------------------------------------------------
-
-
-@router.get("/health")
-async def health_check():
-    return success(
-        message="Service is healthy",
-        data={"status": "healthy", "service": "extract-controls-service"},
-    )
 
 
 def _extract_ai_data(

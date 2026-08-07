@@ -17,14 +17,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["comparison"])
 
 
-@router.get("/health")
-async def health_check():
-    return success(
-        message="Service is healthy",
-        data={"service": "comparison-service", "status": "healthy"},
-    )
-
-
 @router.get("/compare/results")
 async def get_compare_results(
     deployment_framework_id: Optional[str] = None,

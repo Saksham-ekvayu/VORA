@@ -45,13 +45,6 @@ async def _upsert_config(session, key: str, value: dict[str, Any]) -> GapConfig:
     return row
 
 
-@router.get("/health")
-async def health_check():
-    return success(
-        message="Service is healthy",
-        data={"service": "deployment-gap-service", "status": "healthy"},
-    )
-
 
 @router.get("/status")
 async def service_status():
