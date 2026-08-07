@@ -308,6 +308,125 @@ async def get_framework_access_by_user_id(
     return paginated(data, pagination, message)
 
 
+@router.post("/{framework_category_id}/request")
+async def request_framework_access(
+    framework_category_id: str,
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
+):
+    user = ctx.user
+
+    async with session_scope() as session:
+        category = await session.get(FrameworkCategory, str(framework_category_id))
+        if not category:
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_CATEGORY_NOT_FOUND"], 404)
+        if not category.isActive:
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_CATEGORY_IS_NOT_ACTIVE"], 400)
+    
+        expert_id_str = str(user.id)
+        category_id_str = str(framework_category_id)
+
+        existing_access = (
+            await session.execute(
+                select(FrameworkAccess).where(
+                    FrameworkAccess.expertId == expert_id_str,
+                    FrameworkAccess.frameworkCategoryId == category_id_str,
+                )
+            )
+        ).scalar_one_or_none()
+
+        if existing_access:
+            if existing_access.status == "approved":
+                return error(msg.MESSAGES.get("ALREADY_HAS_ACCESS", "You already have approved access to this framework"), 400)
+            if existing_access.status == "pending":
+                return error(msg.MESSAGES.get("ACCESS_ALREADY_PROCESSED", "You already have a pending request for this framework"), 400)
+            if existing_access.status in ("rejected", "revoked"):
+                existing_access.status = "pending"
+                existing_access.requestedBy = "expert"
+                existing_access.rejection = {}
+                existing_access.revocation = {}
+                await session.flush()
+                await session.refresh(existing_access)
+                access_request = existing_access
+        
+        if not existing_access:
+            access_request = FrameworkAccess(
+                expertId=expert_id_str,
+                frameworkCategoryId=category_id_str,
+                frameworkCode=category.code,
+                status="pending",
+                requestedBy="expert",
+                approval={},
+                rejection={},
+                revocation={},
+            )
+            session.add(access_request)
+            await session.flush()
+            await session.refresh(access_request)
+
+    return success(
+        {
+            msg.FRAMEWORK_SERVICE_MESSAGES["ID"]: (
+                str(access_request.id)
+                if access_request and getattr(access_request, msg.FRAMEWORK_SERVICE_MESSAGES["ID"], None)
+                else None
+            ),
+            "frameworkCategoryId": (
+                str(access_request.frameworkCategoryId)
+                if access_request and getattr(access_request, "frameworkCategoryId", None)
+                else None
+            ),
+            "frameworkCode": access_request.frameworkCode,
+            "status": access_request.status,
+            "requestedBy": (
+                str(access_request.requestedBy)
+                if access_request and getattr(access_request, "requestedBy", None)
+                else None
+            ),
+            "createdAt": access_request.createdAt,
+        },
+        "Framework access request submitted successfully",
+    )
+
+
+@router.get("/my-access")
+async def get_my_framework_access(
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
+    page: Annotated[int, Query()] = 1,
+    limit: Annotated[int, Query()] = 10,
+    status: Annotated[str | None, Query()] = None,
+    framework_category_id: Annotated[str | None, Query()] = None,
+    search: Annotated[str | None, Query()] = None,
+    sort_by: Annotated[str | None, Query()] = None,
+    sort_order: Annotated[str | None, Query()] = None,
+):
+    user = ctx.user
+    page_num = clamp_page(page)
+    limit_num = clamp_limit(limit)
+
+    async with session_scope() as session:
+        records, total = await _get_records_with_filters(
+            session,
+            str(user.id),
+            status,
+            framework_category_id,
+            search,
+            sort_by,
+            sort_order,
+            page_num,
+            limit_num,
+        )
+
+        user_ids_needed, category_ids_needed = _collect_needed_ids(records)
+        users_by_id = await _fetch_users(session, user_ids_needed)
+        categories_by_id = await _fetch_categories(session, category_ids_needed)
+
+        data = _build_response_data(records, categories_by_id, users_by_id)
+
+    message = _get_response_message(data, search, status, framework_category_id)
+
+    return paginated(data, build_pagination_meta(page_num, limit_num, total), message)
+
+
 @router.get("/{id}")
 async def get_framework_access_by_id(
     id: str,
@@ -845,120 +964,4 @@ def _get_response_message(
     return "You haven't requested access to any frameworks yet. Request access to start uploading frameworks."
 
 
-@router.post("/{framework_category_id}/request")
-async def request_framework_access(
-    framework_category_id: str,
-    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
-):
-    user = ctx.user
 
-    async with session_scope() as session:
-        category = await session.get(FrameworkCategory, str(framework_category_id))
-        if not category:
-            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_CATEGORY_NOT_FOUND"], 404)
-        if not category.isActive:
-            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_CATEGORY_IS_NOT_ACTIVE"], 400)
-    
-        expert_id_str = str(user.id)
-        category_id_str = str(framework_category_id)
-
-        existing_access = (
-            await session.execute(
-                select(FrameworkAccess).where(
-                    FrameworkAccess.expertId == expert_id_str,
-                    FrameworkAccess.frameworkCategoryId == category_id_str,
-                )
-            )
-        ).scalar_one_or_none()
-
-        if existing_access:
-            if existing_access.status == "approved":
-                return error(msg.MESSAGES.get("ALREADY_HAS_ACCESS", "You already have approved access to this framework"), 400)
-            if existing_access.status == "pending":
-                return error(msg.MESSAGES.get("ACCESS_ALREADY_PROCESSED", "You already have a pending request for this framework"), 400)
-            if existing_access.status in ("rejected", "revoked"):
-                existing_access.status = "pending"
-                existing_access.requestedBy = "expert"
-                existing_access.rejection = {}
-                existing_access.revocation = {}
-                await session.flush()
-                await session.refresh(existing_access)
-                access_request = existing_access
-        
-        if not existing_access:
-            access_request = FrameworkAccess(
-                expertId=expert_id_str,
-                frameworkCategoryId=category_id_str,
-                frameworkCode=category.code,
-                status="pending",
-                requestedBy="expert",
-                approval={},
-                rejection={},
-                revocation={},
-            )
-            session.add(access_request)
-            await session.flush()
-            await session.refresh(access_request)
-
-    return success(
-        {
-            msg.FRAMEWORK_SERVICE_MESSAGES["ID"]: (
-                str(access_request.id)
-                if access_request and getattr(access_request, msg.FRAMEWORK_SERVICE_MESSAGES["ID"], None)
-                else None
-            ),
-            "frameworkCategoryId": (
-                str(access_request.frameworkCategoryId)
-                if access_request and getattr(access_request, "frameworkCategoryId", None)
-                else None
-            ),
-            "frameworkCode": access_request.frameworkCode,
-            "status": access_request.status,
-            "requestedBy": (
-                str(access_request.requestedBy)
-                if access_request and getattr(access_request, "requestedBy", None)
-                else None
-            ),
-            "createdAt": access_request.createdAt,
-        },
-        "Framework access request submitted successfully",
-    )
-
-
-@router.get("/my-access")
-async def get_my_framework_access(
-    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
-    page: Annotated[int, Query()] = 1,
-    limit: Annotated[int, Query()] = 10,
-    status: Annotated[str | None, Query()] = None,
-    framework_category_id: Annotated[str | None, Query()] = None,
-    search: Annotated[str | None, Query()] = None,
-    sort_by: Annotated[str | None, Query()] = None,
-    sort_order: Annotated[str | None, Query()] = None,
-):
-    user = ctx.user
-    page_num = clamp_page(page)
-    limit_num = clamp_limit(limit)
-
-    async with session_scope() as session:
-        records, total = await _get_records_with_filters(
-            session,
-            str(user.id),
-            status,
-            framework_category_id,
-            search,
-            sort_by,
-            sort_order,
-            page_num,
-            limit_num,
-        )
-
-        user_ids_needed, category_ids_needed = _collect_needed_ids(records)
-        users_by_id = await _fetch_users(session, user_ids_needed)
-        categories_by_id = await _fetch_categories(session, category_ids_needed)
-
-        data = _build_response_data(records, categories_by_id, users_by_id)
-
-    message = _get_response_message(data, search, status, framework_category_id)
-
-    return paginated(data, build_pagination_meta(page_num, limit_num, total), message)
