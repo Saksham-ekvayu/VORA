@@ -29,8 +29,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["extract"])
 
 
-
-
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -175,8 +173,6 @@ async def list_extractions(page: int = 1, page_size: int = 10):
         return server_error(str(exc))
 
 
-
-
 @router.get("/package-merges")
 async def get_package_merges(ref_id: Optional[str] = None, page: int = 1, page_size: int = 50):
     try:
@@ -280,6 +276,3 @@ async def delete_extraction(id: str):
     except Exception as exc:  # noqa: BLE001
         logger.exception("delete_extraction error | id=%s", id)
         return server_error(str(exc))
-
-
-

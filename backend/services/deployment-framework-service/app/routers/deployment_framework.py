@@ -484,11 +484,7 @@ async def _get_framework_for_update(session: Any, id: str, tenant_id: str) -> An
         ).scalar_one_or_none()
 
     candidates = list(
-        (
-            await session.execute(
-                select(DeploymentFramework).where(DeploymentFramework.tenantId == tenant_id)
-            )
-        )
+        (await session.execute(select(DeploymentFramework).where(DeploymentFramework.tenantId == tenant_id)))
         .scalars()
         .all()
     )
@@ -513,10 +509,12 @@ def _parse_metadata(metadata: str | None) -> dict[str, Any]:
     if not metadata:
         return {}
     import json
+
     try:
         return json.loads(metadata)
     except (ValueError, TypeError):
         return {}
+
 
 def _format_patch_response(framework: Any, new_package: Any, patch_type: str) -> dict[str, Any]:
     return {

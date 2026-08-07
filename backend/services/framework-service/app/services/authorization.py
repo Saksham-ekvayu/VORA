@@ -108,6 +108,3 @@ async def get_expert_approved_framework_codes(expert_id) -> list[str]:
     except Exception as exc:  # noqa: BLE001
         print(f"Error getting expert approved framework codes: {exc}")
         return []
-
-
-

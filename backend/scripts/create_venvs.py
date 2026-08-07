@@ -5,16 +5,19 @@ import subprocess
 import sys
 from pathlib import Path
 
+REQUIREMENTS_TXT = "requirements.txt"
+OK = "  ok"
+
 
 def get_service_dirs(root: Path) -> list[Path]:
     services_dir = root / "services"
     if not services_dir.is_dir():
         raise FileNotFoundError(f"Missing services directory: {services_dir}")
 
-    service_dirs = [p for p in services_dir.iterdir() if p.is_dir() and (p / "requirements.txt").is_file()]
+    service_dirs = [p for p in services_dir.iterdir() if p.is_dir() and (p / REQUIREMENTS_TXT).is_file()]
 
     gateway_dir = root / "gateway"
-    if gateway_dir.is_dir() and (gateway_dir / "requirements.txt").is_file():
+    if gateway_dir.is_dir() and (gateway_dir / REQUIREMENTS_TXT).is_file():
         service_dirs.append(gateway_dir)
 
     return sorted(service_dirs)
@@ -26,10 +29,10 @@ def create_venv(service_dir: Path, python_executable: str) -> Path:
         print(f"  Skipping existing venv: {venv_dir}")
         return venv_dir
 
-    print(f"  Creating venv...")
+    print("  Creating venv...")
     try:
         subprocess.run([python_executable, "-m", "venv", str(venv_dir)], check=True)
-        print(f"  OK.")
+        print(OK)
         return venv_dir
     except subprocess.CalledProcessError as e:
         print(f"  ERROR: Failed to create venv. {e}")
@@ -45,18 +48,18 @@ def install_requirements(venv_dir: Path, service_dir: Path) -> None:
     if not python_path.exists():
         raise FileNotFoundError(f"Python executable not found in venv: {python_path}")
 
-    requirements_file = service_dir / "requirements.txt"
+    requirements_file = service_dir / REQUIREMENTS_TXT
     if not requirements_file.exists():
         raise FileNotFoundError(f"requirements.txt not found in {service_dir}")
 
-    print(f"  Installing dependencies...")
+    print("  Installing dependencies...")
     try:
         subprocess.run(
             [str(python_path), "-m", "pip", "install", "-r", str(requirements_file)],
             check=True,
             cwd=service_dir,
         )
-        print(f"  OK.")
+        print(OK)
     except subprocess.CalledProcessError as e:
         print(f"  ERROR: Failed to install dependencies. {e}")
         raise
@@ -75,14 +78,14 @@ def install_shared_package(venv_dir: Path, shared_dir: Path) -> None:
         print(f"  WARNING: Shared directory not found: {shared_dir}")
         return
 
-    print(f"  Installing shared package in editable mode...")
+    print("  Installing shared package in editable mode...")
     try:
         subprocess.run(
             [str(python_path), "-m", "pip", "install", "-e", str(shared_dir)],
             check=True,
             cwd=shared_dir,
         )
-        print(f"  OK.")
+        print(OK)
     except subprocess.CalledProcessError as e:
         print(f"  ERROR: Failed to install shared package. {e}")
         raise
