@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from app.helpers import code_exists, fetch_users_by_ids
+from app.helpers.helpers import code_exists, fetch_users_by_ids
 from app.validations.validation import (
     FieldError,
     validate_create_category,

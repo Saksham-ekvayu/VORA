@@ -9,7 +9,7 @@ replicate that exact "first failing field, in declared order" behaviour.
 import re
 from typing import Any
 
-from app.helpers import to_title_case
+from app.helpers.helpers import to_title_case
 from vora_shared.messages import VALIDATION_MESSAGES as VM
 
 CODE_RE = re.compile(r"^[a-z0-9_]+$")
@@ -89,7 +89,9 @@ def validate_update_category(body: dict[str, Any]) -> dict[str, Any]:
     if "code" in body and body["code"] is not None:
         result["code"] = _validate_code(body.get("code"), required=False)
     if "frameworkCategoryName" in body and body["frameworkCategoryName"] is not None:
-        result["frameworkCategoryName"] = _validate_name(body.get("frameworkCategoryName"), required=False)
+        result["frameworkCategoryName"] = _validate_name(
+            body.get("frameworkCategoryName"), required=False
+        )
     if "description" in body and body["description"] is not None:
         result["description"] = _validate_description(body.get("description"))
     if "isActive" in body and body["isActive"] is not None:
