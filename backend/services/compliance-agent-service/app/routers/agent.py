@@ -81,14 +81,6 @@ def _evidence_to_dict(row: EvidenceOutput) -> dict[str, Any]:
     return output
 
 
-@router.get("/health")
-async def health_check():
-    return success(
-        message="Service is healthy",
-        data={"status": "healthy", "service": "compliance-agent-service"},
-    )
-
-
 @router.get("/agents")
 async def list_agents():
     try:
