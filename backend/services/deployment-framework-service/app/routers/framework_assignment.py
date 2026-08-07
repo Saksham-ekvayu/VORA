@@ -42,12 +42,8 @@ async def _hydrate_user_refs(session, assignments: list[FrameworkAssignment]) ->
         assigned_by = helper.as_assignment_info(a.assignment).assignedBy if a.assignment else None
         revoked_by = helper.as_revocation(a.revocation).revokedBy if a.revocation else None
         finalized_by = as_finalization(a.finalization).finalizedBy if a.finalization else None
-        
-        ids.update(
-            str(uid)
-            for uid in (assigned_by, revoked_by, finalized_by, a.uploadedBy)
-            if uid
-        )
+
+        ids.update(str(uid) for uid in (assigned_by, revoked_by, finalized_by, a.uploadedBy) if uid)
     if not ids:
         return {}
     users = (await session.execute(select(User).where(User.id.in_(list(ids))))).scalars().all()

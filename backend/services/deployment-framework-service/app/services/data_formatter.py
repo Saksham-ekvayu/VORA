@@ -292,11 +292,7 @@ def format_deployment_framework(
     assigned_framework_dict = {}
     if assigned_framework:
         assigned_framework_dict = {
-            "id": (
-                str(assigned_framework.id)
-                if getattr(assigned_framework, "id", None)
-                else None
-            ),
+            "id": (str(assigned_framework.id) if getattr(assigned_framework, "id", None) else None),
             "frameworkName": assigned_framework.frameworkName,
             "frameworkCode": assigned_framework.frameworkCode,
             "frameworkVersion": assigned_framework.frameworkVersion,
@@ -375,12 +371,12 @@ def derive_package_ai_extraction(
 def _count_document_types(package: Any) -> tuple[int, list[str]]:
     if not package or not package.documents:
         return 0, []
-    
+
     type_counts: dict[str, int] = {}
     for doc in package.documents:
         t = doc.fileType or "unknown"
         type_counts[t] = type_counts.get(t, 0) + 1
-        
+
     return len(package.documents), [f"{count} {t}" for t, count in type_counts.items()]
 
 

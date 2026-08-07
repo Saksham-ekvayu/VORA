@@ -14,12 +14,12 @@ from vora_shared.database import session_scope
 from vora_shared.ids import is_valid_id
 from vora_shared.messages import MESSAGES
 from vora_shared.models import (
+    DeploymentFramework,
+    Framework,
     FrameworkAccess,
+    FrameworkAssignment,
     FrameworkCategory,
     User,
-    Framework,
-    DeploymentFramework,
-    FrameworkAssignment,
 )
 from vora_shared.query_builder import apply_sort, paginate_stmt
 from vora_shared.responses import error, paginated, success
@@ -38,12 +38,8 @@ def _format_category(category: FrameworkCategory, users_by_id: dict[str, User]) 
         "isActive": category.isActive,
         "createdAt": category.createdAt,
         "updatedAt": category.updatedAt,
-        "createdBy": data_format.format_user_ref(
-            users_by_id.get(created_by_id), category.createdBy
-        ),
-        "updatedBy": data_format.format_user_ref(
-            users_by_id.get(updated_by_id), category.updatedBy
-        ),
+        "createdBy": data_format.format_user_ref(users_by_id.get(created_by_id), category.createdBy),
+        "updatedBy": data_format.format_user_ref(users_by_id.get(updated_by_id), category.updatedBy),
     }
 
 
@@ -306,9 +302,7 @@ async def delete_framework_category(
         deleted_count = delete_result.rowcount or 0
         await session.delete(category)
 
-    message = MESSAGES["FRAMEWORK_CATEGORY_DELETED_WITH_ACCESS"].replace(
-        "{count}", str(deleted_count)
-    )
+    message = MESSAGES["FRAMEWORK_CATEGORY_DELETED_WITH_ACCESS"].replace("{count}", str(deleted_count))
 
     return success(
         {"id": str(id), "deletedAccessRecords": deleted_count},

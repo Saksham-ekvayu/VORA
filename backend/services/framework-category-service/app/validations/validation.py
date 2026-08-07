@@ -89,9 +89,7 @@ def validate_update_category(body: dict[str, Any]) -> dict[str, Any]:
     if "code" in body and body["code"] is not None:
         result["code"] = _validate_code(body.get("code"), required=False)
     if "frameworkCategoryName" in body and body["frameworkCategoryName"] is not None:
-        result["frameworkCategoryName"] = _validate_name(
-            body.get("frameworkCategoryName"), required=False
-        )
+        result["frameworkCategoryName"] = _validate_name(body.get("frameworkCategoryName"), required=False)
     if "description" in body and body["description"] is not None:
         result["description"] = _validate_description(body.get("description"))
     if "isActive" in body and body["isActive"] is not None:

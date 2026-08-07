@@ -5,9 +5,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 REQUIREMENTS_TXT = "requirements.txt"
 OK = "  ok"
+
 
 def get_service_dirs(root: Path) -> list[Path]:
     services_dir = root / "services"

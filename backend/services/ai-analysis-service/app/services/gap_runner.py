@@ -27,7 +27,6 @@ from vora_shared.models import (
 logger = logging.getLogger(__name__)
 
 
-
 DEFAULT_STATUSES = {
     "implemented": "Implemented",
     "partially_implemented": "Partially Implemented",
@@ -46,9 +45,6 @@ def _utcnow() -> datetime:
 
 def _iso(dt: datetime | None = None) -> str:
     return (dt or _utcnow()).isoformat()
-
-
-
 
 
 async def _load_gap_config(session) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -215,8 +211,6 @@ async def run_gap(df_id: str, pkg_ver: str) -> None:
             )
             session.add(job)
             gap_job_id = job.id
-
-
 
         gap_results: list[dict[str, Any]] = []
         grouped_by_control: dict[str, list[dict[str, Any]]] = {}
