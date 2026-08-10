@@ -2,6 +2,7 @@ import { apiRequest } from "./apiService";
 
 const ASSIGNMENT_BASE = "/assignment-frameworks";
 const FRAMEWORK_BASE = "/deployment-frameworks";
+const EXTRACTION_BASE = "/extract";
 
 /**
  * Get frameworks assigned to the customer by admin
@@ -148,7 +149,7 @@ export function extractDeploymentFramework(
   fileId
 ) {
   return apiRequest(
-    `${FRAMEWORK_BASE}/${frameworkId}/packages/${packageVersion}/files/${fileId}/ai-upload`,
+    `${EXTRACTION_BASE}/${FRAMEWORK_BASE}/${frameworkId}/packages/${packageVersion}/files/${fileId}/ai-upload`,
     {
       method: "POST",
     },
