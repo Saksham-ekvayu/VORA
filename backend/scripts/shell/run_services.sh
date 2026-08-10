@@ -1,6 +1,6 @@
 #!/bin/bash
 # =====================================================
-# VORA Backend - Run All Services Script (Tabbed Version)
+# VORA Backend - Run All Services Script (Parallel)
 # =====================================================
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -12,121 +12,81 @@ if [ ! -d "$ROOT/gateway/.venv" ]; then
 fi
 
 echo ""
-echo "Starting services..."
+echo "Starting all services in parallel..."
 echo ""
 
-# ---------------------------------------------------------
-# 1. Windows Terminal (wt.exe) for Git Bash / WSL on Windows
-# ---------------------------------------------------------
-if command -v wt.exe &> /dev/null; then
-    echo "Windows Terminal found. Opening services in separate tabs..."
+# Function to run a service in background
+run_service() {
+    local service_name=$1
+    local port=$2
+    local dir=$3
+    local app=$4
     
-    # Convert ROOT to Windows path if running in Git Bash or WSL
-    if command -v cygpath &> /dev/null; then
-        WIN_ROOT=$(cygpath -w "$ROOT")
-    elif command -v wslpath &> /dev/null; then
-        WIN_ROOT=$(wslpath -w "$ROOT")
-    else
-        WIN_ROOT="$ROOT"
-    fi
+    echo "[$(date '+%H:%M:%S')] Starting $service_name on port $port..."
+    
+    (
+        cd "$ROOT/$dir" || exit 1
+        source .venv/bin/activate 2>/dev/null || true
+        python3 -m uvicorn "$app" --host localhost --port "$port" --reload --reload-dir . --reload-dir ../../shared 2>&1 | sed "s/^/[$service_name] /"
+    ) &
+    
+    # Store PID for later cleanup
+    echo $! >> /tmp/vora_pids.txt
+}
 
-    wt.exe -w new \
-        new-tab --title "authentication-service (7001)" -d "$WIN_ROOT/services/authentication-service" bash -c "source .venv/bin/activate && python3 -m uvicorn app.main:app --host localhost --port 7001 --reload --reload-dir . --reload-dir ../../shared; exec bash" \
-        \; new-tab --title "profile-service (7002)" -d "$WIN_ROOT/services/profile-service" bash -c "source .venv/bin/activate && python3 -m uvicorn app.main:app --host localhost --port 7002 --reload --reload-dir . --reload-dir ../../shared; exec bash" \
-        \; new-tab --title "dashboard-service (7003)" -d "$WIN_ROOT/services/dashboard-service" bash -c "source .venv/bin/activate && python3 -m uvicorn app.main:app --host localhost --port 7003 --reload --reload-dir . --reload-dir ../../shared; exec bash" \
-        \; new-tab --title "framework-category-service (7004)" -d "$WIN_ROOT/services/framework-category-service" bash -c "source .venv/bin/activate && python3 -m uvicorn app.main:app --host localhost --port 7004 --reload --reload-dir . --reload-dir ../../shared; exec bash" \
-        \; new-tab --title "framework-service (7005)" -d "$WIN_ROOT/services/framework-service" bash -c "source .venv/bin/activate && python3 -m uvicorn app.main:app --host localhost --port 7005 --reload --reload-dir . --reload-dir ../../shared; exec bash" \
-        \; new-tab --title "deployment-framework-service (7006)" -d "$WIN_ROOT/services/deployment-framework-service" bash -c "source .venv/bin/activate && python3 -m uvicorn app.main:app --host localhost --port 7006 --reload --reload-dir . --reload-dir ../../shared; exec bash" \
-        \; new-tab --title "extract-controls-service (7007)" -d "$WIN_ROOT/services/extract-controls-service" bash -c "source .venv/bin/activate && python3 -m uvicorn app.main:app --host localhost --port 7007 --reload --reload-dir . --reload-dir ../../shared; exec bash" \
-        \; new-tab --title "compliance-agent-service (7008)" -d "$WIN_ROOT/services/compliance-agent-service" bash -c "source .venv/bin/activate && python3 -m uvicorn app.main:app --host localhost --port 7008 --reload --reload-dir . --reload-dir ../../shared; exec bash" \
-        \; new-tab --title "ai-analysis-service (7009)" -d "$WIN_ROOT/services/ai-analysis-service" bash -c "source .venv/bin/activate && python3 -m uvicorn app.main:app --host localhost --port 7009 --reload --reload-dir . --reload-dir ../../shared; exec bash" \
-        \; new-tab --title "api-gateway (8000)" -d "$WIN_ROOT/gateway" bash -c "source .venv/bin/activate && python3 -m uvicorn main:app --host localhost --port 8000 --reload; exec bash"
-    
-    echo "All services started in Windows Terminal tabs."
-    exit 0
+# Create PID file
+rm -f /tmp/vora_pids.txt
+touch /tmp/vora_pids.txt
 
-# ---------------------------------------------------------
-# 2. GNOME Terminal for Linux
-# ---------------------------------------------------------
-elif command -v gnome-terminal &> /dev/null; then
-    echo "gnome-terminal found. Opening services in separate tabs..."
-    
-    gnome-terminal \
-        --tab --title="authentication-service (7001)" --working-directory="$ROOT/services/authentication-service" -- bash -c "source .venv/bin/activate && python3 -m uvicorn app.main:app --host localhost --port 7001 --reload --reload-dir . --reload-dir ../../shared; exec bash" \
-        --tab --title="profile-service (7002)" --working-directory="$ROOT/services/profile-service" -- bash -c "source .venv/bin/activate && python3 -m uvicorn app.main:app --host localhost --port 7002 --reload --reload-dir . --reload-dir ../../shared; exec bash" \
-        --tab --title="dashboard-service (7003)" --working-directory="$ROOT/services/dashboard-service" -- bash -c "source .venv/bin/activate && python3 -m uvicorn app.main:app --host localhost --port 7003 --reload --reload-dir . --reload-dir ../../shared; exec bash" \
-        --tab --title="framework-category-service (7004)" --working-directory="$ROOT/services/framework-category-service" -- bash -c "source .venv/bin/activate && python3 -m uvicorn app.main:app --host localhost --port 7004 --reload --reload-dir . --reload-dir ../../shared; exec bash" \
-        --tab --title="framework-service (7005)" --working-directory="$ROOT/services/framework-service" -- bash -c "source .venv/bin/activate && python3 -m uvicorn app.main:app --host localhost --port 7005 --reload --reload-dir . --reload-dir ../../shared; exec bash" \
-        --tab --title="deployment-framework-service (7006)" --working-directory="$ROOT/services/deployment-framework-service" -- bash -c "source .venv/bin/activate && python3 -m uvicorn app.main:app --host localhost --port 7006 --reload --reload-dir . --reload-dir ../../shared; exec bash" \
-        --tab --title="extract-controls-service (7007)" --working-directory="$ROOT/services/extract-controls-service" -- bash -c "source .venv/bin/activate && python3 -m uvicorn app.main:app --host localhost --port 7007 --reload --reload-dir . --reload-dir ../../shared; exec bash" \
-        --tab --title="compliance-agent-service (7008)" --working-directory="$ROOT/services/compliance-agent-service" -- bash -c "source .venv/bin/activate && python3 -m uvicorn app.main:app --host localhost --port 7008 --reload --reload-dir . --reload-dir ../../shared; exec bash" \
-        --tab --title="ai-analysis-service (7009)" --working-directory="$ROOT/services/ai-analysis-service" -- bash -c "source .venv/bin/activate && python3 -m uvicorn app.main:app --host localhost --port 7009 --reload --reload-dir . --reload-dir ../../shared; exec bash" \
-        --tab --title="api-gateway (8000)" --working-directory="$ROOT/gateway" -- bash -c "source .venv/bin/activate && python3 -m uvicorn main:app --host localhost --port 8000 --reload; exec bash"
-    
-    echo "All services started in gnome-terminal tabs."
-    exit 0
-
-# ---------------------------------------------------------
-# 3. macOS Terminal
-# ---------------------------------------------------------
-elif [[ "$OSTYPE" == "darwin"* ]]; then
-    echo "macOS detected. Opening services in new Terminal windows..."
-    
-    run_service_mac() {
-        local dir=$1
-        local port=$2
-        local app=$3
-        osascript -e "tell application \"Terminal\" to do script \"cd '$ROOT/$dir' && source .venv/bin/activate && python3 -m uvicorn $app --host localhost --port $port --reload --reload-dir . --reload-dir '../../shared'\""
-    }
-    
-    run_service_mac "services/authentication-service" 7001 "app.main:app"
-    run_service_mac "services/profile-service" 7002 "app.main:app"
-    run_service_mac "services/dashboard-service" 7003 "app.main:app"
-    run_service_mac "services/framework-category-service" 7004 "app.main:app"
-    run_service_mac "services/framework-service" 7005 "app.main:app"
-    run_service_mac "services/deployment-framework-service" 7006 "app.main:app"
-    run_service_mac "services/extract-controls-service" 7007 "app.main:app"
-    run_service_mac "services/compliance-agent-service" 7008 "app.main:app"
-    run_service_mac "services/ai-analysis-service" 7009 "app.main:app"
-    run_service_mac "gateway" 8000 "main:app"
-    
-    echo "All services started in new Terminal windows."
-    exit 0
-
-# ---------------------------------------------------------
-# 4. Fallback (Background execution in same terminal)
-# ---------------------------------------------------------
-else
-    echo "No supported terminal multiplexer (wt.exe, gnome-terminal, macOS) found."
-    echo "Falling back to running services in the background of the current terminal..."
-    
-    run_service() {
-        local dir=$1
-        local port=$2
-        local app=$3
-        echo "Starting $dir on port $port..."
-        cd "$ROOT/$dir"
-        source .venv/bin/activate
-        python3 -m uvicorn $app --host localhost --port $port --reload --reload-dir . --reload-dir "$ROOT/shared" &
-    }
-
-    run_service "services/authentication-service" 7001 "app.main:app"
-    run_service "services/profile-service" 7002 "app.main:app"
-    run_service "services/dashboard-service" 7003 "app.main:app"
-    run_service "services/framework-category-service" 7004 "app.main:app"
-    run_service "services/framework-service" 7005 "app.main:app"
-    run_service "services/deployment-framework-service" 7006 "app.main:app"
-    run_service "services/extract-controls-service" 7007 "app.main:app"
-    run_service "services/compliance-agent-service" 7008 "app.main:app"
-    run_service "services/ai-analysis-service" 7009 "app.main:app"
-
-    echo "Starting api-gateway on port 8000..."
-    cd "$ROOT/gateway"
-    source .venv/bin/activate
-    python3 -m uvicorn main:app --host localhost --port 8000 --reload &
-
+# Trap to cleanup all services on exit
+cleanup() {
     echo ""
-    echo "All services started in background."
-    echo "Press Ctrl+C to stop all services."
-    wait
-fi
+    echo "[$(date '+%H:%M:%S')] Stopping all services..."
+    if [ -f /tmp/vora_pids.txt ]; then
+        while read pid; do
+            if kill -0 "$pid" 2>/dev/null; then
+                echo "[$(date '+%H:%M:%S')] Killing PID $pid"
+                kill "$pid" 2>/dev/null || true
+            fi
+        done < /tmp/vora_pids.txt
+    fi
+    rm -f /tmp/vora_pids.txt
+}
+
+trap cleanup EXIT INT TERM
+
+# Start all services in parallel
+run_service "authentication-service" 7001 "services/authentication-service" "app.main:app"
+run_service "profile-service" 7002 "services/profile-service" "app.main:app"
+run_service "dashboard-service" 7003 "services/dashboard-service" "app.main:app"
+run_service "framework-category-service" 7004 "services/framework-category-service" "app.main:app"
+run_service "framework-service" 7005 "services/framework-service" "app.main:app"
+run_service "deployment-framework-service" 7006 "services/deployment-framework-service" "app.main:app"
+run_service "extract-controls-service" 7007 "services/extract-controls-service" "app.main:app"
+run_service "compliance-agent-service" 7008 "services/compliance-agent-service" "app.main:app"
+run_service "ai-analysis-service" 7009 "services/ai-analysis-service" "app.main:app"
+run_service "api-gateway" 8000 "gateway" "main:app"
+
+echo ""
+echo "=========================================="
+echo "All services started in parallel!"
+echo "=========================================="
+echo ""
+echo "Service Ports:"
+echo "  - authentication-service: http://localhost:7001"
+echo "  - profile-service: http://localhost:7002"
+echo "  - dashboard-service: http://localhost:7003"
+echo "  - framework-category-service: http://localhost:7004"
+echo "  - framework-service: http://localhost:7005"
+echo "  - deployment-framework-service: http://localhost:7006"
+echo "  - extract-controls-service: http://localhost:7007"
+echo "  - compliance-agent-service: http://localhost:7008"
+echo "  - ai-analysis-service: http://localhost:7009"
+echo "  - api-gateway: http://localhost:8000"
+echo ""
+echo "Press Ctrl+C to stop all services."
+echo "=========================================="
+echo ""
+
+# Wait for all background processes
+wait

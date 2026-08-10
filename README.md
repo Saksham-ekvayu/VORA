@@ -43,6 +43,7 @@ Install requirements across all virtual environments:
 
 When setting up a completely new database, or if you have modified the SQLAlchemy models in `shared/vora_shared/models/`, you need to generate and apply Alembic migrations. The database schema is centrally managed in the `shared` module.
 
+**For Windows:**
 Open your terminal and run the following commands sequentially:
 
 1. Navigate to the shared directory:
@@ -56,6 +57,27 @@ Open your terminal and run the following commands sequentially:
 3. Apply the migration to create tables in the database:
    ```cmd
    ..\services\authentication-service\.venv\Scripts\python.exe -m alembic upgrade head
+   ```
+
+**For Linux / macOS:**
+Open your terminal and run the following commands sequentially:
+
+1. Navigate to the shared directory:
+   ```bash
+   cd backend/shared
+   ```
+2. Generate the migration script (this detects all tables/changes):
+   ```bash
+   source ../services/authentication-service/.venv/bin/activate
+   python -m alembic revision --autogenerate -m "Initial_migration"
+   ```
+3. Apply the migration to create tables in the database:
+   ```bash
+   python -m alembic upgrade head
+   ```
+4. Verify migration status:
+   ```bash
+   python -m alembic current
    ```
 
 ### 3. Run Services
