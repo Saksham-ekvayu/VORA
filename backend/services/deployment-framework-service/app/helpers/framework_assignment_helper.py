@@ -118,18 +118,18 @@ def format_customer(customer: Any | None) -> dict[str, Any] | None:
     }
 
 
-def format_assignment(assignment: Any | None) -> dict[str, Any] | None:
+def format_assignment(assignment: Any | None, assigned_by_user: User | None = None) -> dict[str, Any] | None:
     info = as_assignment_info(assignment) if assignment is not None else None
     if not info or not info.assignedAt:
         return None
-    return {"assignedBy": format_user_ref(info.assignedBy), "assignedAt": info.assignedAt}
+    return {"assignedBy": format_user_ref(assigned_by_user or info.assignedBy), "assignedAt": info.assignedAt}
 
 
-def format_revocation(revocation: Any | None) -> dict[str, Any] | None:
+def format_revocation(revocation: Any | None, revoked_by_user: User | None = None) -> dict[str, Any] | None:
     info = as_revocation(revocation) if revocation is not None else None
     if not info or not info.revokedAt:
         return None
-    return {"revokedBy": format_user_ref(info.revokedBy), "revokedAt": info.revokedAt}
+    return {"revokedBy": format_user_ref(revoked_by_user or info.revokedBy), "revokedAt": info.revokedAt}
 
 
 def format_deployment_point(dp: AssignmentDeploymentPoint) -> dict[str, Any]:
@@ -201,7 +201,7 @@ def format_file_version(file: Any) -> dict[str, Any]:
 
 
 def format_assignment_response(
-    doc: Any, customer: Any | None, finalized_by_user: User | None
+    doc: Any, customer: Any | None, finalized_by_user: User | None, assigned_by_user: User | None = None, revoked_by_user: User | None = None
 ) -> dict[str, Any]:
     fin = as_finalization(doc.finalization)
     return {
@@ -216,8 +216,8 @@ def format_assignment_response(
         ),
         "customer": format_customer(customer),
         "status": doc.status,
-        "assignment": format_assignment(doc.assignment),
-        "revocation": format_revocation(doc.revocation),
+        "assignment": format_assignment(doc.assignment, assigned_by_user),
+        "revocation": format_revocation(doc.revocation, revoked_by_user),
         "finalization": {
             "isFinalized": fin.isFinalized if fin else False,
             "finalizedBy": format_user_ref(finalized_by_user),
@@ -228,7 +228,7 @@ def format_assignment_response(
 
 
 def format_assignment_detail_response(
-    doc: Any, customer: Any | None, uploaded_by_user: User | None, finalized_by_user: User | None
+    doc: Any, customer: Any | None, uploaded_by_user: User | None, finalized_by_user: User | None, assigned_by_user: User | None = None, revoked_by_user: User | None = None
 ) -> dict[str, Any]:
     fin = as_finalization(doc.finalization)
     file_versions = coerce_file_versions(doc.fileVersions)
@@ -244,8 +244,8 @@ def format_assignment_detail_response(
         "uploadedBy": format_user_ref(uploaded_by_user),
         "status": doc.status,
         "fileVersions": [format_file_version(f) for f in reversed(file_versions)],
-        "assignment": format_assignment(doc.assignment),
-        "revocation": format_revocation(doc.revocation),
+        "assignment": format_assignment(doc.assignment, assigned_by_user),
+        "revocation": format_revocation(doc.revocation, revoked_by_user),
         "finalization": {
             "isFinalized": fin.isFinalized if fin else False,
             "finalizedBy": format_user_ref(finalized_by_user),
