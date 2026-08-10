@@ -496,6 +496,12 @@ async def run_deployment_framework_extraction(df_id: str, pkg_ver: str, file_id:
                 return
 
             file_path = file_info.get("fileUrl")
+            if file_path and file_path.startswith("/uploads/"):
+                from pathlib import Path
+                from vora_shared.file_storage import UPLOAD_BASE_PATH
+                relative = file_path.replace("/uploads/", "", 1)
+                file_path = str((Path(UPLOAD_BASE_PATH) / relative).resolve())
+                
             file_hash = file_info.get("fileHash")
             logger.info(f"[DEPLOYMENT-EXTRACT] ✅ File found")
             logger.info(f"  File Path: {file_path}")
