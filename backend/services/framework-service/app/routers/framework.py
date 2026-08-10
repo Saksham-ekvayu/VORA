@@ -590,7 +590,9 @@ async def assign_framework_to_customer(
                 existing.status = "assigned"
                 existing.updatedAt = _now()
                 # Update assignment time without clearing revocation
-                existing.assignment = AssignmentInfo(assignedBy=user.id, assignedAt=_now()).model_dump(mode="json")
+                existing.assignment = AssignmentInfo(assignedBy=user.id, assignedAt=_now()).model_dump(
+                    mode="json"
+                )
                 flag_modified(existing, "assignment")
                 # Hydrate missing controls if they are still strings
                 new_file_versions = await framework_helper.hydrate_assignment_file_versions(

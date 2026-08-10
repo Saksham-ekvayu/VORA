@@ -35,7 +35,6 @@ from vora_shared.models.document_extraction import (
     ExtractionStatusHistory,
 )
 from vora_shared.models.framework import Framework
-from vora_shared.models.framework_merge import FrameworkMerge
 from vora_shared.models.framework_access import FrameworkAccess
 from vora_shared.models.framework_assignment import (
     AssignmentControl,
@@ -50,6 +49,7 @@ from vora_shared.models.framework_assignment import (
     FrameworkAssignment,
 )
 from vora_shared.models.framework_category import FrameworkCategory
+from vora_shared.models.framework_merge import FrameworkMerge
 from vora_shared.models.package_comparison import PackageComparison
 from vora_shared.models.package_gap_analysis import PackageGapAnalysis
 from vora_shared.models.package_merge import PackageMerge

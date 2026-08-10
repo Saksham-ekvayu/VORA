@@ -21,10 +21,6 @@ from vora_shared.models import (
     DocumentExtraction,
     Framework,
 )
-from app.services.control_extractor import (
-    extract_framework_controls,
-    convert_to_section_structure,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +34,6 @@ def _utcnow() -> datetime:
 
 def _iso(dt: datetime | None = None) -> str:
     return (dt or _utcnow()).isoformat()
-
-
-
 
 
 def _status_history(
@@ -327,12 +320,12 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
                 if old_sections:
                     logger.info(f"[EXTRACT] Found previous version: {prev_version}")
                     logger.info(f"[EXTRACT] Previous file hash: {prev_hash}")
-                    
+
                     # Perform cumulative merge
                     controls_structured, merge_summary = await asyncio.to_thread(
                         merge_controls_cumulative, old_sections, controls_structured
                     )
-                    
+
                     logger.info(f"[EXTRACT] ✅ Merge complete:")
                     logger.info(f"  - Merged controls: {merge_summary.get('merged_controls', 0)}")
                     logger.info(f"  - New controls: {merge_summary.get('new_controls', 0)}")
@@ -395,9 +388,7 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
             # Save to document_extraction table (by fileHash) - PRIMARY TABLE
             if file_hash:
                 logger.info(f"[EXTRACT] 6b: Saving to document_extraction table...")
-                doc_extraction = await _get_or_create_doc_extraction(
-                    session, file_hash, None
-                )
+                doc_extraction = await _get_or_create_doc_extraction(session, file_hash, None)
                 doc_extraction.aiExtraction = extraction_data
                 session.add(doc_extraction)
                 await session.flush()
@@ -468,7 +459,7 @@ async def run_deployment_framework_extraction(df_id: str, pkg_ver: str, file_id:
         logger.info(f"[DEPLOYMENT-EXTRACT] Step 1: Loading deployment framework from database...")
         async with session_scope() as session:
             from vora_shared.models import DeploymentFramework
-            
+
             df = await session.get(DeploymentFramework, df_id)
             if not df:
                 logger.error(f"[DEPLOYMENT-EXTRACT] ❌ Deployment Framework not found: {df_id}")
@@ -518,11 +509,15 @@ async def run_deployment_framework_extraction(df_id: str, pkg_ver: str, file_id:
         # Extract controls using AI (client controls for deployment frameworks)
         logger.info(f"[DEPLOYMENT-EXTRACT] Step 3: Running AI extraction...")
         controls_flat = await asyncio.to_thread(extract_framework_controls, chunks, df_id)
-        logger.info(f"[DEPLOYMENT-EXTRACT] ✅ AI extraction complete: {len(controls_flat)} controls extracted")
+        logger.info(
+            f"[DEPLOYMENT-EXTRACT] ✅ AI extraction complete: {len(controls_flat)} controls extracted"
+        )
 
         # Convert to section structure
         logger.info(f"[DEPLOYMENT-EXTRACT] Step 4: Converting to section structure...")
-        controls_structured = await asyncio.to_thread(convert_to_section_structure, controls_flat, resource_type="deployment")
+        controls_structured = await asyncio.to_thread(
+            convert_to_section_structure, controls_flat, resource_type="deployment"
+        )
         logger.info(f"[DEPLOYMENT-EXTRACT] ✅ Structure converted: {len(controls_structured)} sections")
 
         # Build controls payload
@@ -561,7 +556,7 @@ async def run_deployment_framework_extraction(df_id: str, pkg_ver: str, file_id:
         logger.info(f"[DEPLOYMENT-EXTRACT] Step 5: Saving to database...")
         async with session_scope() as session:
             from vora_shared.models import DeploymentFramework
-            
+
             df = await session.get(DeploymentFramework, df_id)
             if df:
                 packages = list(df.packages or [])
@@ -580,7 +575,7 @@ async def run_deployment_framework_extraction(df_id: str, pkg_ver: str, file_id:
                 await session.commit()
                 logger.info(f"[DEPLOYMENT-EXTRACT] ✅ Saved to deployment_frameworks table")
 
-            # Save to document_extraction table (by fileHash) 
+            # Save to document_extraction table (by fileHash)
             if file_hash:
                 logger.info(f"[DEPLOYMENT-EXTRACT] Saving to document_extraction table...")
                 doc_extraction = await _get_or_create_doc_extraction(session, file_hash, None)
@@ -666,7 +661,9 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
 
                 status = ai_extraction.get("status") if isinstance(ai_extraction, dict) else None
                 if status != "extracted":
-                    logger.info(f"[PACKAGE-MERGE] Skipping document - not extracted | fileId={file_id} | status={status}")
+                    logger.info(
+                        f"[PACKAGE-MERGE] Skipping document - not extracted | fileId={file_id} | status={status}"
+                    )
                     continue
 
                 if file_hash:
@@ -686,12 +683,14 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
 
                     if controls_data:
                         all_sections.extend(controls_data)
-                        merge_history.append({
-                            "fileId": file_id,
-                            "fileName": doc.get("originalFileName", file_id),
-                            "status": "merged",
-                            "timestamp": _iso(),
-                        })
+                        merge_history.append(
+                            {
+                                "fileId": file_id,
+                                "fileName": doc.get("originalFileName", file_id),
+                                "status": "merged",
+                                "timestamp": _iso(),
+                            }
+                        )
 
                         logger.info(
                             f"[PACKAGE-MERGE] Added document | fileId={file_id} | "
@@ -807,7 +806,7 @@ async def _save_merge_to_framework_merge(
 ) -> None:
     """Save merged controls to framework_merges table (canonical storage by mergeKey)."""
     merge_key = _compute_merge_key(file_hashes)
-    
+
     existing = (
         await session.execute(
             select(FrameworkMerge).where(
@@ -845,5 +844,3 @@ async def _save_merge_to_framework_merge(
             f"[MERGE-TABLE] ✅ Saved merge | fw={framework_id} | key={merge_key[:16]}... "
             f"| hashes={len(file_hashes)} | controls={controls_payload['total_controls']}"
         )
-
-
