@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from app.services.control_merger import clean_section_name
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -239,11 +240,11 @@ def convert_to_section_structure(controls: list, resource_type: str = "framework
         # Determine section name with priority
         if section_name:
             sec_key = section_name.upper().strip()
-            sec_display_name = _title_case(section_name)
+            sec_display_name = _title_case(clean_section_name(section_name))
             sec_id = id_prefix.upper() if id_prefix else None
         elif id_prefix:
             sec_key = id_prefix.upper()
-            sec_display_name = _title_case(id_prefix)
+            sec_display_name = _title_case(clean_section_name(id_prefix))
             sec_id = id_prefix.upper()
         else:
             sec_key = "NO_SECTION"

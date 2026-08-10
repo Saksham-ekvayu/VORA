@@ -4,9 +4,22 @@ Merges extracted controls when multiple files are uploaded to same framework
 """
 
 import logging
+import re
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+
+def clean_section_name(name: str) -> str:
+    if not name:
+        return ""
+    original = name
+    # Remove anything in parenthesis (including the parenthesis)
+    name = re.sub(r"\s*\([^)]*\)", "", name)
+    # Remove leading numbers and prefixes (e.g., "3. ", "10 - ", "A.5 ")
+    name = re.sub(r"^(?:\d+|[A-Za-z]\.\d+(?:\.\d+)*)[\.\-\s]+", "", name)
+    cleaned = name.strip()
+    return cleaned if cleaned else original.strip()
 
 
 def get_framework_previous_controls(
@@ -90,14 +103,8 @@ def merge_controls_cumulative(
         (merged_sections, summary) where summary contains merge statistics
     """
     if not old_sections:
-        total_new = sum(len(s.get("controls", [])) for s in (new_sections or []))
-        logger.info(f"[MERGE] No previous sections, using new sections: {total_new} controls")
-        return new_sections or [], {
-            "merged_controls": 0,
-            "new_controls": total_new,
-            "new_dps": 0,
-            "new_sections": len(new_sections or []),
-        }
+        logger.info("[MERGE] No previous sections, merging new sections from scratch")
+        old_sections = []
 
     if not new_sections:
         logger.info(f"[MERGE] No new sections, keeping previous {len(old_sections)} sections")
@@ -109,23 +116,28 @@ def merge_controls_cumulative(
     sec_map = {}
     sec_order = []
     for sec in old_sections:
-        key = (sec.get("name") or "").lower().strip()
+        # Use ID as primary key if available, fallback to name
+        sec_id = (sec.get("id") or "").lower().strip()
+        sec_name = (sec.get("name") or "").lower().strip()
+        key = sec_id if sec_id else sec_name
         sec_map[key] = {
             "id": sec.get("id"),
-            "name": sec.get("name"),
+            "name": clean_section_name(sec.get("name")),
             "controls": [dict(c) for c in sec.get("controls", [])],
         }
         sec_order.append(key)
 
     # Merge new sections
     for new_sec in new_sections:
-        sec_key = (new_sec.get("name") or "").lower().strip()
+        sec_id = (new_sec.get("id") or "").lower().strip()
+        sec_name = (new_sec.get("name") or "").lower().strip()
+        sec_key = sec_id if sec_id else sec_name
 
         if sec_key not in sec_map:
             # Brand new section
             sec_map[sec_key] = {
                 "id": new_sec.get("id"),
-                "name": new_sec.get("name"),
+                "name": clean_section_name(new_sec.get("name")),
                 "controls": list(new_sec.get("controls", [])),
             }
             sec_order.append(sec_key)
@@ -136,6 +148,9 @@ def merge_controls_cumulative(
                 f"with {len(new_sec.get('controls', []))} controls"
             )
             continue
+        else:
+            # If merging into existing section by ID, just keep the existing name.
+            pass
 
         # Merge controls within existing section
         old_ctrl_list = sec_map[sec_key]["controls"]
@@ -189,9 +204,12 @@ def merge_controls_cumulative(
     merged_result = [sec_map[k] for k in sec_order]
 
     # Re-number sections sequentially for safety (SEC-01, SEC-02, etc.)
+    # Wait, if we are grouping by A.5, A.7 etc, we shouldn't overwrite their IDs with SEC-01!
+    # Let's keep original ID if it's already structured, or assign SEC- if missing.
     for idx, sec in enumerate(merged_result, 1):
         if isinstance(sec, dict):
-            sec["id"] = f"SEC-{idx:02d}"
+            if not sec.get("id"):
+                sec["id"] = f"SEC-{idx:02d}"
 
     logger.info(
         f"[MERGE] ✅ Merge complete | merged={summary['merged_controls']} "
