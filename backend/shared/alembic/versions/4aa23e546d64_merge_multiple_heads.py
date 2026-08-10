@@ -1,8 +1,8 @@
-"""Merge multiple heads
+"""merge multiple heads
 
-Revision ID: 0d628a4de619
-Revises: 8ae65b5a8195, 0001_add_tables
-Create Date: 2026-08-10 11:28:33.266185
+Revision ID: 4aa23e546d64
+Revises: 0d628a4de619, 4feeeb66a776
+Create Date: 2026-08-10 14:21:37.534172
 
 """
 
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0d628a4de619"
-down_revision: Union[str, Sequence[str], None] = ("8ae65b5a8195", "0001_add_tables")
+revision: str = "4aa23e546d64"
+down_revision: Union[str, Sequence[str], None] = ("0d628a4de619", "4feeeb66a776")
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
