@@ -65,8 +65,8 @@ class AiExtractionInfo(BaseModel):
     status: ExtractionStatus = "pending"
     timestamp: datetime | None = None
     message: str | None = None
-    statusHistory: list[ExtractionStatusHistory] | None = None
-    controls: list[ExtractionControls] | None = None
+    statusHistory: ExtractionStatusHistory | None = None
+    controls: ExtractionControls | None = None
 
 
 class DocumentExtraction(Base):
