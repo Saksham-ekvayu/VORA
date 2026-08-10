@@ -140,7 +140,16 @@ async def create_pending_extraction(session: AsyncSession, file_hash: str | None
     ).scalar_one_or_none()
     if existing:
         return existing
-    extraction = DocumentExtraction(fileHash=file_hash, aiExtraction={})
+    extraction = DocumentExtraction(
+        fileHash=file_hash,
+        aiExtraction={
+            "status": "pending",
+            "message": None,
+            "timestamp": None,
+            "statusHistory": None,
+            "controls": None,
+        }
+    )
     session.add(extraction)
     await session.flush()
     return extraction
