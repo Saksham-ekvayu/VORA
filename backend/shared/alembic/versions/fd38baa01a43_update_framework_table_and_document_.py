@@ -1,8 +1,8 @@
-"""Initial_migration
+"""update_framework_table_and_document_extraction_table
 
-Revision ID: 8ae65b5a8195
-Revises: 4d32bca525b8
-Create Date: 2026-08-07 14:39:53.647586
+Revision ID: fd38baa01a43
+Revises: 8ae65b5a8195
+Create Date: 2026-08-10 11:25:43.171190
 
 """
 
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "8ae65b5a8195"
-down_revision: Union[str, Sequence[str], None] = "4d32bca525b8"
+revision: str = "fd38baa01a43"
+down_revision: Union[str, Sequence[str], None] = "8ae65b5a8195"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
