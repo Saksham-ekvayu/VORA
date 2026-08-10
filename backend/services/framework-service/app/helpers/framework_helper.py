@@ -6,6 +6,7 @@ import json
 import re
 from typing import Any
 
+from sqlalchemy.orm.attributes import flag_modified
 from vora_shared import data_format
 from vora_shared import messages as msg
 from vora_shared.models.document_extraction import (
@@ -21,7 +22,6 @@ from vora_shared.models.framework import (
     FileVersionEntry,
     Framework,
 )
-from sqlalchemy.orm.attributes import flag_modified
 
 
 def format_message(template: str, **replacements: Any) -> str:
@@ -188,9 +188,7 @@ def resolve_new_section(new_section: str, controls_data: list[Section]) -> dict:
     if not trimmed:
         return {
             "error": {
-                "message": msg.BUSINESS_MESSAGES.get(
-                    "NEW_SECTION_EMPTY", "New section name cannot be empty"
-                ),
+                "message": msg.BUSINESS_MESSAGES.get("NEW_SECTION_EMPTY", "New section name cannot be empty"),
                 "statusCode": 400,
             }
         }
@@ -237,9 +235,7 @@ def resolve_new_section(new_section: str, controls_data: list[Section]) -> dict:
     }
 
 
-def resolve_existing_section(
-    section_id: str, controls_data: list[Section], file_version: str
-) -> dict:
+def resolve_existing_section(section_id: str, controls_data: list[Section], file_version: str) -> dict:
     if len(controls_data) == 0:
         return {
             "error": {
@@ -349,9 +345,7 @@ def _approve_deployment_points(controls_data: list) -> None:
                     dp.status = "approved"
 
 
-def update_deployment_points_to_approved(
-    current_file_version_data, doc_ext=None, legacy_ai=None
-) -> None:
+def update_deployment_points_to_approved(current_file_version_data, doc_ext=None, legacy_ai=None) -> None:
     ai = _get_ai_controls_dict(current_file_version_data, doc_ext, legacy_ai)
     if not ai or not ai.get("controls"):
         return
@@ -403,9 +397,7 @@ async def validate_framework_approval_readiness(session, framework, user):
             None,
             None,
             None,
-            msg.BUSINESS_MESSAGES.get(
-                "FRAMEWORK_IS_ALREADY_APPROVED", "Framework is already approved"
-            ),
+            msg.BUSINESS_MESSAGES.get("FRAMEWORK_IS_ALREADY_APPROVED", "Framework is already approved"),
             400,
         )
 
@@ -456,9 +448,7 @@ async def validate_framework_approval_readiness(session, framework, user):
             None,
             None,
             None,
-            msg.BUSINESS_MESSAGES.get(
-                "FRAMEWORK_AI_PROCESSING_FAILED", "Framework AI processing failed"
-            ),
+            msg.BUSINESS_MESSAGES.get("FRAMEWORK_AI_PROCESSING_FAILED", "Framework AI processing failed"),
             409,
         )
 
@@ -537,3 +527,86 @@ def apply_approved_versions(framework: Framework, current: FileVersionEntry) -> 
             versions[i] = current
             break
     framework.fileVersions = dump_file_versions(versions)
+
+
+def transform_extraction_to_assignment(sections: list) -> list:
+    if not sections:
+        return []
+    # If it's already transformed, weightage will be a dict or not present at the top level
+    first_sec = sections[0]
+    first_ctrl = first_sec.get("controls", [{}])[0] if first_sec.get("controls") else {}
+    if isinstance(first_ctrl.get("weightage"), dict) or "customization" in first_ctrl:
+        return sections
+
+    assignment_sections = []
+    for sec in sections:
+        new_sec = {"id": sec.get("id"), "name": sec.get("name"), "controls": []}
+        for ctrl in sec.get("controls", []):
+            ctrl_weightage = ctrl.get("weightage", 10.0)
+            new_ctrl = {
+                "id": ctrl.get("id"),
+                "name": ctrl.get("name"),
+                "description": ctrl.get("description", ""),
+                "customization": {
+                    "source": "system",
+                    "is_applicable": True,
+                    "weightage": {
+                        "framework_weightage": ctrl_weightage,
+                        "customer_weightage": ctrl_weightage,
+                    },
+                },
+                "deployment_points": [],
+            }
+            for dp in ctrl.get("deployment_points", []):
+                dp_weightage = dp.get("weightage", 10.0)
+                new_dp = {
+                    "id": dp.get("id"),
+                    "name": dp.get("name"),
+                    "status": dp.get("status", "pending"),
+                    "path": dp.get("path", ""),
+                    "remark": dp.get("remark", ""),
+                    "weightage": {
+                        "framework_weightage": dp_weightage,
+                        "customer_weightage": dp_weightage,
+                    },
+                }
+                new_ctrl["deployment_points"].append(new_dp)
+            new_sec["controls"].append(new_ctrl)
+        assignment_sections.append(new_sec)
+    return assignment_sections
+
+
+async def hydrate_assignment_file_versions(session, file_versions: list) -> list:
+    new_file_versions = []
+    for fv in file_versions or []:
+        fv_data = fv.model_dump() if hasattr(fv, "model_dump") else dict(fv)
+        if isinstance(fv_data.get("aiExtraction"), str):
+            doc_ext = await session.get(DocumentExtraction, fv_data["aiExtraction"])
+            if doc_ext and isinstance(doc_ext.aiExtraction, dict):
+                if "controls" in doc_ext.aiExtraction:
+                    fv_data["aiExtraction"] = transform_extraction_to_assignment(
+                        doc_ext.aiExtraction["controls"]
+                    )
+                elif "controls_data" in doc_ext.aiExtraction:
+                    fv_data["aiExtraction"] = transform_extraction_to_assignment(
+                        doc_ext.aiExtraction["controls_data"]
+                    )
+                else:
+                    fv_data["aiExtraction"] = []
+            elif doc_ext and isinstance(doc_ext.aiExtraction, list):
+                fv_data["aiExtraction"] = transform_extraction_to_assignment(doc_ext.aiExtraction)
+            else:
+                fv_data["aiExtraction"] = []
+        elif isinstance(fv_data.get("aiExtraction"), dict):
+            if "controls" in fv_data["aiExtraction"]:
+                fv_data["aiExtraction"] = transform_extraction_to_assignment(
+                    fv_data["aiExtraction"]["controls"]
+                )
+            elif "controls_data" in fv_data["aiExtraction"]:
+                fv_data["aiExtraction"] = transform_extraction_to_assignment(
+                    fv_data["aiExtraction"]["controls_data"]
+                )
+        elif isinstance(fv_data.get("aiExtraction"), list):
+            fv_data["aiExtraction"] = transform_extraction_to_assignment(fv_data["aiExtraction"])
+        new_file_versions.append(fv_data)
+    return new_file_versions

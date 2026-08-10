@@ -201,7 +201,11 @@ def format_file_version(file: Any) -> dict[str, Any]:
 
 
 def format_assignment_response(
-    doc: Any, customer: Any | None, finalized_by_user: User | None, assigned_by_user: User | None = None, revoked_by_user: User | None = None
+    doc: Any,
+    customer: Any | None,
+    finalized_by_user: User | None,
+    assigned_by_user: User | None = None,
+    revoked_by_user: User | None = None,
 ) -> dict[str, Any]:
     fin = as_finalization(doc.finalization)
     return {
@@ -228,7 +232,12 @@ def format_assignment_response(
 
 
 def format_assignment_detail_response(
-    doc: Any, customer: Any | None, uploaded_by_user: User | None, finalized_by_user: User | None, assigned_by_user: User | None = None, revoked_by_user: User | None = None
+    doc: Any,
+    customer: Any | None,
+    uploaded_by_user: User | None,
+    finalized_by_user: User | None,
+    assigned_by_user: User | None = None,
+    revoked_by_user: User | None = None,
 ) -> dict[str, Any]:
     fin = as_finalization(doc.finalization)
     file_versions = coerce_file_versions(doc.fileVersions)

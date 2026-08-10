@@ -20,22 +20,22 @@ from app.services import authorization
 from fastapi import APIRouter, Depends, File, Form
 from fastapi import Path as ApiPath
 from fastapi import Query, Response, UploadFile
-from sqlalchemy import String, cast, func, or_, select, text
+from pydantic import ValidationError
+from sqlalchemy import String, and_, cast, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm.attributes import flag_modified
 from vora_shared import data_format, file_storage
 from vora_shared import messages as msg
 from vora_shared.auth import AuthenticatedUser, authenticate
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
 from vora_shared.models import Customer, DocumentExtraction, FrameworkAssignment, FrameworkCategory, User
+from vora_shared.models.document_extraction import ExtractionControlItem as ControlItem
+from vora_shared.models.document_extraction import ExtractionSection as Section
 from vora_shared.models.framework import (
     Approval,
     FileVersionEntry,
     Framework,
-)
-from vora_shared.models.document_extraction import (
-    ExtractionControlItem as ControlItem,
-    ExtractionSection as Section,
 )
 from vora_shared.models.framework_assignment import AssignmentInfo
 from vora_shared.query_builder import build_pagination_meta, clamp_limit, clamp_page
@@ -589,7 +589,17 @@ async def assign_framework_to_customer(
             if existing:
                 existing.status = "assigned"
                 existing.updatedAt = _now()
+                # Hydrate missing controls if they are still strings
+                new_file_versions = await framework_helper.hydrate_assignment_file_versions(
+                    session, existing.fileVersions
+                )
+                existing.fileVersions = new_file_versions
+                flag_modified(existing, "fileVersions")
             else:
+                new_file_versions = await framework_helper.hydrate_assignment_file_versions(
+                    session, fw.fileVersions
+                )
+
                 session.add(
                     FrameworkAssignment(
                         tenantId=body.tenantId,
@@ -601,7 +611,7 @@ async def assign_framework_to_customer(
                         frameworkCategoryId=fw.frameworkCategoryId,
                         uploadedBy=fw.uploadedBy,
                         currentFileVersion=fw.currentFileVersion or "1.0.0",
-                        fileVersions=list(fw.fileVersions or []),
+                        fileVersions=new_file_versions,
                         status="assigned",
                         assignment=AssignmentInfo(assignedBy=user.id, assignedAt=_now()).model_dump(
                             mode="json"

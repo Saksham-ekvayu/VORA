@@ -151,12 +151,16 @@ async def get_framework_assignment_by_id(id: str, ctx: Annotated[RequestContext,
         finalized_by = users.get(str(fin.finalizedBy)) if fin and fin.finalizedBy else None
 
         assign_info = helper.as_assignment_info(assignment.assignment)
-        assigned_by = users.get(str(assign_info.assignedBy)) if assign_info and assign_info.assignedBy else None
+        assigned_by = (
+            users.get(str(assign_info.assignedBy)) if assign_info and assign_info.assignedBy else None
+        )
         rev_info = helper.as_revocation(assignment.revocation)
         revoked_by = users.get(str(rev_info.revokedBy)) if rev_info and rev_info.revokedBy else None
 
         return success(
-            helper.format_assignment_detail_response(assignment, customer, uploaded_by, finalized_by, assigned_by, revoked_by),
+            helper.format_assignment_detail_response(
+                assignment, customer, uploaded_by, finalized_by, assigned_by, revoked_by
+            ),
             format_message(BUSINESS_MESSAGES["ASSIGNED_FRAMEWORKS_RETRIEVED"], status="Assigned"),
         )
 
@@ -668,11 +672,15 @@ async def finalize_framework_assignment(id: str, ctx: Annotated[RequestContext, 
         finalized_by = users.get(str(fin.finalizedBy)) if fin.finalizedBy else None
 
         assign_info = helper.as_assignment_info(assignment.assignment)
-        assigned_by = users.get(str(assign_info.assignedBy)) if assign_info and assign_info.assignedBy else None
+        assigned_by = (
+            users.get(str(assign_info.assignedBy)) if assign_info and assign_info.assignedBy else None
+        )
         rev_info = helper.as_revocation(assignment.revocation)
         revoked_by = users.get(str(rev_info.revokedBy)) if rev_info and rev_info.revokedBy else None
 
         return success(
-            helper.format_assignment_detail_response(assignment, customer, uploaded_by, finalized_by, assigned_by, revoked_by),
+            helper.format_assignment_detail_response(
+                assignment, customer, uploaded_by, finalized_by, assigned_by, revoked_by
+            ),
             "Framework assignment finalized successfully.",
         )
