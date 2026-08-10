@@ -24,6 +24,7 @@ from vora_shared.models.deployment_framework import (
     FrameworkPackageDocument,
     PackageVersion,
 )
+from vora_shared.models.deployment_package_merge import DeploymentPackageMerge
 from vora_shared.models.document_extraction import (
     AiExtractionInfo,
     DocumentExtraction,
@@ -34,6 +35,7 @@ from vora_shared.models.document_extraction import (
     ExtractionStatusHistory,
 )
 from vora_shared.models.framework import Framework
+from vora_shared.models.framework_merge import FrameworkMerge
 from vora_shared.models.framework_access import FrameworkAccess
 from vora_shared.models.framework_assignment import (
     AssignmentControl,
@@ -78,6 +80,7 @@ __all__ = [
     "DeploymentFramework",
     "DeploymentGapJob",
     "DeploymentGapResult",
+    "DeploymentPackageMerge",
     "DocumentExtraction",
     "EvidenceOutput",
     "ExpertReview",
@@ -92,6 +95,7 @@ __all__ = [
     "FrameworkAccess",
     "FrameworkAssignment",
     "FrameworkCategory",
+    "FrameworkMerge",
     "FrameworkPackageDocument",
     "GapConfig",
     "MergeHashRegistry",
