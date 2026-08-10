@@ -20,9 +20,11 @@ from app.services.control_merger import (
     merge_controls_cumulative,
 )
 from sqlalchemy import select
+from sqlalchemy.orm.attributes import flag_modified
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
 from vora_shared.models import (
+    DeploymentFramework,
     DeploymentPackageMerge,
     DocumentExtraction,
     Framework,
@@ -230,12 +232,13 @@ async def _update_framework_ai_status(
     fv["aiExtraction"] = extraction.id
     versions[idx] = fv
     fw.fileVersions = versions
+    flag_modified(fw, "fileVersions")
+    session.add(fw)
 
 
 async def _update_deployment_framework_ai_status(
     session: Any, df_id: str, pkg_ver: str, file_id: str, status_data: dict[str, Any], replace: bool = False
 ) -> None:
-    from vora_shared.models import DeploymentFramework
 
     df = await session.get(DeploymentFramework, df_id)
     if not df:
@@ -274,14 +277,13 @@ async def _update_deployment_framework_ai_status(
 
     if updated:
         df.packages = packages
+        flag_modified(df, "packages")
         session.add(df)
 
 
 async def _update_deployment_framework_mergeDocument_status(
     session: Any, df_id: str, pkg_ver: str, merge_id: str | None
 ) -> None:
-    from sqlalchemy.orm.attributes import flag_modified
-    from vora_shared.models import DeploymentFramework
 
     df = await session.get(DeploymentFramework, df_id)
     if not df:
@@ -547,7 +549,6 @@ async def run_deployment_framework_extraction(df_id: str, pkg_ver: str, file_id:
         # Get deployment framework and file info
         logger.info(f"[DEPLOYMENT-EXTRACT] Step 1: Loading deployment framework from database...")
         async with session_scope() as session:
-            from vora_shared.models import DeploymentFramework
 
             df = await session.get(DeploymentFramework, df_id)
             if not df:
@@ -603,7 +604,7 @@ async def run_deployment_framework_extraction(df_id: str, pkg_ver: str, file_id:
                 {
                     "status": "processing",
                     "timestamp": uploaded_ts,
-                    "message": "Framework ai extraction in progress",
+                    "message": "Deployment framework ai extraction in progress",
                 },
             )
             logger.info(f"[DEPLOYMENT-EXTRACT] ✅ Status updated to 'processing'")
@@ -619,7 +620,7 @@ async def run_deployment_framework_extraction(df_id: str, pkg_ver: str, file_id:
 
         # Extract controls using AI (client controls for deployment frameworks)
         logger.info(f"[DEPLOYMENT-EXTRACT] Step 3: Running AI extraction...")
-        controls_flat = await asyncio.to_thread(extract_framework_controls, chunks, df_id)
+        controls_flat = await asyncio.to_thread(extract_framework_controls, chunks, df_id, True)
         logger.info(
             f"[DEPLOYMENT-EXTRACT] ✅ Framework ai extraction complete: {len(controls_flat)} controls extracted"
         )
@@ -739,7 +740,6 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
 
     try:
         async with session_scope() as session:
-            from vora_shared.models import DeploymentFramework
 
             df = await session.get(DeploymentFramework, df_id)
             if not df:
