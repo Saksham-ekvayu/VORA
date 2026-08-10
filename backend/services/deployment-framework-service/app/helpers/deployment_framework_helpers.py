@@ -214,8 +214,10 @@ def _version_sort_key(v: str) -> tuple[int, int, int]:
         return (0, 0, 0)
 
 
-def process_and_save_file(content: bytes, filename: str, user_id: str, version: str) -> dict[str, Any] | None:
-    path_info = file_storage.generate_deployment_file_path(filename, user_id, "deployment-framework", version)
+def process_and_save_file(
+    content: bytes, filename: str, user_id: str, framework_version: str, document_version: str = "1.0.0"
+) -> dict[str, Any] | None:
+    path_info = file_storage.generate_deployment_file_path(filename, user_id, "deployment-framework", framework_version)
 
     if not file_storage.save_file(content, path_info.absolute_path):
         return None
@@ -224,7 +226,7 @@ def process_and_save_file(content: bytes, filename: str, user_id: str, version: 
 
     return {
         "fileId": new_id(),
-        "fileVersion": version,
+        "fileVersion": document_version,
         "fileUrl": f"/uploads/{path_info.relative_path.replace(chr(92), '/')}",
         "fileHash": file_hash,
         "originalFileName": filename,
@@ -236,12 +238,16 @@ def process_and_save_file(content: bytes, filename: str, user_id: str, version: 
     }
 
 
-async def process_uploaded_files(files: list[UploadFile], user_id: str, version: str) -> dict[str, Any]:
+async def process_uploaded_files(
+    files: list[UploadFile], user_id: str, framework_version: str, document_version: str = "1.0.0"
+) -> dict[str, Any]:
     document_data_array = []
     for file in files:
         content = await file.read()
 
-        document_data = process_and_save_file(content, file.filename or "file", user_id, version)
+        document_data = process_and_save_file(
+            content, file.filename or "file", user_id, framework_version, document_version
+        )
         if not document_data:
             return {"error": {"message": f"Failed to save file: {file.filename}", "status": 500}}
         document_data_array.append(document_data)
