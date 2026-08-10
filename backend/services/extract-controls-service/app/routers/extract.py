@@ -8,9 +8,9 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.services.extraction_runner import (
-    run_framework_extraction,
     run_deployment_framework_extraction,
     run_deployment_package_merge,
+    run_framework_extraction,
 )
 from fastapi import APIRouter
 from sqlalchemy import func, select

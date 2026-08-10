@@ -139,16 +139,8 @@ def merge_controls_cumulative(
 
         # Merge controls within existing section
         old_ctrl_list = sec_map[sec_key]["controls"]
-        ctrl_by_id = {
-            c.get("id", "").strip(): c
-            for c in old_ctrl_list
-            if c.get("id")
-        }
-        ctrl_by_name = {
-            c.get("name", "").lower().strip(): c
-            for c in old_ctrl_list
-            if c.get("name")
-        }
+        ctrl_by_id = {c.get("id", "").strip(): c for c in old_ctrl_list if c.get("id")}
+        ctrl_by_name = {c.get("name", "").lower().strip(): c for c in old_ctrl_list if c.get("name")}
 
         for new_ctrl in new_sec.get("controls", []):
             nc_id = (new_ctrl.get("id") or "").strip()
@@ -162,21 +154,22 @@ def merge_controls_cumulative(
 
                 # Merge DPs — deduplicate by name
                 existing_dp_names = {
-                    dp.get("name", "").lower().strip()
-                    for dp in existing.get("deployment_points", [])
+                    dp.get("name", "").lower().strip() for dp in existing.get("deployment_points", [])
                 }
                 dps = existing.setdefault("deployment_points", [])
                 for new_dp in new_ctrl.get("deployment_points", []):
                     dp_name_lower = (new_dp.get("name") or "").lower().strip()
                     if dp_name_lower and dp_name_lower not in existing_dp_names:
-                        dps.append({
-                            "id": f"DP-{len(dps) + 1:03d}",
-                            "name": new_dp.get("name", ""),
-                            "status": "pending",
-                            "path": "",
-                            "weightage": 0,
-                            "remark": "",
-                        })
+                        dps.append(
+                            {
+                                "id": f"DP-{len(dps) + 1:03d}",
+                                "name": new_dp.get("name", ""),
+                                "status": "pending",
+                                "path": "",
+                                "weightage": 0,
+                                "remark": "",
+                            }
+                        )
                         existing_dp_names.add(dp_name_lower)
                         summary["new_dps"] += 1
 

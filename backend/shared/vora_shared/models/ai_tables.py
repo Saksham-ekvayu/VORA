@@ -16,47 +16,6 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
-class ExtractionResult(Base):
-    __tablename__ = "extraction_results"
-    __table_args__ = (
-        Index("ix_extraction_results_ref", "ref_id"),
-        Index("ix_extraction_results_resource", "resource_type", "ref_id"),
-    )
-
-    id: Mapped[str] = mapped_column(String(24), primary_key=True, default=new_id)
-    ref_id: Mapped[str] = mapped_column(String(24), nullable=False)
-    resource_type: Mapped[str] = mapped_column(String, nullable=False)
-    file_id: Mapped[str | None] = mapped_column(String, nullable=True)
-    package_version: Mapped[str | None] = mapped_column(String, nullable=True)
-    status: Mapped[str] = mapped_column(String, nullable=False, default="pending")
-    result: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
-    meta: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
-    createdAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
-    updatedAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
-
-
-class ExtractionHashRegistry(Base):
-    __tablename__ = "extraction_hash_registry"
-    __table_args__ = (Index("ix_extraction_hash", "file_hash", unique=True),)
-
-    id: Mapped[str] = mapped_column(String(24), primary_key=True, default=new_id)
-    file_hash: Mapped[str] = mapped_column(String, nullable=False)
-    extraction_data: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
-    createdAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
-    updatedAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
-
-
-class MergeHashRegistry(Base):
-    __tablename__ = "merge_hash_registry"
-    __table_args__ = (Index("ix_merge_hash", "hash_key", unique=True),)
-
-    id: Mapped[str] = mapped_column(String(24), primary_key=True, default=new_id)
-    hash_key: Mapped[str] = mapped_column(String, nullable=False)
-    merge_data: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
-    createdAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
-    updatedAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
-
-
 class PackageMergeTracking(Base):
     __tablename__ = "package_merge_tracking"
     __table_args__ = (
@@ -148,27 +107,6 @@ class AgentPrompt(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     prompt: Mapped[str] = mapped_column(Text, nullable=False, default="")
     meta: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
-    createdAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
-    updatedAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
-
-
-class AgentMapping(Base):
-    __tablename__ = "agent_mappings"
-
-    id: Mapped[str] = mapped_column(String(24), primary_key=True, default=new_id)
-    agent_name: Mapped[str] = mapped_column(String, nullable=False)
-    mapping: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
-    createdAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
-    updatedAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
-
-
-class AgentControl(Base):
-    __tablename__ = "agent_controls"
-    __table_args__ = (Index("ix_agent_controls_control", "control_id"),)
-
-    id: Mapped[str] = mapped_column(String(24), primary_key=True, default=new_id)
-    control_id: Mapped[str] = mapped_column(String, nullable=False)
-    data: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     createdAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updatedAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 

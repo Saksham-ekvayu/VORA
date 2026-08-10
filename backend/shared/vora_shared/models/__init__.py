@@ -1,18 +1,13 @@
 """Shared SQLAlchemy models for the unified Postgres `vora` database."""
 
 from vora_shared.models.ai_tables import (
-    AgentControl,
-    AgentMapping,
     AgentPrompt,
     ComparisonJob,
     ComparisonResult,
     DeploymentGapJob,
     DeploymentGapResult,
     EvidenceOutput,
-    ExtractionHashRegistry,
-    ExtractionResult,
     GapConfig,
-    MergeHashRegistry,
     PackageMergeTracking,
     UploadedFile,
 )
@@ -35,7 +30,6 @@ from vora_shared.models.document_extraction import (
     ExtractionStatusHistory,
 )
 from vora_shared.models.framework import Framework
-from vora_shared.models.framework_merge import FrameworkMerge
 from vora_shared.models.framework_access import FrameworkAccess
 from vora_shared.models.framework_assignment import (
     AssignmentControl,
@@ -50,6 +44,7 @@ from vora_shared.models.framework_assignment import (
     FrameworkAssignment,
 )
 from vora_shared.models.framework_category import FrameworkCategory
+from vora_shared.models.framework_merge import FrameworkMerge
 from vora_shared.models.package_comparison import PackageComparison
 from vora_shared.models.package_gap_analysis import PackageGapAnalysis
 from vora_shared.models.package_merge import PackageMerge
@@ -57,8 +52,6 @@ from vora_shared.models.user import User, UserAddress, UserCreatedBy, UserOtp
 
 __all__ = [
     "AddressBlock",
-    "AgentControl",
-    "AgentMapping",
     "AgentPrompt",
     "AiExtractionInfo",
     "AssignmentControl",
@@ -87,8 +80,6 @@ __all__ = [
     "ExtractionControlItem",
     "ExtractionControls",
     "ExtractionDeploymentPoint",
-    "ExtractionHashRegistry",
-    "ExtractionResult",
     "ExtractionSection",
     "ExtractionStatusHistory",
     "Framework",
@@ -98,7 +89,6 @@ __all__ = [
     "FrameworkMerge",
     "FrameworkPackageDocument",
     "GapConfig",
-    "MergeHashRegistry",
     "PackageComparison",
     "PackageGapAnalysis",
     "PackageMerge",

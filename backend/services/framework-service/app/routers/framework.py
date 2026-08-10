@@ -470,10 +470,10 @@ async def approve_framework(id: str, ctx: Annotated[AuthenticatedUser, Depends(a
                 400,
             )
 
-        framework_helper.update_deployment_points_to_approved(current, doc_extraction, legacy_ai=ai)
-        if doc_extraction:
-            session.add(doc_extraction)
         framework_helper.apply_approved_versions(framework, current)
+
+        # Change all pending deployment points to approved
+        await framework_helper.approve_all_deployment_points(session, framework)
         approval = Approval(status="approved", by=user.id, date=_now(), remark=None)
         framework.approval = approval.model_dump(mode="json")
         framework.updatedAt = _now()
@@ -590,7 +590,9 @@ async def assign_framework_to_customer(
                 existing.status = "assigned"
                 existing.updatedAt = _now()
                 # Update assignment time without clearing revocation
-                existing.assignment = AssignmentInfo(assignedBy=user.id, assignedAt=_now()).model_dump(mode="json")
+                existing.assignment = AssignmentInfo(assignedBy=user.id, assignedAt=_now()).model_dump(
+                    mode="json"
+                )
                 flag_modified(existing, "assignment")
                 # Hydrate missing controls if they are still strings
                 new_file_versions = await framework_helper.hydrate_assignment_file_versions(
