@@ -76,14 +76,24 @@ def resolve_document_file_version(framework: Any, document_data: dict[str, Any])
     if not document_history:
         return "1.0.0"
 
-    latest_document_version = max(
-        (_g(doc, "fileVersion") or "1.0.0" for doc in document_history),
-        key=lambda v: _version_sort_key(v),
-    )
-
     occurrence_based_version = _g(document_history[0], "fileVersion") or "1.0.0"
+    try:
+        version_service.parse_version(occurrence_based_version)
+    except ValueError:
+        occurrence_based_version = "1.0.0"
+
     for _ in document_history[1:]:
         occurrence_based_version = version_service.increment_file_patch(occurrence_based_version)
+
+    latest_document_version = "1.0.0"
+    for doc in document_history:
+        ver = _g(doc, "fileVersion") or "1.0.0"
+        try:
+            version_service.parse_version(ver)
+            if version_service.compare_versions(ver, latest_document_version) > 0:
+                latest_document_version = ver
+        except ValueError:
+            pass
 
     base_version = (
         latest_document_version

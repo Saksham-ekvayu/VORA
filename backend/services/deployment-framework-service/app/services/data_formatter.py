@@ -20,6 +20,7 @@ from vora_shared.models import (
     PackageMerge,
     PackageVersion,
     User,
+    FrameworkAssignment,
 )
 from vora_shared.models.document_extraction import AiExtractionInfo
 
@@ -91,7 +92,7 @@ async def hydrate_maps(
     comparisons = await _fetch(PackageComparison, comparison_ids)
     gaps = await _fetch(PackageGapAnalysis, gap_ids)
     merges = await _fetch(PackageMerge, merge_ids)
-    assigned_frameworks = await _fetch(DeploymentFramework, assigned_framework_ids)
+    assigned_frameworks = await _fetch(FrameworkAssignment, assigned_framework_ids)
 
     return {
         "users": users,
