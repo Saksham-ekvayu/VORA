@@ -149,7 +149,7 @@ export function extractDeploymentFramework(
   fileId
 ) {
   return apiRequest(
-    `${EXTRACTION_BASE}/${FRAMEWORK_BASE}/${frameworkId}/packages/${packageVersion}/files/${fileId}/ai-upload`,
+    `${EXTRACTION_BASE}/deployment-framework/${frameworkId}/packages/${packageVersion}/files/${fileId}/ai-extract`,
     {
       method: "POST",
     },
