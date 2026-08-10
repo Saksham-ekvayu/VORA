@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     email_user: str = ""
     email_pass: str = ""
     email_from: str = ""
+    openai_api_key: str = ""
     allowed_extensions: str = "pdf,doc,docx"
     max_file_size: float = 10.0
 

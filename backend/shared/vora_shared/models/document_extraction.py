@@ -33,6 +33,8 @@ class ExtractionControlItem(BaseModel):
     name: str
     description: str = ""
     deployment_points: list[ExtractionDeploymentPoint] = Field(default_factory=list)
+    weightage: float = 10
+    remark: str = ""
 
 
 class ExtractionSection(BaseModel):
@@ -63,8 +65,8 @@ class AiExtractionInfo(BaseModel):
     status: ExtractionStatus = "pending"
     timestamp: datetime | None = None
     message: str | None = None
-    statusHistory: list[ExtractionStatusHistory] | None = None
-    controls: list[ExtractionControls] | None = None
+    statusHistory: ExtractionStatusHistory | None = None
+    controls: ExtractionControls | None = None
 
 
 class DocumentExtraction(Base):

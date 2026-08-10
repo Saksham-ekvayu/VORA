@@ -770,7 +770,7 @@ async def get_customer_admin_dashboard(
     ctx: Annotated[RequestContext, Depends(get_context)],
 ):
     try:
-        tenant_id = ctx.tenantId
+        tenant_id = ctx.tenant_id
         user = ctx.user
 
         async with session_scope() as session:

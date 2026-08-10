@@ -2,6 +2,7 @@ import { apiRequest } from "./apiService";
 
 const ASSIGNMENT_BASE = "/assignment-frameworks";
 const FRAMEWORK_BASE = "/deployment-frameworks";
+const EXTRACTION_BASE = "/extract";
 
 /**
  * Get frameworks assigned to the customer by admin
@@ -148,7 +149,7 @@ export function extractDeploymentFramework(
   fileId
 ) {
   return apiRequest(
-    `${FRAMEWORK_BASE}/${frameworkId}/packages/${packageVersion}/files/${fileId}/ai-upload`,
+    `${EXTRACTION_BASE}/deployment-framework/${frameworkId}/packages/${packageVersion}/files/${fileId}/ai-extract`,
     {
       method: "POST",
     },
@@ -271,6 +272,22 @@ export async function downloadDeploymentFrameworkReport(
 export function runAnalysis(deploymentFrameworkId, packageVersion) {
   return apiRequest(
     `${FRAMEWORK_BASE}/${deploymentFrameworkId}/packages/${packageVersion}/run-analysis`,
+    {
+      method: "POST",
+    },
+    true
+  );
+}
+
+/**
+ * Merge controls for deployment framework package
+ */
+export function mergeDeploymentFrameworkControls(
+  deploymentFrameworkId,
+  packageVersion
+) {
+  return apiRequest(
+    `${EXTRACTION_BASE}/deployment-framework/${deploymentFrameworkId}/packages/${packageVersion}/merge`,
     {
       method: "POST",
     },
@@ -409,7 +426,7 @@ export function updateAssignmentFrameworkControlWeightage(
 
 export function finalizeAssignmentFramework(id) {
   return apiRequest(
-    `${ASSIGNMENT_BASE}/${id}/finalize`,
+    `${ASSIGNMENT_BASE}/assignments/${id}/finalize`,
     {
       method: "PATCH",
     },
@@ -473,6 +490,7 @@ export default {
   extractDeploymentFramework,
   runAnalysis,
   downloadDeploymentFrameworkReport,
+  mergeDeploymentFrameworkControls,
   requestExpertReview,
   reviewDeploymentPoints,
   completeDeploymentFrameworkReview,

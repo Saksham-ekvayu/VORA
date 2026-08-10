@@ -2,6 +2,7 @@ import { apiRequest } from "./apiService";
 
 const FRAMEWORK_BASE = "/framework";
 const DASHBOARD_BASE = "/dashboard";
+const EXTRACTION_BASE = "/extract";
 
 /**
  * Get expert dashboard analytics from framework-service
@@ -124,7 +125,7 @@ export function uploadFramework(formData) {
  */
 export function extractFramework(frameworkId, fileId) {
   return apiRequest(
-    `${FRAMEWORK_BASE}/${frameworkId}/files/${fileId}/ai-extract`,
+    `${EXTRACTION_BASE}/framework/${frameworkId}/files/${fileId}/ai-extract`,
     {
       method: "POST",
     },

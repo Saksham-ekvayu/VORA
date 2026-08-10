@@ -23,6 +23,8 @@ export const STATUS_STARTED = "started";
 export const STATUS_RUNNING = "running";
 export const STATUS_DONE = "done";
 export const STATUS_LOCKED = "locked";
+export const STATUS_MERGED = "merged";
+export const STATUS_LIVE = "live";
 
 export const STATUS_IMPLEMENTED = "implemented";
 export const STATUS_PARTIAL = "partially implemented";

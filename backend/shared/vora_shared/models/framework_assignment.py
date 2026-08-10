@@ -66,7 +66,7 @@ class AssignmentFileVersion(BaseModel):
     fileSize: int
     fileType: str | None = None
     uploadedAt: datetime = Field(default_factory=_utcnow)
-    aiExtraction: list[AssignmentSection] | None = None
+    aiExtraction: str | list[AssignmentSection] | None = None
 
 
 class AssignmentInfo(BaseModel):

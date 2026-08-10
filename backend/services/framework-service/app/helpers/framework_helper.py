@@ -6,14 +6,21 @@ import json
 import re
 from typing import Any
 
+from sqlalchemy.orm.attributes import flag_modified
 from vora_shared import data_format
 from vora_shared import messages as msg
+from vora_shared.models.document_extraction import (
+    DocumentExtraction,
+)
+from vora_shared.models.document_extraction import ExtractionControlItem as ControlItem
+from vora_shared.models.document_extraction import (
+    ExtractionControls,
+)
+from vora_shared.models.document_extraction import ExtractionDeploymentPoint as DeploymentPoint
+from vora_shared.models.document_extraction import ExtractionSection as Section
 from vora_shared.models.framework import (
-    ControlItem,
-    DeploymentPoint,
     FileVersionEntry,
     Framework,
-    Section,
 )
 
 
@@ -95,26 +102,51 @@ def approval_remark(framework: Framework) -> str | None:
     return getattr(approval, "remark", None)
 
 
-def transform_framework_doc(doc: Framework, uploaded_by_user=None) -> dict:
+def _resolve_ai_status(current, doc_extractions) -> str | None:
+    if not current or not current.aiExtraction:
+        return None
+
+    if isinstance(current.aiExtraction, dict):
+        return current.aiExtraction.get("status")
+
+    if doc_extractions and isinstance(current.aiExtraction, str):
+        doc_ext = doc_extractions.get(current.aiExtraction)
+        if doc_ext and doc_ext.aiExtraction:
+            if isinstance(doc_ext.aiExtraction, dict):
+                return doc_ext.aiExtraction.get("status")
+            return getattr(doc_ext.aiExtraction, "status", None)
+    return None
+
+
+def _resolve_file_info(current) -> dict:
+    if not current:
+        return {
+            "fileId": None,
+            "originalFileName": "Unknown",
+            "fileSize": data_format.format_file_size(0),
+            "fileType": "pdf",
+        }
+    return {
+        "fileId": str(current.fileId) if getattr(current, "fileId", None) else None,
+        "originalFileName": current.originalFileName,
+        "fileSize": data_format.format_file_size(current.fileSize),
+        "fileType": current.fileType,
+    }
+
+
+def transform_framework_doc(doc: Framework, uploaded_by_user=None, doc_extractions=None) -> dict:
     current = get_current_file_version_data(doc)
     return {
-        "id": str(doc.id) if doc and getattr(doc, "id", None) else None,
+        "id": str(doc.id) if doc.id else None,
         "frameworkName": doc.frameworkName,
         "frameworkVersion": doc.frameworkVersion,
         "frameworkCode": doc.frameworkCode,
-        "frameworkCategoryId": (
-            str(doc.frameworkCategoryId) if doc and getattr(doc, "frameworkCategoryId", None) else None
-        ),
+        "frameworkCategoryId": str(doc.frameworkCategoryId) if doc.frameworkCategoryId else None,
         "currentFileVersion": doc.currentFileVersion,
-        "fileInfo": {
-            "fileId": str(current.fileId) if current and getattr(current, "fileId", None) else None,
-            "originalFileName": current.originalFileName if current else "Unknown",
-            "fileSize": data_format.format_file_size(current.fileSize if current else 0),
-            "fileType": current.fileType if current else "pdf",
-        },
+        "fileInfo": _resolve_file_info(current),
         "uploadedBy": data_format.format_uploaded_by(uploaded_by_user, doc.uploadedBy),
         "aiExtraction": {
-            "status": (current.aiExtraction.status if current and current.aiExtraction else None),
+            "status": _resolve_ai_status(current, doc_extractions),
         },
         "approval": {"status": approval_status(doc)},
         "createdAt": doc.createdAt,
@@ -272,32 +304,35 @@ def is_valid_control_weightage(control: ControlItem) -> bool:
     )
 
 
-def find_invalid_control_weightage(current_file_version_data) -> ControlItem | None:
-    if (
-        not current_file_version_data
-        or not current_file_version_data.aiExtraction
-        or not current_file_version_data.aiExtraction.controls
-    ):
+def _get_ai_controls_dict(current_file_version_data, doc_ext=None, legacy_ai=None) -> dict | None:
+    if not current_file_version_data:
         return None
 
-    for section in current_file_version_data.aiExtraction.controls.controls_data:
-        for control in section.controls or []:
-            if not is_valid_control_weightage(control):
-                return control
+    if legacy_ai is not None:
+        return legacy_ai
+    if doc_ext and doc_ext.aiExtraction:
+        return (
+            doc_ext.aiExtraction
+            if isinstance(doc_ext.aiExtraction, dict)
+            else doc_ext.aiExtraction.model_dump()
+        )
     return None
 
 
-def update_deployment_points_to_approved(current_file_version_data) -> None:
-    if (
-        not current_file_version_data
-        or not current_file_version_data.aiExtraction
-        or not current_file_version_data.aiExtraction.controls
-    ):
-        return
-    for section in current_file_version_data.aiExtraction.controls.controls_data:
-        for control in section.controls or []:
-            for dp in control.deployment_points or []:
-                dp.status = "approved"
+def find_invalid_control_weightage(
+    current_file_version_data, doc_ext=None, legacy_ai=None
+) -> ControlItem | None:
+    ai = _get_ai_controls_dict(current_file_version_data, doc_ext, legacy_ai)
+    if not ai or not ai.get("controls"):
+        return None
+
+    controls_data = ai.get("controls").get("controls_data") or []
+    for section in controls_data:
+        for control in section.get("controls") or []:
+            c_obj = ControlItem(**control) if isinstance(control, dict) else control
+            if not is_valid_control_weightage(c_obj):
+                return c_obj
+    return None
 
 
 def build_deployment_points(raw_points: list[dict] | None) -> list[DeploymentPoint]:
@@ -319,6 +354,146 @@ def build_deployment_points(raw_points: list[dict] | None) -> list[DeploymentPoi
     return points
 
 
+async def validate_framework_approval_readiness(session, framework, user):
+    if str(framework.uploadedBy) != str(user.id):
+        return (
+            None,
+            None,
+            None,
+            msg.BUSINESS_MESSAGES.get(
+                "ONLY_THE_USER_WHO_UPLOADED_THE_FRAMEWORK",
+                "Only the user who uploaded the framework can edit it",
+            ),
+            403,
+        )
+
+    if approval_status(framework) == "approved":
+        return (
+            None,
+            None,
+            None,
+            msg.BUSINESS_MESSAGES.get("FRAMEWORK_IS_ALREADY_APPROVED", "Framework is already approved"),
+            400,
+        )
+
+    current = get_current_file_version_data(framework)
+    if not current or not current.aiExtraction:
+        return (
+            None,
+            None,
+            None,
+            msg.BUSINESS_MESSAGES.get(
+                "FRAMEWORK_MUST_BE_UPLOADED_TO_AI_BEFORE",
+                "Framework must be uploaded to AI before approval",
+            ),
+            400,
+        )
+
+    if isinstance(current.aiExtraction, str):
+        doc_extraction = await session.get(DocumentExtraction, current.aiExtraction)
+        if not doc_extraction or not doc_extraction.aiExtraction:
+            return (
+                None,
+                None,
+                None,
+                msg.BUSINESS_MESSAGES.get(
+                    "FRAMEWORK_MUST_BE_UPLOADED_TO_AI_BEFORE",
+                    "Framework must be uploaded to AI before approval",
+                ),
+                400,
+            )
+        ai = doc_extraction.aiExtraction
+    else:
+        doc_extraction = None
+        ai = current.aiExtraction
+
+    ai_status = ai.get("status") if isinstance(ai, dict) else getattr(ai, "status", None)
+    if ai_status == "processing":
+        return (
+            None,
+            None,
+            None,
+            msg.BUSINESS_MESSAGES.get(
+                "FRAMEWORK_AI_PROCESSING_IS_IN_PROGRESS_P", "Framework AI processing is in progress"
+            ),
+            409,
+        )
+    if ai_status == "failed":
+        return (
+            None,
+            None,
+            None,
+            msg.BUSINESS_MESSAGES.get("FRAMEWORK_AI_PROCESSING_FAILED", "Framework AI processing failed"),
+            409,
+        )
+
+    return current, doc_extraction, ai, None, None
+
+
+async def load_ai_controls(session, file_version_doc):
+    if not file_version_doc.aiExtraction:
+        return (
+            None,
+            None,
+            None,
+            msg.BUSINESS_MESSAGES.get(
+                "AI_EXTRACTION_DATA_NOT_FOUND_FOR_THIS_VE, AI extraction data not found for this version"
+            ),
+            400,
+        )
+
+    doc_ext = None
+    ai_data = None
+    if isinstance(file_version_doc.aiExtraction, str):
+        doc_ext = await session.get(DocumentExtraction, file_version_doc.aiExtraction)
+        if not doc_ext or not doc_ext.aiExtraction:
+            return (
+                None,
+                None,
+                None,
+                msg.BUSINESS_MESSAGES.get(
+                    "AI_EXTRACTION_DATA_NOT_FOUND_FOR_THIS_VE",
+                    "AI extraction data not found for this version",
+                ),
+                400,
+            )
+        ai_data = (
+            doc_ext.aiExtraction
+            if isinstance(doc_ext.aiExtraction, dict)
+            else doc_ext.aiExtraction.model_dump()
+        )
+    elif isinstance(file_version_doc.aiExtraction, dict):
+        ai_data = file_version_doc.aiExtraction
+
+    if not ai_data:
+        return (
+            None,
+            None,
+            None,
+            msg.BUSINESS_MESSAGES.get(
+                "AI_EXTRACTION_DATA_NOT_FOUND_FOR_THIS_VE",
+                "AI extraction data not found for this version",
+            ),
+            400,
+        )
+
+    if not ai_data.get("controls"):
+        ai_data["controls"] = ExtractionControls().model_dump()
+
+    controls = ExtractionControls(**ai_data["controls"])
+    return controls, doc_ext, ai_data, None, None
+
+
+def save_ai_controls(session, file_version_doc, controls, doc_ext, ai_data):
+    ai_data["controls"] = controls.model_dump(mode="json")
+    if doc_ext:
+        doc_ext.aiExtraction = dict(ai_data)
+        flag_modified(doc_ext, "aiExtraction")
+        session.add(doc_ext)
+    else:
+        file_version_doc.aiExtraction = dict(ai_data)
+
+
 def apply_approved_versions(framework: Framework, current: FileVersionEntry) -> None:
     """Write mutated current version (with approved DPs) back onto framework JSONB."""
     versions = parse_file_versions(framework)
@@ -327,3 +502,128 @@ def apply_approved_versions(framework: Framework, current: FileVersionEntry) -> 
             versions[i] = current
             break
     framework.fileVersions = dump_file_versions(versions)
+
+
+def transform_extraction_to_assignment(sections: list) -> list:
+    if not sections:
+        return []
+    # If it's already transformed, weightage will be a dict or not present at the top level
+    first_sec = sections[0]
+    first_ctrl = first_sec.get("controls", [{}])[0] if first_sec.get("controls") else {}
+    if isinstance(first_ctrl.get("weightage"), dict) or "customization" in first_ctrl:
+        return sections
+
+    assignment_sections = []
+    for sec in sections:
+        new_sec = {"id": sec.get("id"), "name": sec.get("name"), "controls": []}
+        for ctrl in sec.get("controls", []):
+            ctrl_weightage = ctrl.get("weightage", 10.0)
+            new_ctrl = {
+                "id": ctrl.get("id"),
+                "name": ctrl.get("name"),
+                "description": ctrl.get("description", ""),
+                "customization": {
+                    "source": "system",
+                    "is_applicable": True,
+                    "weightage": {
+                        "framework_weightage": ctrl_weightage,
+                        "customer_weightage": ctrl_weightage,
+                    },
+                },
+                "deployment_points": [],
+            }
+            for dp in ctrl.get("deployment_points", []):
+                dp_weightage = dp.get("weightage", 10.0)
+                new_dp = {
+                    "id": dp.get("id"),
+                    "name": dp.get("name"),
+                    "status": dp.get("status", "pending"),
+                    "path": dp.get("path", ""),
+                    "remark": dp.get("remark", ""),
+                    "weightage": {
+                        "framework_weightage": dp_weightage,
+                        "customer_weightage": dp_weightage,
+                    },
+                }
+                new_ctrl["deployment_points"].append(new_dp)
+            new_sec["controls"].append(new_ctrl)
+        assignment_sections.append(new_sec)
+    return assignment_sections
+
+
+def _extract_controls_for_assignment(ai_extraction: Any) -> list:
+    if isinstance(ai_extraction, dict):
+        controls = ai_extraction.get("controls")
+        if isinstance(controls, list):
+            return transform_extraction_to_assignment(controls)
+        if isinstance(controls, dict) and isinstance(controls.get("controls_data"), list):
+            return transform_extraction_to_assignment(controls["controls_data"])
+
+        controls_data = ai_extraction.get("controls_data")
+        if isinstance(controls_data, list):
+            return transform_extraction_to_assignment(controls_data)
+
+        return []
+
+    if isinstance(ai_extraction, list):
+        return transform_extraction_to_assignment(ai_extraction)
+    return []
+
+
+async def hydrate_assignment_file_versions(session, file_versions: list) -> list:
+    new_file_versions = []
+    for fv in file_versions or []:
+        fv_data = fv.model_dump() if hasattr(fv, "model_dump") else dict(fv)
+        ai_ext = fv_data.get("aiExtraction")
+
+        if isinstance(ai_ext, str):
+            doc_ext = await session.get(DocumentExtraction, ai_ext)
+            fv_data["aiExtraction"] = (
+                _extract_controls_for_assignment(doc_ext.aiExtraction) if doc_ext else []
+            )
+        else:
+            fv_data["aiExtraction"] = _extract_controls_for_assignment(ai_ext)
+
+        new_file_versions.append(fv_data)
+    return new_file_versions
+
+
+def _approve_single_dp(dp: Any) -> None:
+    if isinstance(dp, dict):
+        if dp.get("status") == "pending":
+            dp["status"] = "approved"
+    else:
+        if getattr(dp, "status", None) == "pending":
+            dp.status = "approved"
+
+
+def _approve_deployment_points(controls_data: list) -> None:
+    for section in controls_data:
+        for control in section.get("controls") or []:
+            for dp in control.get("deployment_points") or []:
+                _approve_single_dp(dp)
+
+
+async def _approve_fv_deployment_points(session: Any, ai_ext: Any) -> None:
+    if isinstance(ai_ext, str):
+        doc_ext = await session.get(DocumentExtraction, ai_ext)
+        if doc_ext and isinstance(doc_ext.aiExtraction, dict):
+            controls_wrapper = doc_ext.aiExtraction.get("controls")
+            if isinstance(controls_wrapper, dict):
+                _approve_deployment_points(controls_wrapper.get("controls_data", []))
+                flag_modified(doc_ext, "aiExtraction")
+                session.add(doc_ext)
+    elif isinstance(ai_ext, dict) and isinstance(ai_ext.get("controls"), dict):
+        _approve_deployment_points(ai_ext["controls"].get("controls_data", []))
+
+
+async def approve_all_deployment_points(session: Any, framework: Framework) -> None:
+    """Iterate over all fileVersions and change all pending deployment points to approved."""
+    if not framework.fileVersions:
+        return
+
+    for fv in framework.fileVersions:
+        if isinstance(fv, dict):
+            await _approve_fv_deployment_points(session, fv.get("aiExtraction"))
+
+    flag_modified(framework, "fileVersions")
