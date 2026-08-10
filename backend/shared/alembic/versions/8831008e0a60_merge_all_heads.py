@@ -1,12 +1,11 @@
 """Merge all heads - resolve multiple migration branches."""
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = '8831008e0a60'
-down_revision = ('0d628a4de619', 'aabd46f61d4a')
+revision = "8831008e0a60"
+down_revision = ("0d628a4de619", "aabd46f61d4a")
 branch_labels = None
 depends_on = None
 

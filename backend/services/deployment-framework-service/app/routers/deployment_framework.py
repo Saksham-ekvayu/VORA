@@ -693,9 +693,7 @@ async def upload_deployment_framework(
 
     version = meta.get("fileVersion") or "1.0.0"
 
-    process_result = await helpers.process_uploaded_files(
-        all_files, str(user_id), framework_version, version
-    )
+    process_result = await helpers.process_uploaded_files(all_files, str(user_id), framework_version, version)
     if process_result.get("error"):
         return error(process_result["error"]["message"], process_result["error"]["status"])
 

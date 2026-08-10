@@ -280,6 +280,22 @@ export function runAnalysis(deploymentFrameworkId, packageVersion) {
 }
 
 /**
+ * Merge controls for deployment framework package
+ */
+export function mergeDeploymentFrameworkControls(
+  deploymentFrameworkId,
+  packageVersion
+) {
+  return apiRequest(
+    `${EXTRACTION_BASE}/deployment-framework/${deploymentFrameworkId}/packages/${packageVersion}/merge`,
+    {
+      method: "POST",
+    },
+    true
+  );
+}
+
+/**
  * Request expert review for deployment framework
  */
 export function requestExpertReview(frameworkId, data) {
@@ -474,6 +490,7 @@ export default {
   extractDeploymentFramework,
   runAnalysis,
   downloadDeploymentFrameworkReport,
+  mergeDeploymentFrameworkControls,
   requestExpertReview,
   reviewDeploymentPoints,
   completeDeploymentFrameworkReview,

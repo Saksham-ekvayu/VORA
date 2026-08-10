@@ -13,14 +13,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from vora_shared import data_format
 from vora_shared.models import (
     DeploymentFramework,
+    DeploymentPackageMerge,
     DocumentExtraction,
+    FrameworkAssignment,
     FrameworkPackageDocument,
     PackageComparison,
     PackageGapAnalysis,
     PackageMerge,
     PackageVersion,
     User,
-    FrameworkAssignment,
 )
 from vora_shared.models.document_extraction import AiExtractionInfo
 
@@ -91,7 +92,7 @@ async def hydrate_maps(
     extractions = await _fetch(DocumentExtraction, extraction_ids)
     comparisons = await _fetch(PackageComparison, comparison_ids)
     gaps = await _fetch(PackageGapAnalysis, gap_ids)
-    merges = await _fetch(PackageMerge, merge_ids)
+    merges = await _fetch(DeploymentPackageMerge, merge_ids)
     assigned_frameworks = await _fetch(FrameworkAssignment, assigned_framework_ids)
 
     return {
@@ -219,8 +220,10 @@ def _format_merge_document(merge_data: Any, merge: Any, exclude_details: bool) -
         details = {}
         if not exclude_details:
             source_docs = []
-            if merge and merge.sourceDocuments:
+            if merge and hasattr(merge, "sourceDocuments") and merge.sourceDocuments:
                 source_docs = merge.sourceDocuments
+            elif merge and hasattr(merge, "mergeHistory") and merge.mergeHistory:
+                source_docs = merge.mergeHistory
             details["controls_data"] = _get(merge_data, "controls_data") or []
             details["sourceDocuments"] = source_docs
 
@@ -260,7 +263,20 @@ def format_package(
 
     comp_data = comparison.comparison if comparison else None
     gap_data = gap.gapAnalysis if gap else None
-    merge_data = merge.mergeExtraction if merge else None
+
+    # Handle both PackageMerge and DeploymentPackageMerge
+    if merge:
+        if hasattr(merge, "mergeExtraction"):
+            merge_data = merge.mergeExtraction
+        else:
+            merge_data = {
+                "status": merge.status,
+                "message": merge.summary.get("message") if merge.summary else None,
+                "timestamp": merge.updatedAt.isoformat() if merge.updatedAt else None,
+                "controls_data": merge.controls.get("controls_data", []) if merge.controls else [],
+            }
+    else:
+        merge_data = None
 
     return {
         "packageVersion": pkg.packageVersion,
