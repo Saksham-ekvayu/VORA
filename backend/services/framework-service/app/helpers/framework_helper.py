@@ -335,31 +335,6 @@ def find_invalid_control_weightage(
     return None
 
 
-def _approve_deployment_points(controls_data: list) -> None:
-    for section in controls_data:
-        for control in section.get("controls") or []:
-            for dp in control.get("deployment_points") or []:
-                if isinstance(dp, dict):
-                    dp["status"] = "approved"
-                else:
-                    dp.status = "approved"
-
-
-def update_deployment_points_to_approved(current_file_version_data, doc_ext=None, legacy_ai=None) -> None:
-    ai = _get_ai_controls_dict(current_file_version_data, doc_ext, legacy_ai)
-    if not ai or not ai.get("controls"):
-        return
-
-    controls_data = ai.get("controls").get("controls_data") or []
-    _approve_deployment_points(controls_data)
-
-    # We update the dict directly, the caller must flush to DB.
-    if doc_ext and isinstance(doc_ext.aiExtraction, dict):
-        doc_ext.aiExtraction = ai
-    elif legacy_ai is not None and isinstance(current_file_version_data.aiExtraction, dict):
-        current_file_version_data.aiExtraction = ai
-
-
 def build_deployment_points(raw_points: list[dict] | None) -> list[DeploymentPoint]:
     points = []
     for idx, dp in enumerate(raw_points or []):
@@ -576,37 +551,72 @@ def transform_extraction_to_assignment(sections: list) -> list:
     return assignment_sections
 
 
+def _extract_controls_for_assignment(ai_extraction: Any) -> list:
+    if isinstance(ai_extraction, dict):
+        if "controls" in ai_extraction:
+            return transform_extraction_to_assignment(ai_extraction["controls"])
+        if "controls_data" in ai_extraction:
+            return transform_extraction_to_assignment(ai_extraction["controls_data"])
+        return []
+    if isinstance(ai_extraction, list):
+        return transform_extraction_to_assignment(ai_extraction)
+    return []
+
+
 async def hydrate_assignment_file_versions(session, file_versions: list) -> list:
     new_file_versions = []
     for fv in file_versions or []:
         fv_data = fv.model_dump() if hasattr(fv, "model_dump") else dict(fv)
-        if isinstance(fv_data.get("aiExtraction"), str):
-            doc_ext = await session.get(DocumentExtraction, fv_data["aiExtraction"])
-            if doc_ext and isinstance(doc_ext.aiExtraction, dict):
-                if "controls" in doc_ext.aiExtraction:
-                    fv_data["aiExtraction"] = transform_extraction_to_assignment(
-                        doc_ext.aiExtraction["controls"]
-                    )
-                elif "controls_data" in doc_ext.aiExtraction:
-                    fv_data["aiExtraction"] = transform_extraction_to_assignment(
-                        doc_ext.aiExtraction["controls_data"]
-                    )
-                else:
-                    fv_data["aiExtraction"] = []
-            elif doc_ext and isinstance(doc_ext.aiExtraction, list):
-                fv_data["aiExtraction"] = transform_extraction_to_assignment(doc_ext.aiExtraction)
-            else:
-                fv_data["aiExtraction"] = []
-        elif isinstance(fv_data.get("aiExtraction"), dict):
-            if "controls" in fv_data["aiExtraction"]:
-                fv_data["aiExtraction"] = transform_extraction_to_assignment(
-                    fv_data["aiExtraction"]["controls"]
-                )
-            elif "controls_data" in fv_data["aiExtraction"]:
-                fv_data["aiExtraction"] = transform_extraction_to_assignment(
-                    fv_data["aiExtraction"]["controls_data"]
-                )
-        elif isinstance(fv_data.get("aiExtraction"), list):
-            fv_data["aiExtraction"] = transform_extraction_to_assignment(fv_data["aiExtraction"])
+        ai_ext = fv_data.get("aiExtraction")
+
+        if isinstance(ai_ext, str):
+            doc_ext = await session.get(DocumentExtraction, ai_ext)
+            fv_data["aiExtraction"] = (
+                _extract_controls_for_assignment(doc_ext.aiExtraction) if doc_ext else []
+            )
+        else:
+            fv_data["aiExtraction"] = _extract_controls_for_assignment(ai_ext)
+
         new_file_versions.append(fv_data)
     return new_file_versions
+
+
+def _approve_single_dp(dp: Any) -> None:
+    if isinstance(dp, dict):
+        if dp.get("status") == "pending":
+            dp["status"] = "approved"
+    else:
+        if getattr(dp, "status", None) == "pending":
+            dp.status = "approved"
+
+
+def _approve_deployment_points(controls_data: list) -> None:
+    for section in controls_data:
+        for control in section.get("controls") or []:
+            for dp in control.get("deployment_points") or []:
+                _approve_single_dp(dp)
+
+
+async def _approve_fv_deployment_points(session: Any, ai_ext: Any) -> None:
+    if isinstance(ai_ext, str):
+        doc_ext = await session.get(DocumentExtraction, ai_ext)
+        if doc_ext and isinstance(doc_ext.aiExtraction, dict):
+            controls_wrapper = doc_ext.aiExtraction.get("controls")
+            if isinstance(controls_wrapper, dict):
+                _approve_deployment_points(controls_wrapper.get("controls_data", []))
+                flag_modified(doc_ext, "aiExtraction")
+                session.add(doc_ext)
+    elif isinstance(ai_ext, dict) and isinstance(ai_ext.get("controls"), dict):
+        _approve_deployment_points(ai_ext["controls"].get("controls_data", []))
+
+
+async def approve_all_deployment_points(session: Any, framework: Framework) -> None:
+    """Iterate over all fileVersions and change all pending deployment points to approved."""
+    if not framework.fileVersions:
+        return
+
+    for fv in framework.fileVersions:
+        if isinstance(fv, dict):
+            await _approve_fv_deployment_points(session, fv.get("aiExtraction"))
+
+    flag_modified(framework, "fileVersions")

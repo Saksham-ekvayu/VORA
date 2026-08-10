@@ -1,18 +1,13 @@
 """Shared SQLAlchemy models for the unified Postgres `vora` database."""
 
 from vora_shared.models.ai_tables import (
-    AgentControl,
-    AgentMapping,
     AgentPrompt,
     ComparisonJob,
     ComparisonResult,
     DeploymentGapJob,
     DeploymentGapResult,
     EvidenceOutput,
-    ExtractionHashRegistry,
-    ExtractionResult,
     GapConfig,
-    MergeHashRegistry,
     PackageMergeTracking,
     UploadedFile,
 )
@@ -57,8 +52,6 @@ from vora_shared.models.user import User, UserAddress, UserCreatedBy, UserOtp
 
 __all__ = [
     "AddressBlock",
-    "AgentControl",
-    "AgentMapping",
     "AgentPrompt",
     "AiExtractionInfo",
     "AssignmentControl",
@@ -87,8 +80,6 @@ __all__ = [
     "ExtractionControlItem",
     "ExtractionControls",
     "ExtractionDeploymentPoint",
-    "ExtractionHashRegistry",
-    "ExtractionResult",
     "ExtractionSection",
     "ExtractionStatusHistory",
     "Framework",
@@ -98,7 +89,6 @@ __all__ = [
     "FrameworkMerge",
     "FrameworkPackageDocument",
     "GapConfig",
-    "MergeHashRegistry",
     "PackageComparison",
     "PackageGapAnalysis",
     "PackageMerge",

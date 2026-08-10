@@ -470,10 +470,10 @@ async def approve_framework(id: str, ctx: Annotated[AuthenticatedUser, Depends(a
                 400,
             )
 
-        framework_helper.update_deployment_points_to_approved(current, doc_extraction, legacy_ai=ai)
-        if doc_extraction:
-            session.add(doc_extraction)
         framework_helper.apply_approved_versions(framework, current)
+
+        # Change all pending deployment points to approved
+        await framework_helper.approve_all_deployment_points(session, framework)
         approval = Approval(status="approved", by=user.id, date=_now(), remark=None)
         framework.approval = approval.model_dump(mode="json")
         framework.updatedAt = _now()

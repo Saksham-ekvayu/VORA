@@ -14,6 +14,10 @@ from app.services.control_extractor import (
     convert_to_section_structure,
     extract_framework_controls,
 )
+from app.services.control_merger import (
+    get_framework_previous_controls,
+    merge_controls_cumulative,
+)
 from sqlalchemy import select
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
