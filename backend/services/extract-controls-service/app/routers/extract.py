@@ -15,8 +15,8 @@ from sqlalchemy import func, select
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
 from vora_shared.models import (
-    Framework,
     DocumentExtraction,
+    Framework,
 )
 from vora_shared.query_builder import build_pagination_meta, clamp_limit, clamp_page
 from vora_shared.responses import error, not_found, paginated, server_error, success
@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["extract"])
 
 _background_tasks = set()
+
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
@@ -95,9 +96,7 @@ async def extract_framework_controls(framework_id: str, file_id: str):
 
                 if existing:
                     doc_extraction_id = existing.id
-                    logger.info(
-                        f"[API] Using existing document_extraction | id={doc_extraction_id}"
-                    )
+                    logger.info(f"[API] Using existing document_extraction | id={doc_extraction_id}")
                 else:
                     doc_extraction = DocumentExtraction(
                         id=new_id(),
@@ -202,9 +201,7 @@ async def list_document_extractions(page: int = 1, page_size: int = 10):
         page_size = clamp_limit(page_size, default=10)
 
         async with session_scope() as session:
-            total = (
-                await session.execute(select(func.count()).select_from(DocumentExtraction))
-            ).scalar_one()
+            total = (await session.execute(select(func.count()).select_from(DocumentExtraction))).scalar_one()
 
             rows = (
                 (
@@ -223,9 +220,7 @@ async def list_document_extractions(page: int = 1, page_size: int = 10):
             for doc in rows:
                 ai_data = doc.aiExtraction or {}
                 controls = ai_data.get("controls", {})
-                total_controls = (
-                    controls.get("total_controls", 0) if isinstance(controls, dict) else 0
-                )
+                total_controls = controls.get("total_controls", 0) if isinstance(controls, dict) else 0
 
                 items.append(
                     {

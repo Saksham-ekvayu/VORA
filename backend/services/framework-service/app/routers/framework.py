@@ -27,15 +27,15 @@ from vora_shared import messages as msg
 from vora_shared.auth import AuthenticatedUser, authenticate
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
-from vora_shared.models import Customer, FrameworkAssignment, FrameworkCategory, User
+from vora_shared.models import Customer, DocumentExtraction, FrameworkAssignment, FrameworkCategory, User
 from vora_shared.models.framework import (
-    AiExtraction,
     Approval,
-    ControlItem,
-    Controls,
     FileVersionEntry,
     Framework,
-    Section,
+)
+from vora_shared.models.document_extraction import (
+    ExtractionControlItem as ControlItem,
+    ExtractionSection as Section,
 )
 from vora_shared.models.framework_assignment import AssignmentInfo
 from vora_shared.query_builder import build_pagination_meta, clamp_limit, clamp_page
@@ -65,8 +65,12 @@ def _apply_ai_status_filter(stmt, ai_status: str | None):
     return stmt.where(text("""EXISTS (
                 SELECT 1
                 FROM jsonb_array_elements(frameworks."fileVersions") AS elem
+                LEFT JOIN document_extractions de ON de.id = elem->>'aiExtraction'
                 WHERE elem->>'fileVersion' = frameworks."currentFileVersion"
-                  AND elem->'aiExtraction'->>'status' = :ai_status
+                  AND (
+                     de."aiExtraction"->>'status' = :ai_status
+                     OR (jsonb_typeof(elem->'aiExtraction') = 'object' AND elem->'aiExtraction'->>'status' = :ai_status)
+                  )
             )""").bindparams(ai_status=ai_status))
 
 
@@ -175,23 +179,6 @@ async def _load_editable_framework_version(
         return None, None, None, error(f"Version {file_version} not found in this framework", 404)
 
     return framework, versions, file_version_doc, None
-
-
-def _ensure_control_extraction(file_version_doc):
-    if not file_version_doc.aiExtraction:
-        return None, error(msg.FRAMEWORK_SERVICE_MESSAGES["AI_EXTRACTION_DATA_NOT_FOUND_FOR_THIS_VE"], 400)
-
-    if not file_version_doc.aiExtraction.controls:
-        file_version_doc.aiExtraction.controls = Controls()
-
-    return file_version_doc.aiExtraction.controls, None
-
-
-def _existing_controls(file_version_doc, file_version: str):
-    controls = file_version_doc.aiExtraction.controls if file_version_doc.aiExtraction else None
-    if not controls or not controls.controls_data:
-        return None, error(f"Version {file_version} does not have any controls", 404)
-    return controls, None
 
 
 def _delete_control_from_sections(controls_data, control_id: str) -> bool:
@@ -337,8 +324,25 @@ async def get_all_frameworks(
 
         uploaders_by_id = await _load_users_by_id(session, {d.uploadedBy for d in docs})
 
+        doc_ids = []
+        for d in docs:
+            curr = framework_helper.get_current_file_version_data(d)
+            if curr and curr.aiExtraction and isinstance(curr.aiExtraction, str):
+                doc_ids.append(curr.aiExtraction)
+        doc_extractions = {}
+        if doc_ids:
+            exts = (
+                (await session.execute(select(DocumentExtraction).where(DocumentExtraction.id.in_(doc_ids))))
+                .scalars()
+                .all()
+            )
+            doc_extractions = {e.id: e for e in exts}
+
         data = [
-            framework_helper.transform_framework_doc(doc, uploaders_by_id.get(doc.uploadedBy)) for doc in docs
+            framework_helper.transform_framework_doc(
+                doc, uploaders_by_id.get(doc.uploadedBy), doc_extractions
+            )
+            for doc in docs
         ]
 
     message = framework_helper.get_framework_message(len(data), search, ai_status, approval_status)
@@ -363,6 +367,17 @@ async def get_framework_by_id(id: str, ctx: Annotated[AuthenticatedUser, Depends
         approved_by_user = await session.get(User, str(approved_by_id)) if approved_by_id else None
 
         versions = framework_helper.parse_file_versions(framework)
+
+        doc_ids = [v.aiExtraction for v in versions if v.aiExtraction and isinstance(v.aiExtraction, str)]
+        doc_extractions = {}
+        if doc_ids:
+            exts = (
+                (await session.execute(select(DocumentExtraction).where(DocumentExtraction.id.in_(doc_ids))))
+                .scalars()
+                .all()
+            )
+            doc_extractions = {e.id: e for e in exts}
+
         formatted_versions = [
             {
                 "fileVersion": v.fileVersion,
@@ -373,7 +388,11 @@ async def get_framework_by_id(id: str, ctx: Annotated[AuthenticatedUser, Depends
                 "fileSize": data_format.format_file_size(v.fileSize),
                 "fileType": v.fileType,
                 "uploadedAt": v.uploadedAt,
-                "aiExtraction": v.aiExtraction.model_dump(mode="json") if v.aiExtraction else None,
+                "aiExtraction": (
+                    doc_extractions[v.aiExtraction].aiExtraction
+                    if isinstance(v.aiExtraction, str) and v.aiExtraction in doc_extractions
+                    else (v.aiExtraction if isinstance(v.aiExtraction, dict) else None)
+                ),
             }
             for v in reversed(versions)
         ]
@@ -435,23 +454,15 @@ async def approve_framework(id: str, ctx: Annotated[AuthenticatedUser, Depends(a
         if not framework:
             return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
 
-        if str(framework.uploadedBy) != str(user.id):
-            return error(msg.FRAMEWORK_SERVICE_MESSAGES["ONLY_THE_USER_WHO_UPLOADED_THE_FRAMEWORK"], 403)
+        current, doc_extraction, ai, val_error_msg, val_status = (
+            await framework_helper.validate_framework_approval_readiness(session, framework, user)
+        )
+        if val_error_msg:
+            return error(val_error_msg, val_status)
 
-        if framework_helper.approval_status(framework) == "approved":
-            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_IS_ALREADY_APPROVED"], 400)
-
-        current = framework_helper.get_current_file_version_data(framework)
-        if not current or not current.aiExtraction:
-            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_MUST_BE_UPLOADED_TO_AI_BEFORE"], 400)
-
-        ai_status = current.aiExtraction.status
-        if ai_status == "processing":
-            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_AI_PROCESSING_IS_IN_PROGRESS_P"], 409)
-        if ai_status == "failed":
-            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_AI_PROCESSING_FAILED"], 409)
-
-        invalid_control = framework_helper.find_invalid_control_weightage(current)
+        invalid_control = framework_helper.find_invalid_control_weightage(
+            current, doc_extraction, legacy_ai=ai
+        )
         if invalid_control:
             label = invalid_control.id or invalid_control.name
             return error(
@@ -459,7 +470,9 @@ async def approve_framework(id: str, ctx: Annotated[AuthenticatedUser, Depends(a
                 400,
             )
 
-        framework_helper.update_deployment_points_to_approved(current)
+        framework_helper.update_deployment_points_to_approved(current, doc_extraction, legacy_ai=ai)
+        if doc_extraction:
+            session.add(doc_extraction)
         framework_helper.apply_approved_versions(framework, current)
         approval = Approval(status="approved", by=user.id, date=_now(), remark=None)
         framework.approval = approval.model_dump(mode="json")
@@ -655,7 +668,7 @@ async def upload_framework(
         fileSize=len(content),
         fileType=file_storage.normalize_file_type(getattr(file, "content_type", None), file.filename),
         uploadedAt=_now(),
-        aiExtraction=AiExtraction(status="pending"),
+        aiExtraction=None,
     )
 
     framework = Framework(
@@ -671,6 +684,30 @@ async def upload_framework(
 
     try:
         async with session_scope() as session:
+            # Create DocumentExtraction if not exists
+            doc_extraction = (
+                await session.execute(
+                    select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash)
+                )
+            ).scalar_one_or_none()
+            if not doc_extraction:
+                doc_extraction = DocumentExtraction(
+                    id=new_id(),
+                    fileHash=file_hash,
+                    aiExtraction={
+                        "status": "pending",
+                        "message": None,
+                        "timestamp": None,
+                        "statusHistory": None,
+                        "controls": None,
+                    },
+                )
+                session.add(doc_extraction)
+                await session.flush()
+
+            file_version.aiExtraction = doc_extraction.id
+            framework.fileVersions = [file_version.model_dump(mode="json")]
+
             session.add(framework)
             await session.flush()
             await session.refresh(framework)
@@ -749,9 +786,30 @@ async def update_framework(
                 fileSize=len(content),
                 fileType=file_storage.normalize_file_type(getattr(file, "content_type", None), file.filename),
                 uploadedAt=_now(),
-                aiExtraction=AiExtraction(status="pending"),
+                aiExtraction=None,
             )
         )
+
+        # Create DocumentExtraction if not exists
+        doc_extraction = (
+            await session.execute(select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash))
+        ).scalar_one_or_none()
+        if not doc_extraction:
+            doc_extraction = DocumentExtraction(
+                id=new_id(),
+                fileHash=file_hash,
+                aiExtraction={
+                    "status": "pending",
+                    "message": None,
+                    "timestamp": None,
+                    "statusHistory": None,
+                    "controls": None,
+                },
+            )
+            session.add(doc_extraction)
+            await session.flush()
+
+        versions[-1].aiExtraction = doc_extraction.id
         framework.fileVersions = framework_helper.dump_file_versions(versions)
         framework.currentFileVersion = new_version
 
@@ -1040,9 +1098,11 @@ async def add_framework_control(
         if load_error:
             return load_error
 
-        controls, controls_error = _ensure_control_extraction(file_version_doc)
-        if controls_error:
-            return controls_error
+        controls, doc_ext, ai_data, load_err_msg, load_status = await framework_helper.load_ai_controls(
+            session, file_version_doc
+        )
+        if load_err_msg:
+            return error(load_err_msg, load_status)
 
         controls_data = controls.controls_data
 
@@ -1084,6 +1144,8 @@ async def add_framework_control(
             section.controls.append(new_control)
 
         controls.total_controls = sum(len(s.controls or []) for s in controls_data)
+
+        framework_helper.save_ai_controls(session, file_version_doc, controls, doc_ext, ai_data)
 
         framework.fileVersions = framework_helper.dump_file_versions(versions)
         framework.updatedAt = _now()
@@ -1130,7 +1192,11 @@ async def update_framework_control(
         if not file_version_doc:
             return error(f"Version {file_version} not found in this framework", 404)
 
-        controls = file_version_doc.aiExtraction.controls if file_version_doc.aiExtraction else None
+        controls, doc_ext, ai_data, load_err_msg, load_status = await framework_helper.load_ai_controls(
+            session, file_version_doc
+        )
+        if load_err_msg:
+            return error(load_err_msg, load_status)
         if not controls or not controls.controls_data:
             return error(f"Version {file_version} does not have any controls", 404)
 
@@ -1146,6 +1212,8 @@ async def update_framework_control(
             target_control.deployment_points = framework_helper.build_deployment_points(
                 [dp.model_dump() for dp in body.deployment_points]
             )
+
+        framework_helper.save_ai_controls(session, file_version_doc, controls, doc_ext, ai_data)
 
         framework.fileVersions = framework_helper.dump_file_versions(versions)
         framework.updatedAt = _now()
@@ -1188,7 +1256,11 @@ async def update_framework_control_weightage(
         if not file_version_doc:
             return error(f"Version {file_version} not found in this framework", 404)
 
-        controls = file_version_doc.aiExtraction.controls if file_version_doc.aiExtraction else None
+        controls, doc_ext, ai_data, load_err_msg, load_status = await framework_helper.load_ai_controls(
+            session, file_version_doc
+        )
+        if load_err_msg:
+            return error(load_err_msg, load_status)
         if not controls or not controls.controls_data:
             return error(f"Version {file_version} does not have any controls", 404)
 
@@ -1197,6 +1269,8 @@ async def update_framework_control_weightage(
             return error(f"Control with ID {control_id} not found in version {file_version}", 404)
 
         target_control.weightage = body.weightage
+
+        framework_helper.save_ai_controls(session, file_version_doc, controls, doc_ext, ai_data)
 
         framework.fileVersions = framework_helper.dump_file_versions(versions)
         framework.updatedAt = _now()
@@ -1230,9 +1304,13 @@ async def delete_framework_control(
         if load_error:
             return load_error
 
-        controls, controls_error = _existing_controls(file_version_doc, file_version)
-        if controls_error:
-            return controls_error
+        controls, doc_ext, ai_data, load_err_msg, load_status = await framework_helper.load_ai_controls(
+            session, file_version_doc
+        )
+        if load_err_msg:
+            return error(load_err_msg, load_status)
+        if not controls or not controls.controls_data:
+            return error(f"Version {file_version} does not have any controls", 404)
 
         controls_data = controls.controls_data
         if not _delete_control_from_sections(controls_data, control_id):
@@ -1240,6 +1318,8 @@ async def delete_framework_control(
 
         controls.total_sections = len(controls_data)
         controls.total_controls = sum(len(s.controls or []) for s in controls_data)
+
+        framework_helper.save_ai_controls(session, file_version_doc, controls, doc_ext, ai_data)
 
         framework.fileVersions = framework_helper.dump_file_versions(versions)
         framework.updatedAt = _now()
