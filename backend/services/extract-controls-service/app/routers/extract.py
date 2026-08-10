@@ -296,7 +296,7 @@ async def merge_deployment_package(df_id: str, pkg_ver: str):
             data={
                 "df_id": df_id,
                 "pkg_ver": pkg_ver,
-                "status": "merging",
+                "status": "processing",
             },
         )
 

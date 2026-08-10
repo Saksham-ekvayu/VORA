@@ -219,10 +219,12 @@ def convert_to_section_structure(controls: list, resource_type: str = "framework
             raw_dp = ctrl.get("Deployment_points") or ""
             section_name = str(ctrl.get("Section_name") or "").strip()
         else:
-            ctrl_id = f"CTR-{idx+1:03d}"
-            ctrl_name = str(ctrl.get("Client_control_name") or "").strip()
-            ctrl_desc = str(ctrl.get("Client_control_description") or "").strip()
-            raw_dp = ctrl.get("Client_deployment_points") or ""
+            ctrl_id = str(ctrl.get("Control_id") or f"CTR-{idx+1:03d}").strip()
+            ctrl_name = str(ctrl.get("Client_control_name") or ctrl.get("Control_name") or "").strip()
+            ctrl_desc = str(
+                ctrl.get("Client_control_description") or ctrl.get("Control_description") or ""
+            ).strip()
+            raw_dp = ctrl.get("Client_deployment_points") or ctrl.get("Deployment_points") or ""
             section_name = str(ctrl.get("Section_name") or "").strip()
 
         # Extract ID prefix for section grouping

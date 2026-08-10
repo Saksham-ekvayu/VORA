@@ -148,7 +148,7 @@ async def create_pending_extraction(session: AsyncSession, file_hash: str | None
             "timestamp": None,
             "statusHistory": None,
             "controls": None,
-        }
+        },
     )
     session.add(extraction)
     await session.flush()
@@ -217,7 +217,9 @@ def _version_sort_key(v: str) -> tuple[int, int, int]:
 def process_and_save_file(
     content: bytes, filename: str, user_id: str, framework_version: str, document_version: str = "1.0.0"
 ) -> dict[str, Any] | None:
-    path_info = file_storage.generate_deployment_file_path(filename, user_id, "deployment-framework", framework_version)
+    path_info = file_storage.generate_deployment_file_path(
+        filename, user_id, "deployment-framework", framework_version
+    )
 
     if not file_storage.save_file(content, path_info.absolute_path):
         return None

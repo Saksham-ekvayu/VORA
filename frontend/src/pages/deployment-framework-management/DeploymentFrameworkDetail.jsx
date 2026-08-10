@@ -28,6 +28,8 @@ import {
   STATUS_FAILED,
   STATUS_LOCKED,
   STATUS_UPLOADED,
+  STATUS_MERGED,
+  STATUS_LIVE,
   getExpertReviewBadgeVariant,
   getExpertReviewBadgeIcon,
 } from "@/utils/commonUtils";
@@ -46,6 +48,7 @@ import {
   getDeploymentFrameworkById,
   deleteDeploymentFramework,
   runAnalysis,
+  mergeDeploymentFrameworkControls,
 } from "@/services/deploymentFrameworkService";
 import LoadingSpinner from "@/components/custom/Loader/LoadingSpinner";
 import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
@@ -210,6 +213,7 @@ const useDeploymentFrameworkActions = ({
   fetchFrameworkDetails,
   preReleasePackage,
   setAnalysisRunning,
+  setMergeRunning,
   navigate,
 }) => {
   const handleDeletePackage = async () => {
@@ -258,10 +262,31 @@ const useDeploymentFrameworkActions = ({
     }
   };
 
+  const handleMergeControls = async () => {
+    try {
+      setMergeRunning(true);
+      const response = await mergeDeploymentFrameworkControls(
+        id,
+        preReleasePackage?.packageVersion
+      );
+      if (response.success) {
+        toast.success(response.message || "Controls merged successfully");
+        await fetchFrameworkDetails(true);
+      } else {
+        toast.error(response.message || "Failed to merge controls");
+      }
+    } catch (error) {
+      toast.error(error.message || "An error occurred");
+    } finally {
+      setMergeRunning(false);
+    }
+  };
+
   return {
     handleDeletePackage,
     handleDeleteConfirm,
     handleRunAnalysis,
+    handleMergeControls,
   };
 };
 
@@ -305,10 +330,13 @@ const useFrameworkData = (id) => {
 
 const renderExpertSignOffActions = ({
   handleRunAnalysis,
+  handleMergeControls,
   isAssignedFrameworkRevoked,
   isAssignedFrameworkFinalized,
-  isButtonRunning,
+  isAnalysisButtonRunning,
+  isMergeButtonRunning,
   areAllDocumentsExtracted,
+  isMergeCompleted,
   isAnalysisCompleted,
   isAnalysisFailed,
   setRequestReviewModalOpen,
@@ -317,21 +345,21 @@ const renderExpertSignOffActions = ({
   currentPackage,
   showAuditorActions,
 }) => {
-  const analysisButtonIcon = isButtonRunning ? "loader" : "play";
+  const analysisButtonIcon = isAnalysisButtonRunning ? "loader" : "play";
   let analysisButtonText = "Run Analysis";
-  if (isButtonRunning) {
+  if (isAnalysisButtonRunning) {
     analysisButtonText = "Analysis Running...";
   } else if (isAnalysisCompleted || isAnalysisFailed) {
     analysisButtonText = "Re-run Analysis";
   }
 
   const isCurrentPackageStatus = currentPackage?.status;
-  const isCurrentPackageLive = isCurrentPackageStatus === "live";
+  const isCurrentPackageLive = isCurrentPackageStatus === STATUS_LIVE;
 
   const expertReviewStatus = currentPackage?.expertReview?.status;
   const isReviewAlreadyRequested =
     expertReviewStatus && expertReviewStatus !== STATUS_PENDING;
-  const isExpertReviewApproved = expertReviewStatus === "approved";
+  const isExpertReviewApproved = expertReviewStatus === STATUS_APPROVED;
 
   const requestReviewTitle = isReviewAlreadyRequested
     ? `Review already ${expertReviewStatus} — cannot request again`
@@ -339,6 +367,27 @@ const renderExpertSignOffActions = ({
 
   return (
     <div className="flex items-center gap-2">
+      {showAuditorActions && !isCurrentPackageLive && !isMergeCompleted && (
+        <Button
+          size="xs"
+          onClick={handleMergeControls}
+          disabled={
+            isAssignedFrameworkRevoked ||
+            !isAssignedFrameworkFinalized ||
+            isMergeButtonRunning ||
+            !areAllDocumentsExtracted
+          }
+          title="All uploaded documents must be successfully AI extracted first."
+          className="mr-1"
+        >
+          <Icon
+            name={isMergeButtonRunning ? "loader" : "git-merge"}
+            size={11}
+            className={`animate-${isMergeButtonRunning ? "spin" : ""}`}
+          />{" "}
+          {isMergeButtonRunning ? "Merging..." : "Merge Controls"}
+        </Button>
+      )}
       {showAuditorActions && !isCurrentPackageLive && (
         <Button
           size="xs"
@@ -346,15 +395,19 @@ const renderExpertSignOffActions = ({
           disabled={
             isAssignedFrameworkRevoked ||
             !isAssignedFrameworkFinalized ||
-            isButtonRunning ||
-            !areAllDocumentsExtracted
+            isAnalysisButtonRunning ||
+            !isMergeCompleted
           }
-          title="All uploaded documents must be successfully AI extracted first."
+          title={
+            !isMergeCompleted
+              ? "Controls must be merged before running analysis."
+              : "Run AI gap analysis and comparison."
+          }
         >
           <Icon
             name={analysisButtonIcon}
             size={11}
-            className={`animate-${isButtonRunning ? "spin" : ""}`}
+            className={`animate-${isAnalysisButtonRunning ? "spin" : ""}`}
           />{" "}
           {analysisButtonText}
         </Button>
@@ -366,7 +419,7 @@ const renderExpertSignOffActions = ({
           disabled={
             isAssignedFrameworkRevoked ||
             !isAssignedFrameworkFinalized ||
-            isButtonRunning ||
+            isAnalysisButtonRunning ||
             isReviewAlreadyRequested
           }
           title={requestReviewTitle}
@@ -399,6 +452,7 @@ const DeploymentFrameworkDetail = () => {
   const { user } = useAuth();
   const showAuditorActions = isAuditor(user?.role);
   const [analysisRunning, setAnalysisRunning] = useState(false);
+  const [mergeRunning, setMergeRunning] = useState(false);
   const [minorPatchModalOpen, setMinorPatchModalOpen] = useState(false);
   const [majorPatchModalOpen, setMajorPatchModalOpen] = useState(false);
   const [packageToDelete, setPackageToDelete] = useState(null);
@@ -441,23 +495,31 @@ const DeploymentFrameworkDetail = () => {
   const livePackage = packageViewModel.livePackage;
   const currentReviewPackage = packageViewModel.currentReviewPackage;
 
+  const runningStatuses = useMemo(
+    () =>
+      new Set([
+        STATUS_CONNECTED,
+        STATUS_STARTED,
+        STATUS_PROCESSING,
+        STATUS_RUNNING,
+      ]),
+    []
+  );
+
+  const isMergeCurrentlyRunning = useMemo(() => {
+    const mergeStatus = currentPackage?.mergeDocument?.status?.toLowerCase();
+    return mergeRunning || runningStatuses.has(mergeStatus);
+  }, [mergeRunning, currentPackage, runningStatuses]);
+
   const isAnalysisCurrentlyRunning = useMemo(() => {
     const comparisonStatus = currentPackage?.comparison?.status?.toLowerCase();
     const gapStatus = currentPackage?.gapAnalysis?.status?.toLowerCase();
-    const mergeStatus = currentPackage?.mergeDocument?.status?.toLowerCase();
-    const runningStatuses = new Set([
-      STATUS_CONNECTED,
-      STATUS_STARTED,
-      STATUS_PROCESSING,
-      STATUS_RUNNING,
-    ]);
     return (
       analysisRunning ||
       runningStatuses.has(comparisonStatus) ||
-      runningStatuses.has(gapStatus) ||
-      runningStatuses.has(mergeStatus)
+      runningStatuses.has(gapStatus)
     );
-  }, [analysisRunning, currentPackage]);
+  }, [analysisRunning, currentPackage, runningStatuses]);
 
   useEffect(() => {
     if (!framework) return;
@@ -498,7 +560,10 @@ const DeploymentFrameworkDetail = () => {
     return docs.every((doc) => doc.aiExtraction?.status === STATUS_EXTRACTED);
   }, [currentPackage]);
 
-  const shouldPoll = hasDocumentsProcessing || isAnalysisCurrentlyRunning;
+  const shouldPoll =
+    hasDocumentsProcessing ||
+    isAnalysisCurrentlyRunning ||
+    isMergeCurrentlyRunning;
 
   const { isTimedOut } = useStatusPolling({
     id,
@@ -508,20 +573,26 @@ const DeploymentFrameworkDetail = () => {
     refreshTrigger: analysisRunning,
   });
 
-  const isButtonRunning = isAnalysisCurrentlyRunning && !isTimedOut;
+  const isMergeButtonRunning = isMergeCurrentlyRunning && !isTimedOut;
+  const isAnalysisButtonRunning = isAnalysisCurrentlyRunning && !isTimedOut;
 
-  const { handleDeletePackage, handleDeleteConfirm, handleRunAnalysis } =
-    useDeploymentFrameworkActions({
-      id,
-      packageToDelete,
-      setPackageToDelete,
-      frameworkToDelete,
-      setFrameworkToDelete,
-      fetchFrameworkDetails,
-      preReleasePackage,
-      setAnalysisRunning,
-      navigate,
-    });
+  const {
+    handleDeletePackage,
+    handleDeleteConfirm,
+    handleRunAnalysis,
+    handleMergeControls,
+  } = useDeploymentFrameworkActions({
+    id,
+    packageToDelete,
+    setPackageToDelete,
+    frameworkToDelete,
+    setFrameworkToDelete,
+    fetchFrameworkDetails,
+    preReleasePackage,
+    setAnalysisRunning,
+    setMergeRunning,
+    navigate,
+  });
 
   const canDelete = useMemo(() => {
     const userRole = user?.role;
@@ -545,7 +616,8 @@ const DeploymentFrameworkDetail = () => {
 
   const gateSteps = buildGateSteps(currentReviewPackage);
 
-  const isMergeCompleted = currentPackage?.mergeDocument?.status === "merged";
+  const isMergeCompleted =
+    currentPackage?.mergeDocument?.status === STATUS_MERGED;
   const isComparisonCompleted =
     currentPackage?.comparison?.status === STATUS_COMPLETED;
   const isGapAnalysisCompleted =
@@ -768,10 +840,13 @@ const DeploymentFrameworkDetail = () => {
               {renderExpertSignOffActions({
                 isCurrentPackageExpertReviewApproved,
                 handleRunAnalysis,
+                handleMergeControls,
                 isAssignedFrameworkRevoked,
                 isAssignedFrameworkFinalized,
-                isButtonRunning,
+                isAnalysisButtonRunning,
+                isMergeButtonRunning,
                 areAllDocumentsExtracted,
+                isMergeCompleted,
                 isAnalysisCompleted,
                 isAnalysisFailed,
                 setRequestReviewModalOpen,

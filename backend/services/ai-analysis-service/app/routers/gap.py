@@ -13,7 +13,13 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
-from vora_shared.models import DeploymentGapJob, DeploymentGapResult, GapConfig, PackageGapAnalysis, FrameworkAssignment
+from vora_shared.models import (
+    DeploymentGapJob,
+    DeploymentGapResult,
+    FrameworkAssignment,
+    GapConfig,
+    PackageGapAnalysis,
+)
 from vora_shared.query_builder import build_pagination_meta, clamp_limit, clamp_page
 from vora_shared.responses import error, not_found, paginated, server_error, success
 
@@ -33,6 +39,7 @@ def _iso(dt: datetime | None = None) -> str:
 
 class GapAnalysisRequest(BaseModel):
     """Request model for starting gap analysis."""
+
     framework_assignment_id: str
     package_version: str
 
@@ -47,11 +54,11 @@ async def start_gap_analysis(request: GapAnalysisRequest):
     """
     Start gap analysis between framework assignment and deployment framework package.
     Runs asynchronously in background.
-    
+
     Args:
         framework_assignment_id: ID of the framework assignment
         package_version: Version of the package to analyze
-    
+
     Returns:
         Gap analysis job details with status "processing"
     """
@@ -84,12 +91,12 @@ async def start_gap_analysis(request: GapAnalysisRequest):
         logger.info("[GAP] Validation 2: Checking Deployment Framework...")
         async with session_scope() as session:
             from vora_shared.models import DeploymentFramework
-            
+
             # Get deployment framework from framework assignment
             df_id = fa.get("deploymentFrameworkId") if isinstance(fa.__dict__, dict) else None
-            
+
             logger.info(f"[GAP] Deployment Framework ID: {df_id}")
-            
+
             if df_id:
                 df = await session.get(DeploymentFramework, df_id)
                 if not df:
@@ -120,7 +127,9 @@ async def start_gap_analysis(request: GapAnalysisRequest):
                     "timestamp": _iso(),
                     "framework_assignment_id": framework_assignment_id,
                     "package_version": package_version,
-                    "deployment_framework_id": fa.get("deploymentFrameworkId") if isinstance(fa.__dict__, dict) else None,
+                    "deployment_framework_id": (
+                        fa.get("deploymentFrameworkId") if isinstance(fa.__dict__, dict) else None
+                    ),
                 },
             )
             session.add(gap_analysis)
@@ -131,9 +140,7 @@ async def start_gap_analysis(request: GapAnalysisRequest):
 
         # ===== Queue gap analysis as background task =====
         logger.info("[GAP] Queueing background task...")
-        task = asyncio.create_task(
-            run_gap(framework_assignment_id, package_version, gap_id)
-        )
+        task = asyncio.create_task(run_gap(framework_assignment_id, package_version, gap_id))
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)
         logger.info("[GAP] ✅ Gap analysis task queued")
@@ -163,10 +170,10 @@ async def start_gap_analysis(request: GapAnalysisRequest):
 async def get_gap_analysis(gap_id: str):
     """
     Get gap analysis result by ID.
-    
+
     Args:
         gap_id: ID of the gap analysis
-    
+
     Returns:
         Gap analysis data with results, status, and history
     """
@@ -212,11 +219,11 @@ async def get_gap_analysis(gap_id: str):
 async def list_gap_analyses(page: int = 1, page_size: int = 10):
     """
     List all gap analyses with pagination.
-    
+
     Args:
         page: Page number (default 1)
         page_size: Results per page (default 10)
-    
+
     Returns:
         Paginated list of gap analyses
     """
@@ -225,9 +232,7 @@ async def list_gap_analyses(page: int = 1, page_size: int = 10):
         page_size = clamp_limit(page_size, default=10)
 
         async with session_scope() as session:
-            total = (
-                await session.execute(select(func.count()).select_from(PackageGapAnalysis))
-            ).scalar_one()
+            total = (await session.execute(select(func.count()).select_from(PackageGapAnalysis))).scalar_one()
 
             rows = (
                 (
