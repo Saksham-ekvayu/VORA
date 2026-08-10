@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
-from typing import Any
-import os
 from pathlib import Path
+from typing import Any
 
+from app.services.control_extractor import (
+    convert_to_section_structure,
+    extract_framework_controls,
+)
 from sqlalchemy import select
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
@@ -17,15 +21,9 @@ from vora_shared.models import (
     DocumentExtraction,
     Framework,
 )
-from vora_shared.models.framework_merge import FrameworkMerge
-from vora_shared.models.deployment_package_merge import DeploymentPackageMerge
 from app.services.control_extractor import (
     extract_framework_controls,
     convert_to_section_structure,
-)
-from app.services.control_merger import (
-    get_framework_previous_controls,
-    merge_controls_cumulative,
 )
 
 logger = logging.getLogger(__name__)
@@ -40,15 +38,6 @@ def _utcnow() -> datetime:
 
 def _iso(dt: datetime | None = None) -> str:
     return (dt or _utcnow()).isoformat()
-
-
-def _compute_merge_key(file_hashes: list[str]) -> str:
-    """Compute deterministic mergeKey from sorted file hashes."""
-    import hashlib
-    if not file_hashes:
-        return ""
-    s = "|".join(sorted(file_hashes))
-    return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
 
 
@@ -99,6 +88,7 @@ def _load_document_chunks(file_path: str, chunk_size: int = 1000) -> list[str]:
         if ext == ".pdf":
             try:
                 import pdfplumber
+
                 with pdfplumber.open(file_path) as pdf:
                     for page in pdf.pages:
                         # Extract tables
@@ -118,6 +108,7 @@ def _load_document_chunks(file_path: str, chunk_size: int = 1000) -> list[str]:
             except ImportError:
                 logger.warning("[LOAD] pdfplumber not available, trying pypdf")
                 import pypdf
+
                 reader = pypdf.PdfReader(file_path)
                 for page in reader.pages:
                     page_text = page.extract_text()
@@ -130,6 +121,7 @@ def _load_document_chunks(file_path: str, chunk_size: int = 1000) -> list[str]:
         elif ext == ".docx":
             try:
                 from docx import Document
+
                 doc = Document(file_path)
                 for para in doc.paragraphs:
                     if para.text.strip():
@@ -142,6 +134,7 @@ def _load_document_chunks(file_path: str, chunk_size: int = 1000) -> list[str]:
         elif ext in [".xls", ".xlsx"]:
             try:
                 import pandas as pd
+
                 xls = pd.ExcelFile(file_path)
                 for sheet in xls.sheet_names:
                     df = pd.read_excel(xls, sheet_name=sheet)
@@ -211,13 +204,21 @@ async def _update_framework_ai_status(
     if idx is None or fv is None:
         return
 
-    if replace:
-        fv["aiExtraction"] = status_data
-    else:
-        ai = dict(fv.get("aiExtraction") or {})
-        ai.update(status_data)
-        fv["aiExtraction"] = ai
+    file_hash = str(fv.get("fileHash") or "")
+    existing_ai = fv.get("aiExtraction")
+    existing_id = existing_ai if isinstance(existing_ai, str) else None
 
+    # Get or create DocumentExtraction
+    extraction = await _get_or_create_doc_extraction(session, file_hash, existing_id)
+
+    if replace:
+        extraction.aiExtraction = status_data
+    else:
+        ai = dict(extraction.aiExtraction or {})
+        ai.update(status_data)
+        extraction.aiExtraction = ai
+
+    fv["aiExtraction"] = extraction.id
     versions[idx] = fv
     fw.fileVersions = versions
 
@@ -249,7 +250,7 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
             # Find file version
             file_versions = framework.fileVersions or []
             logger.info(f"[EXTRACT] Found {len(file_versions)} file versions in framework")
-            
+
             file_info = None
             for fv in file_versions:
                 if isinstance(fv, dict) and str(fv.get("fileId")) == file_id:
@@ -269,7 +270,9 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
             # Update status to processing
             logger.info(f"[EXTRACT] Step 2: Updating status to 'processing'...")
             await _update_framework_ai_status(
-                session, framework_id, file_id,
+                session,
+                framework_id,
+                file_id,
                 {
                     "status": "processing",
                     "timestamp": uploaded_ts,
@@ -285,7 +288,9 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
             logger.error(f"[EXTRACT] ❌ No text extracted from document")
             async with session_scope() as session:
                 await _update_framework_ai_status(
-                    session, framework_id, file_id,
+                    session,
+                    framework_id,
+                    file_id,
                     {
                         "status": "failed",
                         "timestamp": _iso(),
@@ -303,7 +308,9 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
 
         # Convert to section structure
         logger.info(f"[EXTRACT] Step 5: Converting to section structure...")
-        controls_structured = await asyncio.to_thread(convert_to_section_structure, controls_flat, resource_type="framework")
+        controls_structured = await asyncio.to_thread(
+            convert_to_section_structure, controls_flat, resource_type="framework"
+        )
         logger.info(f"[EXTRACT] ✅ Structure converted: {len(controls_structured)} sections")
 
         # Merge with previous versions if exists
@@ -377,7 +384,9 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
             # Update framework's aiExtraction
             logger.info(f"[EXTRACT] 6a: Updating framework's aiExtraction...")
             await _update_framework_ai_status(
-                session, framework_id, file_id,
+                session,
+                framework_id,
+                file_id,
                 extraction_data,
                 replace=True,
             )
@@ -402,32 +411,6 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
             else:
                 logger.warning(f"[EXTRACT] ⚠️ No fileHash - skipping document_extraction save")
 
-            # Save merge to framework_merges table if merge happened
-            if merge_summary:
-                logger.info(f"[EXTRACT] 6c: Saving merge to framework_merges table...")
-                all_file_hashes = []
-                all_file_versions = []
-                for fv in framework.fileVersions or []:
-                    if isinstance(fv, dict):
-                        fv_hash = fv.get("fileHash")
-                        fv_ver = fv.get("fileVersion")
-                        if fv_hash:
-                            all_file_hashes.append(fv_hash)
-                        if fv_ver:
-                            all_file_versions.append(fv_ver)
-
-                await _save_merge_to_framework_merge(
-                    session,
-                    framework_id,
-                    all_file_hashes,
-                    all_file_versions,
-                    controls_structured,
-                    merge_summary,
-                )
-                logger.info(f"[EXTRACT] ✅ Saved merge to framework_merges table")
-                logger.info(f"  Merge key: {_compute_merge_key(all_file_hashes)[:16]}...")
-                logger.info(f"  Files merged: {len(all_file_hashes)}")
-
         logger.info(f"{'='*80}")
         logger.info(f"[EXTRACT-SUCCESS] ✅ Framework extraction complete!")
         logger.info(f"  Framework ID: {framework_id}")
@@ -446,12 +429,14 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
         logger.error(f"  Error: {str(exc)}")
         logger.error(f"{'='*80}")
         logger.exception(f"[EXTRACT] Exception traceback:")
-        
+
         fail_ts = _iso()
         try:
             async with session_scope() as session:
                 await _update_framework_ai_status(
-                    session, framework_id, file_id,
+                    session,
+                    framework_id,
+                    file_id,
                     {
                         "status": "failed",
                         "timestamp": fail_ts,

@@ -33,6 +33,8 @@ class ExtractionControlItem(BaseModel):
     name: str
     description: str = ""
     deployment_points: list[ExtractionDeploymentPoint] = Field(default_factory=list)
+    weightage: float = 10
+    remark: str = ""
 
 
 class ExtractionSection(BaseModel):

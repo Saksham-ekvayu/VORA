@@ -12,63 +12,11 @@ from sqlalchemy.orm import Mapped, mapped_column
 from vora_shared.database import Base
 from vora_shared.ids import new_id
 
-AiExtractionStatus = Literal["pending", "uploaded", "processing", "extracted", "failed"]
 ApprovalStatus = Literal["pending", "approved", "rejected"]
-DeploymentPointStatus = Literal["pending", "approved", "rejected"]
 
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
-
-
-class DeploymentPoint(BaseModel):
-    id: str
-    name: str
-    status: DeploymentPointStatus = "pending"
-    path: str = ""
-    weightage: float = 10
-    remark: str = ""
-
-
-class ControlItem(BaseModel):
-    id: str
-    name: str
-    description: str = ""
-    deployment_points: list[DeploymentPoint] = Field(default_factory=list)
-    weightage: float = 10
-    remark: str = ""
-
-
-class Section(BaseModel):
-    id: str
-    name: str
-    controls: list[ControlItem] = Field(default_factory=list)
-
-
-class Controls(BaseModel):
-    total_controls: int = 0
-    total_sections: int = 0
-    controls_data: list[Section] = Field(default_factory=list)
-
-
-class StatusHistoryEntry(BaseModel):
-    status: AiExtractionStatus
-    timestamp: datetime = Field(default_factory=_utcnow)
-    message: str | None = None
-
-
-class StatusHistory(BaseModel):
-    processingTimeSeconds: float | None = None
-    completedAt: datetime | None = None
-    history: list[StatusHistoryEntry] = Field(default_factory=list)
-
-
-class AiExtraction(BaseModel):
-    status: AiExtractionStatus = "pending"
-    timestamp: datetime | None = None
-    message: str | None = None
-    statusHistory: StatusHistory | None = None
-    controls: Controls | None = None
 
 
 class FileVersionEntry(BaseModel):
@@ -79,7 +27,7 @@ class FileVersionEntry(BaseModel):
     fileSize: int
     fileType: str
     fileVersion: str
-    aiExtraction: AiExtraction | None = None
+    aiExtraction: str | dict | None = None
     uploadedAt: datetime = Field(default_factory=_utcnow)
 
 

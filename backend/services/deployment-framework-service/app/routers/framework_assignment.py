@@ -58,6 +58,17 @@ async def _hydrate_customers(session, assignments: list[FrameworkAssignment]) ->
     return {str(c.id): c for c in customers}
 
 
+def _transform_assignment(doc: FrameworkAssignment, customers: dict, users: dict) -> dict[str, Any]:
+    customer = customers.get(str(doc.customerId)) if doc.customerId else None
+    fin = as_finalization(doc.finalization)
+    finalized_by = users.get(str(fin.finalizedBy)) if fin and fin.finalizedBy else None
+    assign_info = helper.as_assignment_info(doc.assignment)
+    assigned_by = users.get(str(assign_info.assignedBy)) if assign_info and assign_info.assignedBy else None
+    rev_info = helper.as_revocation(doc.revocation)
+    revoked_by = users.get(str(rev_info.revokedBy)) if rev_info and rev_info.revokedBy else None
+    return helper.format_assignment_response(doc, customer, finalized_by, assigned_by, revoked_by)
+
+
 # ─── GET /assignments ────────────────────────────────────────────────────────
 
 
@@ -91,12 +102,6 @@ async def get_all_framework_assignments(
         users = await _hydrate_user_refs(session, preview_docs)
         customers = await _hydrate_customers(session, preview_docs)
 
-        def transform(doc: FrameworkAssignment) -> dict[str, Any]:
-            customer = customers.get(str(doc.customerId)) if doc.customerId else None
-            fin = as_finalization(doc.finalization)
-            finalized_by = users.get(str(fin.finalizedBy)) if fin and fin.finalizedBy else None
-            return helper.format_assignment_response(doc, customer, finalized_by)
-
         result = await query_builder.paginate_with_search(
             session,
             FrameworkAssignment,
@@ -109,7 +114,7 @@ async def get_all_framework_assignments(
             sort_order=sort_order,
             allowed_sort_fields=allowed_sort_fields,
             user_search={"tenant_id": tenant_id, "field_name": "customerId"},
-            transform=transform,
+            transform=lambda doc: _transform_assignment(doc, customers, users),
         )
 
         status_label = helper.resolve_status_label(assignment_status, finalization_status)
@@ -145,8 +150,17 @@ async def get_framework_assignment_by_id(id: str, ctx: Annotated[RequestContext,
         fin = as_finalization(assignment.finalization)
         finalized_by = users.get(str(fin.finalizedBy)) if fin and fin.finalizedBy else None
 
+        assign_info = helper.as_assignment_info(assignment.assignment)
+        assigned_by = (
+            users.get(str(assign_info.assignedBy)) if assign_info and assign_info.assignedBy else None
+        )
+        rev_info = helper.as_revocation(assignment.revocation)
+        revoked_by = users.get(str(rev_info.revokedBy)) if rev_info and rev_info.revokedBy else None
+
         return success(
-            helper.format_assignment_detail_response(assignment, customer, uploaded_by, finalized_by),
+            helper.format_assignment_detail_response(
+                assignment, customer, uploaded_by, finalized_by, assigned_by, revoked_by
+            ),
             format_message(BUSINESS_MESSAGES["ASSIGNED_FRAMEWORKS_RETRIEVED"], status="Assigned"),
         )
 
@@ -657,7 +671,16 @@ async def finalize_framework_assignment(id: str, ctx: Annotated[RequestContext, 
         fin = as_finalization(assignment.finalization)
         finalized_by = users.get(str(fin.finalizedBy)) if fin.finalizedBy else None
 
+        assign_info = helper.as_assignment_info(assignment.assignment)
+        assigned_by = (
+            users.get(str(assign_info.assignedBy)) if assign_info and assign_info.assignedBy else None
+        )
+        rev_info = helper.as_revocation(assignment.revocation)
+        revoked_by = users.get(str(rev_info.revokedBy)) if rev_info and rev_info.revokedBy else None
+
         return success(
-            helper.format_assignment_detail_response(assignment, customer, uploaded_by, finalized_by),
+            helper.format_assignment_detail_response(
+                assignment, customer, uploaded_by, finalized_by, assigned_by, revoked_by
+            ),
             "Framework assignment finalized successfully.",
         )

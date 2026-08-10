@@ -409,7 +409,7 @@ export function updateAssignmentFrameworkControlWeightage(
 
 export function finalizeAssignmentFramework(id) {
   return apiRequest(
-    `${ASSIGNMENT_BASE}/${id}/finalize`,
+    `${ASSIGNMENT_BASE}/assignments/${id}/finalize`,
     {
       method: "PATCH",
     },

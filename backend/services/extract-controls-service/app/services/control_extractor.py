@@ -3,17 +3,17 @@ Control Extraction Service — AI-powered extraction using OpenAI GPT-4o-mini
 Extracts controls from framework documents with deployment points
 """
 
-import os
+import asyncio
 import json
 import logging
+import os
 import re
-import asyncio
-from typing import Any
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
-from openai import OpenAI
 from dotenv import load_dotenv
+from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,7 @@ else:
 
 # OpenAI configuration - lazy load to avoid errors during import
 _client = None
+
 
 def get_openai_client():
     """Get or create OpenAI client"""
@@ -40,6 +41,7 @@ def get_openai_client():
         _client = OpenAI(api_key=api_key)
     return _client
 
+
 # Batching configuration for large extractions
 DEPLOYMENT_BATCH_SIZE = 10
 DEPLOYMENT_MAX_TOKENS = 16000
@@ -52,8 +54,7 @@ def _log_llm_call(tag: str, response: Any, elapsed: float):
         finish_reason = response.choices[0].finish_reason
         usage = getattr(response, "usage", None)
         usage_str = (
-            f" | tokens(prompt={usage.prompt_tokens},completion={usage.completion_tokens})"
-            if usage else ""
+            f" | tokens(prompt={usage.prompt_tokens},completion={usage.completion_tokens})" if usage else ""
         )
         logger.info(f"[{tag}] LLM call done in {elapsed:.1f}s | finish_reason={finish_reason}{usage_str}")
         if finish_reason == "length":
@@ -116,10 +117,10 @@ Return ONLY JSON. No markdown. No text outside JSON."""
         logger.info(f"[EXTRACT] Stage 1 complete: {len(controls)} controls extracted")
 
     except json.JSONDecodeError as e:
-        logger.error(f"[EXTRACT] JSON decode failed: {e}")
+        logger.exception(f"[EXTRACT] JSON decode failed: {e}")
         return []
     except Exception as e:
-        logger.error(f"[EXTRACT] OpenAI API error: {e}", exc_info=True)
+        logger.exception(f"[EXTRACT] OpenAI API error: {e}", exc_info=True)
         return []
 
     # Stage 2: Generate deployment points (batched)
@@ -173,7 +174,7 @@ Return ONLY JSON. No markdown."""
             logger.info(f"[EXTRACT] Batch {batch_num}/{total_batches} ✅ OK")
 
         except json.JSONDecodeError as e:
-            logger.error(f"[EXTRACT] Batch {batch_num} JSON parse failed: {e}")
+            logger.exception(f"[EXTRACT] Batch {batch_num} JSON parse failed: {e}")
             if finish_reason == "length":
                 logger.warning(
                     f"[EXTRACT] Batch {batch_num} truncated — consider lowering DEPLOYMENT_BATCH_SIZE"
@@ -182,7 +183,7 @@ Return ONLY JSON. No markdown."""
             final_controls.extend(batch)
 
         except Exception as e:
-            logger.error(f"[EXTRACT] Batch {batch_num} API error: {e}")
+            logger.exception(f"[EXTRACT] Batch {batch_num} API error: {e}")
             final_controls.extend(batch)
 
     logger.info(f"[EXTRACT] ✅ Complete: {len(final_controls)} controls extracted")
