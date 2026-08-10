@@ -21,6 +21,7 @@ from vora_shared.models.framework import (
     FileVersionEntry,
     Framework,
 )
+from sqlalchemy.orm.attributes import flag_modified
 
 
 def format_message(template: str, **replacements: Any) -> str:
@@ -521,10 +522,11 @@ async def load_ai_controls(session, file_version_doc):
 def save_ai_controls(session, file_version_doc, controls, doc_ext, ai_data):
     ai_data["controls"] = controls.model_dump(mode="json")
     if doc_ext:
-        doc_ext.aiExtraction = ai_data
+        doc_ext.aiExtraction = dict(ai_data)
+        flag_modified(doc_ext, "aiExtraction")
         session.add(doc_ext)
     else:
-        file_version_doc.aiExtraction = ai_data
+        file_version_doc.aiExtraction = dict(ai_data)
 
 
 def apply_approved_versions(framework: Framework, current: FileVersionEntry) -> None:
