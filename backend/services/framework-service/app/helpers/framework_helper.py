@@ -553,11 +553,18 @@ def transform_extraction_to_assignment(sections: list) -> list:
 
 def _extract_controls_for_assignment(ai_extraction: Any) -> list:
     if isinstance(ai_extraction, dict):
-        if "controls" in ai_extraction:
-            return transform_extraction_to_assignment(ai_extraction["controls"])
-        if "controls_data" in ai_extraction:
-            return transform_extraction_to_assignment(ai_extraction["controls_data"])
+        controls = ai_extraction.get("controls")
+        if isinstance(controls, list):
+            return transform_extraction_to_assignment(controls)
+        if isinstance(controls, dict) and isinstance(controls.get("controls_data"), list):
+            return transform_extraction_to_assignment(controls["controls_data"])
+            
+        controls_data = ai_extraction.get("controls_data")
+        if isinstance(controls_data, list):
+            return transform_extraction_to_assignment(controls_data)
+            
         return []
+        
     if isinstance(ai_extraction, list):
         return transform_extraction_to_assignment(ai_extraction)
     return []
