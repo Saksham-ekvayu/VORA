@@ -10,11 +10,11 @@ from vora_shared.database import session_scope
 from vora_shared.models import (
     Customer,
     DeploymentFramework,
+    DeploymentPackageMerge,
     DocumentExtraction,
     FrameworkAssignment,
     PackageComparison,
     PackageGapAnalysis,
-    PackageMerge,
     User,
 )
 from vora_shared.responses import server_error, success
@@ -106,7 +106,7 @@ def _count_deployment_points(controls_data: list) -> tuple[int, int]:
 
 def _calculate_single_framework_progress(
     df: DeploymentFramework,
-    package_merges: dict[str, PackageMerge],
+    package_merges: dict[str, DeploymentPackageMerge],
 ) -> tuple[int, int]:
     """Calculate progress for a single deployment framework."""
     fw_configured = 0
@@ -116,8 +116,8 @@ def _calculate_single_framework_progress(
     merge_doc_id = _get(live_package, "mergeDocument") if live_package else None
     pm = package_merges.get(str(merge_doc_id)) if merge_doc_id else None
 
-    merge_extraction = _get(pm, "mergeExtraction") if pm else None
-    controls_data = _get(merge_extraction, "controls_data") if merge_extraction else []
+    merge_controls = _get(pm, "controls") if pm else None
+    controls_data = _get(merge_controls, "controls_data") if merge_controls else []
 
     total, configured = _count_deployment_points(controls_data)
     fw_total += total
@@ -128,7 +128,7 @@ def _calculate_single_framework_progress(
 
 def _calculate_framework_progress(
     deployment_frameworks: list[DeploymentFramework],
-    package_merges: dict[str, PackageMerge],
+    package_merges: dict[str, DeploymentPackageMerge],
     assignment,
 ) -> tuple[int, int, int, dict]:
     """Calculate progress for a single framework assignment."""
@@ -192,7 +192,7 @@ def _get_deployed_framework_info(
 def _process_assignments_and_progress(
     active_assignments: list[FrameworkAssignment],
     deployment_frameworks: list[DeploymentFramework],
-    package_merges: dict[str, PackageMerge],
+    package_merges: dict[str, DeploymentPackageMerge],
 ) -> dict[str, Any]:
     controls_configured = 0
     controls_total = 0
@@ -608,7 +608,7 @@ def _add_gap_analysis_activities(
 
 
 def _add_merge_activities(
-    package_merges: list[PackageMerge],
+    package_merges: list[DeploymentPackageMerge],
     pm_map: dict[str, dict],
     recent_activity: list[dict],
 ) -> None:
@@ -616,7 +616,7 @@ def _add_merge_activities(
     for pm in package_merges:
         if pm.createdAt:
             suffix = _get_activity_suffix(pm_map.get(str(pm.id)))
-            status = _get(pm.mergeExtraction, "status") or "started"
+            status = _get(pm.controls, "status") or "started"
             _add_activity_entry(
                 recent_activity,
                 f"pm-{pm.id}",
@@ -654,7 +654,7 @@ def _add_system_activities(
     document_extractions: list[DocumentExtraction],
     package_comparisons: list[PackageComparison],
     package_gap_analyses: list[PackageGapAnalysis],
-    package_merges: list[PackageMerge],
+    package_merges: list[DeploymentPackageMerge],
     recent_activity: list[dict],
 ) -> None:
     """Add system-related activity entries."""
@@ -694,34 +694,46 @@ async def _fetch_document_extractions(session, file_hashes: set) -> list[Documen
     )
 
 
-async def _fetch_package_analyses(session, framework_ids: list) -> tuple:
+async def _fetch_package_analyses(session, merge_ids: list, comparison_ids: list, gap_ids: list) -> tuple:
     """Fetch package comparisons, gap analyses, and merges."""
-    if not framework_ids:
-        return [], [], []
+    comparisons = []
+    gap_analyses = []
+    merges = []
 
-    comparisons = list(
-        (
-            await session.execute(
-                select(PackageComparison).where(PackageComparison.frameworkId.in_(framework_ids))
+    if gap_ids:
+        gap_analyses = list(
+            (
+                await session.execute(
+                    select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_ids))
+                )
             )
+            .scalars()
+            .all()
         )
-        .scalars()
-        .all()
-    )
-    gap_analyses = list(
-        (
-            await session.execute(
-                select(PackageGapAnalysis).where(PackageGapAnalysis.frameworkId.in_(framework_ids))
+
+    if comparison_ids:
+        comparisons = list(
+            (
+                await session.execute(
+                    select(PackageComparison).where(PackageComparison.id.in_(comparison_ids))
+                )
             )
+            .scalars()
+            .all()
         )
-        .scalars()
-        .all()
-    )
-    merges = list(
-        (await session.execute(select(PackageMerge).where(PackageMerge.frameworkId.in_(framework_ids))))
-        .scalars()
-        .all()
-    )
+
+    if merge_ids:
+        merges = list(
+            (
+                await session.execute(
+                    select(DeploymentPackageMerge).where(
+                        DeploymentPackageMerge.id.in_(merge_ids)
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
     return comparisons, gap_analyses, merges
 
 
@@ -819,10 +831,28 @@ async def get_customer_admin_dashboard(
                 for doc in (_get(pkg, "documents") or [])
                 if _get(doc, "fileHash")
             }
+            merge_ids = [
+                str(_get(pkg, "mergeDocument"))
+                for df in deployment_frameworks
+                for pkg in (df.packages or [])
+                if _get(pkg, "mergeDocument")
+            ]
+            comparison_ids = [
+                str(_get(pkg, "comparison"))
+                for df in deployment_frameworks
+                for pkg in (df.packages or [])
+                if _get(pkg, "comparison")
+            ]
+            gap_ids = [
+                str(_get(pkg, "gapAnalysis"))
+                for df in deployment_frameworks
+                for pkg in (df.packages or [])
+                if _get(pkg, "gapAnalysis")
+            ]
 
             document_extractions = await _fetch_document_extractions(session, file_hashes)
             package_comparisons, package_gap_analyses, package_merges = await _fetch_package_analyses(
-                session, framework_ids
+                session, merge_ids, comparison_ids, gap_ids
             )
 
             package_merges_map = {str(pm.id): pm for pm in package_merges}

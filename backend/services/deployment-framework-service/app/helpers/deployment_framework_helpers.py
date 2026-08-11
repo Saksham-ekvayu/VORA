@@ -11,6 +11,7 @@ from app.services import package_builder, version_service
 from fastapi import UploadFile
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 from vora_shared import file_storage
 from vora_shared.ids import new_id
 from vora_shared.models.deployment_framework import FrameworkPackageDocument, PackageVersion
@@ -317,86 +318,107 @@ def _field(doc: Any, key: str, default: Any = None) -> Any:
 async def create_pending_merge(
     session: AsyncSession, file_hashes: list[str], framework_id: str, package_data: dict[str, Any]
 ):
-    from vora_shared.models import PackageMerge
+    from vora_shared.models import DeploymentPackageMerge
 
-    if not file_hashes or not framework_id:
+    if not file_hashes:
         return None
+
+    file_hashes = sorted(file_hashes)
+
     existing = (
         await session.execute(
-            select(PackageMerge).where(
-                PackageMerge.fileHashes == file_hashes,
-                PackageMerge.frameworkId == str(framework_id),
-            )
+            select(DeploymentPackageMerge)
+            .where(DeploymentPackageMerge.fileHashes == file_hashes)
+            .order_by(DeploymentPackageMerge.createdAt.desc())
         )
-    ).scalar_one_or_none()
+    ).scalars().first()
+
     if existing:
         return existing
 
-    source_documents = [
-        {
-            "fileId": str(_field(doc, "fileId")) if _field(doc, "fileId") is not None else None,
-            "fileHash": _field(doc, "fileHash"),
-            "originalFileName": _field(doc, "originalFileName"),
-            "mergedAt": None,
-        }
-        for doc in package_data.get("documents", [])
-    ]
-
-    merge = PackageMerge(
-        frameworkId=str(framework_id),
+    merge = DeploymentPackageMerge(
         fileHashes=file_hashes,
-        sourceDocuments=source_documents,
-        mergeExtraction={},
+        status="pending",
+        controls={},
     )
     session.add(merge)
     await session.flush()
     return merge
 
 
-async def create_pending_comparison(session: AsyncSession, file_hashes: list[str], framework_id: str):
+async def create_pending_comparison(
+    session: AsyncSession,
+    file_hashes: list[str],
+    framework_id: str,
+    assigned_framework_id: str,
+    package_version: str,
+):
     from vora_shared.models import PackageComparison
 
-    if not file_hashes or not framework_id:
+    if not file_hashes:
         return None
+
+    file_hashes = sorted(file_hashes)
+
     existing = (
         await session.execute(
             select(PackageComparison).where(
                 PackageComparison.fileHashes == file_hashes,
-                PackageComparison.frameworkId == str(framework_id),
-            )
+            ).order_by(PackageComparison.createdAt.desc())
         )
-    ).scalar_one_or_none()
+    ).scalars().first()
+
     if existing:
         return existing
+
     comparison = PackageComparison(
-        frameworkId=str(framework_id),
         fileHashes=file_hashes,
-        comparison={},
+        comparison={
+            "status": "pending",
+            "message": "Comparison pending",
+            "timestamp": None,
+            "comparison_time_seconds": None,
+            "comparison_result": [],
+        },
     )
     session.add(comparison)
     await session.flush()
     return comparison
 
 
-async def create_pending_gap_analysis(session: AsyncSession, file_hashes: list[str], framework_id: str):
+async def create_pending_gap_analysis(
+    session: AsyncSession,
+    file_hashes: list[str],
+    framework_id: str,
+    assigned_framework_id: str,
+    package_version: str,
+):
     from vora_shared.models import PackageGapAnalysis
 
-    if not file_hashes or not framework_id:
+    if not file_hashes:
         return None
+
+    file_hashes = sorted(file_hashes)
+
     existing = (
         await session.execute(
-            select(PackageGapAnalysis).where(
-                PackageGapAnalysis.fileHashes == file_hashes,
-                PackageGapAnalysis.frameworkId == str(framework_id),
-            )
+            select(PackageGapAnalysis)
+            .where(PackageGapAnalysis.fileHashes == file_hashes)
+            .order_by(PackageGapAnalysis.createdAt.desc())
         )
-    ).scalar_one_or_none()
+    ).scalars().first()
+
     if existing:
         return existing
+
     gap = PackageGapAnalysis(
-        frameworkId=str(framework_id),
         fileHashes=file_hashes,
-        gapAnalysis={},
+        gapAnalysis={
+            "status": "pending",
+            "message": "Gap analysis pending",
+            "timestamp": None,
+            "deployment_gap_results": [],
+        },
     )
     session.add(gap)
     await session.flush()
@@ -404,7 +426,11 @@ async def create_pending_gap_analysis(session: AsyncSession, file_hashes: list[s
 
 
 async def ensure_package_analysis_refs(
-    session: AsyncSession, package_data: dict[str, Any], framework_id: str
+    session: AsyncSession,
+    package_data: dict[str, Any],
+    framework_id: str,
+    assigned_framework_id: str,
+    package_version: str,
 ) -> None:
     if not package_data or not framework_id:
         return
@@ -418,11 +444,15 @@ async def ensure_package_analysis_refs(
     if merge_doc:
         package_data["mergeDocument"] = merge_doc.id
 
-    comparison_doc = await create_pending_comparison(session, file_hashes, framework_id)
+    comparison_doc = await create_pending_comparison(
+        session, file_hashes, framework_id, assigned_framework_id, package_version
+    )
     if comparison_doc:
         package_data["comparison"] = comparison_doc.id
 
-    gap_doc = await create_pending_gap_analysis(session, file_hashes, framework_id)
+    gap_doc = await create_pending_gap_analysis(
+        session, file_hashes, framework_id, assigned_framework_id, package_version
+    )
     if gap_doc:
         package_data["gapAnalysis"] = gap_doc.id
 

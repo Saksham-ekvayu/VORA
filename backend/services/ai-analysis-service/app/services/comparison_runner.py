@@ -13,10 +13,10 @@ from vora_shared.database import session_scope
 from vora_shared.ids import new_id
 from vora_shared.models import (
     DeploymentFramework,
+    DeploymentPackageMerge,
     DocumentExtraction,
     FrameworkAssignment,
     PackageComparison,
-    PackageMerge,
 )
 
 logger = logging.getLogger(__name__)
@@ -57,7 +57,7 @@ def _get_embedder():
     try:
         from sentence_transformers import SentenceTransformer  # type: ignore
         from vora_shared.config import get_settings
-        
+
         settings = get_settings()
         model_name = settings.sentence_transformer_model
         _st_model = SentenceTransformer(model_name)
@@ -128,22 +128,20 @@ def _control_text(control: dict[str, Any]) -> str:
 
 
 async def _load_merge_sections(session, df_id: str, pkg_ver: str, df: DeploymentFramework):
-    pm = (
-        await session.execute(select(PackageMerge).where(PackageMerge.frameworkId == df_id))
-    ).scalar_one_or_none()
-    if pm and isinstance(pm.mergeExtraction, dict):
-        controls = pm.mergeExtraction.get("controls_data") or []
-        if controls:
-            return controls
+    merge_doc_id = None
 
     for pkg in df.packages or []:
         if not isinstance(pkg, dict) or pkg.get("packageVersion") != pkg_ver:
             continue
+
+        merge_doc_id = pkg.get("mergeDocument")
+
         merged = pkg.get("mergedControls") or {}
         if isinstance(merged, dict):
             controls = merged.get("controls_data") or merged.get("controls") or []
             if controls:
                 return controls
+
         # Fallback: pull from DocumentExtraction records
         sections: list[dict[str, Any]] = []
         for doc in pkg.get("documents") or []:
@@ -169,6 +167,15 @@ async def _load_merge_sections(session, df_id: str, pkg_ver: str, df: Deployment
                 controls_block = ai_ref.get("controls") or {}
                 if isinstance(controls_block, dict):
                     sections.extend(controls_block.get("controls_data") or [])
+
+        # If we didn't find controls directly, try checking the merge record
+        if not sections and merge_doc_id:
+            pm = await session.get(DeploymentPackageMerge, merge_doc_id)
+            if pm and isinstance(pm.controls, dict):
+                controls = pm.controls.get("controls_data") or []
+                if controls:
+                    return controls
+
         return sections
     return []
 
@@ -224,7 +231,7 @@ async def run_comparison(
             if not fa_id:
                 logger.error("No assignedFrameworkId or frameworkId found")
                 return
-            
+
             logger.info(f"[COMPARISON-RUNNER] Resolved framework_assignment_id: {fa_id}")
             logger.info("[COMPARISON-RUNNER] Loading deployment framework controls...")
 
@@ -232,7 +239,7 @@ async def run_comparison(
             if not df_sections:
                 logger.error(f"No merge controls found for package '{pkg_ver}'")
                 return
-            
+
             logger.info(f"[COMPARISON-RUNNER] ✅ Loaded {len(df_sections)} deployment framework sections")
 
             logger.info("[COMPARISON-RUNNER] Loading assignment framework controls...")
@@ -240,8 +247,10 @@ async def run_comparison(
             if not assignment_sections:
                 logger.error(f"No assignment controls for id: {fa_id}")
                 return
-            
-            logger.info(f"[COMPARISON-RUNNER] ✅ Loaded {len(assignment_sections)} assignment framework sections")
+
+            logger.info(
+                f"[COMPARISON-RUNNER] ✅ Loaded {len(assignment_sections)} assignment framework sections"
+            )
             logger.info("[COMPARISON-RUNNER] Starting similarity scoring...")
 
             df_controls = _flatten_controls(df_sections)
@@ -295,32 +304,18 @@ async def run_comparison(
         }
 
         async with session_scope() as session:
-            logger.info("[COMPARISON-RUNNER] Saving comparison result...")
-            cr = ComparisonResult(
-                id=new_id(),
-                deployment_framework_id=df_id,
-                package_version=pkg_ver,
-                result={
-                    "framework_assignment_id": str(fa_id),
-                    "grouped_results": grouped,
-                    "comparison_time_seconds": elapsed,
-                },
-            )
-            session.add(cr)
-            await session.flush()
-            logger.info(f"[COMPARISON-RUNNER] ✅ Saved ComparisonResult: {cr.id}")
-
             # Update the existing PackageComparison record
             logger.info(f"[COMPARISON-RUNNER] Updating PackageComparison record...")
             pc = None
             if comparison_id:
                 pc = await session.get(PackageComparison, comparison_id)
-            
+
             if pc is None:
-                logger.warning(f"[COMPARISON-RUNNER] ⚠️ PackageComparison not found (id={comparison_id}), creating new")
+                logger.warning(
+                    f"[COMPARISON-RUNNER] ⚠️ PackageComparison not found (id={comparison_id}), creating new"
+                )
                 pc = PackageComparison(
                     id=new_id(),
-                    frameworkId=df_id,
                     fileHashes=[],
                     comparison=comparison_payload,
                 )
@@ -330,7 +325,7 @@ async def run_comparison(
                 pc.comparison = comparison_payload
                 pc.updatedAt = _utcnow()
                 session.add(pc)
-            
+
             await session.flush()
             logger.info(f"[COMPARISON-RUNNER] ✅ Updated PackageComparison: {pc.id}")
 
@@ -343,7 +338,7 @@ async def run_comparison(
                 for i, pkg in enumerate(packages):
                     if isinstance(pkg, dict) and pkg.get("packageVersion") == pkg_ver:
                         pkg = dict(pkg)
-                        pkg["comparison"] = cr.id
+                        pkg["comparison"] = pc.id
                         packages[i] = pkg
                         break
                 df.packages = packages
@@ -355,13 +350,13 @@ async def run_comparison(
             logger.info(f"[COMPARISON-RUNNER] Committing all changes to database...")
             await session.commit()
             logger.info(f"[COMPARISON-RUNNER] ✅ All changes committed successfully")
-            
+
             # Fresh query from database to verify update
             logger.info(f"[COMPARISON-RUNNER] Verifying update - fresh query from database...")
             verified_pc = await session.get(PackageComparison, pc.id)
             if verified_pc and verified_pc.comparison:
-                status_in_db = verified_pc.comparison.get('status', 'unknown')
-                results_count = len(verified_pc.comparison.get('comparison_result', []))
+                status_in_db = verified_pc.comparison.get("status", "unknown")
+                results_count = len(verified_pc.comparison.get("comparison_result", []))
                 logger.info(f"[COMPARISON-RUNNER] ✅ Verified in database:")
                 logger.info(f"  Status: {status_in_db}")
                 logger.info(f"  Results count: {results_count}")
@@ -386,3 +381,22 @@ async def run_comparison(
         logger.error(f"  Error: {str(exc)}")
         logger.error(f"{'='*80}")
         logger.exception("run_comparison exception traceback:")
+
+        try:
+            async with session_scope() as session:
+                pc = None
+                if comparison_id:
+                    pc = await session.get(PackageComparison, str(comparison_id))
+                
+                if pc:
+                    pc.comparison = {
+                        "status": "failed",
+                        "message": f"Comparison failed: {str(exc)}",
+                        "timestamp": _iso(),
+                        "comparison_time_seconds": None,
+                        "comparison_result": [],
+                    }
+                    session.add(pc)
+                    await session.commit()
+        except Exception as db_exc:
+            logger.error(f"[COMPARISON-RUNNER-ERROR] Failed to update failure status: {db_exc}")
