@@ -24,6 +24,7 @@ def _utcnow() -> datetime:
 
 class ThresholdsRequest(BaseModel):
     """Request model for updating thresholds."""
+
     implemented_threshold: float = 75.0
     partially_implemented_threshold: float = 50.0
     implemented_label: str = "Implemented"
@@ -34,6 +35,7 @@ class ThresholdsRequest(BaseModel):
 
 class ThresholdsResponse(BaseModel):
     """Response model for thresholds data."""
+
     id: str
     implemented_threshold: float
     partially_implemented_threshold: float
@@ -58,9 +60,7 @@ async def get_thresholds():
     try:
         async with session_scope() as session:
             config = (
-                await session.execute(
-                    select(GapThresholdConfig).where(GapThresholdConfig.is_active == True)
-                )
+                await session.execute(select(GapThresholdConfig).where(GapThresholdConfig.is_active == True))
             ).scalar_one_or_none()
 
             if not config:
@@ -113,9 +113,7 @@ async def create_thresholds(request: ThresholdsRequest):
         async with session_scope() as session:
             # Deactivate any existing active config
             existing_active = (
-                await session.execute(
-                    select(GapThresholdConfig).where(GapThresholdConfig.is_active == True)
-                )
+                await session.execute(select(GapThresholdConfig).where(GapThresholdConfig.is_active == True))
             ).scalar_one_or_none()
 
             if existing_active:
@@ -252,26 +250,32 @@ async def list_thresholds():
     try:
         async with session_scope() as session:
             configs = (
-                await session.execute(
-                    select(GapThresholdConfig).order_by(GapThresholdConfig.createdAt.desc())
+                (
+                    await session.execute(
+                        select(GapThresholdConfig).order_by(GapThresholdConfig.createdAt.desc())
+                    )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
 
             items = []
             for config in configs:
-                items.append({
-                    "id": config.id,
-                    "implemented_threshold": config.implemented_threshold,
-                    "partially_implemented_threshold": config.partially_implemented_threshold,
-                    "not_implemented_threshold": config.not_implemented_threshold,
-                    "implemented_label": config.implemented_label,
-                    "partially_implemented_label": config.partially_implemented_label,
-                    "not_implemented_label": config.not_implemented_label,
-                    "description": config.description,
-                    "is_active": config.is_active,
-                    "createdAt": config.createdAt.isoformat() if config.createdAt else None,
-                    "updatedAt": config.updatedAt.isoformat() if config.updatedAt else None,
-                })
+                items.append(
+                    {
+                        "id": config.id,
+                        "implemented_threshold": config.implemented_threshold,
+                        "partially_implemented_threshold": config.partially_implemented_threshold,
+                        "not_implemented_threshold": config.not_implemented_threshold,
+                        "implemented_label": config.implemented_label,
+                        "partially_implemented_label": config.partially_implemented_label,
+                        "not_implemented_label": config.not_implemented_label,
+                        "description": config.description,
+                        "is_active": config.is_active,
+                        "createdAt": config.createdAt.isoformat() if config.createdAt else None,
+                        "updatedAt": config.updatedAt.isoformat() if config.updatedAt else None,
+                    }
+                )
 
             return success(
                 message=f"Retrieved {len(items)} threshold configurations",

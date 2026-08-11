@@ -19,7 +19,6 @@ from vora_shared.models import (
     FrameworkPackageDocument,
     PackageComparison,
     PackageGapAnalysis,
-    PackageMerge,
     PackageVersion,
     User,
 )
@@ -216,33 +215,36 @@ def _format_comparison(comp_data: Any, exclude_details: bool) -> dict[str, Any]:
 
 
 def _format_merge_document(merge_data: Any, merge: Any, exclude_details: bool) -> dict[str, Any]:
-    if merge_data:
+    if not merge:
         details = {}
         if not exclude_details:
-            source_docs = []
-            if merge and hasattr(merge, "sourceDocuments") and merge.sourceDocuments:
-                source_docs = merge.sourceDocuments
-            elif merge and hasattr(merge, "mergeHistory") and merge.mergeHistory:
-                source_docs = merge.mergeHistory
-            details["controls_data"] = _get(merge_data, "controls_data") or []
-            details["sourceDocuments"] = source_docs
+            details["controls_data"] = []
+            details["sourceDocuments"] = []
 
         return {
-            "status": _get(merge_data, "status"),
-            "message": _get(merge_data, "message"),
-            "timestamp": _get(merge_data, "timestamp"),
+            "status": "pending",
+            "message": "Merge pending",
+            "timestamp": None,
             **details,
         }
 
     details = {}
     if not exclude_details:
-        details["controls_data"] = []
-        details["sourceDocuments"] = []
+        source_docs = []
+        if hasattr(merge, "mergeHistory") and merge.mergeHistory:
+            source_docs = merge.mergeHistory
+        details["controls_data"] = _get(merge_data, "controls_data") or [] if merge_data else []
+        details["sourceDocuments"] = source_docs
+
+    status = getattr(merge, "status", "pending")
+    message = "Merge completed successfully" if status == "merged" else f"Merge {status}"
+    updated_at = getattr(merge, "updatedAt", None)
+    timestamp = updated_at.isoformat() if updated_at else None
 
     return {
-        "status": "pending",
-        "message": None,
-        "timestamp": None,
+        "status": status,
+        "message": message,
+        "timestamp": timestamp,
         **details,
     }
 
@@ -264,17 +266,8 @@ def format_package(
     comp_data = comparison.comparison if comparison else None
     gap_data = gap.gapAnalysis if gap else None
 
-    # Handle both PackageMerge and DeploymentPackageMerge
     if merge:
-        if hasattr(merge, "mergeExtraction"):
-            merge_data = merge.mergeExtraction
-        else:
-            merge_data = {
-                "status": merge.status,
-                "message": merge.summary.get("message") if merge.summary else None,
-                "timestamp": merge.updatedAt.isoformat() if merge.updatedAt else None,
-                "controls_data": merge.controls.get("controls_data", []) if merge.controls else [],
-            }
+        merge_data = merge.controls or {}
     else:
         merge_data = None
 

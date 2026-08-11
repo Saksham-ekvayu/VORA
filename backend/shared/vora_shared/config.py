@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     allowed_extensions: str = "pdf,doc,docx"
     max_file_size: float = 10.0
-    
+
     # AI Configuration
     sentence_transformer_model: str = "all-MiniLM-L6-v2"
     similarity_threshold_high: float = 75.0

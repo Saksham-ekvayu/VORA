@@ -26,10 +26,14 @@ class GapAnalysisData(BaseModel):
 
 class PackageGapAnalysis(Base):
     __tablename__ = "package_gap_analyses"
-    __table_args__ = (Index("ix_pkg_gap_framework", "frameworkId"),)
+    __table_args__ = (
+        Index("ix_pkg_gap_df_assigned", "deploymentFrameworkId", "assignedFrameworkId", "packageVersion"),
+    )
 
     id: Mapped[str] = mapped_column(String(24), primary_key=True, default=new_id)
-    frameworkId: Mapped[str] = mapped_column(String(24), nullable=False)
+    deploymentFrameworkId: Mapped[str] = mapped_column(String(24), nullable=False)
+    assignedFrameworkId: Mapped[str] = mapped_column(String(24), nullable=False)
+    packageVersion: Mapped[str] = mapped_column(String(20), nullable=False)
     fileHashes: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
     gapAnalysis: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     createdAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)

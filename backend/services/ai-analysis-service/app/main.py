@@ -1,7 +1,7 @@
-from contextlib import asynccontextmanager
 import logging
-import sys
 import os
+import sys
+from contextlib import asynccontextmanager
 
 from app.routers import comparison as comparison_router
 from app.routers import config as config_router
@@ -10,7 +10,6 @@ from fastapi import FastAPI
 from vora_shared.config import get_settings
 from vora_shared.database import connect_db, disconnect_db
 from vora_shared.server import create_vora_app
-
 
 # Create logs directory if it doesn't exist
 os.makedirs("logs", exist_ok=True)
@@ -34,7 +33,9 @@ async def lifespan(_: FastAPI):
     connect_db(settings.resolved_database_url())
     logger.info("AI Analysis Service started")
     logger.info(f"Using model: {settings.sentence_transformer_model}")
-    logger.info(f"Thresholds - High: {settings.similarity_threshold_high}, Medium: {settings.similarity_threshold_medium}")
+    logger.info(
+        f"Thresholds - High: {settings.similarity_threshold_high}, Medium: {settings.similarity_threshold_medium}"
+    )
     yield
     await disconnect_db()
     logger.info("AI Analysis Service stopped")

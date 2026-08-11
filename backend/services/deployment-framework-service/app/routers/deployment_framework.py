@@ -24,9 +24,9 @@ from vora_shared.ids import is_valid_id, new_id
 from vora_shared.messages import BUSINESS_MESSAGES, FRAMEWORK_MESSAGES, FRAMEWORK_SERVICE_MESSAGES
 from vora_shared.models import (
     DeploymentFramework,
+    DeploymentPackageMerge,
     PackageComparison,
     PackageGapAnalysis,
-    PackageMerge,
     User,
 )
 from vora_shared.responses import error, forbidden, paginated, success
@@ -235,14 +235,18 @@ async def get_deployment_framework_package_client_controls(
             if live_package.mergeDocument:
                 merge_ids.append(str(live_package.mergeDocument))
 
-        merges: dict[str, PackageMerge] = {}
+        merges: dict[str, DeploymentPackageMerge] = {}
         if merge_ids:
-            rows = (
-                (await session.execute(select(PackageMerge).where(PackageMerge.id.in_(merge_ids))))
+            merges_list = (
+                (
+                    await session.execute(
+                        select(DeploymentPackageMerge).where(DeploymentPackageMerge.id.in_(merge_ids))
+                    )
+                )
                 .scalars()
                 .all()
             )
-            merges = {str(m.id): m for m in rows}
+            merges = {str(m.id): m for m in merges_list}
 
         client_controls = []
         for fw, live_package in live_by_fw:
@@ -315,16 +319,16 @@ async def update_deployment_package_point_path(
 
         package_merge = (
             await session.execute(
-                select(PackageMerge).where(
-                    PackageMerge.id == str(target_package.mergeDocument),
-                    PackageMerge.frameworkId == str(framework.id),
+                select(DeploymentPackageMerge).where(
+                    DeploymentPackageMerge.id == str(target_package.mergeDocument),
+                    DeploymentPackageMerge.deploymentFrameworkId == str(framework.id),
                 )
             )
         ).scalar_one_or_none()
         if not package_merge:
             return not_found(FRAMEWORK_SERVICE_MESSAGES["PACKAGE_MERGE_DOCUMENT_NOT_FOUND"])
 
-        merge_data = dict(package_merge.mergeExtraction or {})
+        merge_data = dict(package_merge.controls or {})
         controls_data = list(merge_data.get("controls_data") or [])
 
         point_found = _update_deployment_point_path(
@@ -335,7 +339,8 @@ async def update_deployment_package_point_path(
             return not_found(FRAMEWORK_SERVICE_MESSAGES["CONTROL_OR_DEPLOYMENT_POINT_NOT_FOUND"])
 
         merge_data["controls_data"] = controls_data
-        package_merge.mergeExtraction = merge_data
+        package_merge.controls = merge_data
+        flag_modified(package_merge, "controls")
 
         return success(
             {
@@ -587,7 +592,13 @@ async def update_deployment_framework(
             await helpers.ensure_document_extraction_refs(session, new_documents)
             result["newPackage"]["documents"] = [d.model_dump(mode="json") for d in new_documents]
 
-            await helpers.ensure_package_analysis_refs(session, result["newPackage"], framework.id)
+            await helpers.ensure_package_analysis_refs(
+                session,
+                result["newPackage"],
+                framework.id,
+                framework.assignedFrameworkId,
+                result["newPackage"].get("packageVersion"),
+            )
 
             new_package = PackageVersion(**result["newPackage"])
             packages = coerce_packages(framework.packages)
@@ -644,12 +655,18 @@ async def delete_deployment_framework(id: str, ctx: Annotated[RequestContext, De
                 logger.exception("Failed to delete file %s: %s", file_url, exc)
 
         try:
-            await session.execute(delete(PackageMerge).where(PackageMerge.frameworkId == str(framework.id)))
             await session.execute(
-                delete(PackageComparison).where(PackageComparison.frameworkId == str(framework.id))
+                delete(DeploymentPackageMerge).where(
+                    DeploymentPackageMerge.deploymentFrameworkId == str(framework.id)
+                )
             )
             await session.execute(
-                delete(PackageGapAnalysis).where(PackageGapAnalysis.frameworkId == str(framework.id))
+                delete(PackageComparison).where(PackageComparison.deploymentFrameworkId == str(framework.id))
+            )
+            await session.execute(
+                delete(PackageGapAnalysis).where(
+                    PackageGapAnalysis.deploymentFrameworkId == str(framework.id)
+                )
             )
         except Exception as db_error:
             logger.exception("Failed to delete associated merges, comparisons and gap analyses: %s", db_error)
@@ -715,7 +732,13 @@ async def upload_deployment_framework(
         }
 
         new_framework_id = new_id()
-        await helpers.ensure_package_analysis_refs(session, package_data, new_framework_id)
+        await helpers.ensure_package_analysis_refs(
+            session,
+            package_data,
+            new_framework_id,
+            meta.get("assignedFrameworkId"),
+            package_data.get("packageVersion"),
+        )
 
         existing_framework = await helpers.check_existing_framework(
             session, tenant_id, framework_version, framework_id, framework_code
@@ -905,7 +928,7 @@ def _validate_report_statuses(found_package: Any, maps: dict[str, Any]) -> JSONR
     comparison = maps["comparisons"].get(str(found_package.comparison)) if found_package.comparison else None
     gap = maps["gaps"].get(str(found_package.gapAnalysis)) if found_package.gapAnalysis else None
 
-    merge_status = _blob_get(merge.mergeExtraction if merge else None, "status") or "pending"
+    merge_status = _blob_get(merge.controls if merge else None, "status") or "pending"
     comparison_status = _blob_get(comparison.comparison if comparison else None, "status") or "pending"
     gap_status = _blob_get(gap.gapAnalysis if gap else None, "status") or "pending"
 
