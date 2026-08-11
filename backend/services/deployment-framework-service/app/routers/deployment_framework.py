@@ -784,7 +784,7 @@ async def preview_framework_file(
         if not actual_file_path or not os.path.exists(actual_file_path):
             return not_found(FRAMEWORK_SERVICE_MESSAGES["FILE_ON_DISK_NOT_FOUND"])
 
-        mime = helpers.MIME_TYPES.get(str(document.fileType).lower(), "application/octet-stream")
+        mime = file_storage.PREVIEW_MIME_TYPES.get(str(document.fileType).lower(), "application/octet-stream")
         return FileResponse(
             actual_file_path,
             media_type=mime,
@@ -815,7 +815,7 @@ async def download_framework_file(
         if not actual_file_path or not os.path.exists(actual_file_path):
             return not_found(FRAMEWORK_SERVICE_MESSAGES["FILE_ON_DISK_NOT_FOUND"])
 
-        mime = helpers.MIME_TYPES.get(str(document.fileType).lower(), "application/octet-stream")
+        mime = file_storage.PREVIEW_MIME_TYPES.get(str(document.fileType).lower(), "application/octet-stream")
         return FileResponse(
             actual_file_path,
             media_type=mime,
