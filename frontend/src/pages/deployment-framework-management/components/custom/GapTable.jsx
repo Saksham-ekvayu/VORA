@@ -368,19 +368,19 @@ const GapPointCard = ({
   return (
     <div className="border border-border rounded overflow-hidden bg-card">
       <button
-        className="w-full flex items-center justify-between p-2 cursor-pointer hover:bg-muted/50 transition-colors text-left"
+        className="w-full flex items-center justify-between p-2 cursor-pointer hover:bg-muted/50 transition-colors text-left min-w-0"
         onClick={onToggle}
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <span className="text-xs font-mono bg-muted px-2 py-1 rounded whitespace-nowrap">
+          <span className="text-xs font-mono bg-muted px-2 py-1 rounded whitespace-nowrap shrink-0">
             Point {index + 1}
           </span>
-          <span className="text-sm font-medium truncate flex-1 leading-relaxed">
+          <span className="text-sm font-medium flex-1 leading-relaxed break-words">
             {capitalizeFirst(point.assigned_dp?.point)}
           </span>
           {/* <StatusBadge status={point.implementation_status} /> */}
         </div>
-        <span className="p-1 hover:bg-muted rounded ml-2">
+        <span className="p-1 hover:bg-muted rounded ml-2 shrink-0">
           {isExpanded ? (
             <Icon name="chevron-up" size="18px" />
           ) : (

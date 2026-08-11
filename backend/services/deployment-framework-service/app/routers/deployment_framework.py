@@ -654,23 +654,6 @@ async def delete_deployment_framework(id: str, ctx: Annotated[RequestContext, De
             except Exception as exc:
                 logger.exception("Failed to delete file %s: %s", file_url, exc)
 
-        try:
-            await session.execute(
-                delete(DeploymentPackageMerge).where(
-                    DeploymentPackageMerge.deploymentFrameworkId == str(framework.id)
-                )
-            )
-            await session.execute(
-                delete(PackageComparison).where(PackageComparison.deploymentFrameworkId == str(framework.id))
-            )
-            await session.execute(
-                delete(PackageGapAnalysis).where(
-                    PackageGapAnalysis.deploymentFrameworkId == str(framework.id)
-                )
-            )
-        except Exception as db_error:
-            logger.exception("Failed to delete associated merges, comparisons and gap analyses: %s", db_error)
-
         await session.delete(framework)
         return success(None, "Framework deleted successfully")
 
