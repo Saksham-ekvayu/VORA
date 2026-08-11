@@ -10,7 +10,6 @@ from sqlalchemy import Select, func, select
 from vora_shared.database import session_scope
 from vora_shared.models import (
     Customer,
-    DeploymentDocument,
     DeploymentFramework,
     Framework,
     FrameworkAccess,
@@ -98,7 +97,6 @@ async def get_model_counts(start_date: datetime | None, end_date: datetime | Non
     (
         total_frameworks,
         total_deployment_frameworks,
-        total_deployment_documents,
         total_framework_categories,
         total_approved_framework_access,
         total_assigned_frameworks,
@@ -106,7 +104,6 @@ async def get_model_counts(start_date: datetime | None, end_date: datetime | Non
     ) = await asyncio.gather(
         _count_model(Framework, start_date, end_date),
         _count_model(DeploymentFramework, start_date, end_date),
-        _count_model(DeploymentDocument, start_date, end_date),
         _count_model(FrameworkCategory, start_date, end_date),
         _count_model(FrameworkAccess, start_date, end_date, status="approved"),
         _count_model(FrameworkAssignment, start_date, end_date, status="assigned"),
@@ -116,7 +113,6 @@ async def get_model_counts(start_date: datetime | None, end_date: datetime | Non
     return {
         "totalFrameworks": total_frameworks,
         "totalDeploymentFrameworks": total_deployment_frameworks,
-        "totalDeploymentDocuments": total_deployment_documents,
         "totalFrameworkCategories": total_framework_categories,
         "totalApprovedFrameworkAccess": total_approved_framework_access,
         "totalAssignedFrameworks": total_assigned_frameworks,

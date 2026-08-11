@@ -8,7 +8,7 @@ from vora_shared.models.ai_tables import (
     UploadedFile,
 )
 from vora_shared.models.customer import AddressBlock, Customer, CustomerAddress, CustomerCreatedBy
-from vora_shared.models.deployment_document import DeploymentDocument, DeploymentDocumentFileVersion
+
 from vora_shared.models.deployment_framework import (
     DeploymentFramework,
     ExpertReview,
@@ -63,8 +63,7 @@ __all__ = [
     "Customer",
     "CustomerAddress",
     "CustomerCreatedBy",
-    "DeploymentDocument",
-    "DeploymentDocumentFileVersion",
+
     "DeploymentFramework",
    
   
