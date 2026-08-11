@@ -997,8 +997,14 @@ const DeploymentFrameworkDetail = () => {
                         </span>
                         {activeStep.meta && (
                           <p className="text-muted-foreground text-[10px] font-medium mt-0.5">
-                            Timestamp: {activeStep.meta}
+                            {activeStep.meta}
                           </p>
+                        )}
+                        {activeStep.comment && (
+                          <div className="mt-2 p-2 bg-rose-500/10 border border-rose-500/20 rounded text-rose-800 dark:text-rose-300">
+                            <span className="font-semibold block mb-0.5">Expert Comment:</span>
+                            <span className="italic">{activeStep.comment}</span>
+                          </div>
                         )}
                       </div>
                     </div>
