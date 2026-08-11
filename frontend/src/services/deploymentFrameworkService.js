@@ -269,14 +269,35 @@ export async function downloadDeploymentFrameworkReport(
 /**
  * Run full deployment analysis (comparison + gap analysis)
  */
-export function runAnalysis(deploymentFrameworkId, packageVersion) {
-  return apiRequest(
-    `${FRAMEWORK_BASE}/${deploymentFrameworkId}/packages/${packageVersion}/run-analysis`,
-    {
-      method: "POST",
-    },
-    true
-  );
+export async function runAnalysis(deploymentFrameworkId, packageVersion) {
+  const payload = {
+    deployment_framework_id: deploymentFrameworkId,
+    package_version: packageVersion,
+  };
+
+  await Promise.all([
+    apiRequest(
+      "/comparison/start",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      true
+    ),
+    apiRequest(
+      "/deployment-gap/start",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      true
+    ),
+  ]);
+
+  return {
+    success: true,
+    message: "Comparison and Gap Analysis started successfully",
+  };
 }
 
 /**
