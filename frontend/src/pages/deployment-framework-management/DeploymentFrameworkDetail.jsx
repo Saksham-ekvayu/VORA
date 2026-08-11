@@ -865,14 +865,9 @@ const DeploymentFrameworkDetail = () => {
             lastCompletedIndex === -1
               ? -1
               : gateSteps.length - 1 - lastCompletedIndex;
-          const progressPercent =
-            activeIndex === -1
-              ? 0
-              : (activeIndex / (gateSteps.length - 1)) * 100;
           const activeStep =
             gateSteps.find(
-              (s) =>
-                s.status === STATUS_PENDING || s.status === STATUS_FAILED
+              (s) => s.status === STATUS_PENDING || s.status === STATUS_FAILED
             ) ||
             gateSteps.find(
               (s) =>
@@ -885,12 +880,26 @@ const DeploymentFrameworkDetail = () => {
             <div className="space-y-3">
               {/* Stepper container */}
               <div className="relative flex items-center justify-between w-full px-2 py-3 bg-muted/10 dark:bg-muted/5 border border-border/50 rounded">
-                {/* Background progress line */}
-                <div className="absolute left-7.5 right-7.5 top-6 h-0.5 z-0">
-                  <div className="w-full h-full bg-muted dark:bg-muted/30 rounded-full" />
+                {/* Progress lines container */}
+                <div className="absolute left-0 w-full top-6 h-0.5 z-0">
+                  {/* Background gray line */}
                   <div
-                    className="absolute top-0 left-0 h-full bg-green-500 rounded-full transition-all duration-500 ease-in-out"
-                    style={{ width: `${progressPercent}%` }}
+                    className="absolute top-0 h-full bg-muted dark:bg-muted/30 rounded-full"
+                    style={{
+                      left: "30px",
+                      width: `calc( (100% - 16px) * ${(2 * gateSteps.length - 1) / (2 * gateSteps.length)} + 8px - 30px )`,
+                    }}
+                  />
+                  {/* Foreground green line */}
+                  <div
+                    className="absolute top-0 h-full bg-green-500 rounded-full transition-all duration-500 ease-in-out"
+                    style={{
+                      left: "30px",
+                      width:
+                        activeIndex === -1
+                          ? "0px"
+                          : `calc( (100% - 16px) * ${(2 * activeIndex + 1) / (2 * gateSteps.length)} + 8px - 30px )`,
+                    }}
                   />
                 </div>
 
@@ -968,11 +977,7 @@ const DeploymentFrameworkDetail = () => {
                 >
                   <div className="shrink-0 mt-0.5">
                     {activeStep.status === STATUS_DONE && (
-                      <Icon
-                        name="check"
-                        size={13}
-                        className="text-green-500"
-                      />
+                      <Icon name="check" size={13} className="text-green-500" />
                     )}
                     {activeStep.status === STATUS_PENDING && (
                       <Icon
@@ -999,7 +1004,9 @@ const DeploymentFrameworkDetail = () => {
                     )}
                     {activeStep.comment && (
                       <div className="mt-2 p-2 bg-rose-500/10 border border-rose-500/20 rounded text-rose-800 dark:text-rose-300">
-                        <span className="font-semibold block mb-0.5">Expert Comment:</span>
+                        <span className="font-semibold block mb-0.5">
+                          Expert Comment:
+                        </span>
                         <span className="italic">{activeStep.comment}</span>
                       </div>
                     )}
@@ -1058,13 +1065,11 @@ const DeploymentFrameworkDetail = () => {
               </Badge>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Review and manage previous versions of this deployment
-              framework. Statuses:{" "}
-              <span className="text-primary font-bold">Pending</span> (under
-              review),{" "}
-              <span className="text-primary font-bold">Returned</span>{" "}
-              (changes requested),{" "}
-              <span className="text-primary font-bold">Live</span>{" "}
+              Review and manage previous versions of this deployment framework.
+              Statuses: <span className="text-primary font-bold">Pending</span>{" "}
+              (under review),{" "}
+              <span className="text-primary font-bold">Returned</span> (changes
+              requested), <span className="text-primary font-bold">Live</span>{" "}
               (currently active), and{" "}
               <span className="text-primary font-bold">Superseded</span>{" "}
               (replaced by a newer version).
