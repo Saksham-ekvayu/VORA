@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
-from vora_shared.models import FrameworkAssignment, PackageGapAnalysis, DeploymentFramework
+from vora_shared.models import DeploymentFramework, FrameworkAssignment, PackageGapAnalysis
 from vora_shared.query_builder import build_pagination_meta, clamp_limit, clamp_page
 from vora_shared.responses import error, not_found, paginated, server_error, success
 
@@ -32,6 +32,7 @@ def _iso(dt: datetime | None = None) -> str:
 
 class GapAnalysisRequest(BaseModel):
     """Request model for starting gap analysis."""
+
     deployment_framework_id: str
     package_version: str
 
@@ -46,11 +47,11 @@ async def start_gap_analysis(request: GapAnalysisRequest):
     """
     Start gap analysis between deployment framework package and assigned framework.
     Flow: deployment_framework_id → resolve framework_assignment_id → start analysis
-    
+
     Args:
         deployment_framework_id: ID of the deployment framework
         package_version: Version of the package to analyze
-    
+
     Returns:
         Gap analysis job with resolved framework_assignment_id, deployment_framework_id, package_version
     """
@@ -76,6 +77,11 @@ async def start_gap_analysis(request: GapAnalysisRequest):
                 return not_found(f"Deployment Framework not found: {deployment_framework_id}")
 
             framework_assignment_id = df.assignedFrameworkId
+            gap_id = None
+            for pkg in df.packages:
+                if pkg.get("packageVersion") == package_version:
+                    gap_id = pkg.get("gapAnalysis")
+                    break
             logger.info(f"[GAP] ✅ Deployment Framework found: {df.frameworkName}")
             logger.info(f"    Current Package Version: {df.currentPackageVersion}")
             logger.info(f"    Resolved Framework Assignment ID: {framework_assignment_id}")
@@ -99,24 +105,46 @@ async def start_gap_analysis(request: GapAnalysisRequest):
             return error("Package version cannot be empty")
         logger.info(f"[GAP] ✅ Package version valid: {package_version}")
 
-        # ===== Create gap analysis record in database =====
-        logger.info("[GAP] Creating gap analysis record...")
-        gap_id = None
+        # ===== Create or update gap analysis record in database =====
+        logger.info("[GAP] Creating or updating gap analysis record...")
         async with session_scope() as session:
-            gap_analysis = PackageGapAnalysis(
-                id=new_id(),
-                frameworkId=fa.frameworkId,
-                fileHashes=[],
-                gapAnalysis={
-                    "status": "processing",
-                    "message": "Gap analysis in progress",
-                    "timestamp": _iso(),
-                    "deployment_framework_id": deployment_framework_id,
-                    "framework_assignment_id": framework_assignment_id,
-                    "package_version": package_version,
-                },
-            )
-            session.add(gap_analysis)
+            if gap_id:
+                gap_analysis = await session.get(PackageGapAnalysis, gap_id)
+                if gap_analysis:
+                    logger.info(f"[GAP] Found existing gap analysis record: {gap_id}")
+                    gap_analysis.gapAnalysis.update(
+                        {
+                            "status": "processing",
+                            "message": "Gap analysis in progress",
+                            "timestamp": _iso(),
+                            "deployment_framework_id": deployment_framework_id,
+                            "framework_assignment_id": framework_assignment_id,
+                            "package_version": package_version,
+                        }
+                    )
+                    from sqlalchemy.orm.attributes import flag_modified
+
+                    flag_modified(gap_analysis, "gapAnalysis")
+                else:
+                    gap_id = None
+
+            if not gap_id:
+                gap_analysis = PackageGapAnalysis(
+                    id=new_id(),
+                    deploymentFrameworkId=deployment_framework_id,
+                    assignedFrameworkId=framework_assignment_id,
+                    packageVersion=package_version,
+                    fileHashes=[],
+                    gapAnalysis={
+                        "status": "processing",
+                        "message": "Gap analysis in progress",
+                        "timestamp": _iso(),
+                        "deployment_framework_id": deployment_framework_id,
+                        "framework_assignment_id": framework_assignment_id,
+                        "package_version": package_version,
+                    },
+                )
+                session.add(gap_analysis)
             await session.flush()
             await session.commit()
             gap_id = gap_analysis.id
@@ -157,10 +185,10 @@ async def start_gap_analysis(request: GapAnalysisRequest):
 async def get_gap_analysis(gap_id: str):
     """
     Get gap analysis result by ID.
-    
+
     Args:
         gap_id: ID of the gap analysis
-    
+
     Returns:
         Gap analysis data with results, status, and metadata
     """
@@ -177,17 +205,18 @@ async def get_gap_analysis(gap_id: str):
 
             # Ensure we get fresh data
             await session.refresh(gap_analysis)
-            
+
             gap_data = gap_analysis.gapAnalysis or {}
 
             return success(
                 message="Gap analysis retrieved successfully",
                 data={
                     "id": gap_analysis.id,
-                    "frameworkId": gap_analysis.frameworkId,
+                    "deploymentFrameworkId": gap_analysis.deploymentFrameworkId,
+                    "assignedFrameworkId": gap_analysis.assignedFrameworkId,
                     "deployment_framework_id": gap_data.get("deployment_framework_id"),
                     "framework_assignment_id": gap_data.get("framework_assignment_id"),
-                    "package_version": gap_data.get("package_version"),
+                    "package_version": gap_analysis.packageVersion,
                     "status": gap_data.get("status", "pending"),
                     "message": gap_data.get("message"),
                     "timestamp": gap_data.get("timestamp"),
@@ -211,11 +240,11 @@ async def get_gap_analysis(gap_id: str):
 async def list_gap_analyses(page: int = 1, page_size: int = 10):
     """
     List all gap analyses with pagination.
-    
+
     Args:
         page: Page number (default 1)
         page_size: Results per page (default 10)
-    
+
     Returns:
         Paginated list of gap analyses
     """
@@ -225,9 +254,7 @@ async def list_gap_analyses(page: int = 1, page_size: int = 10):
 
         async with session_scope() as session:
             # Get fresh session without any cached objects
-            total = (
-                await session.execute(select(func.count()).select_from(PackageGapAnalysis))
-            ).scalar_one()
+            total = (await session.execute(select(func.count()).select_from(PackageGapAnalysis))).scalar_one()
 
             rows = (
                 (
@@ -249,10 +276,11 @@ async def list_gap_analyses(page: int = 1, page_size: int = 10):
                 items.append(
                     {
                         "id": gap.id,
-                        "frameworkId": gap.frameworkId,
+                        "deploymentFrameworkId": gap.deploymentFrameworkId,
+                        "assignedFrameworkId": gap.assignedFrameworkId,
                         "deployment_framework_id": gap_data.get("deployment_framework_id"),
                         "framework_assignment_id": gap_data.get("framework_assignment_id"),
-                        "package_version": gap_data.get("package_version"),
+                        "package_version": gap.packageVersion,
                         "status": gap_data.get("status", "pending"),
                         "gap_results_count": len(results) if isinstance(results, list) else 0,
                         "gap_time_seconds": gap_data.get("gap_time_seconds"),

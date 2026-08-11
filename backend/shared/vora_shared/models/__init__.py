@@ -2,13 +2,10 @@
 
 from vora_shared.models.ai_tables import (
     AgentPrompt,
- 
     EvidenceOutput,
-   
     UploadedFile,
 )
 from vora_shared.models.customer import AddressBlock, Customer, CustomerAddress, CustomerCreatedBy
-
 from vora_shared.models.deployment_framework import (
     DeploymentFramework,
     ExpertReview,
@@ -42,8 +39,7 @@ from vora_shared.models.framework_assignment import (
 from vora_shared.models.framework_category import FrameworkCategory
 from vora_shared.models.framework_merge import FrameworkMerge
 from vora_shared.models.package_comparison import PackageComparison
-from vora_shared.models.package_gap_analysis import PackageGapAnalysis, GapThresholdConfig
-from vora_shared.models.package_merge import PackageMerge
+from vora_shared.models.package_gap_analysis import GapThresholdConfig, PackageGapAnalysis
 from vora_shared.models.user import User, UserAddress, UserCreatedBy, UserOtp
 
 __all__ = [
@@ -59,14 +55,10 @@ __all__ = [
     "AssignmentRevocation",
     "AssignmentSection",
     "AssignmentWeightage",
-   
     "Customer",
     "CustomerAddress",
     "CustomerCreatedBy",
-
     "DeploymentFramework",
-   
-  
     "DeploymentPackageMerge",
     "DocumentExtraction",
     "EvidenceOutput",
@@ -86,7 +78,6 @@ __all__ = [
     "GapThresholdConfig",
     "PackageComparison",
     "PackageGapAnalysis",
-    "PackageMerge",
     "PackageMergeTracking",
     "PackageVersion",
     "UploadedFile",
