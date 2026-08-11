@@ -54,6 +54,8 @@ if errorlevel 1 (
     start "ai-analysis-service (7009)" cmd /k "cd /d "%ROOT%\services\ai-analysis-service" && .venv\Scripts\activate.bat && python -m uvicorn app.main:app --host localhost --port 7009 --reload --reload-dir . --reload-dir ..\..\shared"
     timeout /t 1 /nobreak
     start "api-gateway (8000)" cmd /k "cd /d "%ROOT%\gateway" && .venv\Scripts\activate.bat && python -m uvicorn main:app --host localhost --port 8000 --reload"
+    timeout /t 1 /nobreak
+    start "frontend (Vite)" cmd /k "cd /d "%ROOT%\..\frontend" && pnpm dev"
     echo.
     echo All services started in separate windows.
     echo Press any key to exit...
@@ -75,7 +77,8 @@ wt -w new ^
     ; new-tab --title "extract-controls-service (7007)" -d "%ROOT%\services\extract-controls-service" cmd /k ".venv\Scripts\activate.bat && python -m uvicorn app.main:app --host localhost --port 7007 --reload --reload-dir . --reload-dir ..\..\shared" ^
     ; new-tab --title "compliance-agent-service (7008)" -d "%ROOT%\services\compliance-agent-service" cmd /k ".venv\Scripts\activate.bat && python -m uvicorn app.main:app --host localhost --port 7008 --reload --reload-dir . --reload-dir ..\..\shared" ^
     ; new-tab --title "ai-analysis-service (7009)" -d "%ROOT%\services\ai-analysis-service" cmd /k ".venv\Scripts\activate.bat && python -m uvicorn app.main:app --host localhost --port 7009 --reload --reload-dir . --reload-dir ..\..\shared" ^
-    ; new-tab --title "api-gateway (8000)" -d "%ROOT%\gateway" cmd /k ".venv\Scripts\activate.bat && python -m uvicorn main:app --host localhost --port 8000 --reload"
+    ; new-tab --title "api-gateway (8000)" -d "%ROOT%\gateway" cmd /k ".venv\Scripts\activate.bat && python -m uvicorn main:app --host localhost --port 8000 --reload" ^
+    ; new-tab --title "frontend (Vite)" -d "%ROOT%\..\frontend" cmd /k "pnpm dev"
 
 echo.
 echo Windows Terminal opened with all services running in tabs.
