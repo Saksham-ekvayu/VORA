@@ -67,6 +67,14 @@ run_service "compliance-agent-service" 7008 "services/compliance-agent-service" 
 run_service "ai-analysis-service" 7009 "services/ai-analysis-service" "app.main:app"
 run_service "api-gateway" 8000 "gateway" "main:app"
 
+# Start frontend
+echo "[$(date '+%H:%M:%S')] Starting frontend on Vite..."
+(
+    cd "$ROOT/../frontend" || exit 1
+    pnpm dev 2>&1 | sed "s/^/[frontend] /"
+) &
+echo $! >> /tmp/vora_pids.txt
+
 echo ""
 echo "=========================================="
 echo "All services started in parallel!"
@@ -83,6 +91,7 @@ echo "  - extract-controls-service: http://localhost:7007"
 echo "  - compliance-agent-service: http://localhost:7008"
 echo "  - ai-analysis-service: http://localhost:7009"
 echo "  - api-gateway: http://localhost:8000"
+echo "  - frontend: http://localhost:5173"
 echo ""
 echo "Press Ctrl+C to stop all services."
 echo "=========================================="
