@@ -51,14 +51,8 @@ class ComparisonData(BaseModel):
 
 class PackageComparison(Base):
     __tablename__ = "package_comparisons"
-    __table_args__ = (
-        Index("ix_pkg_comp_df_assigned", "deploymentFrameworkId", "assignedFrameworkId", "packageVersion"),
-    )
 
     id: Mapped[str] = mapped_column(String(24), primary_key=True, default=new_id)
-    deploymentFrameworkId: Mapped[str] = mapped_column(String(24), nullable=False)
-    assignedFrameworkId: Mapped[str] = mapped_column(String(24), nullable=False)
-    packageVersion: Mapped[str] = mapped_column(String(20), nullable=False)
     fileHashes: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
     comparison: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     createdAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
