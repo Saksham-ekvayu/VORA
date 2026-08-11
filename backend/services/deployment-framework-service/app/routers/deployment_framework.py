@@ -320,8 +320,7 @@ async def update_deployment_package_point_path(
         package_merge = (
             await session.execute(
                 select(DeploymentPackageMerge).where(
-                    DeploymentPackageMerge.id == str(target_package.mergeDocument),
-                    DeploymentPackageMerge.deploymentFrameworkId == str(framework.id),
+                    DeploymentPackageMerge.id == str(target_package.mergeDocument)
                 )
             )
         ).scalar_one_or_none()

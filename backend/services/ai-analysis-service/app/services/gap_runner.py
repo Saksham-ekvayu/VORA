@@ -100,16 +100,18 @@ def _status_for_score(score: float, thresholds: dict[str, Any], statuses: dict[s
     return statuses.get("not_implemented", "Not Implemented")
 
 
-async def _load_comparison_grouped(session, df_id: str, pkg_ver: str) -> list[dict[str, Any]]:
+async def _load_comparison_grouped(session, df: DeploymentFramework, pkg_ver: str) -> list[dict[str, Any]]:
     # Load comparison results from PackageComparison table
-    pc = (
-        await session.execute(
-            select(PackageComparison).where(
-                PackageComparison.deploymentFrameworkId == df_id,
-                PackageComparison.packageVersion == pkg_ver,
-            )
-        )
-    ).scalar_one_or_none()
+    comparison_id = None
+    for pkg in df.packages or []:
+        if isinstance(pkg, dict) and pkg.get("packageVersion") == pkg_ver:
+            comparison_id = pkg.get("comparison")
+            break
+
+    if not comparison_id:
+        return []
+
+    pc = await session.get(PackageComparison, str(comparison_id))
     if pc and isinstance(pc.comparison, dict):
         result = pc.comparison.get("comparison_result") or []
         if result:
@@ -174,7 +176,7 @@ async def run_gap(
 
             statuses, thresholds = await _load_gap_config(session)
             logger.info(f"[GAP-RUNNER] Loading comparison results...")
-            comparison_sections = await _load_comparison_grouped(session, df_id, pkg_ver)
+            comparison_sections = await _load_comparison_grouped(session, df, pkg_ver)
             logger.info(f"[GAP-RUNNER] ✅ Loaded {len(comparison_sections)} comparison sections")
 
             # If no comparison yet, try to synthesize from merge + assignment with score 0
@@ -365,30 +367,11 @@ async def run_gap(
                 else:
                     logger.warning(f"[GAP-RUNNER] ⚠️ PackageGapAnalysis with gap_id={gap_id} not found")
 
-            # Fallback: query by deploymentFrameworkId and packageVersion if gap_id not provided or not found
-            if not pga:
-                pga = (
-                    await session.execute(
-                        select(PackageGapAnalysis).where(
-                            PackageGapAnalysis.deploymentFrameworkId == df_id,
-                            PackageGapAnalysis.packageVersion == pkg_ver,
-                        )
-                    )
-                ).scalar_one_or_none()
-                if pga:
-                    logger.info("[GAP-RUNNER] ✅ Found PackageGapAnalysis by frameworkId, updating")
-                    pga.gapAnalysis = gap_payload
-                    pga.updatedAt = _utcnow()
-                    session.add(pga)
-
             # Last resort: create new if still not found
             if not pga:
                 logger.warning("[GAP-RUNNER] ⚠️ No PackageGapAnalysis found, creating new")
                 pga = PackageGapAnalysis(
                     id=new_id(),
-                    deploymentFrameworkId=df_id,
-                    assignedFrameworkId=str(fa_id),
-                    packageVersion=pkg_ver,
                     fileHashes=[],
                     gapAnalysis=gap_payload,
                 )
@@ -453,21 +436,7 @@ async def run_gap(
                 pga = None
                 if gap_id:
                     pga = await session.get(PackageGapAnalysis, str(gap_id))
-                if not pga:
-                    pga = (
-                        (
-                            await session.execute(
-                                select(PackageGapAnalysis)
-                                .where(
-                                    PackageGapAnalysis.deploymentFrameworkId == df_id,
-                                    PackageGapAnalysis.packageVersion == pkg_ver,
-                                )
-                                .order_by(PackageGapAnalysis.createdAt.desc())
-                            )
-                        )
-                        .scalars()
-                        .first()
-                    )
+                
                 if pga:
                     pga.gapAnalysis = {
                         "status": "failed",

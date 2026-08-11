@@ -694,40 +694,46 @@ async def _fetch_document_extractions(session, file_hashes: set) -> list[Documen
     )
 
 
-async def _fetch_package_analyses(session, framework_ids: list) -> tuple:
+async def _fetch_package_analyses(session, merge_ids: list, comparison_ids: list, gap_ids: list) -> tuple:
     """Fetch package comparisons, gap analyses, and merges."""
-    if not framework_ids:
-        return [], [], []
+    comparisons = []
+    gap_analyses = []
+    merges = []
 
-    comparisons = list(
-        (
-            await session.execute(
-                select(PackageComparison).where(PackageComparison.deploymentFrameworkId.in_(framework_ids))
-            )
-        )
-        .scalars()
-        .all()
-    )
-    gap_analyses = list(
-        (
-            await session.execute(
-                select(PackageGapAnalysis).where(PackageGapAnalysis.deploymentFrameworkId.in_(framework_ids))
-            )
-        )
-        .scalars()
-        .all()
-    )
-    merges = list(
-        (
-            await session.execute(
-                select(DeploymentPackageMerge).where(
-                    DeploymentPackageMerge.deploymentFrameworkId.in_(framework_ids)
+    if gap_ids:
+        gap_analyses = list(
+            (
+                await session.execute(
+                    select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_ids))
                 )
             )
+            .scalars()
+            .all()
         )
-        .scalars()
-        .all()
-    )
+
+    if comparison_ids:
+        comparisons = list(
+            (
+                await session.execute(
+                    select(PackageComparison).where(PackageComparison.id.in_(comparison_ids))
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+    if merge_ids:
+        merges = list(
+            (
+                await session.execute(
+                    select(DeploymentPackageMerge).where(
+                        DeploymentPackageMerge.id.in_(merge_ids)
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
     return comparisons, gap_analyses, merges
 
 
@@ -825,10 +831,28 @@ async def get_customer_admin_dashboard(
                 for doc in (_get(pkg, "documents") or [])
                 if _get(doc, "fileHash")
             }
+            merge_ids = [
+                str(_get(pkg, "mergeDocument"))
+                for df in deployment_frameworks
+                for pkg in (df.packages or [])
+                if _get(pkg, "mergeDocument")
+            ]
+            comparison_ids = [
+                str(_get(pkg, "comparison"))
+                for df in deployment_frameworks
+                for pkg in (df.packages or [])
+                if _get(pkg, "comparison")
+            ]
+            gap_ids = [
+                str(_get(pkg, "gapAnalysis"))
+                for df in deployment_frameworks
+                for pkg in (df.packages or [])
+                if _get(pkg, "gapAnalysis")
+            ]
 
             document_extractions = await _fetch_document_extractions(session, file_hashes)
             package_comparisons, package_gap_analyses, package_merges = await _fetch_package_analyses(
-                session, framework_ids
+                session, merge_ids, comparison_ids, gap_ids
             )
 
             package_merges_map = {str(pm.id): pm for pm in package_merges}

@@ -316,9 +316,6 @@ async def run_comparison(
                 )
                 pc = PackageComparison(
                     id=new_id(),
-                    deploymentFrameworkId=df_id,
-                    assignedFrameworkId=str(fa_id),
-                    packageVersion=pkg_ver,
                     fileHashes=[],
                     comparison=comparison_payload,
                 )
@@ -390,21 +387,7 @@ async def run_comparison(
                 pc = None
                 if comparison_id:
                     pc = await session.get(PackageComparison, str(comparison_id))
-                if not pc:
-                    pc = (
-                        (
-                            await session.execute(
-                                select(PackageComparison)
-                                .where(
-                                    PackageComparison.deploymentFrameworkId == df_id,
-                                    PackageComparison.packageVersion == pkg_ver,
-                                )
-                                .order_by(PackageComparison.createdAt.desc())
-                            )
-                        )
-                        .scalars()
-                        .first()
-                    )
+                
                 if pc:
                     pc.comparison = {
                         "status": "failed",

@@ -139,9 +139,6 @@ async def start_comparison(request: ComparisonRequest):
                 logger.info("[COMPARISON] Creating new comparison record...")
                 comparison = PackageComparison(
                     id=new_id(),
-                    deploymentFrameworkId=deployment_framework_id,
-                    assignedFrameworkId=framework_assignment_id,
-                    packageVersion=package_version,
                     fileHashes=[],
                     comparison={
                         "status": "processing",
@@ -221,11 +218,9 @@ async def get_comparison(comparison_id: str):
                 message="Comparison retrieved successfully",
                 data={
                     "id": comparison.id,
-                    "deploymentFrameworkId": comparison.deploymentFrameworkId,
-                    "assignedFrameworkId": comparison.assignedFrameworkId,
                     "deployment_framework_id": comp_data.get("deployment_framework_id"),
                     "framework_assignment_id": comp_data.get("framework_assignment_id"),
-                    "package_version": comparison.packageVersion,
+                    "package_version": comp_data.get("package_version"),
                     "status": comp_data.get("status", "pending"),
                     "message": comp_data.get("message"),
                     "timestamp": comp_data.get("timestamp"),
@@ -285,11 +280,9 @@ async def list_comparisons(page: int = 1, page_size: int = 10):
                 items.append(
                     {
                         "id": comp.id,
-                        "deploymentFrameworkId": comp.deploymentFrameworkId,
-                        "assignedFrameworkId": comp.assignedFrameworkId,
                         "deployment_framework_id": comp_data.get("deployment_framework_id"),
                         "framework_assignment_id": comp_data.get("framework_assignment_id"),
-                        "package_version": comp.packageVersion,
+                        "package_version": comp_data.get("package_version"),
                         "status": comp_data.get("status", "pending"),
                         "comparison_sections": len(result) if isinstance(result, list) else 0,
                         "comparison_time_seconds": comp_data.get("comparison_time_seconds"),
