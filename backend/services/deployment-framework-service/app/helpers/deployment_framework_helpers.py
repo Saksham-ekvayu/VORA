@@ -11,6 +11,7 @@ from app.services import package_builder, version_service
 from fastapi import UploadFile
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 from vora_shared import file_storage
 from vora_shared.ids import new_id
 from vora_shared.models.deployment_framework import FrameworkPackageDocument, PackageVersion
@@ -367,11 +368,26 @@ async def create_pending_comparison(session: AsyncSession, file_hashes: list[str
         )
     ).scalar_one_or_none()
     if existing:
+        if "message" not in existing.comparison:
+            existing.comparison.update({
+                "message": "Comparison pending",
+                "timestamp": None,
+                "comparison_time_seconds": None,
+                "comparison_result": existing.comparison.get("comparison_result", []),
+            })
+            flag_modified(existing, "comparison")
+            await session.flush()
         return existing
     comparison = PackageComparison(
         frameworkId=str(framework_id),
         fileHashes=file_hashes,
-        comparison={},
+        comparison={
+            "status": "pending",
+            "message": "Comparison pending",
+            "timestamp": None,
+            "comparison_time_seconds": None,
+            "comparison_result": [],
+        },
     )
     session.add(comparison)
     await session.flush()
@@ -392,11 +408,24 @@ async def create_pending_gap_analysis(session: AsyncSession, file_hashes: list[s
         )
     ).scalar_one_or_none()
     if existing:
+        if "message" not in existing.gapAnalysis:
+            existing.gapAnalysis.update({
+                "message": "Gap analysis pending",
+                "timestamp": None,
+                "deployment_gap_results": existing.gapAnalysis.get("deployment_gap_results", []),
+            })
+            flag_modified(existing, "gapAnalysis")
+            await session.flush()
         return existing
     gap = PackageGapAnalysis(
         frameworkId=str(framework_id),
         fileHashes=file_hashes,
-        gapAnalysis={},
+        gapAnalysis={
+            "status": "pending",
+            "message": "Gap analysis pending",
+            "timestamp": None,
+            "deployment_gap_results": [],
+        },
     )
     session.add(gap)
     await session.flush()
