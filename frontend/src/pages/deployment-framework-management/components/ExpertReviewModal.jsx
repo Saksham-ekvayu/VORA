@@ -12,21 +12,14 @@ import { toast } from "sonner";
 // ---------------------------------------------------------------------------
 
 function getComparisonStats(pkg) {
-  const controls = (pkg?.comparison?.comparison_result ?? []).flatMap(
-    (section) => section.controls ?? []
-  );
-  const total = controls.length;
-  const reviewed = controls.filter((c) => c.reviewComment?.trim()).length;
+  const total = pkg?.comparison?.total_controls || 0;
+  const reviewed = pkg?.comparison?.reviewed_controls || 0;
   return { total, reviewed };
 }
 
 function getGapStats(pkg) {
-  const allPoints = (pkg?.gapAnalysis?.deployment_gap_results ?? [])
-    .flatMap((section) => section.controls ?? [])
-    .flatMap((controlObj) => Object.values(controlObj))
-    .flat();
-  const total = allPoints.length;
-  const reviewed = allPoints.filter((p) => p.reviewComment?.trim()).length;
+  const total = pkg?.gapAnalysis?.total_points || 0;
+  const reviewed = pkg?.gapAnalysis?.reviewed_points || 0;
   return { total, reviewed };
 }
 
