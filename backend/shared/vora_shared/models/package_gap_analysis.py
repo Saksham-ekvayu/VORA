@@ -34,3 +34,22 @@ class PackageGapAnalysis(Base):
     gapAnalysis: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     createdAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updatedAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+
+
+class GapThresholdConfig(Base):
+    """Configurable thresholds for gap analysis — implemented/partially_implemented/not_implemented."""
+
+    __tablename__ = "gap_threshold_config"
+    __table_args__ = (Index("ix_gap_threshold_unique", "is_active", unique=True),)
+
+    id: Mapped[str] = mapped_column(String(24), primary_key=True, default=new_id)
+    is_active: Mapped[bool] = mapped_column(default=True)
+    implemented_threshold: Mapped[float] = mapped_column(default=75.0)
+    partially_implemented_threshold: Mapped[float] = mapped_column(default=50.0)
+    not_implemented_threshold: Mapped[float] = mapped_column(default=0.0)
+    implemented_label: Mapped[str] = mapped_column(String, default="Implemented")
+    partially_implemented_label: Mapped[str] = mapped_column(String, default="Partially Implemented")
+    not_implemented_label: Mapped[str] = mapped_column(String, default="Not Implemented")
+    description: Mapped[str | None] = mapped_column(String, nullable=True)
+    createdAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updatedAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)

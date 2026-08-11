@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
-from vora_shared.models import FrameworkAssignment, PackageComparison
+from vora_shared.models import FrameworkAssignment, PackageComparison, DeploymentFramework
 from vora_shared.query_builder import build_pagination_meta, clamp_limit, clamp_page
 from vora_shared.responses import error, not_found, paginated, server_error, success
 
@@ -33,8 +33,7 @@ def _iso(dt: datetime | None = None) -> str:
 
 class ComparisonRequest(BaseModel):
     """Request model for starting comparison."""
-
-    framework_assignment_id: str
+    deployment_framework_id: str
     package_version: str
 
 
@@ -46,30 +45,46 @@ class ComparisonRequest(BaseModel):
 @router.post("/start")
 async def start_comparison(request: ComparisonRequest):
     """
-    Start comparison between framework assignment and deployment framework package.
-    Runs asynchronously in background.
-
+    Start comparison between deployment framework package and assigned framework.
+    Flow: deployment_framework_id → resolve framework_assignment_id → start comparison
+    
     Args:
-        framework_assignment_id: ID of the framework assignment
+        deployment_framework_id: ID of the deployment framework
         package_version: Version of the package to compare
-
+    
     Returns:
-        Comparison job details with status "processing"
+        Comparison job with resolved framework_assignment_id, deployment_framework_id, package_version
     """
     try:
-        framework_assignment_id = str(request.framework_assignment_id).strip()
+        deployment_framework_id = str(request.deployment_framework_id).strip()
         package_version = str(request.package_version).strip()
 
-        if not framework_assignment_id or not package_version:
-            return error("Invalid framework_assignment_id or package_version")
+        if not deployment_framework_id or not package_version:
+            logger.error("Invalid deployment_framework_id or package_version")
+            return error("Invalid deployment_framework_id or package_version")
 
-        logger.info(
-            f"[COMPARISON-START] Comparison requested | "
-            f"fa_id={framework_assignment_id} | pkg_ver={package_version}"
-        )
+        logger.info("=" * 80)
+        logger.info(f"[COMPARISON-START] New comparison request received")
+        logger.info(f"  deployment_framework_id: {deployment_framework_id}")
+        logger.info(f"  package_version: {package_version}")
+        logger.info("=" * 80)
 
-        # ===== VALIDATION 1: Check Framework Assignment exists =====
-        logger.info("[COMPARISON] Validation 1: Checking Framework Assignment...")
+        # ===== VALIDATION 1: Check Deployment Framework exists =====
+        logger.info("[COMPARISON] Validation 1: Checking Deployment Framework...")
+        framework_assignment_id = None
+        async with session_scope() as session:
+            df = await session.get(DeploymentFramework, deployment_framework_id)
+            if not df:
+                logger.error(f"[COMPARISON] ❌ Deployment Framework not found: {deployment_framework_id}")
+                return not_found(f"Deployment Framework not found: {deployment_framework_id}")
+
+            framework_assignment_id = df.assignedFrameworkId
+            logger.info(f"[COMPARISON] ✅ Deployment Framework found: {df.frameworkName}")
+            logger.info(f"    Current Package Version: {df.currentPackageVersion}")
+            logger.info(f"    Resolved Framework Assignment ID: {framework_assignment_id}")
+
+        # ===== VALIDATION 2: Check Framework Assignment exists =====
+        logger.info("[COMPARISON] Validation 2: Checking Framework Assignment...")
         async with session_scope() as session:
             fa = await session.get(FrameworkAssignment, framework_assignment_id)
             if not fa:
@@ -79,28 +94,6 @@ async def start_comparison(request: ComparisonRequest):
             logger.info(f"[COMPARISON] ✅ Framework Assignment found: {fa.frameworkName}")
             logger.info(f"    Framework ID: {fa.frameworkId}")
             logger.info(f"    Framework Version: {fa.frameworkVersion}")
-            logger.info(f"    Status: {fa.status}")
-
-        # ===== VALIDATION 2: Check Deployment Framework exists =====
-        logger.info("[COMPARISON] Validation 2: Checking Deployment Framework...")
-        async with session_scope() as session:
-            from vora_shared.models import DeploymentFramework
-
-            # Get deployment framework from framework assignment
-            df_id = fa.get("deploymentFrameworkId") if isinstance(fa.__dict__, dict) else None
-
-            # If not directly available, we need to look it up differently
-            # For now, assume it's embedded in the assignment
-            logger.info(f"[COMPARISON] Deployment Framework ID: {df_id}")
-
-            if df_id:
-                df = await session.get(DeploymentFramework, df_id)
-                if not df:
-                    logger.error(f"[COMPARISON] ❌ Deployment Framework not found: {df_id}")
-                    return not_found(f"Deployment Framework not found: {df_id}")
-                logger.info(f"[COMPARISON] ✅ Deployment Framework found: {df.frameworkName}")
-            else:
-                logger.warning("[COMPARISON] ⚠️ Deployment Framework ID not found in assignment")
 
         # ===== VALIDATION 3: Check Package version exists =====
         logger.info("[COMPARISON] Validation 3: Checking Package version...")
@@ -121,11 +114,9 @@ async def start_comparison(request: ComparisonRequest):
                     "status": "processing",
                     "message": "Comparison in progress",
                     "timestamp": _iso(),
+                    "deployment_framework_id": deployment_framework_id,
                     "framework_assignment_id": framework_assignment_id,
                     "package_version": package_version,
-                    "deployment_framework_id": (
-                        fa.get("deploymentFrameworkId") if isinstance(fa.__dict__, dict) else None
-                    ),
                 },
             )
             session.add(comparison)
@@ -136,7 +127,9 @@ async def start_comparison(request: ComparisonRequest):
 
         # ===== Queue comparison as background task =====
         logger.info("[COMPARISON] Queueing background task...")
-        task = asyncio.create_task(run_comparison(framework_assignment_id, package_version, comparison_id))
+        task = asyncio.create_task(
+            run_comparison(deployment_framework_id, package_version, framework_assignment_id, comparison_id)
+        )
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)
         logger.info("[COMPARISON] ✅ Comparison task queued")
@@ -145,6 +138,7 @@ async def start_comparison(request: ComparisonRequest):
             message="Comparison started successfully",
             data={
                 "comparison_id": comparison_id,
+                "deployment_framework_id": deployment_framework_id,
                 "framework_assignment_id": framework_assignment_id,
                 "package_version": package_version,
                 "status": "processing",
@@ -166,12 +160,12 @@ async def start_comparison(request: ComparisonRequest):
 async def get_comparison(comparison_id: str):
     """
     Get comparison result by ID.
-
+    
     Args:
         comparison_id: ID of the comparison
-
+    
     Returns:
-        Comparison data with results, status, and history
+        Comparison data with results, status, and metadata
     """
     try:
         comparison_id = str(comparison_id).strip()
@@ -179,10 +173,14 @@ async def get_comparison(comparison_id: str):
             return error("Invalid comparison_id")
 
         async with session_scope() as session:
+            # Refresh from database to get latest data
             comparison = await session.get(PackageComparison, comparison_id)
             if not comparison:
                 return not_found(f"Comparison not found: {comparison_id}")
 
+            # Ensure we get fresh data
+            await session.refresh(comparison)
+            
             comp_data = comparison.comparison or {}
 
             return success(
@@ -190,11 +188,12 @@ async def get_comparison(comparison_id: str):
                 data={
                     "id": comparison.id,
                     "frameworkId": comparison.frameworkId,
+                    "deployment_framework_id": comp_data.get("deployment_framework_id"),
+                    "framework_assignment_id": comp_data.get("framework_assignment_id"),
+                    "package_version": comp_data.get("package_version"),
                     "status": comp_data.get("status", "pending"),
                     "message": comp_data.get("message"),
                     "timestamp": comp_data.get("timestamp"),
-                    "framework_assignment_id": comp_data.get("framework_assignment_id"),
-                    "package_version": comp_data.get("package_version"),
                     "comparison_result": comp_data.get("comparison_result", []),
                     "comparison_time_seconds": comp_data.get("comparison_time_seconds"),
                     "createdAt": comparison.createdAt.isoformat() if comparison.createdAt else None,
@@ -207,7 +206,7 @@ async def get_comparison(comparison_id: str):
 
 
 # ---------------------------------------------------------------------------
-# GET /comparison/list — List all comparisons (paginated)
+# GET /comparison/list/all — List all comparisons (paginated)
 # ---------------------------------------------------------------------------
 
 
@@ -215,11 +214,11 @@ async def get_comparison(comparison_id: str):
 async def list_comparisons(page: int = 1, page_size: int = 10):
     """
     List all comparisons with pagination.
-
+    
     Args:
         page: Page number (default 1)
         page_size: Results per page (default 10)
-
+    
     Returns:
         Paginated list of comparisons
     """
@@ -228,7 +227,10 @@ async def list_comparisons(page: int = 1, page_size: int = 10):
         page_size = clamp_limit(page_size, default=10)
 
         async with session_scope() as session:
-            total = (await session.execute(select(func.count()).select_from(PackageComparison))).scalar_one()
+            # Get fresh session without any cached objects
+            total = (
+                await session.execute(select(func.count()).select_from(PackageComparison))
+            ).scalar_one()
 
             rows = (
                 (
@@ -251,9 +253,10 @@ async def list_comparisons(page: int = 1, page_size: int = 10):
                     {
                         "id": comp.id,
                         "frameworkId": comp.frameworkId,
-                        "status": comp_data.get("status", "pending"),
+                        "deployment_framework_id": comp_data.get("deployment_framework_id"),
                         "framework_assignment_id": comp_data.get("framework_assignment_id"),
                         "package_version": comp_data.get("package_version"),
+                        "status": comp_data.get("status", "pending"),
                         "comparison_sections": len(result) if isinstance(result, list) else 0,
                         "comparison_time_seconds": comp_data.get("comparison_time_seconds"),
                         "createdAt": comp.createdAt.isoformat() if comp.createdAt else None,
@@ -267,40 +270,4 @@ async def list_comparisons(page: int = 1, page_size: int = 10):
             )
     except Exception as exc:
         logger.exception("list_comparisons error")
-        return server_error(str(exc))
-
-
-# ---------------------------------------------------------------------------
-# Legacy GET endpoint (backward compatibility)
-# ---------------------------------------------------------------------------
-
-
-@router.get("/compare/results")
-async def get_compare_results(
-    deployment_framework_id: Optional[str] = None,
-    package_version: Optional[str] = None,
-):
-    """Legacy endpoint - kept for backward compatibility."""
-    try:
-        async with session_scope() as session:
-            stmt = select(PackageComparison).order_by(PackageComparison.createdAt.desc())
-            rows = (await session.execute(stmt.limit(50))).scalars().all()
-            if not rows:
-                return not_found("Comparisons not found")
-
-            row = rows[0]
-            comp_data = row.comparison or {}
-            return success(
-                message="Comparison results retrieved successfully",
-                data={
-                    "id": row.id,
-                    "frameworkId": row.frameworkId,
-                    "comparison_result": comp_data.get("comparison_result", []),
-                    "comparison_time_seconds": comp_data.get("comparison_time_seconds"),
-                    "framework_assignment_id": comp_data.get("framework_assignment_id"),
-                    "createdAt": row.createdAt.isoformat() if row.createdAt else None,
-                },
-            )
-    except Exception as exc:
-        logger.exception("get_compare_results error")
         return server_error(str(exc))

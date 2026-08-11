@@ -24,6 +24,12 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     allowed_extensions: str = "pdf,doc,docx"
     max_file_size: float = 10.0
+    
+    # AI Configuration
+    sentence_transformer_model: str = "all-MiniLM-L6-v2"
+    similarity_threshold_high: float = 75.0
+    similarity_threshold_medium: float = 50.0
+    min_deployment_words: int = 3
 
     def resolved_database_url(self) -> str:
         url = self.database_url
