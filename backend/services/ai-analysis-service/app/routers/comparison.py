@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
-from vora_shared.models import FrameworkAssignment, PackageComparison, DeploymentFramework
+from vora_shared.models import DeploymentFramework, FrameworkAssignment, PackageComparison
 from vora_shared.query_builder import build_pagination_meta, clamp_limit, clamp_page
 from vora_shared.responses import error, not_found, paginated, server_error, success
 
@@ -33,6 +33,7 @@ def _iso(dt: datetime | None = None) -> str:
 
 class ComparisonRequest(BaseModel):
     """Request model for starting comparison."""
+
     deployment_framework_id: str
     package_version: str
 
@@ -47,11 +48,11 @@ async def start_comparison(request: ComparisonRequest):
     """
     Start comparison between deployment framework package and assigned framework.
     Flow: deployment_framework_id → resolve framework_assignment_id → start comparison
-    
+
     Args:
         deployment_framework_id: ID of the deployment framework
         package_version: Version of the package to compare
-    
+
     Returns:
         Comparison job with resolved framework_assignment_id, deployment_framework_id, package_version
     """
@@ -102,28 +103,61 @@ async def start_comparison(request: ComparisonRequest):
             return error("Package version cannot be empty")
         logger.info(f"[COMPARISON] ✅ Package version valid: {package_version}")
 
-        # ===== Create comparison record in database =====
-        logger.info("[COMPARISON] Creating comparison record...")
+        # ===== Update or create comparison record in database =====
+        logger.info("[COMPARISON] Updating/Creating comparison record...")
         comparison_id = None
         async with session_scope() as session:
-            comparison = PackageComparison(
-                id=new_id(),
-                frameworkId=fa.frameworkId,
-                fileHashes=[],
-                comparison={
-                    "status": "processing",
-                    "message": "Comparison in progress",
-                    "timestamp": _iso(),
-                    "deployment_framework_id": deployment_framework_id,
-                    "framework_assignment_id": framework_assignment_id,
-                    "package_version": package_version,
-                },
-            )
-            session.add(comparison)
-            await session.flush()
+            # First, try to find the existing comparison ID from the deployment framework packages
+            df = await session.get(DeploymentFramework, deployment_framework_id)
+            for pkg in df.packages:
+                if pkg.get("packageVersion") == package_version:
+                    comparison_id = pkg.get("comparison")
+                    break
+
+            if comparison_id:
+                comparison = await session.get(PackageComparison, comparison_id)
+                if comparison:
+                    logger.info(f"[COMPARISON] Found existing comparison record: {comparison_id}")
+                    # Ensure it has all the keys needed for processing status
+                    comparison.comparison.update(
+                        {
+                            "status": "processing",
+                            "message": "Comparison in progress",
+                            "timestamp": _iso(),
+                            "deployment_framework_id": deployment_framework_id,
+                            "framework_assignment_id": framework_assignment_id,
+                            "package_version": package_version,
+                        }
+                    )
+                    from sqlalchemy.orm.attributes import flag_modified
+
+                    flag_modified(comparison, "comparison")
+                else:
+                    comparison_id = None
+
+            if not comparison_id:
+                logger.info("[COMPARISON] Creating new comparison record...")
+                comparison = PackageComparison(
+                    id=new_id(),
+                    deploymentFrameworkId=deployment_framework_id,
+                    assignedFrameworkId=framework_assignment_id,
+                    packageVersion=package_version,
+                    fileHashes=[],
+                    comparison={
+                        "status": "processing",
+                        "message": "Comparison in progress",
+                        "timestamp": _iso(),
+                        "deployment_framework_id": deployment_framework_id,
+                        "framework_assignment_id": framework_assignment_id,
+                        "package_version": package_version,
+                    },
+                )
+                session.add(comparison)
+                await session.flush()
+                comparison_id = comparison.id
+
             await session.commit()
-            comparison_id = comparison.id
-            logger.info(f"[COMPARISON] ✅ Created comparison record | id={comparison_id}")
+            logger.info(f"[COMPARISON] ✅ Comparison record ready | id={comparison_id}")
 
         # ===== Queue comparison as background task =====
         logger.info("[COMPARISON] Queueing background task...")
@@ -160,10 +194,10 @@ async def start_comparison(request: ComparisonRequest):
 async def get_comparison(comparison_id: str):
     """
     Get comparison result by ID.
-    
+
     Args:
         comparison_id: ID of the comparison
-    
+
     Returns:
         Comparison data with results, status, and metadata
     """
@@ -180,17 +214,18 @@ async def get_comparison(comparison_id: str):
 
             # Ensure we get fresh data
             await session.refresh(comparison)
-            
+
             comp_data = comparison.comparison or {}
 
             return success(
                 message="Comparison retrieved successfully",
                 data={
                     "id": comparison.id,
-                    "frameworkId": comparison.frameworkId,
+                    "deploymentFrameworkId": comparison.deploymentFrameworkId,
+                    "assignedFrameworkId": comparison.assignedFrameworkId,
                     "deployment_framework_id": comp_data.get("deployment_framework_id"),
                     "framework_assignment_id": comp_data.get("framework_assignment_id"),
-                    "package_version": comp_data.get("package_version"),
+                    "package_version": comparison.packageVersion,
                     "status": comp_data.get("status", "pending"),
                     "message": comp_data.get("message"),
                     "timestamp": comp_data.get("timestamp"),
@@ -214,11 +249,11 @@ async def get_comparison(comparison_id: str):
 async def list_comparisons(page: int = 1, page_size: int = 10):
     """
     List all comparisons with pagination.
-    
+
     Args:
         page: Page number (default 1)
         page_size: Results per page (default 10)
-    
+
     Returns:
         Paginated list of comparisons
     """
@@ -228,9 +263,7 @@ async def list_comparisons(page: int = 1, page_size: int = 10):
 
         async with session_scope() as session:
             # Get fresh session without any cached objects
-            total = (
-                await session.execute(select(func.count()).select_from(PackageComparison))
-            ).scalar_one()
+            total = (await session.execute(select(func.count()).select_from(PackageComparison))).scalar_one()
 
             rows = (
                 (
@@ -252,10 +285,11 @@ async def list_comparisons(page: int = 1, page_size: int = 10):
                 items.append(
                     {
                         "id": comp.id,
-                        "frameworkId": comp.frameworkId,
+                        "deploymentFrameworkId": comp.deploymentFrameworkId,
+                        "assignedFrameworkId": comp.assignedFrameworkId,
                         "deployment_framework_id": comp_data.get("deployment_framework_id"),
                         "framework_assignment_id": comp_data.get("framework_assignment_id"),
-                        "package_version": comp_data.get("package_version"),
+                        "package_version": comp.packageVersion,
                         "status": comp_data.get("status", "pending"),
                         "comparison_sections": len(result) if isinstance(result, list) else 0,
                         "comparison_time_seconds": comp_data.get("comparison_time_seconds"),

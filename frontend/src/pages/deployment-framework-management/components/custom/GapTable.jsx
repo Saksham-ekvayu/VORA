@@ -99,13 +99,54 @@ function normaliseControl(controlObj) {
 function buildSectionsMap(deploymentGaps) {
   const raw = deploymentGaps?.deployment_gap_results ?? [];
   const map = {};
-  raw.forEach((section) => {
-    map[section.id] = {
-      id: section.id,
-      name: section.name || section.id,
-      controls: (section.controls ?? []).map(normaliseControl),
-    };
-  });
+
+  if (raw.length === 0) return map;
+
+  // Check if it's a flat array of points
+  if (
+    raw[0].assigned_framework_control_id !== undefined ||
+    raw[0].assigned_framework_section_id !== undefined
+  ) {
+    raw.forEach((p) => {
+      const sectionId = p.assigned_framework_section_id || "Uncategorized";
+      const sectionName = p.assigned_framework_section_name || sectionId;
+
+      if (!map[sectionId]) {
+        map[sectionId] = {
+          id: sectionId,
+          name: sectionName,
+          controls: [],
+        };
+      }
+
+      const controlId = p.assigned_framework_control_id || "Unknown Control";
+      const controlName = p.assigned_framework_control_name || controlId;
+
+      let control = map[sectionId].controls.find(
+        (c) => c.controlId === controlId
+      );
+      if (!control) {
+        control = {
+          controlId: controlId,
+          controlName: controlName,
+          points: [],
+        };
+        map[sectionId].controls.push(control);
+      }
+
+      control.points.push(normalisePoint(p));
+    });
+  } else {
+    // Fallback for old hierarchical structure
+    raw.forEach((section) => {
+      map[section.id] = {
+        id: section.id,
+        name: section.name || section.id,
+        controls: (section.controls ?? []).map(normaliseControl),
+      };
+    });
+  }
+
   return map;
 }
 
@@ -327,19 +368,19 @@ const GapPointCard = ({
   return (
     <div className="border border-border rounded overflow-hidden bg-card">
       <button
-        className="w-full flex items-center justify-between p-2 cursor-pointer hover:bg-muted/50 transition-colors text-left"
+        className="w-full flex items-center justify-between p-2 cursor-pointer hover:bg-muted/50 transition-colors text-left min-w-0"
         onClick={onToggle}
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <span className="text-xs font-mono bg-muted px-2 py-1 rounded whitespace-nowrap">
+          <span className="text-xs font-mono bg-muted px-2 py-1 rounded whitespace-nowrap shrink-0">
             Point {index + 1}
           </span>
-          <span className="text-sm font-medium truncate flex-1 leading-relaxed">
+          <span className="text-sm font-medium flex-1 leading-relaxed break-words">
             {capitalizeFirst(point.assigned_dp?.point)}
           </span>
           {/* <StatusBadge status={point.implementation_status} /> */}
         </div>
-        <span className="p-1 hover:bg-muted rounded ml-2">
+        <span className="p-1 hover:bg-muted rounded ml-2 shrink-0">
           {isExpanded ? (
             <Icon name="chevron-up" size="18px" />
           ) : (
