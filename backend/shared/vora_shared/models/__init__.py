@@ -2,13 +2,9 @@
 
 from vora_shared.models.ai_tables import (
     AgentPrompt,
-    ComparisonJob,
-    ComparisonResult,
-    DeploymentGapJob,
-    DeploymentGapResult,
+ 
     EvidenceOutput,
-    GapConfig,
-    PackageMergeTracking,
+   
     UploadedFile,
 )
 from vora_shared.models.customer import AddressBlock, Customer, CustomerAddress, CustomerCreatedBy
@@ -46,7 +42,7 @@ from vora_shared.models.framework_assignment import (
 from vora_shared.models.framework_category import FrameworkCategory
 from vora_shared.models.framework_merge import FrameworkMerge
 from vora_shared.models.package_comparison import PackageComparison
-from vora_shared.models.package_gap_analysis import PackageGapAnalysis
+from vora_shared.models.package_gap_analysis import PackageGapAnalysis, GapThresholdConfig
 from vora_shared.models.package_merge import PackageMerge
 from vora_shared.models.user import User, UserAddress, UserCreatedBy, UserOtp
 
@@ -63,16 +59,15 @@ __all__ = [
     "AssignmentRevocation",
     "AssignmentSection",
     "AssignmentWeightage",
-    "ComparisonJob",
-    "ComparisonResult",
+   
     "Customer",
     "CustomerAddress",
     "CustomerCreatedBy",
     "DeploymentDocument",
     "DeploymentDocumentFileVersion",
     "DeploymentFramework",
-    "DeploymentGapJob",
-    "DeploymentGapResult",
+   
+  
     "DeploymentPackageMerge",
     "DocumentExtraction",
     "EvidenceOutput",
@@ -89,6 +84,7 @@ __all__ = [
     "FrameworkMerge",
     "FrameworkPackageDocument",
     "GapConfig",
+    "GapThresholdConfig",
     "PackageComparison",
     "PackageGapAnalysis",
     "PackageMerge",

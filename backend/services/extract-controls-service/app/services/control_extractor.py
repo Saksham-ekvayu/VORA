@@ -66,7 +66,7 @@ def _log_llm_call(tag: str, response: Any, elapsed: float):
         return None
 
 
-def extract_framework_controls(chunks: list, framework_id: str) -> list:
+def extract_framework_controls(chunks: list, framework_id: str, is_deployment: bool = False) -> list:
     """
     Extract controls from framework document using AI.
     Two-stage extraction:
@@ -83,17 +83,43 @@ def extract_framework_controls(chunks: list, framework_id: str) -> list:
     # Stage 1: Extract controls
     logger.info(f"[EXTRACT] Starting framework extraction | framework_id={framework_id}")
 
-    prompt_stage1 = f"""You are a strict JSON generator.
+    if is_deployment:
+        prompt_stage1 = f"""You are a strict JSON generator.
+Extract ALL compliance controls, policy statements, procedures, and key directives from the following text.
+Do NOT skip ANY important directive.
+
+Rules for Control IDs and Section IDs:
+1. If explicit Section and Control IDs exist in the document text, you MUST extract and use them EXACTLY as they appear.
+2. If the document does NOT contain explicit IDs, you MUST generate them sequentially starting strictly from A.1 (e.g., Section IDs: A.1, A.2, A.3...).
+3. When generating, Control IDs MUST be based on their Section ID. For example, if a control belongs to section A.1, its Control IDs must be A.1.1, A.1.2, A.1.3, etc. Do not skip or start from a random number.
+
+Extract the NAME and detailed DESCRIPTION for each item.
+
+For Section_name: Extract the EXACT section/category heading this item belongs to. Do NOT include Section IDs or numbering in the Section_name (e.g. use "Facility Security" instead of "A.7 Facility Security" or "7. Facility Security").
+
+Use JSON list ONLY:
+[{{"Control_id": "","Control_name": "","Control_type":"","Control_description": "","Section_name": ""}}]
+
+TEXT:
+{text}
+
+Return ONLY JSON. No markdown. No text outside JSON."""
+    else:
+        prompt_stage1 = f"""You are a strict JSON generator.
 Extract ALL compliance controls from the following text.
 Do NOT skip ANY control.
 
 EXTRACT ONLY if all three are present in this sequence: ID, NAME and DESCRIPTION, otherwise return null.
 
-For Section_name: Extract the EXACT section/category heading this control belongs to.
-Copy EXACTLY as written in the document. Do NOT invent section names.
+Rules for Control IDs and Section IDs:
+1. If explicit Section and Control IDs exist in the document text, you MUST extract and use them EXACTLY as they appear.
+2. If the document does NOT contain explicit IDs, you MUST generate them sequentially starting strictly from A.1 (e.g., Section IDs: A.1, A.2, A.3...).
+3. When generating, Control IDs MUST be based on their Section ID. For example, if a control belongs to section A.1, its Control IDs must be A.1.1, A.1.2, A.1.3, etc. Do not skip or start from a random number.
+
+For Section_name: Extract the EXACT section/category heading this control belongs to. Do NOT include Section IDs or numbering in the Section_name (e.g. use "Facility Security" instead of "A.7 Facility Security" or "7. Facility Security").
 
 Extract control IDs using this regex: {REGEX!r}
-Treat ALL numeric headings (0.1, 0.2, 1.1, 1.2, A.1.2, A.2 etc.) as controls.
+Treat ALL numeric headings (0.1, 0.2, 1.1, 1.2, A.1.2, A.2 etc.) as controls, but format their Control_id as described above.
 
 Use JSON list ONLY:
 [{{"Control_id": "","Control_name": "","Control_type":"","Control_description": "","Section_name": ""}}]
@@ -171,7 +197,22 @@ Return ONLY JSON. No markdown."""
             finish_reason = _log_llm_call(f"EXTRACT-STAGE2-batch{batch_num}", response, elapsed)
 
             batch_result = json.loads(response.choices[0].message.content)
-            final_controls.extend(batch_result)
+
+            # Map deployment points by Control_id to preserve Stage 1 descriptions/names
+            dp_map = {}
+            for res_ctrl in batch_result:
+                if isinstance(res_ctrl, dict):
+                    c_id = str(res_ctrl.get("Control_id", "")).strip()
+                    if c_id:
+                        dp_map[c_id] = res_ctrl.get("Deployment_points", "")
+
+            merged_batch = []
+            for orig_ctrl in batch:
+                c_id = str(orig_ctrl.get("Control_id", "")).strip()
+                orig_ctrl["Deployment_points"] = dp_map.get(c_id, orig_ctrl.get("Deployment_points", ""))
+                merged_batch.append(orig_ctrl)
+
+            final_controls.extend(merged_batch)
             logger.info(f"[EXTRACT] Batch {batch_num}/{total_batches} ✅ OK")
 
         except json.JSONDecodeError as e:
@@ -238,14 +279,18 @@ def convert_to_section_structure(controls: list, resource_type: str = "framework
             id_prefix = None
 
         # Determine section name with priority
-        if section_name:
+        if id_prefix:
+            sec_key = id_prefix.upper()
+            sec_id = id_prefix.upper()
+            sec_display_name = (
+                _title_case(clean_section_name(section_name))
+                if section_name
+                else _title_case(clean_section_name(id_prefix))
+            )
+        elif section_name:
             sec_key = section_name.upper().strip()
             sec_display_name = _title_case(clean_section_name(section_name))
-            sec_id = id_prefix.upper() if id_prefix else None
-        elif id_prefix:
-            sec_key = id_prefix.upper()
-            sec_display_name = _title_case(clean_section_name(id_prefix))
-            sec_id = id_prefix.upper()
+            sec_id = None
         else:
             sec_key = "NO_SECTION"
             sec_display_name = "No Section"

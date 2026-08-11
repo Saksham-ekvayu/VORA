@@ -500,7 +500,7 @@ def _add_user_activity(user: User, recent_activity: list[dict]) -> None:
             }
         )
     if user.updatedAt and user.createdAt and (user.updatedAt - user.createdAt).total_seconds() > 1:
-        action = "deactivated" if user.is_active is False else "updated"
+        action = "deactivated" if user.isActive is False else "updated"
         recent_activity.append(
             {
                 "id": f"user-updated-{user.id}",
@@ -559,7 +559,7 @@ def _add_document_extraction_activities(
     """Add document extraction activities."""
     for dex in document_extractions:
         if dex.createdAt:
-            ai_status = _get(dex.ai_extraction, "status") or "completed"
+            ai_status = _get(dex.aiExtraction, "status") or "completed"
             _add_activity_entry(
                 recent_activity,
                 f"dex-{dex.id}",
@@ -597,7 +597,7 @@ def _add_gap_analysis_activities(
     for pga in package_gap_analyses:
         if pga.createdAt:
             suffix = _get_activity_suffix(pga_map.get(str(pga.id)))
-            status = _get(pga.gap_analysis, "status") or "started"
+            status = _get(pga.gapAnalysis, "status") or "started"
             _add_activity_entry(
                 recent_activity,
                 f"pga-{pga.id}",
@@ -616,7 +616,7 @@ def _add_merge_activities(
     for pm in package_merges:
         if pm.createdAt:
             suffix = _get_activity_suffix(pm_map.get(str(pm.id)))
-            status = _get(pm.merge_extraction, "status") or "started"
+            status = _get(pm.mergeExtraction, "status") or "started"
             _add_activity_entry(
                 recent_activity,
                 f"pm-{pm.id}",
@@ -686,7 +686,7 @@ async def _fetch_document_extractions(session, file_hashes: set) -> list[Documen
     return list(
         (
             await session.execute(
-                select(DocumentExtraction).where(DocumentExtraction.file_hash.in_(list(file_hashes)))
+                select(DocumentExtraction).where(DocumentExtraction.fileHash.in_(list(file_hashes)))
             )
         )
         .scalars()

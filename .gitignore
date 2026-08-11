@@ -38,3 +38,6 @@ venv/
 
 # Media
 uploads
+
+# Alembic Migrations
+backend/shared/alembic/versions/
