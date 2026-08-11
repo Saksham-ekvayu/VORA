@@ -45,7 +45,6 @@ def _iso(dt: datetime | None = None) -> str:
     return (dt or _utcnow()).isoformat()
 
 
-
 def _status_history(
     uploaded: str, processing: str, completed: str | None = None, failed: str | None = None
 ) -> dict[str, Any]:
@@ -815,12 +814,16 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
             existing_merge = None
             if file_hashes:
                 existing_merge = (
-                    await session.execute(
-                        select(DeploymentPackageMerge)
-                        .where(DeploymentPackageMerge.fileHashes == file_hashes)
-                        .order_by(DeploymentPackageMerge.createdAt.desc())
+                    (
+                        await session.execute(
+                            select(DeploymentPackageMerge)
+                            .where(DeploymentPackageMerge.fileHashes == file_hashes)
+                            .order_by(DeploymentPackageMerge.createdAt.desc())
+                        )
                     )
-                ).scalars().first()
+                    .scalars()
+                    .first()
+                )
 
             if not existing_merge:
                 existing_merge = DeploymentPackageMerge(
@@ -869,9 +872,7 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
             # Save to deployment_package_merges table
             logger.info(f"[PACKAGE-MERGE] Step 2: Saving to database...")
             # Still passing file_ids array to this helper if needed, but it's okay to pass empty or omit
-            await _save_merge_to_framework_merge(
-                session, file_hashes, merged_controls, merge_summary
-            )
+            await _save_merge_to_framework_merge(session, file_hashes, merged_controls, merge_summary)
 
             if existing_merge:
                 logger.info(f"[PACKAGE-MERGE] Updating existing package merge...")
@@ -905,12 +906,16 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
             async with session_scope() as session:
                 if file_hashes:
                     existing_merge = (
-                        await session.execute(
-                            select(DeploymentPackageMerge).where(
-                                DeploymentPackageMerge.fileHashes == file_hashes
-                            ).order_by(DeploymentPackageMerge.createdAt.desc())
+                        (
+                            await session.execute(
+                                select(DeploymentPackageMerge)
+                                .where(DeploymentPackageMerge.fileHashes == file_hashes)
+                                .order_by(DeploymentPackageMerge.createdAt.desc())
+                            )
                         )
-                    ).scalars().first()
+                        .scalars()
+                        .first()
+                    )
                     if existing_merge:
                         existing_merge.status = "failed"
                         existing_merge.summary = {"message": f"Merge failed: {str(exc)}"}
@@ -949,10 +954,10 @@ async def _save_merge_to_framework_merge(
     sorted_hashes = sorted(file_hashes)
 
     existing = (
-        await session.execute(
-            select(FrameworkMerge).where(FrameworkMerge.mergeHashes == sorted_hashes)
-        )
-    ).scalars().first()
+        (await session.execute(select(FrameworkMerge).where(FrameworkMerge.mergeHashes == sorted_hashes)))
+        .scalars()
+        .first()
+    )
 
     controls_payload = {
         "total_controls": sum(len(s.get("controls", [])) for s in merged_controls),
