@@ -62,7 +62,6 @@ async def get_admin_dashboard_analytics(
             "totalCustomers": model_counts["totalCustomers"],
             "totalFrameworks": model_counts["totalFrameworks"],
             "totalDeploymentFrameworks": model_counts["totalDeploymentFrameworks"],
-            "totalDeploymentDocuments": model_counts["totalDeploymentDocuments"],
             "totalFrameworkCategories": model_counts["totalFrameworkCategories"],
             "totalApprovedFrameworkAccess": model_counts["totalApprovedFrameworkAccess"],
             "totalAssignedFrameworks": model_counts["totalAssignedFrameworks"],
