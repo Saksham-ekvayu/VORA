@@ -314,14 +314,18 @@ async def run_gap(
                         "assigned_framework_control_description": assigned_desc,
                         "assigned_framework_section_id": section_id,
                         "assigned_framework_section_name": section_name,
-                        "assigned_framework_deployment_point_id": af_dp_id,
-                        "assigned_framework_deployment_point": af_dp_text,
+                        "assigned_framework_deployment_points": {
+                            "id": af_dp_id,
+                            "point": af_dp_text,
+                        },
                         "deployment_framework_control_id": df_control_id,
                         "deployment_framework_control_name": df_control_name,
-                        "deployment_framework_deployment_point_id": best_df_dp_id,
-                        "deployment_framework_deployment_point": best_df_dp_text,
+                        "deployment_framework_deployment_points": {
+                            "id": best_df_dp_id,
+                            "point": best_df_dp_text,
+                        },
                         "comparison_score": float(item.get("comparison_score") or 0),
-                        "deployment_point_similarity_score": round(best_dp_score, 2),
+                        "similarity_score": round(best_dp_score, 2),
                         "implementation_status": impl_status,
                         "gap_score": round(max(0.0, 100.0 - best_dp_score) / 100.0, 4),
                     }

@@ -99,13 +99,54 @@ function normaliseControl(controlObj) {
 function buildSectionsMap(deploymentGaps) {
   const raw = deploymentGaps?.deployment_gap_results ?? [];
   const map = {};
-  raw.forEach((section) => {
-    map[section.id] = {
-      id: section.id,
-      name: section.name || section.id,
-      controls: (section.controls ?? []).map(normaliseControl),
-    };
-  });
+
+  if (raw.length === 0) return map;
+
+  // Check if it's a flat array of points
+  if (
+    raw[0].assigned_framework_control_id !== undefined ||
+    raw[0].assigned_framework_section_id !== undefined
+  ) {
+    raw.forEach((p) => {
+      const sectionId = p.assigned_framework_section_id || "Uncategorized";
+      const sectionName = p.assigned_framework_section_name || sectionId;
+
+      if (!map[sectionId]) {
+        map[sectionId] = {
+          id: sectionId,
+          name: sectionName,
+          controls: [],
+        };
+      }
+
+      const controlId = p.assigned_framework_control_id || "Unknown Control";
+      const controlName = p.assigned_framework_control_name || controlId;
+
+      let control = map[sectionId].controls.find(
+        (c) => c.controlId === controlId
+      );
+      if (!control) {
+        control = {
+          controlId: controlId,
+          controlName: controlName,
+          points: [],
+        };
+        map[sectionId].controls.push(control);
+      }
+
+      control.points.push(normalisePoint(p));
+    });
+  } else {
+    // Fallback for old hierarchical structure
+    raw.forEach((section) => {
+      map[section.id] = {
+        id: section.id,
+        name: section.name || section.id,
+        controls: (section.controls ?? []).map(normaliseControl),
+      };
+    });
+  }
+
   return map;
 }
 
