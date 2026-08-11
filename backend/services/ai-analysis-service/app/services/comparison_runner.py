@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import re
-from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from typing import Any
@@ -14,14 +12,11 @@ from sqlalchemy import select
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
 from vora_shared.models import (
-    ComparisonJob,
-    ComparisonResult,
     DeploymentFramework,
     DocumentExtraction,
     FrameworkAssignment,
     PackageComparison,
     PackageMerge,
-    PackageMergeTracking,
 )
 
 logger = logging.getLogger(__name__)
@@ -61,9 +56,12 @@ def _get_embedder():
     _st_tried = True
     try:
         from sentence_transformers import SentenceTransformer  # type: ignore
-
-        _st_model = SentenceTransformer("all-MiniLM-L6-v2")
-        logger.info("Loaded sentence-transformers model all-MiniLM-L6-v2")
+        from vora_shared.config import get_settings
+        
+        settings = get_settings()
+        model_name = settings.sentence_transformer_model
+        _st_model = SentenceTransformer(model_name)
+        logger.info(f"Loaded sentence-transformers model {model_name}")
     except Exception as exc:  # noqa: BLE001
         logger.warning("sentence-transformers unavailable, using string fallback: %s", exc)
         _st_model = None
@@ -130,27 +128,6 @@ def _control_text(control: dict[str, Any]) -> str:
 
 
 async def _load_merge_sections(session, df_id: str, pkg_ver: str, df: DeploymentFramework):
-    track = (
-        await session.execute(
-            select(PackageMergeTracking).where(
-                PackageMergeTracking.deployment_framework_id == df_id,
-                PackageMergeTracking.package_version == pkg_ver,
-            )
-        )
-    ).scalar_one_or_none()
-    if track and isinstance(track.data, dict):
-        controls = track.data.get("controls_data") or []
-        if controls:
-            return controls
-
-    merge_ref = (track.data or {}).get("mergeRefId") if track else None
-    if merge_ref:
-        pm = await session.get(PackageMerge, str(merge_ref))
-        if pm and isinstance(pm.mergeExtraction, dict):
-            controls = pm.mergeExtraction.get("controls_data") or []
-            if controls:
-                return controls
-
     pm = (
         await session.execute(select(PackageMerge).where(PackageMerge.frameworkId == df_id))
     ).scalar_one_or_none()
@@ -215,12 +192,28 @@ async def run_comparison(
     df_id: str,
     pkg_ver: str,
     framework_assignment_id: str | None = None,
+    comparison_id: str | None = None,
 ) -> None:
     df_id = str(df_id).strip()
     pkg_ver = str(pkg_ver).strip()
     started = _utcnow()
 
+    logger.info("=" * 80)
+    logger.info(f"[COMPARISON-RUNNER] Starting comparison processing")
+    logger.info(f"  Deployment Framework ID: {df_id}")
+    logger.info(f"  Package Version: {pkg_ver}")
+    logger.info(f"  Framework Assignment ID: {framework_assignment_id}")
+    logger.info("=" * 80)
+
     try:
+        logger.info("[COMPARISON-RUNNER] Loading model...")
+        model = _get_embedder()
+        if model:
+            logger.info(f"[COMPARISON-RUNNER] ✅ Model loaded successfully")
+        else:
+            logger.info(f"[COMPARISON-RUNNER] ⚠️  Using string similarity fallback (model not available)")
+
+        logger.info("[COMPARISON-RUNNER] Fetching deployment framework...")
         async with session_scope() as session:
             df = await session.get(DeploymentFramework, df_id)
             if not df:
@@ -231,28 +224,27 @@ async def run_comparison(
             if not fa_id:
                 logger.error("No assignedFrameworkId or frameworkId found")
                 return
+            
+            logger.info(f"[COMPARISON-RUNNER] Resolved framework_assignment_id: {fa_id}")
+            logger.info("[COMPARISON-RUNNER] Loading deployment framework controls...")
 
             df_sections = await _load_merge_sections(session, df_id, pkg_ver, df)
             if not df_sections:
                 logger.error(f"No merge controls found for package '{pkg_ver}'")
                 return
+            
+            logger.info(f"[COMPARISON-RUNNER] ✅ Loaded {len(df_sections)} deployment framework sections")
 
+            logger.info("[COMPARISON-RUNNER] Loading assignment framework controls...")
             assignment_sections = await _load_assignment_sections(session, str(fa_id))
             if not assignment_sections:
                 logger.error(f"No assignment controls for id: {fa_id}")
                 return
+            
+            logger.info(f"[COMPARISON-RUNNER] ✅ Loaded {len(assignment_sections)} assignment framework sections")
+            logger.info("[COMPARISON-RUNNER] Starting similarity scoring...")
 
-            job = ComparisonJob(
-                id=new_id(),
-                deployment_framework_id=df_id,
-                package_version=pkg_ver,
-                framework_assignment_id=str(fa_id),
-                status="processing",
-                data={},
-            )
-            session.add(job)
-
-        df_controls = _flatten_controls(df_sections)
+            df_controls = _flatten_controls(df_sections)
         fa_controls = _flatten_controls(assignment_sections)
 
         # Group results by assigned-framework section
@@ -303,6 +295,7 @@ async def run_comparison(
         }
 
         async with session_scope() as session:
+            logger.info("[COMPARISON-RUNNER] Saving comparison result...")
             cr = ComparisonResult(
                 id=new_id(),
                 deployment_framework_id=df_id,
@@ -314,11 +307,17 @@ async def run_comparison(
                 },
             )
             session.add(cr)
+            await session.flush()
+            logger.info(f"[COMPARISON-RUNNER] ✅ Saved ComparisonResult: {cr.id}")
 
-            pc = (
-                await session.execute(select(PackageComparison).where(PackageComparison.frameworkId == df_id))
-            ).scalar_one_or_none()
+            # Update the existing PackageComparison record
+            logger.info(f"[COMPARISON-RUNNER] Updating PackageComparison record...")
+            pc = None
+            if comparison_id:
+                pc = await session.get(PackageComparison, comparison_id)
+            
             if pc is None:
+                logger.warning(f"[COMPARISON-RUNNER] ⚠️ PackageComparison not found (id={comparison_id}), creating new")
                 pc = PackageComparison(
                     id=new_id(),
                     frameworkId=df_id,
@@ -327,29 +326,17 @@ async def run_comparison(
                 )
                 session.add(pc)
             else:
+                logger.info(f"[COMPARISON-RUNNER] ✅ Found existing PackageComparison, updating")
                 pc.comparison = comparison_payload
                 pc.updatedAt = _utcnow()
+                session.add(pc)
+            
+            await session.flush()
+            logger.info(f"[COMPARISON-RUNNER] ✅ Updated PackageComparison: {pc.id}")
 
             # Update job status
-            jobs = (
-                (
-                    await session.execute(
-                        select(ComparisonJob)
-                        .where(
-                            ComparisonJob.deployment_framework_id == df_id,
-                            ComparisonJob.package_version == pkg_ver,
-                        )
-                        .order_by(ComparisonJob.createdAt.desc())
-                    )
-                )
-                .scalars()
-                .all()
-            )
-            if jobs:
-                jobs[0].status = "completed"
-                jobs[0].data = {"comparison_result_id": cr.id}
-
             # Annotate DF package
+            logger.info(f"[COMPARISON-RUNNER] Updating deployment framework packages...")
             df = await session.get(DeploymentFramework, df_id)
             if df:
                 packages = list(df.packages or [])
@@ -360,6 +347,42 @@ async def run_comparison(
                         packages[i] = pkg
                         break
                 df.packages = packages
+                session.add(df)
+                await session.flush()
+                logger.info(f"[COMPARISON-RUNNER] ✅ Updated deployment framework packages")
+
+            # Commit all changes
+            logger.info(f"[COMPARISON-RUNNER] Committing all changes to database...")
+            await session.commit()
+            logger.info(f"[COMPARISON-RUNNER] ✅ All changes committed successfully")
+            
+            # Fresh query from database to verify update
+            logger.info(f"[COMPARISON-RUNNER] Verifying update - fresh query from database...")
+            verified_pc = await session.get(PackageComparison, pc.id)
+            if verified_pc and verified_pc.comparison:
+                status_in_db = verified_pc.comparison.get('status', 'unknown')
+                results_count = len(verified_pc.comparison.get('comparison_result', []))
+                logger.info(f"[COMPARISON-RUNNER] ✅ Verified in database:")
+                logger.info(f"  Status: {status_in_db}")
+                logger.info(f"  Results count: {results_count}")
+            else:
+                logger.warning(f"[COMPARISON-RUNNER] ⚠️ Could not verify - record not found after commit")
+
+        logger.info(f"{'='*80}")
+        logger.info(f"[COMPARISON-RUNNER-SUCCESS] ✅ Comparison complete!")
+        logger.info(f"  Deployment Framework ID: {df_id}")
+        logger.info(f"  Package Version: {pkg_ver}")
+        logger.info(f"  Framework Assignment ID: {fa_id}")
+        logger.info(f"  Total Comparison Sections: {len(grouped)}")
+        logger.info(f"  Processing Time: {elapsed:.2f}s")
+        logger.info(f"[COMPARISON-RUNNER-SAVED] ✅ Data saved to: PackageComparison table")
+        logger.info(f"{'='*80}")
 
     except Exception as exc:  # noqa: BLE001
-        logger.exception("run_comparison failed | df=%s pkg=%s", df_id, pkg_ver)
+        logger.error(f"{'='*80}")
+        logger.error(f"[COMPARISON-RUNNER-ERROR] ❌ run_comparison failed!")
+        logger.error(f"  Deployment Framework ID: {df_id}")
+        logger.error(f"  Package Version: {pkg_ver}")
+        logger.error(f"  Error: {str(exc)}")
+        logger.error(f"{'='*80}")
+        logger.exception("run_comparison exception traceback:")
