@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Annotated
 
 from app.helpers import framework_helper
@@ -16,12 +16,10 @@ from app.schemas.framework import (
     UpdateControlBody,
     UpdateControlWeightageBody,
 )
-from app.services import authorization
 from fastapi import APIRouter, Depends, File, Form
 from fastapi import Path as ApiPath
 from fastapi import Query, Response, UploadFile
-from pydantic import ValidationError
-from sqlalchemy import String, and_, cast, func, or_, select, text
+from sqlalchemy import String, cast, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.attributes import flag_modified
 from vora_shared import data_format, file_storage
@@ -42,6 +40,7 @@ from vora_shared.query_builder import build_pagination_meta, clamp_limit, clamp_
 from vora_shared.responses import error, paginated, success
 
 router = APIRouter(tags=["framework"])
+logger = logging.getLogger(__name__)
 
 
 def _now() -> datetime:
@@ -210,6 +209,7 @@ async def get_available_categories(
     sort_by: Annotated[str | None, Query(alias="sortBy")] = None,
     sort_order: Annotated[str | None, Query(alias="sortOrder")] = None,
 ):
+    logger.info(f"[GET-CATEGORIES] Fetching available categories | user_id={ctx.user.id} | page={page} | limit={limit} | search={search} | isActive={is_active} | accessStatus={access_status}")
     user = ctx.user
     from vora_shared.models import FrameworkAccess
 
@@ -305,6 +305,7 @@ async def get_all_frameworks(
     sort_by: Annotated[str | None, Query(alias="sortBy")] = None,
     sort_order: Annotated[str | None, Query(alias="sortOrder")] = None,
 ):
+    logger.info(f"[LIST-FRAMEWORKS] Fetching all frameworks | user_id={ctx.user.id} | page={page} | limit={limit}")
     page_num = clamp_page(page)
     limit_num = clamp_limit(limit)
 
@@ -354,10 +355,12 @@ async def get_all_frameworks(
 
 @router.get("/{id}")
 async def get_framework_by_id(id: str, ctx: Annotated[AuthenticatedUser, Depends(authenticate)]):
+    logger.info(f"[GET-FRAMEWORK] Fetching framework | id={id} | user_id={ctx.user.id}")
 
     async with session_scope() as session:
         framework = await session.get(Framework, str(id))
         if not framework:
+            logger.warning(f"[GET-FRAMEWORK] Framework not found: {id}")
             return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
 
         uploaded_by_user = (
@@ -425,6 +428,7 @@ async def get_framework_by_id(id: str, ctx: Annotated[AuthenticatedUser, Depends
 
 @router.get("/{id}/download-report")
 async def download_framework_report(id: str, ctx: Annotated[AuthenticatedUser, Depends(authenticate)]):
+    logger.info(f"[DOWNLOAD-FRAMEWORK-REPORT] Download request | id={id} | user_id={ctx.user.id}")
 
     async with session_scope() as session:
         framework = await session.get(Framework, str(id))
@@ -447,11 +451,13 @@ async def download_framework_report(id: str, ctx: Annotated[AuthenticatedUser, D
 
 @router.post("/{id}/approve")
 async def approve_framework(id: str, ctx: Annotated[AuthenticatedUser, Depends(authenticate)]):
+    logger.info(f"[APPROVE-FRAMEWORK] Approval request | id={id} | user_id={ctx.user.id}")
     user = ctx.user
 
     async with session_scope() as session:
         framework = await session.get(Framework, str(id))
         if not framework:
+            logger.warning(f"[APPROVE-FRAMEWORK] Framework not found: {id}")
             return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
 
         current, doc_extraction, ai, val_error_msg, val_status = (
@@ -498,6 +504,7 @@ async def reject_framework(
     body: RejectFrameworkBody,
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
+    logger.info(f"[REJECT-FRAMEWORK] Rejection request | id={id} | user_id={ctx.user.id} | reason={body.reason[:50] if body.reason else ''}")
     user = ctx.user
 
     async with session_scope() as session:
@@ -541,6 +548,7 @@ async def assign_framework_to_customer(
     body: AssignFrameworkToCustomerBody,
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
+    logger.info(f"[ASSIGN-FRAMEWORK] Assignment request | customerId={body.customerId} | tenantId={body.tenantId} | frameworkIds={body.frameworkIds} | user_id={ctx.user.id}")
     user = ctx.user
 
     if not body.customerId or not body.tenantId or not body.frameworkIds:
@@ -646,11 +654,13 @@ async def upload_framework(
     metadata: Annotated[str, Form()],
     file: Annotated[UploadFile | None, File()] = None,
 ):
+    logger.info(f"[UPLOAD-FRAMEWORK] Upload request | user_id={ctx.user.id} | file={file.filename if file else 'none'} | filename={file.filename if file else 'N/A'}")
     user = ctx.user
 
     try:
         meta = framework_helper.parse_upload_metadata(metadata)
     except Exception as exc:
+        logger.error(f"[UPLOAD-FRAMEWORK] Invalid metadata | error={exc}")
         return error(f"Invalid metadata JSON format: {exc}", 400)
 
     framework_name = meta.get("frameworkName")
@@ -760,6 +770,7 @@ async def update_framework(
     metadata: Annotated[str | None, Form()] = None,
     file: Annotated[UploadFile | None, File()] = None,
 ):
+    logger.info(f"[UPDATE-FRAMEWORK] Update request | id={id} | user_id={ctx.user.id}")
     user = ctx.user
 
     content, err_msg = await _validate_upload(file)
@@ -852,6 +863,7 @@ async def update_framework(
 
 @router.delete("/{id}")
 async def delete_framework(id: str, ctx: Annotated[AuthenticatedUser, Depends(authenticate)]):
+    logger.info(f"[DELETE-FRAMEWORK] Delete request | id={id} | user_id={ctx.user.id}")
     user = ctx.user
 
     async with session_scope() as session:
@@ -886,6 +898,7 @@ async def get_framework_files(
     framework_id: Annotated[str, ApiPath(alias="frameworkId")],
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
+    logger.info(f"[GET-FRAMEWORK-FILES] Fetching framework files | framework_id={framework_id} | user_id={ctx.user.id}")
     user = ctx.user
 
     async with session_scope() as session:
@@ -927,6 +940,7 @@ async def get_framework_file_by_id(
     file_id: Annotated[str, ApiPath(alias="fileId")],
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
+    logger.info(f"[GET-FRAMEWORK-FILE] Fetching framework file | framework_id={framework_id} | file_id={file_id} | user_id={ctx.user.id}")
     user = ctx.user
 
     async with session_scope() as session:
@@ -969,6 +983,8 @@ async def download_framework_file(
     framework_id: Annotated[str, ApiPath(alias="frameworkId")],
     file_id: Annotated[str, ApiPath(alias="fileId")],
 ):
+    logger.info(f"[DOWNLOAD-FRAMEWORK-FILE] Download request | framework_id={framework_id} | file_id={file_id}")
+
     async with session_scope() as session:
         framework = await session.get(Framework, str(framework_id))
         if not framework:
@@ -1002,6 +1018,7 @@ async def preview_framework_file(
     file_id: Annotated[str, ApiPath(alias="fileId")],
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
+    logger.info(f"[PREVIEW-FRAMEWORK-FILE] Preview request | framework_id={framework_id} | file_id={file_id} | user_id={ctx.user.id}")
     user = ctx.user
 
     async with session_scope() as session:
@@ -1036,6 +1053,7 @@ async def delete_framework_file(
     file_id: Annotated[str, ApiPath(alias="fileId")],
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
+    logger.info(f"[DELETE-FRAMEWORK-FILE] Delete request | framework_id={framework_id} | file_id={file_id} | user_id={ctx.user.id}")
     user = ctx.user
 
     async with session_scope() as session:
@@ -1097,9 +1115,11 @@ async def add_framework_control(
     body: AddControlBody,
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
+    logger.info(f"[ADD-CONTROL] Adding control | id={id} | file_version={file_version} | user_id={ctx.user.id}")
     user = ctx.user
 
     if (not body.sectionId and not body.newSection) or not body.name:
+        logger.warning("[ADD-CONTROL] Invalid request | missing sectionId/newSection or name")
         return error(msg.FRAMEWORK_SERVICE_MESSAGES["SECTIONID_OR_NEWSECTION_AND_NAME_ARE_REQ"], 400)
 
     async with session_scope() as session:
@@ -1186,6 +1206,7 @@ async def update_framework_control(
     body: UpdateControlBody,
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
+    logger.info(f"[UPDATE-CONTROL] Updating control | id={id} | file_version={file_version} | control_id={control_id} | user_id={ctx.user.id}")
     user = ctx.user
 
     if not body.name and body.description is None and body.deployment_points is None:
@@ -1250,6 +1271,7 @@ async def update_framework_control_weightage(
     body: UpdateControlWeightageBody,
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
+    logger.info(f"[UPDATE-CONTROL-WEIGHTAGE] Updating control weightage | id={id} | file_version={file_version} | control_id={control_id} | weightage={body.weightage} | user_id={ctx.user.id}")
     user = ctx.user
 
     if body.weightage is None or body.weightage < 0:
@@ -1306,6 +1328,7 @@ async def delete_framework_control(
     control_id: Annotated[str, ApiPath(alias="controlId")],
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
+    logger.info(f"[DELETE-CONTROL] Deleting control | id={id} | file_version={file_version} | control_id={control_id} | user_id={ctx.user.id}")
     user = ctx.user
 
     async with session_scope() as session:

@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 
 import httpx
 from dotenv import load_dotenv
@@ -12,7 +13,18 @@ load_dotenv()
 SERVICE_NAME = os.getenv("SERVICE_NAME", "api-gateway")
 PORT = int(os.getenv("PORT", 8000))
 
-logging.basicConfig(level=logging.INFO)
+# Create logs directory if it doesn't exist
+os.makedirs("logs", exist_ok=True)
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler("logs/api-gateway.log", mode="a"),
+    ],
+)
 logger = logging.getLogger(SERVICE_NAME)
 
 app = FastAPI(
@@ -91,14 +103,17 @@ async def proxy_request(request: Request, target_url: str):
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
 async def gateway(path: str, request: Request):
     if path == "" or path == "/":
+        logger.info("[GATEWAY] Health check - root endpoint")
         return {
             "success": True,
             "message": "Welcome to the Local API Gateway. Use /api/... to reach backend services.",
         }
     if path == "health" or path == "/health":
+        logger.info("[GATEWAY] Health check endpoint")
         return {"success": True, "service": "api-gateway", "status": "healthy"}
 
     request_path = "/" + path if not path.startswith("/") else path
+    logger.info(f"[GATEWAY] Incoming request | method={request.method} | path={request_path}")
 
     matched_prefix = None
     target_base = None
@@ -112,6 +127,7 @@ async def gateway(path: str, request: Request):
                 break
 
     if not matched_prefix:
+        logger.warning(f"[GATEWAY] Service not found for path: {request_path}")
         return Response(content="Service Not Found", status_code=404)
 
     remaining_path = request_path[len(matched_prefix) :]
@@ -120,6 +136,7 @@ async def gateway(path: str, request: Request):
     if request.url.query:
         target_url += f"?{request.url.query}"
 
+    logger.info(f"[GATEWAY] Routing to service | target={target_url}")
     return await proxy_request(request, target_url)
 
 

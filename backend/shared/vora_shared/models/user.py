@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
-from sqlalchemy import Boolean, DateTime, Index, Integer, String, Text, false, true
+from sqlalchemy import Boolean, DateTime, Index, Integer, String, false, true
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from vora_shared.database import Base

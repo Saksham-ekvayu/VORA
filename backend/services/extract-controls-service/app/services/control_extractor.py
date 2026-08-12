@@ -3,12 +3,11 @@ Control Extraction Service — AI-powered extraction using OpenAI GPT-4o-mini
 Extracts controls from framework documents with deployment points
 """
 
-import asyncio
 import json
 import logging
 import os
 import re
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -38,7 +37,7 @@ def get_openai_client():
             logger.error("[OPENAI] OPENAI_API_KEY not found in environment")
             logger.error(f"[OPENAI] Checked path: {shared_env_path}")
             raise ValueError("OPENAI_API_KEY environment variable not set")
-        logger.info(f"[OPENAI] Client initialized")
+        logger.info("[OPENAI] Client initialized")
         _client = OpenAI(api_key=api_key)
     return _client
 
@@ -343,6 +342,7 @@ def _parse_deployment_points(raw: Any, ctrl_id: str) -> list:
                         "name": str(item.get("name") or item.get("dp") or ""),
                         "status": item.get("status", "pending"),
                         "path": item.get("path", ""),
+                        "source": item.get("source", ""),
                         "weightage": item.get("weightage", 10),
                         "remark": item.get("remark", ""),
                     }
@@ -354,6 +354,7 @@ def _parse_deployment_points(raw: Any, ctrl_id: str) -> list:
                         "name": str(item).strip(),
                         "status": "pending",
                         "path": "",
+                        "source": "",
                         "weightage": 10,
                         "remark": "",
                     }
@@ -373,6 +374,7 @@ def _parse_deployment_points(raw: Any, ctrl_id: str) -> list:
                 "name": point,
                 "status": "pending",
                 "path": "",
+                "source": "",
                 "weightage": 10,
                 "remark": "",
             }

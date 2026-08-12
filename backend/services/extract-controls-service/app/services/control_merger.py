@@ -77,7 +77,7 @@ def get_framework_previous_controls(
             )
             return controls_data, fv.get("fileVersion"), prev_file_hash
 
-    logger.info(f"[MERGE] ℹ️ No previous extracted version found")
+    logger.info("[MERGE] ℹ️ No previous extracted version found")
     return [], None, None
 
 
@@ -181,6 +181,7 @@ def merge_controls_cumulative(
                                 "name": new_dp.get("name", ""),
                                 "status": "pending",
                                 "path": "",
+                                "source": "",
                                 "weightage": 0,
                                 "remark": "",
                             }

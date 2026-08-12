@@ -126,21 +126,21 @@ const DeploymentFrameworkDetailModals = ({
 
   const packageBadges = packageToDelete
     ? [
-      {
-        text: packageToDelete.type || "package",
-        className:
-          "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-      },
-      {
-        text: packageToDelete.status || STATUS_PENDING,
-        className:
-          "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
-      },
-      ...fileTypeSummary.map(({ fileType, count }) => ({
-        text: `${count} ${fileType}${count === 1 ? "" : "s"}`,
-        className: "bg-background border border-border text-muted-foreground",
-      })),
-    ]
+        {
+          text: packageToDelete.type || "package",
+          className:
+            "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+        },
+        {
+          text: packageToDelete.status || STATUS_PENDING,
+          className:
+            "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
+        },
+        ...fileTypeSummary.map(({ fileType, count }) => ({
+          text: `${count} ${fileType}${count === 1 ? "" : "s"}`,
+          className: "bg-background border border-border text-muted-foreground",
+        })),
+      ]
     : [];
 
   let packageWarningText = null;

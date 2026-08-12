@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any
 
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -58,12 +57,14 @@ class ThresholdsResponse(BaseModel):
 async def get_thresholds():
     """Get current active gap analysis thresholds."""
     try:
+        logger.info("[GET-THRESHOLDS] Fetching active thresholds")
         async with session_scope() as session:
             config = (
                 await session.execute(select(GapThresholdConfig).where(GapThresholdConfig.is_active == True))
             ).scalar_one_or_none()
 
             if not config:
+                logger.info("[GET-THRESHOLDS] No custom config found, returning defaults")
                 # Return defaults if not configured
                 return success(
                     message="Thresholds (using defaults)",
@@ -79,6 +80,7 @@ async def get_thresholds():
                     },
                 )
 
+            logger.info(f"[GET-THRESHOLDS] Retrieved active config | id={config.id}")
             return success(
                 message="Thresholds retrieved successfully",
                 data={
@@ -97,6 +99,7 @@ async def get_thresholds():
                 },
             )
     except Exception as exc:
+        logger.error(f"[GET-THRESHOLDS] Error: {exc}")
         logger.exception("get_thresholds error")
         return server_error(str(exc))
 
@@ -110,6 +113,7 @@ async def get_thresholds():
 async def create_thresholds(request: ThresholdsRequest):
     """Create gap analysis thresholds configuration."""
     try:
+        logger.info(f"[CREATE-THRESHOLDS] Creating new threshold config | high={request.implemented_threshold} | medium={request.partially_implemented_threshold}")
         async with session_scope() as session:
             # Deactivate any existing active config
             existing_active = (
@@ -117,6 +121,7 @@ async def create_thresholds(request: ThresholdsRequest):
             ).scalar_one_or_none()
 
             if existing_active:
+                logger.info(f"[CREATE-THRESHOLDS] Deactivating existing config: {existing_active.id}")
                 existing_active.is_active = False
                 session.add(existing_active)
 
@@ -134,8 +139,8 @@ async def create_thresholds(request: ThresholdsRequest):
             await session.commit()
 
             logger.info(
-                f"[CONFIG] Created thresholds: "
-                f"high={request.implemented_threshold}, medium={request.partially_implemented_threshold}"
+                f"[CREATE-THRESHOLDS] Successfully created config | id={config.id} | "
+                f"high={request.implemented_threshold} | medium={request.partially_implemented_threshold}"
             )
 
             return success(
@@ -155,6 +160,7 @@ async def create_thresholds(request: ThresholdsRequest):
                 status_code=201,
             )
     except Exception as exc:
+        logger.error(f"[CREATE-THRESHOLDS] Error: {exc}")
         logger.exception("create_thresholds error")
         return server_error(str(exc))
 
@@ -168,10 +174,12 @@ async def create_thresholds(request: ThresholdsRequest):
 async def update_thresholds(config_id: str, request: ThresholdsRequest):
     """Update gap analysis thresholds configuration."""
     try:
+        logger.info(f"[UPDATE-THRESHOLDS] Updating config | id={config_id}")
         async with session_scope() as session:
             config = await session.get(GapThresholdConfig, config_id)
 
             if not config:
+                logger.warning(f"[UPDATE-THRESHOLDS] Config not found: {config_id}")
                 return not_found("Thresholds configuration not found.")
 
             old_high = config.implemented_threshold
@@ -188,8 +196,8 @@ async def update_thresholds(config_id: str, request: ThresholdsRequest):
             await session.commit()
 
             logger.info(
-                f"[CONFIG] Updated thresholds: "
-                f"high={old_high}→{request.implemented_threshold}, "
+                f"[UPDATE-THRESHOLDS] Successfully updated | id={config_id} | "
+                f"high={old_high}→{request.implemented_threshold} | "
                 f"medium={old_medium}→{request.partially_implemented_threshold}"
             )
 
@@ -209,6 +217,7 @@ async def update_thresholds(config_id: str, request: ThresholdsRequest):
                 },
             )
     except Exception as exc:
+        logger.error(f"[UPDATE-THRESHOLDS] Error updating config {config_id}: {exc}")
         logger.exception("update_thresholds error")
         return server_error(str(exc))
 
@@ -222,19 +231,22 @@ async def update_thresholds(config_id: str, request: ThresholdsRequest):
 async def delete_thresholds(config_id: str):
     """Delete thresholds configuration."""
     try:
+        logger.info(f"[DELETE-THRESHOLDS] Deleting config | id={config_id}")
         async with session_scope() as session:
             config = await session.get(GapThresholdConfig, config_id)
 
             if not config:
+                logger.warning(f"[DELETE-THRESHOLDS] Config not found: {config_id}")
                 return error("Thresholds configuration not found.")
 
             await session.delete(config)
             await session.commit()
 
-            logger.info(f"[CONFIG] Deleted thresholds config: {config_id}")
+            logger.info(f"[DELETE-THRESHOLDS] Successfully deleted config: {config_id}")
 
             return success(message="Thresholds configuration deleted successfully")
     except Exception as exc:
+        logger.error(f"[DELETE-THRESHOLDS] Error deleting config {config_id}: {exc}")
         logger.exception("delete_thresholds error")
         return server_error(str(exc))
 
@@ -248,6 +260,7 @@ async def delete_thresholds(config_id: str):
 async def list_thresholds():
     """List all threshold configurations."""
     try:
+        logger.info("[LIST-THRESHOLDS] Fetching all threshold configurations")
         async with session_scope() as session:
             configs = (
                 (
@@ -277,10 +290,12 @@ async def list_thresholds():
                     }
                 )
 
+            logger.info(f"[LIST-THRESHOLDS] Retrieved {len(items)} threshold configurations")
             return success(
                 message=f"Retrieved {len(items)} threshold configurations",
                 data=items,
             )
     except Exception as exc:
+        logger.error(f"[LIST-THRESHOLDS] Error: {exc}")
         logger.exception("list_thresholds error")
         return server_error(str(exc))
