@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Any
@@ -152,7 +151,7 @@ async def run_gap(
     started = _utcnow()
 
     logger.info("=" * 80)
-    logger.info(f"[GAP-RUNNER] Starting gap analysis processing")
+    logger.info("[GAP-RUNNER] Starting gap analysis processing")
     logger.info(f"  Deployment Framework ID: {df_id}")
     logger.info(f"  Package Version: {pkg_ver}")
     logger.info(f"  Framework Assignment ID: {framework_assignment_id}")
@@ -175,7 +174,7 @@ async def run_gap(
             logger.info("[GAP-RUNNER] Loading gap configuration...")
 
             statuses, thresholds = await _load_gap_config(session)
-            logger.info(f"[GAP-RUNNER] Loading comparison results...")
+            logger.info("[GAP-RUNNER] Loading comparison results...")
             comparison_sections = await _load_comparison_grouped(session, df, pkg_ver)
             logger.info(f"[GAP-RUNNER] ✅ Loaded {len(comparison_sections)} comparison sections")
 
@@ -381,7 +380,7 @@ async def run_gap(
             await session.flush()
             logger.info(f"[GAP-RUNNER] ✅ Updated PackageGapAnalysis: {pga.id}")
 
-            logger.info(f"[GAP-RUNNER] Updating deployment framework packages...")
+            logger.info("[GAP-RUNNER] Updating deployment framework packages...")
             df = await session.get(DeploymentFramework, df_id)
             if df:
                 packages = list(df.packages or [])
@@ -394,38 +393,38 @@ async def run_gap(
                 df.packages = packages
                 session.add(df)
                 await session.flush()
-                logger.info(f"[GAP-RUNNER] ✅ Updated deployment framework packages")
+                logger.info("[GAP-RUNNER] ✅ Updated deployment framework packages")
 
             # Commit all changes
-            logger.info(f"[GAP-RUNNER] Committing all changes to database...")
+            logger.info("[GAP-RUNNER] Committing all changes to database...")
             await session.commit()
-            logger.info(f"[GAP-RUNNER] ✅ All changes committed successfully")
+            logger.info("[GAP-RUNNER] ✅ All changes committed successfully")
 
             # Fresh query from database to verify update
-            logger.info(f"[GAP-RUNNER] Verifying update - fresh query from database...")
+            logger.info("[GAP-RUNNER] Verifying update - fresh query from database...")
             verified_pga = await session.get(PackageGapAnalysis, pga.id)
             if verified_pga and verified_pga.gapAnalysis:
                 status_in_db = verified_pga.gapAnalysis.get("status", "unknown")
                 results_count = len(verified_pga.gapAnalysis.get("deployment_gap_results", []))
-                logger.info(f"[GAP-RUNNER] ✅ Verified in database:")
+                logger.info("[GAP-RUNNER] ✅ Verified in database:")
                 logger.info(f"  Status: {status_in_db}")
                 logger.info(f"  Results count: {results_count}")
             else:
-                logger.warning(f"[GAP-RUNNER] ⚠️ Could not verify - record not found after commit")
+                logger.warning("[GAP-RUNNER] ⚠️ Could not verify - record not found after commit")
 
             logger.info(f"{'='*80}")
-            logger.info(f"[GAP-RUNNER-SUCCESS] ✅ Gap analysis complete!")
+            logger.info("[GAP-RUNNER-SUCCESS] ✅ Gap analysis complete!")
             logger.info(f"  Deployment Framework ID: {df_id}")
             logger.info(f"  Package Version: {pkg_ver}")
             logger.info(f"  Framework Assignment ID: {fa_id}")
             logger.info(f"  Total Gap Results: {len(gap_results)}")
             logger.info(f"  Processing Time: {elapsed:.2f}s")
-            logger.info(f"[GAP-RUNNER-SAVED] ✅ Data saved to: PackageGapAnalysis table")
+            logger.info("[GAP-RUNNER-SAVED] ✅ Data saved to: PackageGapAnalysis table")
             logger.info(f"{'='*80}")
 
     except Exception as exc:  # noqa: BLE001
         logger.error(f"{'='*80}")
-        logger.error(f"[GAP-RUNNER-ERROR] ❌ run_gap failed!")
+        logger.error("[GAP-RUNNER-ERROR] ❌ run_gap failed!")
         logger.error(f"  Deployment Framework ID: {df_id}")
         logger.error(f"  Package Version: {pkg_ver}")
         logger.error(f"  Error: {str(exc)}")

@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import logging
 import os
-from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -298,6 +296,32 @@ async def _update_deployment_framework_mergeDocument_status(
         session.add(df)
 
 
+async def _update_deployment_framework_mergedControls(
+    session: Any, df_id: str, pkg_ver: str, merged_controls: dict[str, Any]
+) -> None:
+    """Update deployment framework package with merged controls after merge completes."""
+    df = await session.get(DeploymentFramework, df_id)
+    if not df:
+        return
+
+    packages = list(df.packages or [])
+    updated = False
+
+    for p_idx, pkg in enumerate(packages):
+        if not isinstance(pkg, dict) or pkg.get("packageVersion") != pkg_ver:
+            continue
+
+        pkg["mergedControls"] = merged_controls
+        packages[p_idx] = pkg
+        updated = True
+        break
+
+    if updated:
+        df.packages = packages
+        flag_modified(df, "packages")
+        session.add(df)
+
+
 async def run_framework_extraction(framework_id: str, file_id: str) -> None:
     """Load Framework, extract controls using AI, save to document_extraction table"""
     framework_id = str(framework_id).strip()
@@ -305,7 +329,7 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
     uploaded_ts = _iso()
 
     logger.info(f"{'='*80}")
-    logger.info(f"[EXTRACT-START] Framework Extraction Started")
+    logger.info("[EXTRACT-START] Framework Extraction Started")
     logger.info(f"  Framework ID: {framework_id}")
     logger.info(f"  File ID: {file_id}")
     logger.info(f"  Timestamp: {uploaded_ts}")
@@ -313,7 +337,7 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
 
     try:
         # Get framework and file info
-        logger.info(f"[EXTRACT] Step 1: Loading framework from database...")
+        logger.info("[EXTRACT] Step 1: Loading framework from database...")
         async with session_scope() as session:
             framework = await session.get(Framework, framework_id)
             if not framework:
@@ -338,12 +362,12 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
 
             file_path = file_info.get("fileUrl")
             file_hash = file_info.get("fileHash")
-            logger.info(f"[EXTRACT] ✅ File found")
+            logger.info("[EXTRACT] ✅ File found")
             logger.info(f"  File Path: {file_path}")
             logger.info(f"  File Hash: {file_hash}")
 
             # Update status to processing
-            logger.info(f"[EXTRACT] Step 2: Updating status to 'processing'...")
+            logger.info("[EXTRACT] Step 2: Updating status to 'processing'...")
             await _update_framework_ai_status(
                 session,
                 framework_id,
@@ -354,13 +378,13 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
                     "message": "Framework ai extraction in progress",
                 },
             )
-            logger.info(f"[EXTRACT] ✅ Status updated to 'processing'")
+            logger.info("[EXTRACT] ✅ Status updated to 'processing'")
 
         # Load document from file
-        logger.info(f"[EXTRACT] Step 3: Loading document from disk...")
+        logger.info("[EXTRACT] Step 3: Loading document from disk...")
         chunks = await asyncio.to_thread(_load_document_chunks, file_path)
         if not chunks:
-            logger.error(f"[EXTRACT] ❌ No text extracted from document")
+            logger.error("[EXTRACT] ❌ No text extracted from document")
             async with session_scope() as session:
                 await _update_framework_ai_status(
                     session,
@@ -377,12 +401,12 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
         logger.info(f"[EXTRACT] ✅ Document loaded: {len(chunks)} chunks extracted")
 
         # Extract controls using AI
-        logger.info(f"[EXTRACT] Step 4: Running AI extraction...")
+        logger.info("[EXTRACT] Step 4: Running AI extraction...")
         controls_flat = await asyncio.to_thread(extract_framework_controls, chunks, framework_id)
         logger.info(f"[EXTRACT] ✅ Framework ai extraction complete: {len(controls_flat)} controls extracted")
 
         # Convert to section structure
-        logger.info(f"[EXTRACT] Step 5: Converting to section structure...")
+        logger.info("[EXTRACT] Step 5: Converting to section structure...")
         controls_structured = await asyncio.to_thread(
             convert_to_section_structure, controls_flat, resource_type="framework"
         )
@@ -390,7 +414,7 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
 
         # Merge with previous versions if exists
         merge_summary = None  # Initialize for later use
-        logger.info(f"[EXTRACT] Step 5b: Checking for previous versions to merge...")
+        logger.info("[EXTRACT] Step 5b: Checking for previous versions to merge...")
         async with session_scope() as session:
             framework = await session.get(Framework, framework_id)
             if framework:
@@ -408,13 +432,13 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
                         merge_controls_cumulative, old_sections, controls_structured
                     )
 
-                    logger.info(f"[EXTRACT] ✅ Merge complete:")
+                    logger.info("[EXTRACT] ✅ Merge complete:")
                     logger.info(f"  - Merged controls: {merge_summary.get('merged_controls', 0)}")
                     logger.info(f"  - New controls: {merge_summary.get('new_controls', 0)}")
                     logger.info(f"  - New deployment points: {merge_summary.get('new_dps', 0)}")
                     logger.info(f"  - New sections: {merge_summary.get('new_sections', 0)}")
                 else:
-                    logger.info(f"[EXTRACT] No previous version to merge")
+                    logger.info("[EXTRACT] No previous version to merge")
                     merge_summary = None
 
         # Build controls payload
@@ -454,10 +478,10 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
             extraction_data["mergeSummary"] = merge_summary
 
         # Update framework with extracted data
-        logger.info(f"[EXTRACT] Step 6: Saving to database...")
+        logger.info("[EXTRACT] Step 6: Saving to database...")
         async with session_scope() as session:
             # Update framework's aiExtraction
-            logger.info(f"[EXTRACT] 6a: Updating framework's aiExtraction...")
+            logger.info("[EXTRACT] 6a: Updating framework's aiExtraction...")
             await _update_framework_ai_status(
                 session,
                 framework_id,
@@ -465,43 +489,43 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
                 extraction_data,
                 replace=True,
             )
-            logger.info(f"[EXTRACT] ✅ Framework updated")
+            logger.info("[EXTRACT] ✅ Framework updated")
 
             # Save to document_extraction table (by fileHash) - PRIMARY TABLE
             if file_hash:
-                logger.info(f"[EXTRACT] 6b: Saving to document_extraction table...")
+                logger.info("[EXTRACT] 6b: Saving to document_extraction table...")
                 doc_extraction = await _get_or_create_doc_extraction(session, file_hash, None)
                 doc_extraction.aiExtraction = extraction_data
                 session.add(doc_extraction)
                 await session.flush()
                 await session.commit()
-                logger.info(f"[EXTRACT] ✅ Saved to document_extractions table")
-                logger.info(f"  Table: document_extractions")
+                logger.info("[EXTRACT] ✅ Saved to document_extractions table")
+                logger.info("  Table: document_extractions")
                 logger.info(f"  ID: {doc_extraction.id}")
                 logger.info(f"  FileHash: {file_hash}")
-                logger.info(f"  Status: extracted")
+                logger.info("  Status: extracted")
                 logger.info(f"  Total Controls: {total_controls}")
             else:
-                logger.warning(f"[EXTRACT] ⚠️ No fileHash - skipping document_extraction save")
+                logger.warning("[EXTRACT] ⚠️ No fileHash - skipping document_extraction save")
 
         logger.info(f"{'='*80}")
-        logger.info(f"[EXTRACT-SUCCESS] ✅ Framework extraction complete!")
+        logger.info("[EXTRACT-SUCCESS] ✅ Framework extraction complete!")
         logger.info(f"  Framework ID: {framework_id}")
         logger.info(f"  File ID: {file_id}")
         logger.info(f"  Total Controls: {total_controls}")
         logger.info(f"  Total Sections: {len(controls_structured)}")
         logger.info(f"  Processing Time: {history['processing_time_seconds']:.2f}s")
-        logger.info(f"[EXTRACT-SAVED] ✅ Data saved to: document_extractions table")
+        logger.info("[EXTRACT-SAVED] ✅ Data saved to: document_extractions table")
         logger.info(f"{'='*80}")
 
     except Exception as exc:
         logger.error(f"{'='*80}")
-        logger.error(f"[EXTRACT-ERROR] ❌ Framework extraction failed!")
+        logger.error("[EXTRACT-ERROR] ❌ Framework extraction failed!")
         logger.error(f"  Framework ID: {framework_id}")
         logger.error(f"  File ID: {file_id}")
         logger.error(f"  Error: {str(exc)}")
         logger.error(f"{'='*80}")
-        logger.exception(f"[EXTRACT] Exception traceback:")
+        logger.exception("[EXTRACT] Exception traceback:")
 
         fail_ts = _iso()
         try:
@@ -516,7 +540,7 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
                         "message": f"Extraction failed: {str(exc)}",
                     },
                 )
-                logger.info(f"[EXTRACT] Updated status to 'failed' in database")
+                logger.info("[EXTRACT] Updated status to 'failed' in database")
         except Exception as db_exc:
             logger.error(f"[EXTRACT] Failed to update status in database: {db_exc}")
 
@@ -529,7 +553,7 @@ async def run_deployment_framework_extraction(df_id: str, pkg_ver: str, file_id:
     uploaded_ts = _iso()
 
     logger.info(f"{'='*80}")
-    logger.info(f"[DEPLOYMENT-EXTRACT-START] Deployment Framework Extraction Started")
+    logger.info("[DEPLOYMENT-EXTRACT-START] Deployment Framework Extraction Started")
     logger.info(f"  Deployment Framework ID: {df_id}")
     logger.info(f"  Package Version: {pkg_ver}")
     logger.info(f"  File ID: {file_id}")
@@ -538,7 +562,7 @@ async def run_deployment_framework_extraction(df_id: str, pkg_ver: str, file_id:
 
     try:
         # Get deployment framework and file info
-        logger.info(f"[DEPLOYMENT-EXTRACT] Step 1: Loading deployment framework from database...")
+        logger.info("[DEPLOYMENT-EXTRACT] Step 1: Loading deployment framework from database...")
         async with session_scope() as session:
 
             df = await session.get(DeploymentFramework, df_id)
@@ -582,11 +606,11 @@ async def run_deployment_framework_extraction(df_id: str, pkg_ver: str, file_id:
                 file_path = str((Path(UPLOAD_BASE_PATH) / relative).resolve())
 
             file_hash = file_info.get("fileHash")
-            logger.info(f"[DEPLOYMENT-EXTRACT] ✅ File found")
+            logger.info("[DEPLOYMENT-EXTRACT] ✅ File found")
             logger.info(f"  File Path: {file_path}")
             logger.info(f"  File Hash: {file_hash}")
 
-            logger.info(f"[DEPLOYMENT-EXTRACT] Step 1.5: Updating status to 'processing'...")
+            logger.info("[DEPLOYMENT-EXTRACT] Step 1.5: Updating status to 'processing'...")
             await _update_deployment_framework_ai_status(
                 session,
                 df_id,
@@ -598,26 +622,26 @@ async def run_deployment_framework_extraction(df_id: str, pkg_ver: str, file_id:
                     "message": "Deployment framework ai extraction in progress",
                 },
             )
-            logger.info(f"[DEPLOYMENT-EXTRACT] ✅ Status updated to 'processing'")
+            logger.info("[DEPLOYMENT-EXTRACT] ✅ Status updated to 'processing'")
 
         # Load document from file
-        logger.info(f"[DEPLOYMENT-EXTRACT] Step 2: Loading document from disk...")
+        logger.info("[DEPLOYMENT-EXTRACT] Step 2: Loading document from disk...")
         chunks = await asyncio.to_thread(_load_document_chunks, file_path)
         if not chunks:
-            logger.error(f"[DEPLOYMENT-EXTRACT] ❌ No text extracted from document")
+            logger.error("[DEPLOYMENT-EXTRACT] ❌ No text extracted from document")
             return
 
         logger.info(f"[DEPLOYMENT-EXTRACT] ✅ Document loaded: {len(chunks)} chunks extracted")
 
         # Extract controls using AI (client controls for deployment frameworks)
-        logger.info(f"[DEPLOYMENT-EXTRACT] Step 3: Running AI extraction...")
+        logger.info("[DEPLOYMENT-EXTRACT] Step 3: Running AI extraction...")
         controls_flat = await asyncio.to_thread(extract_framework_controls, chunks, df_id, True)
         logger.info(
             f"[DEPLOYMENT-EXTRACT] ✅ Framework ai extraction complete: {len(controls_flat)} controls extracted"
         )
 
         # Convert to section structure
-        logger.info(f"[DEPLOYMENT-EXTRACT] Step 4: Converting to section structure...")
+        logger.info("[DEPLOYMENT-EXTRACT] Step 4: Converting to section structure...")
         controls_structured = await asyncio.to_thread(
             convert_to_section_structure, controls_flat, resource_type="deployment"
         )
@@ -656,9 +680,9 @@ async def run_deployment_framework_extraction(df_id: str, pkg_ver: str, file_id:
         }
 
         # Update deployment framework with extracted data
-        logger.info(f"[DEPLOYMENT-EXTRACT] Step 5: Saving to database...")
+        logger.info("[DEPLOYMENT-EXTRACT] Step 5: Saving to database...")
         async with session_scope() as session:
-            logger.info(f"[DEPLOYMENT-EXTRACT] 5a: Updating framework's aiExtraction...")
+            logger.info("[DEPLOYMENT-EXTRACT] 5a: Updating framework's aiExtraction...")
             await _update_deployment_framework_ai_status(
                 session,
                 df_id,
@@ -667,20 +691,20 @@ async def run_deployment_framework_extraction(df_id: str, pkg_ver: str, file_id:
                 extraction_data,
                 replace=True,
             )
-            logger.info(f"[DEPLOYMENT-EXTRACT] ✅ Updated framework packages")
+            logger.info("[DEPLOYMENT-EXTRACT] ✅ Updated framework packages")
 
             # Save to document_extraction table (by fileHash)
             if file_hash:
-                logger.info(f"[DEPLOYMENT-EXTRACT] Saving to document_extraction table...")
+                logger.info("[DEPLOYMENT-EXTRACT] Saving to document_extraction table...")
                 doc_extraction = await _get_or_create_doc_extraction(session, file_hash, None)
                 doc_extraction.aiExtraction = extraction_data
                 session.add(doc_extraction)
                 await session.flush()
                 await session.commit()
-                logger.info(f"[DEPLOYMENT-EXTRACT] ✅ Saved to document_extractions table")
+                logger.info("[DEPLOYMENT-EXTRACT] ✅ Saved to document_extractions table")
 
         logger.info(f"{'='*80}")
-        logger.info(f"[DEPLOYMENT-EXTRACT-SUCCESS] ✅ Deployment Framework extraction complete!")
+        logger.info("[DEPLOYMENT-EXTRACT-SUCCESS] ✅ Deployment Framework extraction complete!")
         logger.info(f"  Deployment Framework ID: {df_id}")
         logger.info(f"  Package Version: {pkg_ver}")
         logger.info(f"  File ID: {file_id}")
@@ -691,13 +715,13 @@ async def run_deployment_framework_extraction(df_id: str, pkg_ver: str, file_id:
 
     except Exception as exc:
         logger.error(f"{'='*80}")
-        logger.error(f"[DEPLOYMENT-EXTRACT-ERROR] ❌ Deployment Framework extraction failed!")
+        logger.error("[DEPLOYMENT-EXTRACT-ERROR] ❌ Deployment Framework extraction failed!")
         logger.error(f"  Deployment Framework ID: {df_id}")
         logger.error(f"  Package Version: {pkg_ver}")
         logger.error(f"  File ID: {file_id}")
         logger.error(f"  Error: {str(exc)}")
         logger.error(f"{'='*80}")
-        logger.exception(f"[DEPLOYMENT-EXTRACT] Exception traceback:")
+        logger.exception("[DEPLOYMENT-EXTRACT] Exception traceback:")
 
         fail_ts = _iso()
         try:
@@ -713,7 +737,7 @@ async def run_deployment_framework_extraction(df_id: str, pkg_ver: str, file_id:
                         "message": f"Extraction failed: {str(exc)}",
                     },
                 )
-                logger.info(f"[DEPLOYMENT-EXTRACT] Updated status to 'failed' in database")
+                logger.info("[DEPLOYMENT-EXTRACT] Updated status to 'failed' in database")
         except Exception as db_exc:
             logger.error(f"[DEPLOYMENT-EXTRACT] Failed to update status in database: {db_exc}")
 
@@ -724,7 +748,7 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
     pkg_ver = str(pkg_ver).strip()
 
     logger.info(f"{'='*80}")
-    logger.info(f"[PACKAGE-MERGE-START] Package Merge Started")
+    logger.info("[PACKAGE-MERGE-START] Package Merge Started")
     logger.info(f"  Deployment Framework ID: {df_id}")
     logger.info(f"  Package Version: {pkg_ver}")
     logger.info(f"{'='*80}")
@@ -845,7 +869,7 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
             await session.commit()
 
             if not all_sections:
-                logger.warning(f"[PACKAGE-MERGE] ⚠️ No extracted sections found in package")
+                logger.warning("[PACKAGE-MERGE] ⚠️ No extracted sections found in package")
                 existing_merge.status = "failed"
                 existing_merge.summary = {"message": "No extracted sections found"}
                 session.add(existing_merge)
@@ -853,12 +877,12 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
                 return
 
             # Merge controls (cumulative)
-            logger.info(f"[PACKAGE-MERGE] Step 1: Merging documents...")
+            logger.info("[PACKAGE-MERGE] Step 1: Merging documents...")
             merged_controls, merge_summary = await asyncio.to_thread(
                 merge_controls_cumulative, [], all_sections
             )
 
-            logger.info(f"[PACKAGE-MERGE] ✅ Merge complete:")
+            logger.info("[PACKAGE-MERGE] ✅ Merge complete:")
             logger.info(f"  - Total controls: {merge_summary.get('new_controls', 0)}")
             logger.info(f"  - Total sections: {len(merged_controls)}")
 
@@ -870,12 +894,12 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
             }
 
             # Save to deployment_package_merges table
-            logger.info(f"[PACKAGE-MERGE] Step 2: Saving to database...")
+            logger.info("[PACKAGE-MERGE] Step 2: Saving to database...")
             # Still passing file_ids array to this helper if needed, but it's okay to pass empty or omit
             await _save_merge_to_framework_merge(session, file_hashes, merged_controls, merge_summary)
 
             if existing_merge:
-                logger.info(f"[PACKAGE-MERGE] Updating existing package merge...")
+                logger.info("[PACKAGE-MERGE] Updating existing package merge...")
                 existing_merge.status = "merged"
                 existing_merge.fileHashes = file_hashes
                 existing_merge.controls = controls_payload
@@ -885,8 +909,15 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
             await session.flush()
             await session.commit()
 
+            # Step 3: Update deployment framework package with mergedControls
+            logger.info("[PACKAGE-MERGE] Step 3: Updating deployment framework with merged controls...")
+            await _update_deployment_framework_mergedControls(
+                session, df_id, pkg_ver, controls_payload
+            )
+            await session.commit()
+
             logger.info(f"{'='*80}")
-            logger.info(f"[PACKAGE-MERGE-SUCCESS] ✅ Package merge complete!")
+            logger.info("[PACKAGE-MERGE-SUCCESS] ✅ Package merge complete!")
             logger.info(f"  Deployment Framework ID: {df_id}")
             logger.info(f"  Package Version: {pkg_ver}")
             logger.info(f"  Files merged: {len(file_hashes)}")
@@ -895,11 +926,11 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
 
     except Exception as exc:
         logger.error(f"{'='*80}")
-        logger.error(f"[PACKAGE-MERGE-ERROR] ❌ Package merge failed!")
+        logger.error("[PACKAGE-MERGE-ERROR] ❌ Package merge failed!")
         logger.error(f"  Deployment Framework ID: {df_id}")
         logger.error(f"  Package Version: {pkg_ver}")
         logger.error(f"  Error: {str(exc)}")
-        logger.exception(f"[PACKAGE-MERGE] Exception traceback:")
+        logger.exception("[PACKAGE-MERGE] Exception traceback:")
         logger.error(f"{'='*80}")
 
         try:
@@ -966,7 +997,7 @@ async def _save_merge_to_framework_merge(
     }
 
     if existing:
-        logger.info(f"[MERGE-TABLE] Updating existing merge...")
+        logger.info("[MERGE-TABLE] Updating existing merge...")
         existing.controls = controls_payload
         existing.summary = merge_summary
         existing.mergeHashes = sorted_hashes

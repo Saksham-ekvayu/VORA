@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Any, Optional
 
 from app.services.comparison_runner import run_comparison
 from fastapi import APIRouter
@@ -65,7 +64,7 @@ async def start_comparison(request: ComparisonRequest):
             return error("Invalid deployment_framework_id or package_version")
 
         logger.info("=" * 80)
-        logger.info(f"[COMPARISON-START] New comparison request received")
+        logger.info("[COMPARISON-START] New comparison request received")
         logger.info(f"  deployment_framework_id: {deployment_framework_id}")
         logger.info(f"  package_version: {package_version}")
         logger.info("=" * 80)

@@ -6,6 +6,7 @@ from app.validations.validation import (
     validate_create_category,
     validate_update_category,
 )
+import logging
 from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy import delete, or_, select
 from vora_shared import data_format, file_storage
@@ -25,6 +26,7 @@ from vora_shared.query_builder import apply_sort, paginate_stmt
 from vora_shared.responses import error, paginated, success
 
 router = APIRouter(tags=["framework-categories"])
+logger = logging.getLogger(__name__)
 
 
 def _format_category(category: FrameworkCategory, users_by_id: dict[str, User]) -> dict:
@@ -48,12 +50,15 @@ async def create_framework_category(
     auth: Annotated[AuthenticatedUser, Depends(authenticate)],
     body: Annotated[dict, Body()] = {},
 ):
+    logger.info(f"[CREATE-CATEGORY] Request started | user_id={auth.user.id} | name={body.get('frameworkCategoryName')} | code={body.get('code')}")
     try:
         fields = validate_create_category(body)
     except FieldError as exc:
+        logger.warning(f"[CREATE-CATEGORY] Validation failed | field={exc.field} | reason={exc.message}")
         return error(exc.message, 400, exc.field, exc.value)
 
     if await code_exists(fields["code"]):
+        logger.warning(f"[CREATE-CATEGORY] Code already exists | code={fields['code']}")
         return error(MESSAGES["FRAMEWORK_CATEGORY_CODE_EXISTS"], 400, "code")
 
     async with session_scope() as session:
@@ -68,6 +73,7 @@ async def create_framework_category(
         await session.flush()
         category_id = str(category.id)
 
+    logger.info(f"[CREATE-CATEGORY] ✅ Created | category_id={category_id} | code={fields['code']} | user_id={auth.user.id}")
     return success({"id": category_id}, MESSAGES["FRAMEWORK_CATEGORY_CREATED"], 201)
 
 
@@ -114,6 +120,7 @@ async def get_all_framework_categories(
     search: Annotated[str | None, Query()] = None,
     is_active: Annotated[str | None, Query(alias="isActive")] = None,
 ):
+    logger.info(f"[GET-CATEGORIES] Request started | user_id={auth.user.id} | page={page} | limit={limit} | is_active={is_active}")
     async with session_scope() as session:
         stmt = select(FrameworkCategory)
         if is_active is not None:
@@ -136,6 +143,7 @@ async def get_all_framework_categories(
 
     message = _get_paginated_message(data, search, is_active)
 
+    logger.info(f"[GET-CATEGORIES] ✅ Retrieved | count={len(data)} | total={pagination['total']} | user_id={auth.user.id}")
     return paginated(data, pagination, message)
 
 
@@ -144,17 +152,21 @@ async def get_framework_category_by_id(
     id: str,
     auth: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
+    logger.info(f"[GET-CATEGORY] Request started | user_id={auth.user.id} | category_id={id}")
     if not is_valid_id(id):
+        logger.warning(f"[GET-CATEGORY] Invalid ID | category_id={id}")
         return error(MESSAGES["FRAMEWORK_CATEGORY_NOT_FOUND"], 404)
 
     async with session_scope() as session:
         category = await session.get(FrameworkCategory, id)
         if not category:
+            logger.warning(f"[GET-CATEGORY] Not found | category_id={id}")
             return error(MESSAGES["FRAMEWORK_CATEGORY_NOT_FOUND"], 404)
         user_ids = {str(uid) for uid in (category.createdBy, category.updatedBy) if uid}
 
     users_by_id = await fetch_users_by_ids(user_ids)
 
+    logger.info(f"[GET-CATEGORY] ✅ Retrieved | category_id={id} | user_id={auth.user.id}")
     return success(
         {"category": _format_category(category, users_by_id)},
         MESSAGES["FRAMEWORK_CATEGORY_SUCCESS"],
@@ -167,17 +179,21 @@ async def update_framework_category(
     auth: Annotated[AuthenticatedUser, Depends(authenticate)],
     body: Annotated[dict, Body()] = {},
 ):
+    logger.info(f"[PUT-CATEGORY] Request started | user_id={auth.user.id} | category_id={id}")
     try:
         fields = validate_update_category(body)
     except FieldError as exc:
+        logger.warning(f"[PUT-CATEGORY] Validation failed | field={exc.field} | reason={exc.message}")
         return error(exc.message, 400, exc.field, exc.value)
 
     if not is_valid_id(id):
+        logger.warning(f"[PUT-CATEGORY] Invalid ID | category_id={id}")
         return error(MESSAGES["FRAMEWORK_CATEGORY_NOT_FOUND"], 404)
 
     async with session_scope() as session:
         category = await session.get(FrameworkCategory, id)
         if not category:
+            logger.warning(f"[PUT-CATEGORY] Not found | category_id={id}")
             return error(MESSAGES["FRAMEWORK_CATEGORY_NOT_FOUND"], 404)
 
         new_code = fields.get("code")
@@ -191,6 +207,7 @@ async def update_framework_category(
                 )
             ).scalar_one_or_none()
             if dup:
+                logger.warning(f"[PUT-CATEGORY] Code already exists | code={new_code}")
                 return error(MESSAGES["FRAMEWORK_CATEGORY_CODE_EXISTS"], 400, "code")
 
         category.updatedBy = str(auth.user.id)
@@ -204,6 +221,7 @@ async def update_framework_category(
             category.isActive = fields["isActive"]
         category_id = str(category.id)
 
+    logger.info(f"[PUT-CATEGORY] ✅ Updated | category_id={id} | code={category.code} | user_id={auth.user.id}")
     return success({"id": category_id}, MESSAGES["FRAMEWORK_CATEGORY_UPDATED"])
 
 
@@ -247,12 +265,15 @@ async def delete_framework_category(
     id: str,
     auth: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
+    logger.info(f"[DELETE-CATEGORY] Request started | user_id={auth.user.id} | category_id={id}")
     if not is_valid_id(id):
+        logger.warning(f"[DELETE-CATEGORY] Invalid ID | category_id={id}")
         return error(MESSAGES["FRAMEWORK_CATEGORY_NOT_FOUND"], 404)
 
     async with session_scope() as session:
         category = await session.get(FrameworkCategory, id)
         if not category:
+            logger.warning(f"[DELETE-CATEGORY] Not found | category_id={id}")
             return error(MESSAGES["FRAMEWORK_CATEGORY_NOT_FOUND"], 404)
 
         # 1. Cascade physical file deletions for Frameworks
@@ -262,6 +283,7 @@ async def delete_framework_category(
             .all()
         )
         _cascade_framework_files(frameworks_to_delete)
+        logger.info(f"[DELETE-CATEGORY] Cascaded delete | frameworks={len(frameworks_to_delete)}")
 
         # 2. Cascade physical file deletions for DeploymentFrameworks
         deployment_frameworks_to_delete = (
@@ -274,6 +296,7 @@ async def delete_framework_category(
             .all()
         )
         _cascade_deployment_framework_files(deployment_frameworks_to_delete)
+        logger.info(f"[DELETE-CATEGORY] Cascaded delete | deployment_frameworks={len(deployment_frameworks_to_delete)}")
 
         # 3. Cascade physical file deletions for FrameworkAssignments
         assignments_to_delete = (
@@ -286,6 +309,7 @@ async def delete_framework_category(
             .all()
         )
         _cascade_assignment_files(assignments_to_delete)
+        logger.info(f"[DELETE-CATEGORY] Cascaded delete | assignments={len(assignments_to_delete)}")
 
         # 4. Perform database deletions
         await session.execute(
@@ -300,10 +324,12 @@ async def delete_framework_category(
             delete(FrameworkAccess).where(FrameworkAccess.frameworkCode == category.code)
         )
         deleted_count = delete_result.rowcount or 0
+        logger.info(f"[DELETE-CATEGORY] Cascaded delete | access_records={deleted_count}")
         await session.delete(category)
 
     message = MESSAGES["FRAMEWORK_CATEGORY_DELETED_WITH_ACCESS"].replace("{count}", str(deleted_count))
 
+    logger.info(f"[DELETE-CATEGORY] ✅ Deleted | category_id={id} | access_count={deleted_count} | user_id={auth.user.id}")
     return success(
         {"id": str(id), "deletedAccessRecords": deleted_count},
         message,

@@ -21,7 +21,6 @@ import sys
 # Add shared package to sys.path so we can import vora_shared
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-import vora_shared.models  # Ensure all models are loaded
 from vora_shared.config import get_settings
 from vora_shared.database import Base
 
