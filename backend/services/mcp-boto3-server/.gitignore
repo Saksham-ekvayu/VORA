@@ -1,7 +1,0 @@
-env/
-aws_files/
-logs/
-__pycache__/
-mcp.db
-
-.gitlab-ci.yml
