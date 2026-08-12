@@ -402,7 +402,7 @@ async def request_framework_access(
             session.add(access_request)
             await session.flush()
             await session.refresh(access_request)
-            logger.info(f"[REQUEST-ACCESS] ✅ New request created | user_id={user.id} | category_id={framework_category_id}")
+            logger.info(f"[REQUEST-ACCESS] New request created | user_id={user.id} | category_id={framework_category_id}")
 
     return success(
         _build_request_access_response(access_request),
@@ -466,7 +466,7 @@ async def get_framework_access_by_id(
             return error(MESSAGES["FRAMEWORK_ACCESS_NOT_FOUND"], 404)
 
     formatted = (await _batch_format([record]))[0]
-    logger.info(f"[GET-ACCESS] ✅ Retrieved | access_id={id} | status={record.status} | user_id={auth.user.id}")
+    logger.info(f"[GET-ACCESS] Retrieved | access_id={id} | status={record.status} | user_id={auth.user.id}")
     return success(formatted, MESSAGES["FRAMEWORK_ACCESS_RECORD_SUCCESS"])
 
 
@@ -680,7 +680,7 @@ async def approve_framework_access(
         flag_modified(record, "approval")
         record_id = str(record.id)
 
-    logger.info(f"[APPROVE-ACCESS] ✅ Approved | access_id={id} | expert_id={record.expertId} | by={auth.user.id}")
+    logger.info(f"[APPROVE-ACCESS] Approved | access_id={id} | expert_id={record.expertId} | by={auth.user.id}")
     return success({"id": record_id}, MESSAGES["FRAMEWORK_ACCESS_APPROVED"])
 
 
@@ -711,7 +711,7 @@ async def reject_framework_access(
         flag_modified(record, "rejection")
         record_id = str(record.id)
 
-    logger.info(f"[REJECT-ACCESS] ✅ Rejected | access_id={id} | expert_id={record.expertId} | by={auth.user.id}")
+    logger.info(f"[REJECT-ACCESS] Rejected | access_id={id} | expert_id={record.expertId} | by={auth.user.id}")
     return success({"id": record_id}, MESSAGES["FRAMEWORK_ACCESS_REJECTED"])
 
 
@@ -771,7 +771,7 @@ async def revoke_framework_access(
             "status": record.status,
         }
 
-    logger.info(f"[REVOKE-ACCESS] ✅ Revoked | expert_id={expert_id} | category_id={framework_category_id} | by={auth.user.id}")
+    logger.info(f"[REVOKE-ACCESS] Revoked | expert_id={expert_id} | category_id={framework_category_id} | by={auth.user.id}")
     return success(result, MESSAGES["FRAMEWORK_ACCESS_REVOKED"])
 
 

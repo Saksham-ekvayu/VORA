@@ -217,7 +217,7 @@ async def get_deployment_frameworks(
             user.role, bool(result["data"]), search, ai_extraction_status, request_review_status
         )
 
-        logger.info(f"[LIST-DEPLOYMENT-FRAMEWORKS] ✅ Retrieved {len(result['data'])} from {total} total | user_id={ctx.user.id}")
+        logger.info(f"[LIST-DEPLOYMENT-FRAMEWORKS] Retrieved {len(result['data'])} from {total} total | user_id={ctx.user.id}")
         return paginated(result["data"], result["pagination"], message)
 
 
@@ -685,7 +685,7 @@ async def update_deployment_framework(
 
             framework.updatedAt = _utcnow()
 
-            logger.info(f"[UPDATE-DEPLOYMENT-FRAMEWORK] ✅ Framework updated | id={id} | patch_type={patch_type} | new_version={new_package.packageVersion}")
+            logger.info(f"[UPDATE-DEPLOYMENT-FRAMEWORK] Framework updated | id={id} | patch_type={patch_type} | new_version={new_package.packageVersion}")
             return success(
                 _format_patch_response(framework, new_package, patch_type),
                 f"Framework {patch_type} patch created successfully",
@@ -739,7 +739,7 @@ async def delete_deployment_framework(
                 logger.warning(f"[DELETE-DEPLOYMENT-FRAMEWORK] Failed to delete file | file_url={file_url} | error={exc}")
 
         await session.delete(framework)
-        logger.info(f"[DELETE-DEPLOYMENT-FRAMEWORK] ✅ Framework deleted | id={id} | files_deleted={deleted_count} | user_id={ctx.user.id}")
+        logger.info(f"[DELETE-DEPLOYMENT-FRAMEWORK] Framework deleted | id={id} | files_deleted={deleted_count} | user_id={ctx.user.id}")
         return success(None, "Framework deleted successfully")
 
 

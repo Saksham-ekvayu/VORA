@@ -73,7 +73,7 @@ async def start_gap_analysis(request: GapAnalysisRequest):
         async with session_scope() as session:
             df = await session.get(DeploymentFramework, deployment_framework_id)
             if not df:
-                logger.error(f"[GAP] ❌ Deployment Framework not found: {deployment_framework_id}")
+                logger.error(f"[GAP] Deployment Framework not found: {deployment_framework_id}")
                 return not_found(f"Deployment Framework not found: {deployment_framework_id}")
 
             framework_assignment_id = df.assignedFrameworkId
@@ -82,7 +82,7 @@ async def start_gap_analysis(request: GapAnalysisRequest):
                 if pkg.get("packageVersion") == package_version:
                     gap_id = pkg.get("gapAnalysis")
                     break
-            logger.info(f"[GAP] ✅ Deployment Framework found: {df.frameworkName}")
+            logger.info(f"[GAP] Deployment Framework found: {df.frameworkName}")
             logger.info(f"    Current Package Version: {df.currentPackageVersion}")
             logger.info(f"    Resolved Framework Assignment ID: {framework_assignment_id}")
 
@@ -91,19 +91,19 @@ async def start_gap_analysis(request: GapAnalysisRequest):
         async with session_scope() as session:
             fa = await session.get(FrameworkAssignment, framework_assignment_id)
             if not fa:
-                logger.error(f"[GAP] ❌ Framework Assignment not found: {framework_assignment_id}")
+                logger.error(f"[GAP] Framework Assignment not found: {framework_assignment_id}")
                 return not_found(f"Framework Assignment not found: {framework_assignment_id}")
 
-            logger.info(f"[GAP] ✅ Framework Assignment found: {fa.frameworkName}")
+            logger.info(f"[GAP] Framework Assignment found: {fa.frameworkName}")
             logger.info(f"    Framework ID: {fa.frameworkId}")
             logger.info(f"    Framework Version: {fa.frameworkVersion}")
 
         # ===== VALIDATION 3: Check Package version exists =====
         logger.info("[GAP] Validation 3: Checking Package version...")
         if not package_version or package_version.strip() == "":
-            logger.error("[GAP] ❌ Invalid package version")
+            logger.error("[GAP] Invalid package version")
             return error("Package version cannot be empty")
-        logger.info(f"[GAP] ✅ Package version valid: {package_version}")
+        logger.info(f"[GAP] Package version valid: {package_version}")
 
         # ===== Create or update gap analysis record in database =====
         logger.info("[GAP] Creating or updating gap analysis record...")
@@ -145,7 +145,7 @@ async def start_gap_analysis(request: GapAnalysisRequest):
             await session.flush()
             await session.commit()
             gap_id = gap_analysis.id
-            logger.info(f"[GAP] ✅ Created gap analysis record | id={gap_id}")
+            logger.info(f"[GAP] Created gap analysis record | id={gap_id}")
 
         # ===== Queue gap analysis as background task =====
         logger.info("[GAP] Queueing background task...")
@@ -154,7 +154,7 @@ async def start_gap_analysis(request: GapAnalysisRequest):
         )
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)
-        logger.info("[GAP] ✅ Gap analysis task queued")
+        logger.info("[GAP] Gap analysis task queued")
 
         return success(
             message="Gap analysis started successfully",
@@ -169,7 +169,7 @@ async def start_gap_analysis(request: GapAnalysisRequest):
         )
 
     except Exception as exc:
-        logger.exception(f"[GAP-START] ❌ Error: {exc}")
+        logger.exception(f"[GAP-START] Error: {exc}")
         return server_error(str(exc))
 
 
