@@ -65,6 +65,7 @@ run_service "deployment-framework-service" 7006 "services/deployment-framework-s
 run_service "extract-controls-service" 7007 "services/extract-controls-service" "app.main:app"
 run_service "compliance-agent-service" 7008 "services/compliance-agent-service" "app.main:app"
 run_service "ai-analysis-service" 7009 "services/ai-analysis-service" "app.main:app"
+run_service "mcp-boto3-server" 7010 "services/mcp-boto3-server" "app.main:app"
 run_service "api-gateway" 8000 "gateway" "main:app"
 
 # Start frontend

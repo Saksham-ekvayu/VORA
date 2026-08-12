@@ -11,6 +11,7 @@ REM   - deployment-framework-service: 7006
 REM   - extract-controls-service: 7007
 REM   - compliance-agent-service: 7008
 REM   - ai-analysis-service: 7009
+REM   - mcp-boto3-server: 7010
 REM   - api-gateway: 8000
 REM =====================================================
 
@@ -53,6 +54,8 @@ if errorlevel 1 (
     timeout /t 1 /nobreak
     start "ai-analysis-service (7009)" cmd /k "cd /d "%ROOT%\services\ai-analysis-service" && .venv\Scripts\activate.bat && python -m uvicorn app.main:app --host localhost --port 7009 --reload --reload-dir . --reload-dir ..\..\shared"
     timeout /t 1 /nobreak
+    start "mcp-boto3-server (7010)" cmd /k "cd /d "%ROOT%\services\mcp-boto3-server" && .venv\Scripts\activate.bat && python -m uvicorn app.main:app --host localhost --port 7010 --reload --reload-dir . --reload-dir ..\..\shared"
+    timeout /t 1 /nobreak
     start "api-gateway (8000)" cmd /k "cd /d "%ROOT%\gateway" && .venv\Scripts\activate.bat && python -m uvicorn main:app --host localhost --port 8000 --reload"
     timeout /t 1 /nobreak
     start "frontend (Vite)" cmd /k "cd /d "%ROOT%\..\frontend" && pnpm dev"
@@ -77,6 +80,7 @@ wt -w new ^
     ; new-tab --title "extract-controls-service (7007)" -d "%ROOT%\services\extract-controls-service" cmd /k ".venv\Scripts\activate.bat && python -m uvicorn app.main:app --host localhost --port 7007 --reload --reload-dir . --reload-dir ..\..\shared" ^
     ; new-tab --title "compliance-agent-service (7008)" -d "%ROOT%\services\compliance-agent-service" cmd /k ".venv\Scripts\activate.bat && python -m uvicorn app.main:app --host localhost --port 7008 --reload --reload-dir . --reload-dir ..\..\shared" ^
     ; new-tab --title "ai-analysis-service (7009)" -d "%ROOT%\services\ai-analysis-service" cmd /k ".venv\Scripts\activate.bat && python -m uvicorn app.main:app --host localhost --port 7009 --reload --reload-dir . --reload-dir ..\..\shared" ^
+    ; new-tab --title "mcp-boto3-server (7010)" -d "%ROOT%\services\mcp-boto3-server" cmd /k ".venv\Scripts\activate.bat && python -m uvicorn app.main:app --host localhost --port 7010 --reload --reload-dir . --reload-dir ..\..\shared" ^
     ; new-tab --title "api-gateway (8000)" -d "%ROOT%\gateway" cmd /k ".venv\Scripts\activate.bat && python -m uvicorn main:app --host localhost --port 8000 --reload" ^
     ; new-tab --title "frontend (Vite)" -d "%ROOT%\..\frontend" cmd /k "pnpm dev"
 
