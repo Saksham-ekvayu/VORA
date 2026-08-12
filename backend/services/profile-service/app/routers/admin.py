@@ -462,7 +462,7 @@ async def update_customer_avatar_by_admin(
             avatar_url = await save_avatar(avatar, f"customer-{customer.tenantId}")
             logger.info(f"[POST-CUSTOMER-AVATAR-ADMIN] Avatar saved | customer_id={id} | url={avatar_url}")
         except AvatarUploadError as exc:
-            logger.error(f"[POST-CUSTOMER-AVATAR-ADMIN] Error | customer_id={id} | error: {exc.message}")
+            logger.exception(f"[POST-CUSTOMER-AVATAR-ADMIN] Error | customer_id={id} | error: {exc.message}")
             return error(exc.message, 400, field="avatar")
 
         old_avatar = customer.avatar

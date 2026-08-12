@@ -176,7 +176,7 @@ async def update_avatar(
         avatar_url = await save_avatar(avatar, str(user.id))
         logger.info(f"[POST-AVATAR] Avatar saved | user_id: {ctx.user.id} | url: {avatar_url}")
     except AvatarUploadError as exc:
-        logger.error(f"[POST-AVATAR] Error | user_id: {ctx.user.id} | error: {exc.message}")
+        logger.exception(f"[POST-AVATAR] Error | user_id: {ctx.user.id} | error: {exc.message}")
         return error(exc.message, 400, field="avatar")
 
     async with session_scope() as session:
@@ -210,7 +210,7 @@ async def update_customer_avatar(
         avatar_url = await save_avatar(avatar, f"customer-{tenant_id}")
         logger.info(f"[POST-CUSTOMER-AVATAR] Avatar saved | tenant_id: {tenant_id} | url: {avatar_url}")
     except AvatarUploadError as exc:
-        logger.error(f"[POST-CUSTOMER-AVATAR] Error | tenant_id: {tenant_id} | error: {exc.message}")
+        logger.exception(f"[POST-CUSTOMER-AVATAR] Error | tenant_id: {tenant_id} | error: {exc.message}")
         return error(exc.message, 400, field="avatar")
 
     async with session_scope() as session:
