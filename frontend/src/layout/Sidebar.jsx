@@ -127,11 +127,11 @@ const ALL_NAV_ITEMS = [
     roles: [ROLE_CUSTOMER_ADMIN],
   },
   {
-    id: "deployment-setup",
-    title: "Deployment Setup",
-    description: "Configure deployment points",
+    id: "monitoring-setup",
+    title: "Monitoring Setup",
+    description: "Configure monitoring points",
     icon: "settings",
-    path: "/deployment-setup",
+    path: "/monitoring-setup",
     roles: [ROLE_CUSTOMER_ADMIN],
   },
   // {

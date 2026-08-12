@@ -303,8 +303,8 @@ function FrameworkDropdown({ frameworks = [], selectedFw, onSelect }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function DeploymentSetup() {
-  usePageTitle("deployment-setup", "Deployment Setup");
+export default function MonitoringSetup() {
+  usePageTitle("monitoring-setup", "Monitoring Setup");
 
   const [frameworks, setFrameworks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -536,10 +536,10 @@ export default function DeploymentSetup() {
           </div>
           <div className="flex flex-col">
             <h2 className="text-sm font-semibold text-foreground">
-              Deployment Setup
+              Monitoring Setup
             </h2>
             <p className="text-xs text-muted-foreground">
-              Configure control deployment paths. VORA&apos;s AI compliance
+              Configure control monitoring paths. VORA&apos;s AI compliance
               engine uses these paths to automatically retrieve and verify
               evidence documents for automated audits.
             </p>
@@ -677,13 +677,13 @@ export default function DeploymentSetup() {
           )}
         </ColPanel>
 
-        {/* ── Col 4: Deployment Points ──────────────────────────────────── */}
+        {/* ── Col 4: Monitoring Points ──────────────────────────────────── */}
         <ColPanel
           className="col-span-2"
           title={
             selectedControl
               ? `${selectedControl.id} · ${capitalizeFirst(selectedControl.name)}`
-              : "Deployment Points"
+              : "Monitoring Points"
           }
           badge={selectedControl ? filteredPoints.length : undefined}
         >
@@ -725,7 +725,7 @@ export default function DeploymentSetup() {
               ))}
               {filteredPoints.length === 0 && (
                 <p className="text-xs text-muted-foreground text-center py-6">
-                  No deployment points found
+                  No monitoring points found
                 </p>
               )}
             </div>
@@ -737,7 +737,7 @@ export default function DeploymentSetup() {
                 className="text-muted-foreground mb-3"
               />
               <p className="text-sm text-muted-foreground">
-                Select a control to view deployment points
+                Select a control to view monitoring points
               </p>
             </div>
           )}
