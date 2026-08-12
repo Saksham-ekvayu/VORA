@@ -40,14 +40,20 @@ const AnalysisActions = ({
   const [comparisonRunning, setComparisonRunning] = useState(false);
   const [gapAnalysisRunning, setGapAnalysisRunning] = useState(false);
 
-  const isMergeProcessing = currentPackage?.mergeDocument?.status === STATUS_PROCESSING;
-  const isComparisonProcessing = currentPackage?.comparison?.status === STATUS_PROCESSING;
-  const isGapAnalysisProcessing = currentPackage?.gapAnalysis?.status === STATUS_PROCESSING;
+  const isMergeProcessing =
+    currentPackage?.mergeDocument?.status === STATUS_PROCESSING;
+  const isComparisonProcessing =
+    currentPackage?.comparison?.status === STATUS_PROCESSING;
+  const isGapAnalysisProcessing =
+    currentPackage?.gapAnalysis?.status === STATUS_PROCESSING;
 
   const isMergeCurrentlyRunning = mergeRunning || isMergeProcessing;
-  const isComparisonCurrentlyRunning = comparisonRunning || isComparisonProcessing;
-  const isGapAnalysisCurrentlyRunning = gapAnalysisRunning || isGapAnalysisProcessing;
-  const isAnalysisCurrentlyRunning = analysisRunning || isComparisonProcessing || isGapAnalysisProcessing;
+  const isComparisonCurrentlyRunning =
+    comparisonRunning || isComparisonProcessing;
+  const isGapAnalysisCurrentlyRunning =
+    gapAnalysisRunning || isGapAnalysisProcessing;
+  const isAnalysisCurrentlyRunning =
+    analysisRunning || isComparisonProcessing || isGapAnalysisProcessing;
 
   const areAllDocumentsExtracted = useMemo(() => {
     const docs = currentPackage?.documents || [];
@@ -178,16 +184,24 @@ const AnalysisActions = ({
     if (isCurrentPackageLive || isMergeCompleted) return null;
 
     // In detail view, apply strict validations. In tabs, be more permissive.
-    const isDisabled = viewContext === "detail"
-      ? isAssignedFrameworkRevoked || !isAssignedFrameworkFinalized || isMergeCurrentlyRunning || !areAllDocumentsExtracted
-      : isMergeCurrentlyRunning || !areAllDocumentsExtracted;
+    const isDisabled =
+      viewContext === "detail"
+        ? isAssignedFrameworkRevoked ||
+          !isAssignedFrameworkFinalized ||
+          isMergeCurrentlyRunning ||
+          !areAllDocumentsExtracted
+        : isMergeCurrentlyRunning || !areAllDocumentsExtracted;
 
     return (
       <Button
         size="xs"
         onClick={handleMergeControls}
         disabled={isDisabled}
-        title={!areAllDocumentsExtracted ? "All uploaded documents must be successfully AI extracted first." : "Merge Controls"}
+        title={
+          !areAllDocumentsExtracted
+            ? "All uploaded documents must be successfully AI extracted first."
+            : "Merge Controls"
+        }
         className="mr-1"
       >
         <Icon

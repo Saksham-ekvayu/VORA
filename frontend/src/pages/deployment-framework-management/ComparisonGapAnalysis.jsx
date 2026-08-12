@@ -20,8 +20,17 @@ import DeploymentFrameworkPackageTable from "./components/custom/DeploymentFrame
 import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
 import GapsTable from "./components/custom/GapTable";
 import ComparisonsTable from "./components/custom/ComparisionTable";
-import { getStatusBadgeProps, transformAssignedFrameworks } from "./components/helper/deploymentFrameworkHelpers";
-import { STATUS_REVOKED, statusVariantMap, typeVariantMap, STATUS_UPLOADED, STATUS_PROCESSING } from "@/utils/commonUtils";
+import {
+  getStatusBadgeProps,
+  transformAssignedFrameworks,
+} from "./components/helper/deploymentFrameworkHelpers";
+import {
+  STATUS_REVOKED,
+  statusVariantMap,
+  typeVariantMap,
+  STATUS_UPLOADED,
+  STATUS_PROCESSING,
+} from "@/utils/commonUtils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ControlsPanel from "@/components/custom/ControlsPanel";
 import AnalysisActions from "./components/AnalysisActions";
@@ -178,11 +187,16 @@ export default function ComparisonGapAnalysis() {
     );
   }, [activePackage]);
 
-  const isMergeProcessing = activePackage?.mergeDocument?.status === STATUS_PROCESSING;
+  const isMergeProcessing =
+    activePackage?.mergeDocument?.status === STATUS_PROCESSING;
   const isComparisonProcessing = comparisonData?.status === STATUS_PROCESSING;
   const isGapAnalysisProcessing = gapAnalysisData?.status === STATUS_PROCESSING;
 
-  const shouldPoll = hasDocumentsProcessing || isMergeProcessing || isComparisonProcessing || isGapAnalysisProcessing;
+  const shouldPoll =
+    hasDocumentsProcessing ||
+    isMergeProcessing ||
+    isComparisonProcessing ||
+    isGapAnalysisProcessing;
 
   useStatusPolling({
     id,
@@ -196,8 +210,10 @@ export default function ComparisonGapAnalysis() {
     return transformAssignedFrameworks(assignedFrameworks, framework);
   }, [assignedFrameworks, framework]);
 
-  const isAssignedFrameworkRevoked = assignedFramework?.status === STATUS_REVOKED;
-  const isAssignedFrameworkFinalized = assignedFramework?.finalization?.isFinalized === true;
+  const isAssignedFrameworkRevoked =
+    assignedFramework?.status === STATUS_REVOKED;
+  const isAssignedFrameworkFinalized =
+    assignedFramework?.finalization?.isFinalized === true;
 
   const comparisonBadge = getStatusBadgeProps(
     comparisonData?.status,

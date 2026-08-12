@@ -625,6 +625,7 @@ const DeploymentFrameworkDetail = () => {
           preReleasePackage={preReleasePackage}
           frameworkId={framework?.id}
           showActions={showAuditorActions}
+          showViewAction={false}
           onExtractionTriggered={handleExtractionTriggered}
           onSuccess={() => fetchFrameworkDetails(true)}
         />
