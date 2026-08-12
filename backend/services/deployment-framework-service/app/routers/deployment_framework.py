@@ -691,7 +691,7 @@ async def update_deployment_framework(
                 f"Framework {patch_type} patch created successfully",
             )
         except Exception as exc:
-            logger.error(f"[UPDATE-DEPLOYMENT-FRAMEWORK] Error: {exc}")
+            logger.exception(f"[UPDATE-DEPLOYMENT-FRAMEWORK] Error: {exc}")
             logger.exception("Framework update error")
             return error(str(exc), 500)
 
