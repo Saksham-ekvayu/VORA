@@ -47,6 +47,7 @@ function TopStatCard({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className="rounded bg-card border border-border p-4 flex items-center gap-4 text-left w-full hover:border-primary/40 hover:shadow-md transition-all group cursor-pointer"
     >

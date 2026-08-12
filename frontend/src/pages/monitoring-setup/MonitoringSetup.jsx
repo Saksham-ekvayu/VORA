@@ -586,6 +586,7 @@ export default function MonitoringSetup() {
           </div>
           {filteredSections.map((sec) => (
             <button
+              type="button"
               key={sec._key}
               onClick={() => {
                 setSelectedSection(sec);
@@ -638,6 +639,7 @@ export default function MonitoringSetup() {
           )}
           {filteredControls.map((ctrl) => (
             <button
+              type="button"
               key={ctrl.id}
               onClick={() => setSelectedControl(ctrl)}
               className={`w-full text-left flex items-center justify-between gap-2 rounded px-1 py-1.5 transition-all cursor-pointer ${
