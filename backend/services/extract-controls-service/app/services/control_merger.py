@@ -181,6 +181,7 @@ def merge_controls_cumulative(
                                 "name": new_dp.get("name", ""),
                                 "status": "pending",
                                 "path": "",
+                                "source": "",
                                 "weightage": 0,
                                 "remark": "",
                             }
