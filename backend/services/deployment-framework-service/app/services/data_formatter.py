@@ -4,7 +4,6 @@ Nested JSONB refs are plain string ids. Callers pass pre-fetched maps
 (str(id) -> document). Use `hydrate_maps()` to build these maps in bulk.
 """
 
-import math
 from typing import Any
 
 from app.helpers.deployment_framework_helpers import coerce_packages

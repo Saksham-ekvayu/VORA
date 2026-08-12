@@ -9,7 +9,6 @@ from typing import Any, Callable, Sequence, TypeVar
 from fastapi import HTTPException, status
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import DeclarativeBase
 from vora_shared.models.user import User
 
 T = TypeVar("T")

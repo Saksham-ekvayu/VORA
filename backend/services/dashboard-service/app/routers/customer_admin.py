@@ -772,6 +772,7 @@ async def get_customer_admin_dashboard(
     ctx: Annotated[RequestContext, Depends(get_context)],
 ):
     try:
+        logger.info(f"[CUSTOMER-ANALYTICS] Dashboard request | tenant_id={ctx.tenant_id} | user_id={ctx.user.id}")
         tenant_id = ctx.tenant_id
         user = ctx.user
 
@@ -905,7 +906,9 @@ async def get_customer_admin_dashboard(
                 "recentActivity": recent_activity,
             }
 
+        logger.info(f"[CUSTOMER-ANALYTICS] ✅ Dashboard loaded | users={len(users)} | dfs={len(deployment_frameworks)} | assignments={len(active_assignments)} | controls={controls_configured}/{controls_total}")
         return success(response_data, "Customer dashboard analytics retrieved successfully")
-    except Exception:
+    except Exception as exc:
+        logger.error(f"[CUSTOMER-ANALYTICS] Error: {exc}")
         logger.exception("Error fetching customer admin dashboard data")
         return server_error("Failed to retrieve customer dashboard analytics")

@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import Annotated
+import logging
 
 from app.helpers.helpers import fetch_users_by_ids
 from app.validations.validation import FieldError, validate_assign_access
@@ -24,6 +25,7 @@ from vora_shared.query_builder import (
 from vora_shared.responses import error, paginated, success
 
 router = APIRouter(tags=["framework-access"])
+logger = logging.getLogger(__name__)
 
 
 def _json_get(obj, key: str, default=None):
@@ -334,13 +336,16 @@ async def request_framework_access(
     framework_category_id: str,
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
+    logger.info(f"[REQUEST-ACCESS] Request started | user_id={ctx.user.id} | category_id={framework_category_id}")
     user = ctx.user
 
     async with session_scope() as session:
         category = await session.get(FrameworkCategory, str(framework_category_id))
         if not category:
+            logger.warning(f"[REQUEST-ACCESS] Category not found | category_id={framework_category_id}")
             return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_CATEGORY_NOT_FOUND"], 404)
         if not category.isActive:
+            logger.warning(f"[REQUEST-ACCESS] Category inactive | category_id={framework_category_id}")
             return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_CATEGORY_IS_NOT_ACTIVE"], 400)
 
         expert_id_str = str(user.id)
@@ -357,6 +362,7 @@ async def request_framework_access(
 
         if existing_access:
             if existing_access.status == "approved":
+                logger.warning(f"[REQUEST-ACCESS] Already has access | user_id={user.id} | category_id={framework_category_id}")
                 return error(
                     msg.MESSAGES.get(
                         "ALREADY_HAS_ACCESS", "You already have approved access to this framework"
@@ -364,6 +370,7 @@ async def request_framework_access(
                     400,
                 )
             if existing_access.status == "pending":
+                logger.warning(f"[REQUEST-ACCESS] Already has pending | user_id={user.id} | category_id={framework_category_id}")
                 return error(
                     msg.MESSAGES.get(
                         "ACCESS_ALREADY_PROCESSED",
@@ -379,6 +386,7 @@ async def request_framework_access(
                 await session.flush()
                 await session.refresh(existing_access)
                 access_request = existing_access
+                logger.info(f"[REQUEST-ACCESS] Resubmitted | user_id={user.id} | category_id={framework_category_id} | old_status={existing_access.status}")
 
         if not existing_access:
             access_request = FrameworkAccess(
@@ -394,6 +402,7 @@ async def request_framework_access(
             session.add(access_request)
             await session.flush()
             await session.refresh(access_request)
+            logger.info(f"[REQUEST-ACCESS] ✅ New request created | user_id={user.id} | category_id={framework_category_id}")
 
     return success(
         _build_request_access_response(access_request),
@@ -445,15 +454,19 @@ async def get_framework_access_by_id(
     id: str,
     auth: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
+    logger.info(f"[GET-ACCESS] Request started | user_id={auth.user.id} | access_id={id}")
     if not is_valid_id(id):
+        logger.warning(f"[GET-ACCESS] Invalid ID | access_id={id}")
         return error(MESSAGES["FRAMEWORK_ACCESS_NOT_FOUND"], 404)
 
     async with session_scope() as session:
         record = await session.get(FrameworkAccess, id)
         if not record:
+            logger.warning(f"[GET-ACCESS] Not found | access_id={id}")
             return error(MESSAGES["FRAMEWORK_ACCESS_NOT_FOUND"], 404)
 
     formatted = (await _batch_format([record]))[0]
+    logger.info(f"[GET-ACCESS] ✅ Retrieved | access_id={id} | status={record.status} | user_id={auth.user.id}")
     return success(formatted, MESSAGES["FRAMEWORK_ACCESS_RECORD_SUCCESS"])
 
 
@@ -645,14 +658,18 @@ async def approve_framework_access(
     id: str,
     auth: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
+    logger.info(f"[APPROVE-ACCESS] Request started | user_id={auth.user.id} | access_id={id}")
     if not is_valid_id(id):
+        logger.warning(f"[APPROVE-ACCESS] Invalid ID | access_id={id}")
         return error(MESSAGES["FRAMEWORK_ACCESS_REQUEST_NOT_FOUND"], 404)
 
     async with session_scope() as session:
         record = await session.get(FrameworkAccess, id)
         if not record:
+            logger.warning(f"[APPROVE-ACCESS] Not found | access_id={id}")
             return error(MESSAGES["FRAMEWORK_ACCESS_REQUEST_NOT_FOUND"], 404)
         if record.status != "pending":
+            logger.warning(f"[APPROVE-ACCESS] Not pending | access_id={id} | status={record.status}")
             return error(MESSAGES["ACCESS_ALREADY_PROCESSED"], 400)
 
         record.status = "approved"
@@ -663,6 +680,7 @@ async def approve_framework_access(
         flag_modified(record, "approval")
         record_id = str(record.id)
 
+    logger.info(f"[APPROVE-ACCESS] ✅ Approved | access_id={id} | expert_id={record.expertId} | by={auth.user.id}")
     return success({"id": record_id}, MESSAGES["FRAMEWORK_ACCESS_APPROVED"])
 
 
@@ -671,14 +689,18 @@ async def reject_framework_access(
     id: str,
     auth: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
+    logger.info(f"[REJECT-ACCESS] Request started | user_id={auth.user.id} | access_id={id}")
     if not is_valid_id(id):
+        logger.warning(f"[REJECT-ACCESS] Invalid ID | access_id={id}")
         return error(MESSAGES["FRAMEWORK_ACCESS_REQUEST_NOT_FOUND"], 404)
 
     async with session_scope() as session:
         record = await session.get(FrameworkAccess, id)
         if not record:
+            logger.warning(f"[REJECT-ACCESS] Not found | access_id={id}")
             return error(MESSAGES["FRAMEWORK_ACCESS_REQUEST_NOT_FOUND"], 404)
         if record.status != "pending":
+            logger.warning(f"[REJECT-ACCESS] Not pending | access_id={id} | status={record.status}")
             return error(MESSAGES["ACCESS_ALREADY_PROCESSED"], 400)
 
         record.status = "rejected"
@@ -689,6 +711,7 @@ async def reject_framework_access(
         flag_modified(record, "rejection")
         record_id = str(record.id)
 
+    logger.info(f"[REJECT-ACCESS] ✅ Rejected | access_id={id} | expert_id={record.expertId} | by={auth.user.id}")
     return success({"id": record_id}, MESSAGES["FRAMEWORK_ACCESS_REJECTED"])
 
 
@@ -698,9 +721,12 @@ async def revoke_framework_access(
     framework_category_id: str,
     auth: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
+    logger.info(f"[REVOKE-ACCESS] Request started | user_id={auth.user.id} | expert_id={expert_id} | category_id={framework_category_id}")
     if not is_valid_id(expert_id):
+        logger.warning(f"[REVOKE-ACCESS] Invalid expert ID | expert_id={expert_id}")
         return error(MESSAGES["EXPERT_NOT_FOUND"], 404)
     if not is_valid_id(framework_category_id):
+        logger.warning(f"[REVOKE-ACCESS] Invalid category ID | category_id={framework_category_id}")
         return error(MESSAGES["FRAMEWORK_CATEGORY_NOT_FOUND"], 404)
 
     async with session_scope() as session:
@@ -708,10 +734,12 @@ async def revoke_framework_access(
             await session.execute(select(User).where(User.id == expert_id, User.isActive.is_(True)))
         ).scalar_one_or_none()
         if not expert:
+            logger.warning(f"[REVOKE-ACCESS] Expert not found or inactive | expert_id={expert_id}")
             return error(MESSAGES["EXPERT_NOT_FOUND"], 404)
 
         category = await session.get(FrameworkCategory, framework_category_id)
         if not category:
+            logger.warning(f"[REVOKE-ACCESS] Category not found | category_id={framework_category_id}")
             return error(MESSAGES["FRAMEWORK_CATEGORY_NOT_FOUND"], 404)
 
         record = (
@@ -723,9 +751,11 @@ async def revoke_framework_access(
             )
         ).scalar_one_or_none()
         if not record:
+            logger.warning(f"[REVOKE-ACCESS] Record not found | expert_id={expert_id} | category_id={framework_category_id}")
             return error(MESSAGES["ACCESS_RECORD_NOT_FOUND"], 404)
 
         if record.status != "approved":
+            logger.warning(f"[REVOKE-ACCESS] Not approved | record_id={record.id} | status={record.status}")
             return error(MESSAGES["ONLY_APPROVED_CAN_REVOKE"], 400)
 
         record.status = "revoked"
@@ -741,6 +771,7 @@ async def revoke_framework_access(
             "status": record.status,
         }
 
+    logger.info(f"[REVOKE-ACCESS] ✅ Revoked | expert_id={expert_id} | category_id={framework_category_id} | by={auth.user.id}")
     return success(result, MESSAGES["FRAMEWORK_ACCESS_REVOKED"])
 
 

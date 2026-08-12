@@ -18,6 +18,7 @@ export const PAGE_TITLES = {
   "critical-gaps": "Critical Gaps",
   "overall-protection": "Overall Protection",
   "deployment-points": "Deployment Points",
+  "monitoring-setup": "Monitoring Setup",
   setup: "Framework Workflow Setup",
 };
 

@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import io
 from datetime import datetime
-from typing import Any
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
