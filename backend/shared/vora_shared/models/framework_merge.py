@@ -24,9 +24,7 @@ class FrameworkMerge(Base):
     """Stores merged controls for a framework (canonical)."""
 
     __tablename__ = "framework_merges"
-    __table_args__ = (
-        Index("ix_framework_merges_created", "createdAt"),
-    )
+    __table_args__ = (Index("ix_framework_merges_created", "createdAt"),)
 
     id: Mapped[str] = mapped_column(String(24), primary_key=True, default=new_id)
     mergeHashes: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
