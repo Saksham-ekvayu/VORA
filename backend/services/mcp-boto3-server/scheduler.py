@@ -15,41 +15,30 @@ current_scheduler_config = {
 }
 
 
-def start_dynamic_scheduler(config):
-    """
-    Start scheduler dynamically
-    """
+def start_dynamic_scheduler(payload: dict):
+    source = payload["source"]
+    scheduler_type = payload.get("scheduler_type", "interval")
 
-    global current_scheduler_config
-
-    current_scheduler_config = config
-
-    if scheduler.running:
-        scheduler.remove_all_jobs()
-
-    scheduler_type = config.get("scheduler_type")
+    scheduler.remove_all_jobs()
 
     if scheduler_type == "interval":
-
-        minutes = config.get("minutes", 1)
-
         scheduler.add_job(
             run_pipeline,
-            IntervalTrigger(minutes=minutes),
-            kwargs={"source": config.get("source")},
-            id="pipeline_job"
+            "interval",
+            minutes=payload.get("minutes", 1),
+            args=[source],
+            id="mcp_pipeline",
+            replace_existing=True,
         )
-
-    elif scheduler_type == "cron":
-
+    else:
         scheduler.add_job(
             run_pipeline,
-            CronTrigger(
-                hour=config.get("hour"),
-                minute=config.get("minute")
-            ),
-            kwargs={"source": config.get("source")},
-            id="pipeline_job"
+            "cron",
+            hour=payload.get("hour", 0),
+            minute=payload.get("minute", 0),
+            args=[source],
+            id="mcp_pipeline",
+            replace_existing=True,
         )
 
     if not scheduler.running:
@@ -57,8 +46,7 @@ def start_dynamic_scheduler(config):
 
     return {
         "status": True,
-        "message": "Scheduler started successfully",
-        "config": config
+        "message": f"Scheduler started for {source}",
     }
 
 
