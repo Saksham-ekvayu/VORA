@@ -325,8 +325,10 @@ async def get_document_extraction(file_hash: str):
     try:
         file_hash = str(file_hash).strip()
         if not file_hash:
+            logger.warning("[GET-EXTRACTION] Invalid file_hash provided")
             return error("Invalid file_hash")
 
+        logger.info(f"[GET-EXTRACTION] Fetching extraction | file_hash={file_hash}")
         async with session_scope() as session:
             doc_extraction = (
                 await session.execute(
@@ -335,16 +337,19 @@ async def get_document_extraction(file_hash: str):
             ).scalar_one_or_none()
 
             if not doc_extraction:
+                logger.warning(f"[GET-EXTRACTION] No extraction found | file_hash={file_hash}")
                 return not_found(f"No extraction found for file hash: {file_hash}")
 
             ai_data = doc_extraction.aiExtraction or {}
+            status = ai_data.get("status", "pending")
+            logger.info(f"[GET-EXTRACTION] ✅ Retrieved extraction | id={doc_extraction.id} | status={status}")
 
             return success(
                 message="Document extraction data retrieved successfully",
                 data={
                     "id": doc_extraction.id,
                     "fileHash": doc_extraction.fileHash,
-                    "status": ai_data.get("status", "pending"),
+                    "status": status,
                     "message": ai_data.get("message"),
                     "timestamp": ai_data.get("timestamp"),
                     "controls": ai_data.get("controls", {}),
@@ -354,6 +359,7 @@ async def get_document_extraction(file_hash: str):
                 },
             )
     except Exception as exc:  # noqa: BLE001
+        logger.error(f"[GET-EXTRACTION] Error for file_hash={file_hash}: {exc}")
         logger.exception("get_document_extraction error | file_hash=%s", file_hash)
         return server_error(str(exc))
 
@@ -370,6 +376,7 @@ async def list_document_extractions(page: int = 1, page_size: int = 10):
         page = clamp_page(page)
         page_size = clamp_limit(page_size, default=10)
 
+        logger.info(f"[LIST-EXTRACTIONS] Listing extractions | page={page} | page_size={page_size}")
         async with session_scope() as session:
             total = (await session.execute(select(func.count()).select_from(DocumentExtraction))).scalar_one()
 
@@ -406,11 +413,13 @@ async def list_document_extractions(page: int = 1, page_size: int = 10):
                     }
                 )
 
+            logger.info(f"[LIST-EXTRACTIONS] ✅ Retrieved {len(items)} extractions from {total} total")
             return paginated(
                 data=items,
                 pagination=build_pagination_meta(page, page_size, total),
                 message=f"Retrieved {len(items)} document extractions",
             )
     except Exception as exc:  # noqa: BLE001
+        logger.error(f"[LIST-EXTRACTIONS] Error: {exc}")
         logger.exception("list_document_extractions error")
         return server_error(str(exc))

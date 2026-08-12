@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from sqlalchemy import select
-from vora_shared import messages as msg
 from vora_shared.database import session_scope
 from vora_shared.models import FrameworkAccess, FrameworkCategory
 

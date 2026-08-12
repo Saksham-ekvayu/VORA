@@ -236,11 +236,14 @@ async def create_customer(
     body: Annotated[CreateCustomerRequest, Body()],
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
+    logger.info(f"[CREATE-CUSTOMER] Request started | user_id={ctx.user.id} | email={body.email} | name={body.name}")
     async with session_scope() as session:
         if await _check_customer_email_exists(session, body.email):
+            logger.warning(f"[CREATE-CUSTOMER] Validation failed | reason: email_exists | email={body.email}")
             return error("Email already exists", 400, field="email")
 
         if body.phone and await _check_customer_phone_exists(session, body.phone):
+            logger.warning(f"[CREATE-CUSTOMER] Validation failed | reason: phone_exists | phone={body.phone}")
             return error("Customer with this phone number already exists", 400, field="phone")
 
         tenant_id = f"tenant_{secrets.token_hex(8)}"
@@ -269,6 +272,7 @@ async def create_customer(
         await session.flush()
         result = customer_dict(new_customer, ctx.user)
 
+    logger.info(f"[CREATE-CUSTOMER] ✅ Created | customer_id={str(new_customer.id)} | tenant={tenant_id} | email={body.email}")
     return success(result, "Customer created successfully")
 
 
@@ -282,6 +286,7 @@ async def get_all_customers(
     sort_by: Annotated[str | None, Query(alias="sortBy")] = None,
     sort_order: Annotated[str | None, Query(alias="sortOrder")] = None,
 ):
+    logger.info(f"[GET-CUSTOMERS] Request started | user_id={ctx.user.id} | page={page} | limit={limit} | search={search} | is_active={is_active}")
     allowed_sort_fields = ["name", "email", "tenantId", "createdAt", "updatedAt"]
     allowed_search_fields = ["name", "email", "tenantId", "phone"]
 
@@ -296,6 +301,7 @@ async def get_all_customers(
         creators = await _batch_fetch_creators(session, data)
         result = [customer_dict(c, creators.get(created_by_user_id(c.createdBy))) for c in data]
 
+    logger.info(f"[GET-CUSTOMERS] ✅ Retrieved | count={len(result)} | total={pagination['total']} | user_id={ctx.user.id}")
     return paginated(result, pagination, "Customers retrieved successfully")
 
 
@@ -310,7 +316,9 @@ async def get_customer_by_id(
     sort_by: Annotated[str | None, Query(alias="sortBy")] = None,
     sort_order: Annotated[str | None, Query(alias="sortOrder")] = None,
 ):
+    logger.info(f"[GET-CUSTOMER] Request started | user_id={ctx.user.id} | customer_id={id} | page={page}")
     if not is_valid_id(id):
+        logger.warning(f"[GET-CUSTOMER] Invalid ID | customer_id={id}")
         return error(msg.CUSTOMER_NOT_FOUND, 404)
 
     allowed_sort_fields = ["name", "email", "createdAt", "updatedAt"]
@@ -319,6 +327,7 @@ async def get_customer_by_id(
     async with session_scope() as session:
         customer = await session.get(Customer, id)
         if not customer:
+            logger.warning(f"[GET-CUSTOMER] Not found | customer_id={id} | user_id={ctx.user.id}")
             return error(msg.CUSTOMER_NOT_FOUND, 404)
 
         creator = None
@@ -339,6 +348,7 @@ async def get_customer_by_id(
             "pagination": users_pagination,
         }
 
+    logger.info(f"[GET-CUSTOMER] ✅ Retrieved | customer_id={id} | users_count={len(users_data)} | user_id={ctx.user.id}")
     return success(customer_details, "Customer details retrieved successfully")
 
 
@@ -348,20 +358,25 @@ async def update_customer(
     body: Annotated[UpdateCustomerRequest, Body()],
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
+    logger.info(f"[PATCH-CUSTOMER] Update request | user_id={ctx.user.id} | customer_id={id} | email={body.email} | name={body.name}")
     if not is_valid_id(id):
+        logger.warning(f"[PATCH-CUSTOMER] Invalid ID | customer_id={id}")
         return error(msg.CUSTOMER_NOT_FOUND, 404)
 
     async with session_scope() as session:
         customer = await session.get(Customer, id)
         if not customer:
+            logger.warning(f"[PATCH-CUSTOMER] Not found | customer_id={id} | user_id={ctx.user.id}")
             return error(msg.CUSTOMER_NOT_FOUND, 404)
 
         if body.email and body.email != customer.email:
             if await _check_customer_email_exists(session, body.email, id):
+                logger.warning(f"[PATCH-CUSTOMER] Email already exists | email={body.email}")
                 return error(msg.EMAIL_ALREADY_EXISTS, 400, field="email")
 
         if body.phone and body.phone != customer.phone:
             if await _check_customer_phone_exists(session, body.phone, id):
+                logger.warning(f"[PATCH-CUSTOMER] Phone already exists | phone={body.phone}")
                 return error(msg.PHONE_ALREADY_EXISTS, 400, field="phone")
 
         _apply_customer_updates(customer, body)
@@ -372,17 +387,21 @@ async def update_customer(
             creator = await session.get(User, creator_id)
         result = customer_dict(customer, creator)
 
+    logger.info(f"[PATCH-CUSTOMER] ✅ Updated | customer_id={id} | user_id={ctx.user.id}")
     return success(result, "Customer updated successfully")
 
 
 @router.patch("/customers/{id}/toggle-status", tags=["admin/customers"])
 async def toggle_customer_status(id: str, ctx: Annotated[AuthenticatedUser, Depends(authenticate)]):
+    logger.info(f"[PATCH-CUSTOMER-STATUS] Toggle request | user_id={ctx.user.id} | customer_id={id}")
     if not is_valid_id(id):
+        logger.warning(f"[PATCH-CUSTOMER-STATUS] Invalid ID | customer_id={id}")
         return error(msg.CUSTOMER_NOT_FOUND, 404)
 
     async with session_scope() as session:
         customer = await session.get(Customer, id)
         if not customer:
+            logger.warning(f"[PATCH-CUSTOMER-STATUS] Not found | customer_id={id}")
             return error(msg.CUSTOMER_NOT_FOUND, 404)
 
         customer.isActive = not customer.isActive
@@ -395,20 +414,25 @@ async def toggle_customer_status(id: str, ctx: Annotated[AuthenticatedUser, Depe
         result = customer_dict(customer, creator)
         action = "activated" if customer.isActive else "deactivated"
 
+    logger.info(f"[PATCH-CUSTOMER-STATUS] ✅ {action.upper()} | customer_id={id} | status={customer.isActive}")
     return success(result, f"Customer {action} successfully")
 
 
 @router.delete("/customers/{id}", tags=["admin/customers"])
 async def delete_customer(id: str, ctx: Annotated[AuthenticatedUser, Depends(authenticate)]):
+    logger.info(f"[DELETE-CUSTOMER] Request started | user_id={ctx.user.id} | customer_id={id}")
     if not is_valid_id(id):
+        logger.warning(f"[DELETE-CUSTOMER] Invalid ID | customer_id={id}")
         return error(msg.CUSTOMER_NOT_FOUND, 404)
 
     async with session_scope() as session:
         customer = await session.get(Customer, id)
         if not customer:
+            logger.warning(f"[DELETE-CUSTOMER] Not found | customer_id={id}")
             return error(msg.CUSTOMER_NOT_FOUND, 404)
         await session.delete(customer)
 
+    logger.info(f"[DELETE-CUSTOMER] ✅ Deleted | customer_id={id} | user_id={ctx.user.id}")
     return success(None, "Customer deleted successfully")
 
 
@@ -419,20 +443,26 @@ async def update_customer_avatar_by_admin(
     avatar: Annotated[UploadFile | None, File()] = None,
 ):
     """Admin uploads a customer avatar by customer id (from updated Mongo API)."""
+    logger.info(f"[POST-CUSTOMER-AVATAR-ADMIN] Request started | user_id={ctx.user.id} | customer_id={id} | filename={avatar.filename if avatar else 'None'}")
     if avatar is None:
+        logger.warning(f"[POST-CUSTOMER-AVATAR-ADMIN] Validation failed | customer_id={id} | reason: avatar_required")
         return error(msg.AVATAR_REQUIRED, 400, field="avatar")
 
     if not is_valid_id(id):
+        logger.warning(f"[POST-CUSTOMER-AVATAR-ADMIN] Invalid ID | customer_id={id}")
         return error(msg.CUSTOMER_NOT_FOUND, 404)
 
     async with session_scope() as session:
         customer = await session.get(Customer, id)
         if not customer:
+            logger.warning(f"[POST-CUSTOMER-AVATAR-ADMIN] Not found | customer_id={id}")
             return error(msg.CUSTOMER_NOT_FOUND, 404)
 
         try:
             avatar_url = await save_avatar(avatar, f"customer-{customer.tenantId}")
+            logger.info(f"[POST-CUSTOMER-AVATAR-ADMIN] Avatar saved | customer_id={id} | url={avatar_url}")
         except AvatarUploadError as exc:
+            logger.error(f"[POST-CUSTOMER-AVATAR-ADMIN] Error | customer_id={id} | error: {exc.message}")
             return error(exc.message, 400, field="avatar")
 
         old_avatar = customer.avatar
@@ -446,6 +476,7 @@ async def update_customer_avatar_by_admin(
         result = customer_dict(customer, creator)
 
     delete_avatar_file(old_avatar)
+    logger.info(f"[POST-CUSTOMER-AVATAR-ADMIN] ✅ Updated | customer_id={id} | user_id={ctx.user.id}")
     return success(result, msg.AVATAR_UPDATED)
 
 
@@ -458,22 +489,26 @@ async def update_customer_avatar_by_admin(
 async def create_user(
     body: Annotated[CreateUserRequest, Body()], ctx: Annotated[AuthenticatedUser, Depends(authenticate)]
 ):
+    logger.info(f"[CREATE-USER] Request started | user_id={ctx.user.id} | role={ctx.user.role} | new_email={body.email} | new_role={body.role}")
     current_role = ctx.user.role
     creator_tenant_id = ctx.tenant_id
 
     # Validate permissions
     new_tenant_id, error_response = _validate_user_creation_permissions(current_role, body, creator_tenant_id)
     if error_response:
+        logger.warning(f"[CREATE-USER] Permission denied | current_role={current_role} | new_role={body.role}")
         return error_response
 
     async with session_scope() as session:
         email_stmt = _user_by_tenant_stmt(new_tenant_id, User.email == body.email)
         if (await session.execute(email_stmt)).scalar_one_or_none():
+            logger.warning(f"[CREATE-USER] Email already exists | email={body.email}")
             return error(msg.EMAIL_ALREADY_EXISTS, 400, field="email")
 
         if body.phone:
             phone_stmt = _user_by_tenant_stmt(new_tenant_id, User.phone == body.phone)
             if (await session.execute(phone_stmt)).scalar_one_or_none():
+                logger.warning(f"[CREATE-USER] Phone already exists | phone={body.phone}")
                 return error("User with this phone number already exists", 400, field="phone")
 
         temp_password = generate_temp_password(12)
@@ -509,12 +544,13 @@ async def create_user(
     )
 
     if not email_sent:
-        logger.error("Failed to send temporary password email to %s", user_email)
+        logger.error(f"[CREATE-USER] Email failed | user_id={user_id} | email={user_email}")
         return success(
             {"id": user_id, "tenantId": tenant},
             msg.USER_CREATED_EMAIL_FAILED,
         )
 
+    logger.info(f"[CREATE-USER] ✅ Created | user_id={user_id} | email={user_email} | role={body.role}")
     return success({"id": user_id, "tenantId": tenant}, msg.USER_CREATED)
 
 
@@ -532,20 +568,24 @@ async def update_user(
     body: Annotated[UpdateUserRequest, Body()],
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
+    logger.info(f"[PATCH-USER] Request started | user_id={ctx.user.id} | target_user={id} | new_role={body.role}")
     current_user = ctx.user
     tenant_id = ctx.tenant_id
 
     if not is_valid_id(id):
+        logger.warning(f"[PATCH-USER] Invalid ID | target_user={id}")
         return error(msg.USER_NOT_FOUND, 404, field="user")
 
     async with session_scope() as session:
         user = (await session.execute(_user_by_tenant_stmt(tenant_id, User.id == id))).scalar_one_or_none()
         if not user:
+            logger.warning(f"[PATCH-USER] Not found | target_user={id} | tenant={tenant_id}")
             return error(msg.USER_NOT_FOUND, 404, field="user")
 
         # Validate permissions
         is_valid, error_msg, status_code = _validate_user_update_permissions(current_user, user, body.role)
         if not is_valid:
+            logger.warning(f"[PATCH-USER] Permission denied | current_user={ctx.user.id} | error={error_msg}")
             return error(error_msg, status_code)
 
         # Check phone uniqueness
@@ -554,6 +594,7 @@ async def update_user(
                 await session.execute(_user_by_tenant_stmt(tenant_id, User.phone == body.phone))
             ).scalar_one_or_none()
             if existing_phone and str(existing_phone.id) != id:
+                logger.warning(f"[PATCH-USER] Phone already exists | phone={body.phone}")
                 return error("User with this phone number already exists", 400, field="phone")
 
         _apply_user_updates(user, body)
@@ -562,6 +603,7 @@ async def update_user(
             "tenantId": str(user.tenantId) if user.tenantId else None,
         }
 
+    logger.info(f"[PATCH-USER] ✅ Updated | user_id={id} | role={body.role} | by={ctx.user.id}")
     return success(result, "User updated successfully")
 
 
@@ -576,6 +618,7 @@ async def get_all_users(
     sort_by: Annotated[str | None, Query(alias="sortBy")] = None,
     sort_order: Annotated[str | None, Query(alias="sortOrder")] = None,
 ):
+    logger.info(f"[GET-USERS] Request started | user_id={ctx.user.id} | page={page} | limit={limit} | role={role} | is_active={is_active}")
     current_role = ctx.user.role
     tenant_id = ctx.tenant_id
 
@@ -622,24 +665,29 @@ async def get_all_users(
     if not users_list:
         message = msg.NO_USERS_MATCH_CRITERIA if (search or is_active or role) else msg.NO_USERS_AVAILABLE
 
+    logger.info(f"[GET-USERS] ✅ Retrieved | count={len(users_list)} | total={pagination['total']} | user_id={ctx.user.id}")
     return paginated(users_list, pagination, message)
 
 
 @router.get("/users/{id}", tags=["admin/users"])
 async def get_user_by_id(id: str, ctx: Annotated[AuthenticatedUser, Depends(authenticate)]):
+    logger.info(f"[GET-USER] Request started | user_id={ctx.user.id} | target_user={id}")
     current_role = ctx.user.role
     tenant_id = ctx.tenant_id
 
     if not is_valid_id(id):
+        logger.warning(f"[GET-USER] Invalid ID | target_user={id}")
         return error(msg.USER_NOT_FOUND, 404, field="user")
 
     async with session_scope() as session:
         user = (await session.execute(_user_by_tenant_stmt(tenant_id, User.id == id))).scalar_one_or_none()
         if not user:
+            logger.warning(f"[GET-USER] Not found | target_user={id} | tenant={tenant_id}")
             return error(msg.USER_NOT_FOUND, 404, field="user")
 
         if current_role == "customer-admin":
             if not _validate_customer_admin_permission(user, str(ctx.user.id)):
+                logger.warning(f"[GET-USER] Permission denied | current_user={ctx.user.id} | target_user={id}")
                 return error(msg.ONLY_VIEW_CREATED_USERS, 403)
 
         creator = None
@@ -655,30 +703,37 @@ async def get_user_by_id(id: str, ctx: Annotated[AuthenticatedUser, Depends(auth
             ).scalar_one_or_none()
             response_data["customer"] = customer_summary(customer)
 
+    logger.info(f"[GET-USER] ✅ Retrieved | target_user={id} | role={user.role} | by={ctx.user.id}")
     return success(response_data, "User detail retrieved successfully")
 
 
 @router.patch("/users/{id}/toggle-status", tags=["admin/users"])
 async def toggle_user_status(id: str, ctx: Annotated[AuthenticatedUser, Depends(authenticate)]):
+    logger.info(f"[PATCH-USER-STATUS] Toggle request | user_id={ctx.user.id} | target_user={id}")
     current_role = ctx.user.role
     if current_role not in ("admin", "customer-admin"):
+        logger.warning(f"[PATCH-USER-STATUS] Permission denied | user_id={ctx.user.id} | role={current_role}")
         return forbidden("Forbidden: only admin or customer can access.")
 
     tenant_id = ctx.tenant_id
 
     if str(ctx.user.id) == id:
+        logger.warning(f"[PATCH-USER-STATUS] Cannot change own status | user_id={ctx.user.id}")
         return error(msg.cannot_change_own_status(current_role), 400)
 
     if not is_valid_id(id):
+        logger.warning(f"[PATCH-USER-STATUS] Invalid ID | target_user={id}")
         return error(msg.USER_NOT_FOUND, 404, field="user")
 
     async with session_scope() as session:
         user = (await session.execute(_user_by_tenant_stmt(tenant_id, User.id == id))).scalar_one_or_none()
         if not user:
+            logger.warning(f"[PATCH-USER-STATUS] Not found | target_user={id}")
             return error(msg.USER_NOT_FOUND, 404, field="user")
 
         if current_role == "customer-admin":
             if not _validate_customer_admin_permission(user, str(ctx.user.id)):
+                logger.warning(f"[PATCH-USER-STATUS] Permission denied | current_user={ctx.user.id} | target_user={id}")
                 return error(msg.ONLY_CHANGE_STATUS_CREATED_USERS, 403)
 
         new_status = not user.isActive
@@ -691,27 +746,33 @@ async def toggle_user_status(id: str, ctx: Annotated[AuthenticatedUser, Depends(
         }
 
     action = msg.USER_ACTIVATED if new_status else msg.USER_DEACTIVATED
+    logger.info(f"[PATCH-USER-STATUS] ✅ {action.upper()} | target_user={id} | status={new_status} | by={ctx.user.id}")
     return success(result, action)
 
 
 @router.delete("/users/{id}", tags=["admin/users"])
 async def delete_user(id: str, ctx: Annotated[AuthenticatedUser, Depends(authenticate)]):
+    logger.info(f"[DELETE-USER] Request started | user_id={ctx.user.id} | target_user={id}")
     current_role = ctx.user.role
     tenant_id = ctx.tenant_id
 
     if str(ctx.user.id) == id:
+        logger.warning(f"[DELETE-USER] Cannot delete own account | user_id={ctx.user.id}")
         return error(msg.cannot_delete_own_account(current_role), 400)
 
     if not is_valid_id(id):
+        logger.warning(f"[DELETE-USER] Invalid ID | target_user={id}")
         return error(msg.USER_NOT_FOUND, 404, field="user")
 
     async with session_scope() as session:
         user = (await session.execute(_user_by_tenant_stmt(tenant_id, User.id == id))).scalar_one_or_none()
         if not user:
+            logger.warning(f"[DELETE-USER] Not found | target_user={id}")
             return error(msg.USER_NOT_FOUND, 404, field="user")
 
         if current_role == "customer-admin":
             if not _validate_customer_admin_permission(user, str(ctx.user.id)):
+                logger.warning(f"[DELETE-USER] Permission denied | current_user={ctx.user.id} | target_user={id}")
                 return error(msg.ONLY_DELETE_CREATED_USERS, 403)
 
         if user.role == "expert":
@@ -723,4 +784,5 @@ async def delete_user(id: str, ctx: Annotated[AuthenticatedUser, Depends(authent
         }
         await session.delete(user)
 
+    logger.info(f"[DELETE-USER] ✅ Deleted | target_user={id} | by={ctx.user.id}")
     return success(result, msg.USER_DELETED)

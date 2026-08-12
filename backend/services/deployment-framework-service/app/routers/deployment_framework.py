@@ -17,7 +17,7 @@ from app.services import (
 )
 from fastapi import APIRouter, Body, Depends, File, Form, Path, Query, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from vora_shared import file_storage, query_builder
 from vora_shared.database import session_scope
 from vora_shared.ids import is_valid_id, new_id
@@ -146,6 +146,7 @@ async def get_deployment_frameworks(
     ai_extraction_status: Annotated[str | None, Query(alias="aiExtractionStatus")] = None,
     request_review_status: Annotated[str | None, Query(alias="requestReviewStatus")] = None,
 ):
+    logger.info(f"[LIST-DEPLOYMENT-FRAMEWORKS] Request | user_id={ctx.user.id} | role={ctx.user.role} | page={page} | limit={limit} | search={search}")
     user = ctx.user
     tenant_id = ctx.tenant_id
     allowed_sort_fields = [
@@ -216,6 +217,7 @@ async def get_deployment_frameworks(
             user.role, bool(result["data"]), search, ai_extraction_status, request_review_status
         )
 
+        logger.info(f"[LIST-DEPLOYMENT-FRAMEWORKS] ✅ Retrieved {len(result['data'])} from {total} total | user_id={ctx.user.id}")
         return paginated(result["data"], result["pagination"], message)
 
 
@@ -242,6 +244,7 @@ def _format_client_control(fw: Any, live_package: Any, merge: Any | None) -> dic
 async def get_deployment_framework_package_client_controls(
     ctx: Annotated[RequestContext, Depends(get_context)],
 ):
+    logger.info(f"[GET-CLIENT-CONTROLS] Fetching client controls | user_id={ctx.user.id}")
     async with session_scope() as session:
         frameworks = list(
             (
@@ -322,6 +325,7 @@ async def update_deployment_package_point_path(
     ctx: Annotated[RequestContext, Depends(get_context)],
     body: Annotated[dict[str, Any], Body(...)],
 ):
+    logger.info(f"[UPDATE-DEPLOYMENT-POINTS] Update request | id={id} | user_id={ctx.user.id}")
     control_id = body.get("controlId")
     point_id = body.get("pointId")
     path_value = body.get("path")
@@ -404,15 +408,18 @@ async def get_deployment_framework_by_id(
     async with session_scope() as session:
         framework = await session.get(DeploymentFramework, str(id))
         if not framework:
+            logger.warning(f"[GET-DEPLOYMENT-FRAMEWORK] Framework not found: {id}")
             return not_found(FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"])
 
         if user.role != "expert" and framework.tenantId != ctx.tenant_id:
+            logger.warning(f"[GET-DEPLOYMENT-FRAMEWORK] Access denied for user | id={id} | user_id={ctx.user.id}")
             return not_found(FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"])
 
         packages = coerce_packages(framework.packages)
         if user.role in ("expert", "internal-expert"):
             assigned_packages = [p for p in packages if _expert_assigned(p, str(user.id))]
             if not assigned_packages:
+                logger.warning(f"[GET-DEPLOYMENT-FRAMEWORK] No assigned packages for expert | id={id} | user_id={ctx.user.id}")
                 return not_found(FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"])
             # Use a read-only view so the ORM attribute on the live row is
             # never overwritten. See `_FrameworkView` docstring.
@@ -428,6 +435,7 @@ async def get_deployment_framework_by_id(
                 or not current_package.expertReview
                 or current_package.expertReview.status != "approved"
             ):
+                logger.warning(f"[GET-DEPLOYMENT-FRAMEWORK] Package not approved for user | id={id} | user_id={ctx.user.id}")
                 return error(BUSINESS_MESSAGES["FRAMEWORK_ACCESS_DENIED"], 403)
 
         maps = await data_formatter.hydrate_maps(session, [framework])
@@ -464,6 +472,7 @@ async def get_deployment_framework_package_by_version(
     package_version: Annotated[str, Path(alias="packageVersion")],
     ctx: Annotated[RequestContext, Depends(get_context)],
 ):
+    logger.info(f"[GET-PACKAGE-VERSION] Fetching package | id={id} | version={package_version} | user_id={ctx.user.id}")
     user = ctx.user
     async with session_scope() as session:
         framework = await session.get(DeploymentFramework, str(id))
@@ -597,12 +606,14 @@ async def update_deployment_framework(
     files: Annotated[list[UploadFile], File()] = [],
     metadata: Annotated[str | None, Form()] = None,
 ):
+    logger.info(f"[UPDATE-DEPLOYMENT-FRAMEWORK] Update request | id={id} | user_id={ctx.user.id} | files={len(files)}")
     tenant_id = ctx.tenant_id
 
     async with session_scope() as session:
         framework = await _get_framework_for_update(session, id, tenant_id)
 
         if not framework:
+            logger.warning(f"[UPDATE-DEPLOYMENT-FRAMEWORK] Framework not found: {id}")
             return not_found(_RESOURCE_DEPLOYMENT_FRAMEWORK)
 
         meta_dict = _parse_metadata(metadata)
@@ -610,11 +621,14 @@ async def update_deployment_framework(
 
         patch_type = meta_dict.get("patchType", "minor")
         if patch_type not in ("minor", "major"):
+            logger.warning(f"[UPDATE-DEPLOYMENT-FRAMEWORK] Invalid patch type: {patch_type}")
             return error(FRAMEWORK_SERVICE_MESSAGES["INVALID_PATCH_TYPE"], 400)
 
         try:
+            logger.info(f"[UPDATE-DEPLOYMENT-FRAMEWORK] Processing {patch_type} patch | id={id}")
             file_entries = await _process_uploaded_files(files)
             if isinstance(file_entries, JSONResponse):
+                logger.error(f"[UPDATE-DEPLOYMENT-FRAMEWORK] File processing failed | id={id}")
                 return file_entries
 
             if patch_type == "minor":
@@ -631,14 +645,17 @@ async def update_deployment_framework(
                 framework, uploaded_files_map, result, str(ctx.user.id)
             )
             if save_result.get("error"):
+                logger.error(f"[UPDATE-DEPLOYMENT-FRAMEWORK] Failed to save files | id={id} | error={save_result['filename']}")
                 return error(f"Failed to save file: {save_result['filename']}", 500)
 
             missing_files_error = _check_missing_files(result["newPackage"]["documents"])
             if missing_files_error:
+                logger.warning(f"[UPDATE-DEPLOYMENT-FRAMEWORK] Missing files check failed | id={id}")
                 return missing_files_error
 
             validation = package_builder.validate_package(result["newPackage"])
             if not validation["isValid"]:
+                logger.warning(f"[UPDATE-DEPLOYMENT-FRAMEWORK] Package validation failed | id={id} | errors={validation['errors']}")
                 return error(f"Package validation failed: {', '.join(validation['errors'])}", 400)
 
             from vora_shared.models.deployment_framework import (
@@ -668,11 +685,13 @@ async def update_deployment_framework(
 
             framework.updatedAt = _utcnow()
 
+            logger.info(f"[UPDATE-DEPLOYMENT-FRAMEWORK] ✅ Framework updated | id={id} | patch_type={patch_type} | new_version={new_package.packageVersion}")
             return success(
                 _format_patch_response(framework, new_package, patch_type),
                 f"Framework {patch_type} patch created successfully",
             )
         except Exception as exc:
+            logger.error(f"[UPDATE-DEPLOYMENT-FRAMEWORK] Error: {exc}")
             logger.exception("Framework update error")
             return error(str(exc), 500)
 
@@ -697,11 +716,13 @@ async def delete_deployment_framework(
             )
         ).scalar_one_or_none()
         if not framework:
+            logger.warning(f"[DELETE-DEPLOYMENT-FRAMEWORK] Framework not found: {id}")
             return not_found(_RESOURCE_DEPLOYMENT_FRAMEWORK)
 
         is_owner = str(framework.uploadedBy) == str(user.id)
         is_admin = user.role == "admin"
         if not is_owner and not is_admin:
+            logger.warning(f"[DELETE-DEPLOYMENT-FRAMEWORK] Permission denied | id={id} | user_id={ctx.user.id}")
             return forbidden("You don't have permission to delete this framework")
 
         packages = coerce_packages(framework.packages)
@@ -713,10 +734,12 @@ async def delete_deployment_framework(
                 file_path = helpers.get_upload_file_path(file_url)
                 if file_path and os.path.exists(file_path):
                     os.remove(file_path)
+                    deleted_count += 1
             except Exception as exc:
-                logger.exception("Failed to delete file %s: %s", file_url, exc)
+                logger.warning(f"[DELETE-DEPLOYMENT-FRAMEWORK] Failed to delete file | file_url={file_url} | error={exc}")
 
         await session.delete(framework)
+        logger.info(f"[DELETE-DEPLOYMENT-FRAMEWORK] ✅ Framework deleted | id={id} | files_deleted={deleted_count} | user_id={ctx.user.id}")
         return success(None, "Framework deleted successfully")
 
 
@@ -732,6 +755,8 @@ async def upload_deployment_framework(
 ):
     import json
 
+    logger.info(f"[UPLOAD-DEPLOYMENT-FRAMEWORK] Upload request | user_id={ctx.user.id} | files={len(file or []) + len(files or [])}")
+    
     meta: dict[str, Any] = {}
     if metadata:
         try:
@@ -841,9 +866,11 @@ async def preview_framework_file(
     file_id: Annotated[str, Path(alias="fileId")],
     ctx: Annotated[RequestContext, Depends(get_context)],
 ):
+    logger.info(f"[PREVIEW-FILE] Preview request | framework_id={framework_id} | file_id={file_id}")
     async with session_scope() as session:
         framework = await session.get(DeploymentFramework, str(framework_id))
         if not framework or not helpers.find_framework_document(framework, file_id):
+            logger.warning(f"[PREVIEW-FILE] Framework or file not found | framework_id={framework_id} | file_id={file_id}")
             return not_found(FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"])
 
         document = helpers.find_framework_document(framework, file_id)
@@ -874,6 +901,7 @@ async def download_framework_file(
     file_id: Annotated[str, Path(alias="fileId")],
     ctx: Annotated[RequestContext, Depends(get_context)],
 ):
+    logger.info(f"[DOWNLOAD-FILE] Download request | framework_id={framework_id} | file_id={file_id}")
     async with session_scope() as session:
         framework = await session.get(DeploymentFramework, str(framework_id))
         if not framework or not helpers.find_framework_document(framework, file_id):
@@ -907,6 +935,7 @@ async def delete_deployment_framework_package(
     package_version: Annotated[str, Path(alias="packageVersion")],
     ctx: Annotated[RequestContext, Depends(get_context)],
 ):
+    logger.info(f"[DELETE-PACKAGE] Delete request | framework_id={framework_id} | package_version={package_version} | user_id={ctx.user.id}")
     tenant_id = ctx.tenant_id
 
     async with session_scope() as session:
@@ -1010,6 +1039,7 @@ async def download_deployment_framework_report(
     package_version: Annotated[str, Path(alias="packageVersion")],
     ctx: Annotated[RequestContext, Depends(get_context)],
 ):
+    logger.info(f"[DOWNLOAD-REPORT] Report download request | id={id} | package_version={package_version} | user_id={ctx.user.id}")
     user = ctx.user
     async with session_scope() as session:
         stmt = select(DeploymentFramework).where(DeploymentFramework.id == str(id))
@@ -1055,12 +1085,14 @@ async def request_expert_review(
     ctx: Annotated[RequestContext, Depends(get_context)],
     body: Annotated[dict[str, Any], Body(...)],
 ):
+    logger.info(f"[REQUEST-REVIEW] Review request | id={id} | user_id={ctx.user.id} | package_version={body.get('packageVersion')} | expert_id={body.get('expertId')}")
     user = ctx.user
     tenant_id = ctx.tenant_id
     package_version = body.get("packageVersion")
     expert_id = body.get("expertId")
 
     if user.role != "auditor":
+        logger.warning(f"[REQUEST-REVIEW] Unauthorized attempt | user_id={ctx.user.id} | role={user.role}")
         return forbidden("Only auditors can request expert reviews")
 
     if not package_version:
@@ -1181,12 +1213,14 @@ async def review_deployment_package(
     ctx: Annotated[RequestContext, Depends(get_context)],
     body: Annotated[dict[str, Any], Body(...)],
 ):
+    logger.info(f"[REVIEW-PACKAGE] Review action | id={id} | package_version={package_version} | action={body.get('action')} | user_id={ctx.user.id}")
     user = ctx.user
     tenant_id = ctx.tenant_id
     action = body.get("action")
     comments = body.get("comments")
 
     if user.role != "internal-expert":
+        logger.warning(f"[REVIEW-PACKAGE] Unauthorized attempt | user_id={ctx.user.id} | role={user.role}")
         return forbidden("Only internal experts can review deployment packages")
 
     async with session_scope() as session:
@@ -1276,6 +1310,7 @@ async def add_review_remark(
     ctx: Annotated[RequestContext, Depends(get_context)],
     body: Annotated[dict[str, Any], Body(...)],
 ):
+    logger.info(f"[ADD-COMPARISON-REMARK] Adding comparison remark | id={id} | package_version={package_version} | user_id={ctx.user.id} | assigned_control_id={body.get('assignedControlId')}")
     user = ctx.user
     tenant_id = ctx.tenant_id
     assigned_control_id = body.get("assignedControlId")
@@ -1283,6 +1318,7 @@ async def add_review_remark(
     comment = body.get("comment")
 
     if user.role != "internal-expert":
+        logger.warning(f"[ADD-COMPARISON-REMARK] Unauthorized attempt | user_id={ctx.user.id} | role={user.role}")
         return forbidden("Only internal experts can add review remarks")
 
     async with session_scope() as session:
@@ -1335,6 +1371,7 @@ async def add_gap_review_remark(
     ctx: Annotated[RequestContext, Depends(get_context)],
     body: Annotated[dict[str, Any], Body(...)],
 ):
+    logger.info(f"[ADD-GAP-REMARK] Adding gap analysis remark | id={id} | package_version={package_version} | user_id={ctx.user.id} | assigned_control_id={body.get('assignedControlId')}")
     user = ctx.user
     tenant_id = ctx.tenant_id
     assigned_control_id = body.get("assignedControlId")
@@ -1344,6 +1381,7 @@ async def add_gap_review_remark(
     comment = body.get("comment")
 
     if user.role != "internal-expert":
+        logger.warning(f"[ADD-GAP-REMARK] Unauthorized attempt | user_id={ctx.user.id} | role={user.role}")
         return forbidden("Only internal experts can add review remarks")
 
     async with session_scope() as session:
