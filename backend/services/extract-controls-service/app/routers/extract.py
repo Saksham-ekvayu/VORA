@@ -112,13 +112,13 @@ async def extract_framework_controls(framework_id: str, file_id: str):
                     session.add(doc_extraction)
                     await session.flush()
                     doc_extraction_id = doc_extraction.id
-                    logger.info(f"[API] ✅ Created document_extraction | id={doc_extraction_id}")
+                    logger.info(f"[API] Created document_extraction | id={doc_extraction_id}")
 
         # Queue extraction as background task (don't wait for it)
         task = asyncio.create_task(run_framework_extraction(framework_id, file_id))
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)
-        logger.info("[API] ✅ Extraction task queued")
+        logger.info("[API] Extraction task queued")
 
         return success(
             message="Framework extraction started",
@@ -132,7 +132,7 @@ async def extract_framework_controls(framework_id: str, file_id: str):
         )
 
     except Exception as exc:
-        logger.exception(f"[API] ❌ Request failed: {exc}")
+        logger.exception(f"[API] Request failed: {exc}")
         logger.exception("Framework extraction request error:")
         return server_error(str(exc))
 
@@ -222,13 +222,13 @@ async def extract_deployment_framework_controls(df_id: str, pkg_ver: str, file_i
                     session.add(doc_extraction)
                     await session.flush()
                     doc_extraction_id = doc_extraction.id
-                    logger.info(f"[API] ✅ Created document_extraction | id={doc_extraction_id}")
+                    logger.info(f"[API] Created document_extraction | id={doc_extraction_id}")
 
         # Queue extraction as background task (don't wait for it)
         task = asyncio.create_task(run_deployment_framework_extraction(df_id, pkg_ver, file_id))
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)
-        logger.info("[API] ✅ Deployment Framework extraction task queued")
+        logger.info("[API] Deployment Framework extraction task queued")
 
         return success(
             message="Deployment Framework extraction started",
@@ -243,7 +243,7 @@ async def extract_deployment_framework_controls(df_id: str, pkg_ver: str, file_i
         )
 
     except Exception as exc:
-        logger.exception(f"[API] ❌ Deployment Framework request failed: {exc}")
+        logger.exception(f"[API] Deployment Framework request failed: {exc}")
         return server_error(str(exc))
 
 
@@ -289,7 +289,7 @@ async def merge_deployment_package(df_id: str, pkg_ver: str):
         task = asyncio.create_task(run_deployment_package_merge(df_id, pkg_ver))
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)
-        logger.info("[API] ✅ Package merge task queued")
+        logger.info("[API] Package merge task queued")
 
         return success(
             message="Deployment package merge started",
@@ -301,7 +301,7 @@ async def merge_deployment_package(df_id: str, pkg_ver: str):
         )
 
     except Exception as exc:
-        logger.exception(f"[API] ❌ Package merge request failed: {exc}")
+        logger.exception(f"[API] Package merge request failed: {exc}")
         return server_error(str(exc))
 
 
@@ -342,7 +342,7 @@ async def get_document_extraction(file_hash: str):
 
             ai_data = doc_extraction.aiExtraction or {}
             status = ai_data.get("status", "pending")
-            logger.info(f"[GET-EXTRACTION] ✅ Retrieved extraction | id={doc_extraction.id} | status={status}")
+            logger.info(f"[GET-EXTRACTION] Retrieved extraction | id={doc_extraction.id} | status={status}")
 
             return success(
                 message="Document extraction data retrieved successfully",
@@ -413,7 +413,7 @@ async def list_document_extractions(page: int = 1, page_size: int = 10):
                     }
                 )
 
-            logger.info(f"[LIST-EXTRACTIONS] ✅ Retrieved {len(items)} extractions from {total} total")
+            logger.info(f"[LIST-EXTRACTIONS] Retrieved {len(items)} extractions from {total} total")
             return paginated(
                 data=items,
                 pagination=build_pagination_meta(page, page_size, total),

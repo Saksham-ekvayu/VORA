@@ -253,7 +253,7 @@ async def get_expert_dashboard_analytics(
     approved_uploads = sum(1 for fw in frameworks if _approval_status(fw) == "approved")
     approval_progress = round((approved_uploads / total_uploads) * 100) if total_uploads else 0
 
-    logger.info(f"[EXPERT-ANALYTICS] ✅ Dashboard loaded | uploads={total_uploads} | approved={approved_uploads} | progress={approval_progress}%")
+    logger.info(f"[EXPERT-ANALYTICS] Dashboard loaded | uploads={total_uploads} | approved={approved_uploads} | progress={approval_progress}%")
     return success(
         {
             "stats": {

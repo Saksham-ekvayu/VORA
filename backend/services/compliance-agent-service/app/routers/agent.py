@@ -86,7 +86,7 @@ async def list_agents():
     try:
         logger.info("[LIST-AGENTS] Fetching available agents")
         agents = await _ensure_default_agents()
-        logger.info(f"[LIST-AGENTS] ✅ Retrieved {len(agents)} agents")
+        logger.info(f"[LIST-AGENTS] Retrieved {len(agents)} agents")
         return success(
             message=f"Returned {len(agents)} agents",
             data={"agents": agents, "total": len(agents)},
@@ -108,7 +108,7 @@ async def list_uploads():
                 .all()
             )
             formatted = [_uploaded_to_dict(r) for r in rows]
-        logger.info(f"[LIST-UPLOADS] ✅ Retrieved {len(formatted)} uploads")
+        logger.info(f"[LIST-UPLOADS] Retrieved {len(formatted)} uploads")
         return success(
             message=f"Returned {len(formatted)} uploads",
             data={"total": len(formatted), "uploads": formatted},
@@ -130,7 +130,7 @@ async def get_all_output():
                 .all()
             )
             data = [_evidence_to_dict(r) for r in rows]
-        logger.info(f"[GET-OUTPUT] ✅ Retrieved {len(data)} evidence documents")
+        logger.info(f"[GET-OUTPUT] Retrieved {len(data)} evidence documents")
         return success(
             message=f"Returned {len(data)} evidence documents",
             data={"total_files": len(data), "data": data},
@@ -166,7 +166,7 @@ async def get_output_by_control(control_id: str):
             if not row:
                 logger.warning(f"[GET-OUTPUT-CONTROL] No evidence found | control_id={control_id}")
                 return error(f"No evidence found for control '{control_id}'", 404)
-            logger.info(f"[GET-OUTPUT-CONTROL] ✅ Found evidence | control_id={control_id}")
+            logger.info(f"[GET-OUTPUT-CONTROL] Found evidence | control_id={control_id}")
             return success(
                 message=f"Found evidence for control '{control_id}'",
                 data=_evidence_to_dict(row),
@@ -197,7 +197,7 @@ async def status():
 
     settings = get_settings()
     evidence_folder = os.environ.get("UPLOAD_DIR", getattr(settings, "upload_dir", None) or "uploads")
-    logger.info(f"[STATUS] ✅ Service healthy | agents={len(agents)} | evidence_files={count}")
+    logger.info(f"[STATUS] Service healthy | agents={len(agents)} | evidence_files={count}")
     return success(
         message="Service status",
         data={
@@ -275,7 +275,7 @@ async def ingest(request: Request):
 
     # Background stub processing (OCR/LLM omitted)
     asyncio.get_running_loop().create_task(process_ingest(process_payload))
-    logger.info(f"[INGEST] ✅ File processing queued | file_id={file_id}")
+    logger.info(f"[INGEST] File processing queued | file_id={file_id}")
 
     return success(
         message="Ingest accepted",

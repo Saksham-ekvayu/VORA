@@ -267,31 +267,60 @@ export async function downloadDeploymentFrameworkReport(
 }
 
 /**
- * Run full deployment analysis (comparison + gap analysis)
+ * Run comparison analysis
  */
-export async function runAnalysis(deploymentFrameworkId, packageVersion) {
+export async function runComparison(deploymentFrameworkId, packageVersion) {
   const payload = {
     deployment_framework_id: deploymentFrameworkId,
     package_version: packageVersion,
   };
 
+  await apiRequest(
+    "/comparison/start",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+    true
+  );
+
+  return {
+    success: true,
+    message: "Comparison Analysis started successfully",
+  };
+}
+
+/**
+ * Run gap analysis
+ */
+export async function runGapAnalysis(deploymentFrameworkId, packageVersion) {
+  const payload = {
+    deployment_framework_id: deploymentFrameworkId,
+    package_version: packageVersion,
+  };
+
+  await apiRequest(
+    "/deployment-gap/start",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+    true
+  );
+
+  return {
+    success: true,
+    message: "Gap Analysis started successfully",
+  };
+}
+
+/**
+ * Run full deployment analysis (comparison + gap analysis)
+ */
+export async function runAnalysis(deploymentFrameworkId, packageVersion) {
   await Promise.all([
-    apiRequest(
-      "/comparison/start",
-      {
-        method: "POST",
-        body: JSON.stringify(payload),
-      },
-      true
-    ),
-    apiRequest(
-      "/deployment-gap/start",
-      {
-        method: "POST",
-        body: JSON.stringify(payload),
-      },
-      true
-    ),
+    runComparison(deploymentFrameworkId, packageVersion),
+    runGapAnalysis(deploymentFrameworkId, packageVersion),
   ]);
 
   return {
@@ -509,6 +538,8 @@ export default {
   deleteDeploymentFramework,
   deleteDeploymentFrameworkPackage,
   extractDeploymentFramework,
+  runComparison,
+  runGapAnalysis,
   runAnalysis,
   downloadDeploymentFrameworkReport,
   mergeDeploymentFrameworkControls,

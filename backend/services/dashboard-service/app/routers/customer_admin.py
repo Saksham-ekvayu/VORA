@@ -906,7 +906,7 @@ async def get_customer_admin_dashboard(
                 "recentActivity": recent_activity,
             }
 
-        logger.info(f"[CUSTOMER-ANALYTICS] ✅ Dashboard loaded | users={len(users)} | dfs={len(deployment_frameworks)} | assignments={len(active_assignments)} | controls={controls_configured}/{controls_total}")
+        logger.info(f"[CUSTOMER-ANALYTICS] Dashboard loaded | users={len(users)} | dfs={len(deployment_frameworks)} | assignments={len(active_assignments)} | controls={controls_configured}/{controls_total}")
         return success(response_data, "Customer dashboard analytics retrieved successfully")
     except Exception as exc:
         logger.error(f"[CUSTOMER-ANALYTICS] Error: {exc}")

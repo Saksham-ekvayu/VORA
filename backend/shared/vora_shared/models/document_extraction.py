@@ -24,6 +24,7 @@ class ExtractionDeploymentPoint(BaseModel):
     name: str
     status: Literal["pending", "approved", "rejected"] = "pending"
     path: str = ""
+    source: str = ""
     weightage: float = 10
     remark: str = ""
 

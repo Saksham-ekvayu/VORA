@@ -20,10 +20,22 @@ import DeploymentFrameworkPackageTable from "./components/custom/DeploymentFrame
 import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
 import GapsTable from "./components/custom/GapTable";
 import ComparisonsTable from "./components/custom/ComparisionTable";
-import { getStatusBadgeProps } from "./components/helper/deploymentFrameworkHelpers";
-import { statusVariantMap, typeVariantMap } from "@/utils/commonUtils";
+import {
+  getStatusBadgeProps,
+  transformAssignedFrameworks,
+} from "./components/helper/deploymentFrameworkHelpers";
+import {
+  STATUS_REVOKED,
+  statusVariantMap,
+  typeVariantMap,
+  STATUS_UPLOADED,
+  STATUS_PROCESSING,
+} from "@/utils/commonUtils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ControlsPanel from "@/components/custom/ControlsPanel";
+import AnalysisActions from "./components/AnalysisActions";
+import { useAssignedFrameworks } from "@/hooks/useAssignedFrameworks";
+import { useStatusPolling } from "@/hooks/useStatusPolling";
 
 const StatusPlaceholder = ({ status, message, type }) => {
   const getStatusConfig = (status) => {
@@ -117,6 +129,8 @@ export default function ComparisonGapAnalysis() {
     );
   };
 
+  const { assignedFrameworks } = useAssignedFrameworks();
+
   const [framework, setFramework] = useState(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
@@ -165,6 +179,41 @@ export default function ComparisonGapAnalysis() {
   const isGapAnalysisCompleted =
     gapAnalysisData?.status?.toLowerCase() === "completed";
   const isReportReady = isComparisonCompleted && isGapAnalysisCompleted;
+
+  const hasDocumentsProcessing = useMemo(() => {
+    const docs = activePackage?.documents || [];
+    return docs.some((doc) =>
+      [STATUS_UPLOADED, STATUS_PROCESSING].includes(doc.aiExtraction?.status)
+    );
+  }, [activePackage]);
+
+  const isMergeProcessing =
+    activePackage?.mergeDocument?.status === STATUS_PROCESSING;
+  const isComparisonProcessing = comparisonData?.status === STATUS_PROCESSING;
+  const isGapAnalysisProcessing = gapAnalysisData?.status === STATUS_PROCESSING;
+
+  const shouldPoll =
+    hasDocumentsProcessing ||
+    isMergeProcessing ||
+    isComparisonProcessing ||
+    isGapAnalysisProcessing;
+
+  useStatusPolling({
+    id,
+    pathPattern: "/deployment-frameworks/",
+    shouldPoll,
+    onPoll: () => fetchDetails(false),
+    refreshTrigger: null,
+  });
+
+  const assignedFramework = useMemo(() => {
+    return transformAssignedFrameworks(assignedFrameworks, framework);
+  }, [assignedFrameworks, framework]);
+
+  const isAssignedFrameworkRevoked =
+    assignedFramework?.status === STATUS_REVOKED;
+  const isAssignedFrameworkFinalized =
+    assignedFramework?.finalization?.isFinalized === true;
 
   const comparisonBadge = getStatusBadgeProps(
     comparisonData?.status,
@@ -336,6 +385,14 @@ export default function ComparisonGapAnalysis() {
                 <span className="text-base font-semibold">Merged Controls</span>
               </div>
               <div className="flex items-center gap-2">
+                <AnalysisActions
+                  frameworkId={id}
+                  currentPackage={activePackage}
+                  isAssignedFrameworkRevoked={isAssignedFrameworkRevoked}
+                  isAssignedFrameworkFinalized={isAssignedFrameworkFinalized}
+                  viewContext="controls-tab"
+                  onRefresh={() => fetchDetails(false)}
+                />
                 <span className={mergeBadge.className}>{mergeBadge.label}</span>
               </div>
             </div>
@@ -379,6 +436,14 @@ export default function ComparisonGapAnalysis() {
                 </span>
               </div>
               <div className="flex items-center gap-2">
+                <AnalysisActions
+                  frameworkId={id}
+                  currentPackage={activePackage}
+                  isAssignedFrameworkRevoked={isAssignedFrameworkRevoked}
+                  isAssignedFrameworkFinalized={isAssignedFrameworkFinalized}
+                  viewContext="comparison-tab"
+                  onRefresh={() => fetchDetails(false)}
+                />
                 <span className={comparisonBadge.className}>
                   {comparisonBadge.label}
                 </span>
@@ -410,6 +475,14 @@ export default function ComparisonGapAnalysis() {
                 <span className="text-base font-semibold">Gap Analysis</span>
               </div>
               <div className="flex items-center gap-2">
+                <AnalysisActions
+                  frameworkId={id}
+                  currentPackage={activePackage}
+                  isAssignedFrameworkRevoked={isAssignedFrameworkRevoked}
+                  isAssignedFrameworkFinalized={isAssignedFrameworkFinalized}
+                  viewContext="gap-tab"
+                  onRefresh={() => fetchDetails(false)}
+                />
                 <span className={gapBadge.className}>{gapBadge.label}</span>
               </div>
             </div>
