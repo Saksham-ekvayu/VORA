@@ -22,70 +22,19 @@ import {
   runGapAnalysis,
 } from "@/services/deploymentFrameworkService";
 
-const AnalysisActions = ({
-  frameworkId,
-  currentPackage,
-  isAssignedFrameworkRevoked,
-  isAssignedFrameworkFinalized,
-  viewContext, // "detail" | "controls-tab" | "comparison-tab" | "gap-tab"
-  onRefresh,
-  setRequestReviewModalOpen,
-}) => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const showAuditorActions = isAuditor(user?.role);
-
+// --- Hook for API calls ---
+const useAnalysisOperations = (frameworkId, packageVersion, onRefresh) => {
   const [mergeRunning, setMergeRunning] = useState(false);
   const [analysisRunning, setAnalysisRunning] = useState(false);
   const [comparisonRunning, setComparisonRunning] = useState(false);
   const [gapAnalysisRunning, setGapAnalysisRunning] = useState(false);
-
-  const isMergeProcessing =
-    currentPackage?.mergeDocument?.status === STATUS_PROCESSING;
-  const isComparisonProcessing =
-    currentPackage?.comparison?.status === STATUS_PROCESSING;
-  const isGapAnalysisProcessing =
-    currentPackage?.gapAnalysis?.status === STATUS_PROCESSING;
-
-  const isMergeCurrentlyRunning = mergeRunning || isMergeProcessing;
-  const isComparisonCurrentlyRunning =
-    comparisonRunning || isComparisonProcessing;
-  const isGapAnalysisCurrentlyRunning =
-    gapAnalysisRunning || isGapAnalysisProcessing;
-  const isAnalysisCurrentlyRunning =
-    analysisRunning || isComparisonProcessing || isGapAnalysisProcessing;
-
-  const areAllDocumentsExtracted = useMemo(() => {
-    const docs = currentPackage?.documents || [];
-    if (docs.length === 0) return true; // allow merge if no docs
-    return docs.every((doc) => doc.aiExtraction?.status === STATUS_EXTRACTED);
-  }, [currentPackage]);
-
-  const isCurrentPackageLive = currentPackage?.status === STATUS_LIVE;
-  const isMergeCompleted =
-    currentPackage?.mergeDocument?.status === STATUS_MERGED;
-  const isComparisonCompleted =
-    currentPackage?.comparison?.status === STATUS_COMPLETED;
-  const isGapAnalysisCompleted =
-    currentPackage?.gapAnalysis?.status === STATUS_COMPLETED;
-  const isAnalysisFailed =
-    currentPackage?.comparison?.status === STATUS_FAILED ||
-    currentPackage?.gapAnalysis?.status === STATUS_FAILED ||
-    currentPackage?.mergeDocument?.status === STATUS_FAILED;
-
-  const isAnalysisCompleted =
-    isComparisonCompleted && isGapAnalysisCompleted && isMergeCompleted;
-  const expertReviewStatus = currentPackage?.expertReview?.status;
-  const isReviewAlreadyRequested =
-    expertReviewStatus && expertReviewStatus !== STATUS_PENDING;
-  const isExpertReviewApproved = expertReviewStatus === STATUS_APPROVED;
 
   const handleMergeControls = async () => {
     try {
       setMergeRunning(true);
       const response = await mergeDeploymentFrameworkControls(
         frameworkId,
-        currentPackage?.packageVersion
+        packageVersion
       );
       if (response.success) {
         toast.success(response.message || "Controls merged successfully");
@@ -103,10 +52,7 @@ const AnalysisActions = ({
   const handleRunAnalysis = async () => {
     try {
       setAnalysisRunning(true);
-      const response = await runAnalysis(
-        frameworkId,
-        currentPackage?.packageVersion
-      );
+      const response = await runAnalysis(frameworkId, packageVersion);
       if (response.success) {
         toast.success(response.message);
         if (onRefresh) onRefresh();
@@ -123,10 +69,7 @@ const AnalysisActions = ({
   const handleRunComparison = async () => {
     try {
       setComparisonRunning(true);
-      const response = await runComparison(
-        frameworkId,
-        currentPackage?.packageVersion
-      );
+      const response = await runComparison(frameworkId, packageVersion);
       if (response.success) {
         toast.success(response.message);
         if (onRefresh) onRefresh();
@@ -143,10 +86,7 @@ const AnalysisActions = ({
   const handleRunGapAnalysis = async () => {
     try {
       setGapAnalysisRunning(true);
-      const response = await runGapAnalysis(
-        frameworkId,
-        currentPackage?.packageVersion
-      );
+      const response = await runGapAnalysis(frameworkId, packageVersion);
       if (response.success) {
         toast.success(response.message);
         if (onRefresh) onRefresh();
@@ -160,17 +100,269 @@ const AnalysisActions = ({
     }
   };
 
+  return {
+    mergeRunning,
+    analysisRunning,
+    comparisonRunning,
+    gapAnalysisRunning,
+    handleMergeControls,
+    handleRunAnalysis,
+    handleRunComparison,
+    handleRunGapAnalysis,
+  };
+};
+
+// --- Sub-components for specific views ---
+
+const MergeButton = ({ state, onMerge }) => {
+  if (state.isCurrentPackageLive || state.isMergeCompleted) return null;
+
+  const isDisabled =
+    state.viewContext === "detail"
+      ? state.isAssignedFrameworkRevoked ||
+      !state.isAssignedFrameworkFinalized ||
+      state.isMergeCurrentlyRunning ||
+      !state.areAllDocumentsExtracted
+      : state.isMergeCurrentlyRunning || !state.areAllDocumentsExtracted;
+
+  return (
+    <Button
+      size="xs"
+      onClick={onMerge}
+      disabled={isDisabled}
+      title={
+        !state.areAllDocumentsExtracted
+          ? "All uploaded documents must be successfully AI extracted first."
+          : "Merge Controls"
+      }
+      className="mr-1"
+    >
+      <Icon
+        name={state.isMergeCurrentlyRunning ? "loader" : "git-merge"}
+        size={11}
+        className={`animate-${state.isMergeCurrentlyRunning ? "spin" : ""}`}
+      />{" "}
+      {state.isMergeCurrentlyRunning ? "Merging..." : "Merge Controls"}
+    </Button>
+  );
+};
+
+const DetailViewActions = ({ state, actions }) => {
+  let analysisButtonText = "Run Analysis";
+  if (state.isAnalysisCurrentlyRunning) {
+    analysisButtonText = "Analysis Running...";
+  } else if (state.isAnalysisCompleted || state.isAnalysisFailed) {
+    analysisButtonText = "Re-run Analysis";
+  }
+
+  const requestReviewTitle = state.isReviewAlreadyRequested
+    ? `Review already ${state.expertReviewStatus} — cannot request again`
+    : "Request an internal expert to review this package";
+
+  return (
+    <div className="flex items-center gap-2">
+      <MergeButton state={state} onMerge={actions.handleMergeControls} />
+      {!state.isCurrentPackageLive && (
+        <Button
+          size="xs"
+          onClick={actions.handleRunAnalysis}
+          disabled={
+            state.isAssignedFrameworkRevoked ||
+            !state.isAssignedFrameworkFinalized ||
+            state.isAnalysisCurrentlyRunning ||
+            !state.isMergeCompleted
+          }
+          title={
+            !state.isMergeCompleted
+              ? "Controls must be merged before running analysis."
+              : "Run AI gap analysis and comparison."
+          }
+        >
+          <Icon
+            name={state.isAnalysisCurrentlyRunning ? "loader" : "play"}
+            size={11}
+            className={`animate-${state.isAnalysisCurrentlyRunning ? "spin" : ""}`}
+          />{" "}
+          {analysisButtonText}
+        </Button>
+      )}
+      {state.isAnalysisCompleted &&
+        !state.isExpertReviewApproved &&
+        state.setRequestReviewModalOpen && (
+          <Button
+            size="xs"
+            onClick={() => state.setRequestReviewModalOpen(true)}
+            disabled={
+              state.isAssignedFrameworkRevoked ||
+              !state.isAssignedFrameworkFinalized ||
+              state.isAnalysisCurrentlyRunning ||
+              state.isReviewAlreadyRequested
+            }
+            title={requestReviewTitle}
+          >
+            <Icon name="user-check" size={11} />{" "}
+            {state.isReviewAlreadyRequested
+              ? `Review ${state.expertReviewStatus}`
+              : "Request Review"}
+          </Button>
+        )}
+      <Button
+        size="xs"
+        onClick={() => {
+          actions.navigate(
+            `/deployment-frameworks/${state.frameworkId}/comparison-and-gap-analysis?package-version=${state.packageVersion}`
+          );
+        }}
+      >
+        <Icon name="eye" size={11} /> View Analysis
+      </Button>
+    </div>
+  );
+};
+
+const ComparisonTabActions = ({ state, actions }) => {
+  if (state.isCurrentPackageLive) return null;
+  let comparisonBtnText = "Run Comparison";
+  if (state.isComparisonCurrentlyRunning) comparisonBtnText = "Running...";
+  else if (state.isComparisonCompleted || state.isComparisonFailed)
+    comparisonBtnText = "Re-run Comparison";
+
+  return (
+    <div className="flex items-center gap-2">
+      <Button
+        size="xs"
+        onClick={actions.handleRunComparison}
+        disabled={state.isComparisonCurrentlyRunning}
+        title="Run Comparison"
+      >
+        <Icon
+          name={state.isComparisonCurrentlyRunning ? "loader" : "play"}
+          size={11}
+          className={`animate-${state.isComparisonCurrentlyRunning ? "spin" : ""}`}
+        />{" "}
+        {comparisonBtnText}
+      </Button>
+    </div>
+  );
+};
+
+const GapTabActions = ({ state, actions }) => {
+  if (state.isCurrentPackageLive) return null;
+  let gapBtnText = "Run Gap Analysis";
+  if (state.isGapAnalysisCurrentlyRunning) gapBtnText = "Running...";
+  else if (state.isGapAnalysisCompleted || state.isGapAnalysisFailed)
+    gapBtnText = "Re-run Gap Analysis";
+
+  return (
+    <div className="flex items-center gap-2">
+      <Button
+        size="xs"
+        onClick={actions.handleRunGapAnalysis}
+        disabled={state.isGapAnalysisCurrentlyRunning}
+        title="Run Gap Analysis"
+      >
+        <Icon
+          name={state.isGapAnalysisCurrentlyRunning ? "loader" : "play"}
+          size={11}
+          className={`animate-${state.isGapAnalysisCurrentlyRunning ? "spin" : ""}`}
+        />{" "}
+        {gapBtnText}
+      </Button>
+    </div>
+  );
+};
+
+// --- Main Component ---
+const AnalysisActions = ({
+  frameworkId,
+  currentPackage,
+  isAssignedFrameworkRevoked,
+  isAssignedFrameworkFinalized,
+  viewContext,
+  onRefresh,
+  setRequestReviewModalOpen,
+}) => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const showAuditorActions = isAuditor(user?.role);
+
+  const ops = useAnalysisOperations(
+    frameworkId,
+    currentPackage?.packageVersion,
+    onRefresh
+  );
+
+  const isMergeProcessing =
+    currentPackage?.mergeDocument?.status === STATUS_PROCESSING;
+  const isComparisonProcessing =
+    currentPackage?.comparison?.status === STATUS_PROCESSING;
+  const isGapAnalysisProcessing =
+    currentPackage?.gapAnalysis?.status === STATUS_PROCESSING;
+
+  const isMergeCurrentlyRunning = ops.mergeRunning || isMergeProcessing;
+  const isComparisonCurrentlyRunning =
+    ops.comparisonRunning || isComparisonProcessing;
+  const isGapAnalysisCurrentlyRunning =
+    ops.gapAnalysisRunning || isGapAnalysisProcessing;
+  const isAnalysisCurrentlyRunning =
+    ops.analysisRunning || isComparisonProcessing || isGapAnalysisProcessing;
+
+  const areAllDocumentsExtracted = useMemo(() => {
+    const docs = currentPackage?.documents || [];
+    if (docs.length === 0) return true;
+    return docs.every((doc) => doc.aiExtraction?.status === STATUS_EXTRACTED);
+  }, [currentPackage]);
+
+  const expertReviewStatus = currentPackage?.expertReview?.status;
+
+  const state = {
+    viewContext,
+    frameworkId,
+    packageVersion: currentPackage?.packageVersion,
+    isAssignedFrameworkRevoked,
+    isAssignedFrameworkFinalized,
+    setRequestReviewModalOpen,
+    isCurrentPackageLive: currentPackage?.status === STATUS_LIVE,
+    isMergeCompleted: currentPackage?.mergeDocument?.status === STATUS_MERGED,
+    isComparisonCompleted:
+      currentPackage?.comparison?.status === STATUS_COMPLETED,
+    isGapAnalysisCompleted:
+      currentPackage?.gapAnalysis?.status === STATUS_COMPLETED,
+    isComparisonFailed: currentPackage?.comparison?.status === STATUS_FAILED,
+    isGapAnalysisFailed: currentPackage?.gapAnalysis?.status === STATUS_FAILED,
+    isAnalysisFailed:
+      currentPackage?.comparison?.status === STATUS_FAILED ||
+      currentPackage?.gapAnalysis?.status === STATUS_FAILED ||
+      currentPackage?.mergeDocument?.status === STATUS_FAILED,
+    isMergeCurrentlyRunning,
+    isComparisonCurrentlyRunning,
+    isGapAnalysisCurrentlyRunning,
+    isAnalysisCurrentlyRunning,
+    areAllDocumentsExtracted,
+    expertReviewStatus,
+    isReviewAlreadyRequested:
+      expertReviewStatus && expertReviewStatus !== STATUS_PENDING,
+    isExpertReviewApproved: expertReviewStatus === STATUS_APPROVED,
+  };
+
+  state.isAnalysisCompleted =
+    state.isComparisonCompleted &&
+    state.isGapAnalysisCompleted &&
+    state.isMergeCompleted;
+
+  const actions = { ...ops, navigate };
+
   if (!showAuditorActions) {
     if (viewContext === "detail") {
       return (
         <div className="flex items-center gap-2">
           <Button
             size="xs"
-            onClick={() => {
+            onClick={() =>
               navigate(
                 `/deployment-frameworks/${frameworkId}/comparison-and-gap-analysis?package-version=${currentPackage?.packageVersion}`
-              );
-            }}
+              )
+            }
           >
             <Icon name="eye" size={11} /> View Analysis
           </Button>
@@ -180,174 +372,22 @@ const AnalysisActions = ({
     return null;
   }
 
-  const renderMergeButton = () => {
-    if (isCurrentPackageLive || isMergeCompleted) return null;
-
-    // In detail view, apply strict validations. In tabs, be more permissive.
-    const isDisabled =
-      viewContext === "detail"
-        ? isAssignedFrameworkRevoked ||
-          !isAssignedFrameworkFinalized ||
-          isMergeCurrentlyRunning ||
-          !areAllDocumentsExtracted
-        : isMergeCurrentlyRunning || !areAllDocumentsExtracted;
-
-    return (
-      <Button
-        size="xs"
-        onClick={handleMergeControls}
-        disabled={isDisabled}
-        title={
-          !areAllDocumentsExtracted
-            ? "All uploaded documents must be successfully AI extracted first."
-            : "Merge Controls"
-        }
-        className="mr-1"
-      >
-        <Icon
-          name={isMergeCurrentlyRunning ? "loader" : "git-merge"}
-          size={11}
-          className={`animate-${isMergeCurrentlyRunning ? "spin" : ""}`}
-        />{" "}
-        {isMergeCurrentlyRunning ? "Merging..." : "Merge Controls"}
-      </Button>
-    );
-  };
-
-  if (viewContext === "detail") {
-    let analysisButtonText = "Run Analysis";
-    if (isAnalysisCurrentlyRunning) {
-      analysisButtonText = "Analysis Running...";
-    } else if (isAnalysisCompleted || isAnalysisFailed) {
-      analysisButtonText = "Re-run Analysis";
-    }
-
-    const requestReviewTitle = isReviewAlreadyRequested
-      ? `Review already ${expertReviewStatus} — cannot request again`
-      : "Request an internal expert to review this package";
-
-    return (
-      <div className="flex items-center gap-2">
-        {renderMergeButton()}
-        {!isCurrentPackageLive && (
-          <Button
-            size="xs"
-            onClick={handleRunAnalysis}
-            disabled={
-              isAssignedFrameworkRevoked ||
-              !isAssignedFrameworkFinalized ||
-              isAnalysisCurrentlyRunning ||
-              !isMergeCompleted
-            }
-            title={
-              !isMergeCompleted
-                ? "Controls must be merged before running analysis."
-                : "Run AI gap analysis and comparison."
-            }
-          >
-            <Icon
-              name={isAnalysisCurrentlyRunning ? "loader" : "play"}
-              size={11}
-              className={`animate-${isAnalysisCurrentlyRunning ? "spin" : ""}`}
-            />{" "}
-            {analysisButtonText}
-          </Button>
-        )}
-        {isAnalysisCompleted &&
-          !isExpertReviewApproved &&
-          setRequestReviewModalOpen && (
-            <Button
-              size="xs"
-              onClick={() => setRequestReviewModalOpen(true)}
-              disabled={
-                isAssignedFrameworkRevoked ||
-                !isAssignedFrameworkFinalized ||
-                isAnalysisCurrentlyRunning ||
-                isReviewAlreadyRequested
-              }
-              title={requestReviewTitle}
-            >
-              <Icon name="user-check" size={11} />{" "}
-              {isReviewAlreadyRequested
-                ? `Review ${expertReviewStatus}`
-                : "Request Review"}
-            </Button>
-          )}
-        <Button
-          size="xs"
-          onClick={() => {
-            navigate(
-              `/deployment-frameworks/${frameworkId}/comparison-and-gap-analysis?package-version=${currentPackage?.packageVersion}`
-            );
-          }}
-        >
-          <Icon name="eye" size={11} /> View Analysis
-        </Button>
-      </div>
-    );
+  switch (viewContext) {
+    case "detail":
+      return <DetailViewActions state={state} actions={actions} />;
+    case "controls-tab":
+      return (
+        <div className="flex items-center gap-2">
+          <MergeButton state={state} onMerge={actions.handleMergeControls} />
+        </div>
+      );
+    case "comparison-tab":
+      return <ComparisonTabActions state={state} actions={actions} />;
+    case "gap-tab":
+      return <GapTabActions state={state} actions={actions} />;
+    default:
+      return null;
   }
-
-  if (viewContext === "controls-tab") {
-    return <div className="flex items-center gap-2">{renderMergeButton()}</div>;
-  }
-
-  if (viewContext === "comparison-tab") {
-    if (isCurrentPackageLive) return null;
-    let comparisonBtnText = "Run Comparison";
-    if (isComparisonCurrentlyRunning) comparisonBtnText = "Running...";
-    else if (
-      isComparisonCompleted ||
-      currentPackage?.comparison?.status === STATUS_FAILED
-    )
-      comparisonBtnText = "Re-run Comparison";
-    return (
-      <div className="flex items-center gap-2">
-        <Button
-          size="xs"
-          onClick={handleRunComparison}
-          disabled={isComparisonCurrentlyRunning}
-          title={"Run Comparison"}
-        >
-          <Icon
-            name={isComparisonCurrentlyRunning ? "loader" : "play"}
-            size={11}
-            className={`animate-${isComparisonCurrentlyRunning ? "spin" : ""}`}
-          />{" "}
-          {comparisonBtnText}
-        </Button>
-      </div>
-    );
-  }
-
-  if (viewContext === "gap-tab") {
-    if (isCurrentPackageLive) return null;
-    let gapBtnText = "Run Gap Analysis";
-    if (isGapAnalysisCurrentlyRunning) gapBtnText = "Running...";
-    else if (
-      isGapAnalysisCompleted ||
-      currentPackage?.gapAnalysis?.status === STATUS_FAILED
-    )
-      gapBtnText = "Re-run Gap Analysis";
-    return (
-      <div className="flex items-center gap-2">
-        <Button
-          size="xs"
-          onClick={handleRunGapAnalysis}
-          disabled={isGapAnalysisCurrentlyRunning}
-          title={"Run Gap Analysis"}
-        >
-          <Icon
-            name={isGapAnalysisCurrentlyRunning ? "loader" : "play"}
-            size={11}
-            className={`animate-${isGapAnalysisCurrentlyRunning ? "spin" : ""}`}
-          />{" "}
-          {gapBtnText}
-        </Button>
-      </div>
-    );
-  }
-
-  return null;
 };
 
 export default AnalysisActions;
