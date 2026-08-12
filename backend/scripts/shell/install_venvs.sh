@@ -49,6 +49,7 @@ SERVICES=(
     "extract-controls-service"
     "compliance-agent-service"
     "ai-analysis-service"
+    "mcp-boto3-server"
 )
 
 for service in "${SERVICES[@]}"; do

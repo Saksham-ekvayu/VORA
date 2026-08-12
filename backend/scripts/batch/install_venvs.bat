@@ -89,6 +89,10 @@ if errorlevel 1 (
     call .venv\Scripts\activate.bat && pip install -r requirements.txt
     if errorlevel 1 echo ERROR installing ai-analysis-service dependencies.
     
+    cd /d "%ROOT%\services\mcp-boto3-server"
+    call .venv\Scripts\activate.bat && pip install -r requirements.txt
+    if errorlevel 1 echo ERROR installing mcp-boto3-server dependencies.
+    
     cd /d "%ROOT%\gateway"
     call .venv\Scripts\activate.bat && pip install -r requirements.txt
     if errorlevel 1 echo ERROR installing gateway dependencies.
@@ -120,6 +124,7 @@ wt -w new ^
     ; new-tab --title "extract-controls-service" -d "%ROOT%\services\extract-controls-service" cmd /k ".venv\Scripts\activate.bat && pip install -r requirements.txt && pause" ^
     ; new-tab --title "compliance-agent-service" -d "%ROOT%\services\compliance-agent-service" cmd /k ".venv\Scripts\activate.bat && pip install -r requirements.txt && pause" ^
     ; new-tab --title "ai-analysis-service" -d "%ROOT%\services\ai-analysis-service" cmd /k ".venv\Scripts\activate.bat && pip install -r requirements.txt && pause" ^
+    ; new-tab --title "mcp-boto3-server" -d "%ROOT%\services\mcp-boto3-server" cmd /k ".venv\Scripts\activate.bat && pip install -r requirements.txt && pause" ^
     ; new-tab --title "api-gateway" -d "%ROOT%\gateway" cmd /k ".venv\Scripts\activate.bat && pip install -r requirements.txt && pause"
 
 echo.

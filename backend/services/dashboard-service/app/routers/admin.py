@@ -78,6 +78,6 @@ async def get_admin_dashboard_analytics(
     except Exception as exc:
         import logging
         logger = logging.getLogger(__name__)
-        logger.error(f"[ADMIN-ANALYTICS] Error: {exc}")
+        logger.exception(f"[ADMIN-ANALYTICS] Error: {exc}")
         logger.exception("Dashboard analytics error")
         return error(MESSAGES["DASHBOARD_ANALYTICS_FAILED"], 500)

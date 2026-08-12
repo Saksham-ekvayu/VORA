@@ -18,9 +18,17 @@ echo ""
 # Function to run a service in background
 run_service() {
     local service_name=$1
-    local port=$2
-    local dir=$3
-    local app=$4
+    local dir=$2
+    local app=$3
+    
+    # Extract PORT from .env
+    local port=""
+    if [ -f "$ROOT/$dir/.env" ]; then
+        port=$(grep '^PORT=' "$ROOT/$dir/.env" | cut -d '=' -f2 | tr -d '\r' | xargs)
+    fi
+    if [ -z "$port" ]; then
+        port=8000 # default fallback
+    fi
     
     echo "[$(date '+%H:%M:%S')] Starting $service_name on port $port..."
     
@@ -55,17 +63,18 @@ cleanup() {
 
 trap cleanup EXIT INT TERM
 
-# Start all services in parallel
-run_service "authentication-service" 7001 "services/authentication-service" "app.main:app"
-run_service "profile-service" 7002 "services/profile-service" "app.main:app"
-run_service "dashboard-service" 7003 "services/dashboard-service" "app.main:app"
-run_service "framework-category-service" 7004 "services/framework-category-service" "app.main:app"
-run_service "framework-service" 7005 "services/framework-service" "app.main:app"
-run_service "deployment-framework-service" 7006 "services/deployment-framework-service" "app.main:app"
-run_service "extract-controls-service" 7007 "services/extract-controls-service" "app.main:app"
-run_service "compliance-agent-service" 7008 "services/compliance-agent-service" "app.main:app"
-run_service "ai-analysis-service" 7009 "services/ai-analysis-service" "app.main:app"
-run_service "api-gateway" 8000 "gateway" "main:app"
+# Start all services in parallel (Ports are dynamically read from their .env files)
+run_service "authentication-service" "services/authentication-service" "app.main:app"
+run_service "profile-service" "services/profile-service" "app.main:app"
+run_service "dashboard-service" "services/dashboard-service" "app.main:app"
+run_service "framework-category-service" "services/framework-category-service" "app.main:app"
+run_service "framework-service" "services/framework-service" "app.main:app"
+run_service "deployment-framework-service" "services/deployment-framework-service" "app.main:app"
+run_service "extract-controls-service" "services/extract-controls-service" "app.main:app"
+run_service "compliance-agent-service" "services/compliance-agent-service" "app.main:app"
+run_service "ai-analysis-service" "services/ai-analysis-service" "app.main:app"
+run_service "mcp-boto3-server" "services/mcp-boto3-server" "app.main:app"
+run_service "api-gateway" "gateway" "main:app"
 
 # Start frontend
 echo "[$(date '+%H:%M:%S')] Starting frontend on Vite..."
@@ -79,19 +88,6 @@ echo ""
 echo "=========================================="
 echo "All services started in parallel!"
 echo "=========================================="
-echo ""
-echo "Service Ports:"
-echo "  - authentication-service: http://localhost:7001"
-echo "  - profile-service: http://localhost:7002"
-echo "  - dashboard-service: http://localhost:7003"
-echo "  - framework-category-service: http://localhost:7004"
-echo "  - framework-service: http://localhost:7005"
-echo "  - deployment-framework-service: http://localhost:7006"
-echo "  - extract-controls-service: http://localhost:7007"
-echo "  - compliance-agent-service: http://localhost:7008"
-echo "  - ai-analysis-service: http://localhost:7009"
-echo "  - api-gateway: http://localhost:8000"
-echo "  - frontend: http://localhost:5173"
 echo ""
 echo "Press Ctrl+C to stop all services."
 echo "=========================================="
