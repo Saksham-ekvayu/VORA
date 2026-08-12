@@ -955,7 +955,7 @@ const DeploymentFrameworkDetail = () => {
                       </TooltipProvider>
 
                       <span
-                        className={`text-[9px] font-semibold text-center mt-1.5 max-w-21.25 leading-tight block truncate
+                        className={`text-[9px] font-semibold text-center mt-1.5 leading-tight block
                               ${step.status === STATUS_LOCKED ? "text-muted-foreground/80" : "text-foreground"}
                             `}
                       >
