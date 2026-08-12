@@ -387,7 +387,7 @@ async def run_comparison(
                 pc = None
                 if comparison_id:
                     pc = await session.get(PackageComparison, str(comparison_id))
-                
+
                 if pc:
                     pc.comparison = {
                         "status": "failed",

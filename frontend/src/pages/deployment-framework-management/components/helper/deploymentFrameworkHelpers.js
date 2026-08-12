@@ -146,10 +146,11 @@ export const getExpertReviewStep = (expertReview) => {
   }
   if (status === STATUS_REJECTED) {
     return {
-      status: STATUS_PENDING,
+      status: STATUS_FAILED,
       title: "Expert Review Returned",
       desc: "Expert has returned the package with feedback.",
       meta,
+      comment: expertReview?.comments,
     };
   }
   return {

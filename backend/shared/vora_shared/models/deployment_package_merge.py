@@ -24,9 +24,7 @@ class DeploymentPackageMerge(Base):
     """Tracks deployment package merge operations."""
 
     __tablename__ = "deployment_package_merges"
-    __table_args__ = (
-        Index("ix_deployment_package_merge_created", "createdAt"),
-    )
+    __table_args__ = (Index("ix_deployment_package_merge_created", "createdAt"),)
 
     id: Mapped[str] = mapped_column(String(24), primary_key=True, default=new_id)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")

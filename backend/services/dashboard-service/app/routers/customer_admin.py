@@ -702,22 +702,14 @@ async def _fetch_package_analyses(session, merge_ids: list, comparison_ids: list
 
     if gap_ids:
         gap_analyses = list(
-            (
-                await session.execute(
-                    select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_ids))
-                )
-            )
+            (await session.execute(select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_ids))))
             .scalars()
             .all()
         )
 
     if comparison_ids:
         comparisons = list(
-            (
-                await session.execute(
-                    select(PackageComparison).where(PackageComparison.id.in_(comparison_ids))
-                )
-            )
+            (await session.execute(select(PackageComparison).where(PackageComparison.id.in_(comparison_ids))))
             .scalars()
             .all()
         )
@@ -726,9 +718,7 @@ async def _fetch_package_analyses(session, merge_ids: list, comparison_ids: list
         merges = list(
             (
                 await session.execute(
-                    select(DeploymentPackageMerge).where(
-                        DeploymentPackageMerge.id.in_(merge_ids)
-                    )
+                    select(DeploymentPackageMerge).where(DeploymentPackageMerge.id.in_(merge_ids))
                 )
             )
             .scalars()

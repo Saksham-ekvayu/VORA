@@ -330,6 +330,7 @@ async def run_gap(
                         "similarity_score": round(best_dp_score, 2),
                         "implementation_status": impl_status,
                         "gap_score": round(max(0.0, 100.0 - best_dp_score) / 100.0, 4),
+                        "reviewComment": "",
                     }
                     gap_results.append(gap_row)
                     grouped_by_control.setdefault(assigned_id, []).append(gap_row)
@@ -436,7 +437,7 @@ async def run_gap(
                 pga = None
                 if gap_id:
                     pga = await session.get(PackageGapAnalysis, str(gap_id))
-                
+
                 if pga:
                     pga.gapAnalysis = {
                         "status": "failed",
