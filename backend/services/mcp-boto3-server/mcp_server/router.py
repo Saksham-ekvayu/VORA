@@ -1,11 +1,12 @@
-from fastapi import APIRouter
+from fastapi import APIRouter,Depends
 from fastapi.responses import FileResponse
 import os
-from fastapi.responses import FileResponse
 from services.downloader import download_file
 from utils.live_logs import live_logs
 from schemas.source_schema import FullConfigRequest
 from db.queries import save_full_config
+from sqlalchemy.ext.asyncio import AsyncSession
+from vora_shared.database import get_session
 from scheduler import (
     start_dynamic_scheduler,
     stop_scheduler,
@@ -163,8 +164,12 @@ def get_live_logs():
     }
 
 @router.post("/save-config")
-def create_full_config(request: FullConfigRequest):
-    result = save_full_config(request)
+async def create_full_config(
+    request: FullConfigRequest,
+    db: AsyncSession = Depends(get_session),
+):
+    # IMPORTANT: pass db and use await
+    result = await save_full_config(db, request)
 
     source_ok = result["source_config_id"] is not None
     sections_ok = result["sections_success"]
@@ -172,43 +177,41 @@ def create_full_config(request: FullConfigRequest):
     if not source_ok and not sections_ok:
         return {
             "status": False,
-            "message": "Failed to save source configuration and sections configuration"
+            "message": "Failed to save source configuration and sections configuration",
         }
 
     if not source_ok:
         return {
             "status": False,
             "message": "Sections configuration saved, but source configuration failed",
-            "source_config_id": None
+            "source_config_id": None,
         }
 
     if not sections_ok:
         return {
             "status": False,
             "message": "Source configuration saved, but sections configuration failed",
-            "source_config_id": result["source_config_id"]
+            "source_config_id": result["source_config_id"],
         }
 
-    # both saved -- now attempt to run the collector using source_config's
-    # source_type + config_json
     try:
         files = collect_files(
             request.source_config.source_type,
-            request.source_config.config_json
+            request.source_config.config_json,
         )
+
     except ValueError as e:
         return {
             "status": False,
             "message": f"Configuration saved, but collection failed: {e}",
-            "source_config_id": result["source_config_id"]
+            "source_config_id": result["source_config_id"],
         }
+
     except Exception as e:
-        # catches unexpected errors from boto3 / requests / os.walk etc.
-        # (e.g. bad credentials, network failure, permission denied)
         return {
             "status": False,
             "message": f"Configuration saved, but collection raised an unexpected error: {e}",
-            "source_config_id": result["source_config_id"]
+            "source_config_id": result["source_config_id"],
         }
 
     return {
@@ -216,5 +219,5 @@ def create_full_config(request: FullConfigRequest):
         "message": "Configuration saved and files collected successfully",
         "source_config_id": result["source_config_id"],
         "file_count": len(files),
-        "files": files
+        "files": files,
     }

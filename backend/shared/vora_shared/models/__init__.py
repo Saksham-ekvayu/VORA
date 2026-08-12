@@ -42,6 +42,12 @@ from vora_shared.models.package_comparison import PackageComparison
 from vora_shared.models.package_gap_analysis import GapThresholdConfig, PackageGapAnalysis
 from vora_shared.models.user import User, UserAddress, UserCreatedBy, UserOtp
 
+from .mcp import (
+    ProcessedFile,
+    SourceConfig,
+    SourceCredential,
+)
+
 __all__ = [
     "AddressBlock",
     "AgentPrompt",
