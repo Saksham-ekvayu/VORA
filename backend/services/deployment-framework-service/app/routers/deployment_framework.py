@@ -320,8 +320,7 @@ async def update_deployment_package_point_path(
         package_merge = (
             await session.execute(
                 select(DeploymentPackageMerge).where(
-                    DeploymentPackageMerge.id == str(target_package.mergeDocument),
-                    DeploymentPackageMerge.deploymentFrameworkId == str(framework.id),
+                    DeploymentPackageMerge.id == str(target_package.mergeDocument)
                 )
             )
         ).scalar_one_or_none()
@@ -1165,7 +1164,7 @@ def _update_comparison_review_remark(
         for c in _blob_get(section, "controls") or []:
             c_assigned = _blob_get(c, "assigned_framework_control_id")
             c_deploy = _blob_get(c, "deployment_framework_control_id")
-            if c_assigned == assigned_control_id and c_deploy == deployment_control_id:
+            if c_assigned == assigned_control_id and (c_deploy or "") == (deployment_control_id or ""):
                 if isinstance(c, dict):
                     c["reviewComment"] = comment or ""
                 else:
@@ -1223,8 +1222,12 @@ async def add_review_remark(
         if not control_found:
             return not_found(FRAMEWORK_SERVICE_MESSAGES["CONTROL_ALIGNMENT_NOT_FOUND_COMPARISON"])
 
+        from sqlalchemy.orm.attributes import flag_modified
+
         comp["comparison_result"] = results
         package_comparison.comparison = comp
+        flag_modified(package_comparison, "comparison")
+
         return success({"reviewComment": comment}, "Review remark added successfully")
 
 
@@ -1287,6 +1290,10 @@ async def add_gap_review_remark(
         if not point_found:
             return not_found(FRAMEWORK_SERVICE_MESSAGES["POINT_ALIGNMENT_NOT_FOUND_GAP_ANALYSIS"])
 
+        from sqlalchemy.orm.attributes import flag_modified
+
         gap["deployment_gap_results"] = results
         package_gap_analysis.gapAnalysis = gap
+        flag_modified(package_gap_analysis, "gapAnalysis")
+
         return success({"reviewComment": comment}, "Gap review remark added successfully")

@@ -131,9 +131,6 @@ async def start_gap_analysis(request: GapAnalysisRequest):
             if not gap_id:
                 gap_analysis = PackageGapAnalysis(
                     id=new_id(),
-                    deploymentFrameworkId=deployment_framework_id,
-                    assignedFrameworkId=framework_assignment_id,
-                    packageVersion=package_version,
                     fileHashes=[],
                     gapAnalysis={
                         "status": "processing",
@@ -212,11 +209,9 @@ async def get_gap_analysis(gap_id: str):
                 message="Gap analysis retrieved successfully",
                 data={
                     "id": gap_analysis.id,
-                    "deploymentFrameworkId": gap_analysis.deploymentFrameworkId,
-                    "assignedFrameworkId": gap_analysis.assignedFrameworkId,
                     "deployment_framework_id": gap_data.get("deployment_framework_id"),
                     "framework_assignment_id": gap_data.get("framework_assignment_id"),
-                    "package_version": gap_analysis.packageVersion,
+                    "package_version": gap_data.get("package_version"),
                     "status": gap_data.get("status", "pending"),
                     "message": gap_data.get("message"),
                     "timestamp": gap_data.get("timestamp"),
@@ -276,11 +271,9 @@ async def list_gap_analyses(page: int = 1, page_size: int = 10):
                 items.append(
                     {
                         "id": gap.id,
-                        "deploymentFrameworkId": gap.deploymentFrameworkId,
-                        "assignedFrameworkId": gap.assignedFrameworkId,
                         "deployment_framework_id": gap_data.get("deployment_framework_id"),
                         "framework_assignment_id": gap_data.get("framework_assignment_id"),
-                        "package_version": gap.packageVersion,
+                        "package_version": gap_data.get("package_version"),
                         "status": gap_data.get("status", "pending"),
                         "gap_results_count": len(results) if isinstance(results, list) else 0,
                         "gap_time_seconds": gap_data.get("gap_time_seconds"),

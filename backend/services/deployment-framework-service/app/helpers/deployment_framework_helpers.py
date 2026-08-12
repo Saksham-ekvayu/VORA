@@ -320,53 +320,16 @@ async def create_pending_merge(
 ):
     from vora_shared.models import DeploymentPackageMerge
 
-    if not file_hashes or not framework_id:
+    if not file_hashes:
         return None
 
-    pkg_ver = package_data.get("packageVersion", "1.0.0")
+    file_hashes = sorted(file_hashes)
 
-    # First check if the record exists for this package version
     existing = (
-        await session.execute(
-            select(DeploymentPackageMerge).where(
-                DeploymentPackageMerge.deploymentFrameworkId == str(framework_id),
-                DeploymentPackageMerge.packageVersion == pkg_ver,
-            )
-        )
-    ).scalar_one_or_none()
-
-    source_documents = [
-        {
-            "fileId": str(_field(doc, "fileId")) if _field(doc, "fileId") is not None else None,
-            "fileHash": _field(doc, "fileHash"),
-            "originalFileName": _field(doc, "originalFileName"),
-            "mergedAt": None,
-        }
-        for doc in package_data.get("documents", [])
-    ]
-    new_file_ids = [str(d.get("fileId")) for d in source_documents if d.get("fileId")]
-
-    if existing:
-        if set(existing.fileHashes) == set(file_hashes):
-            return existing
-        existing.fileHashes = file_hashes
-        existing.fileIds = new_file_ids
-        existing.status = "pending"
-        existing.mergeHistory = []
-        existing.controls = {}
-        existing.summary = {}
-        await session.flush()
-        return existing
-
-    # Check if a previous package version has the exact same file hashes
-    previous_match = (
         (
             await session.execute(
                 select(DeploymentPackageMerge)
-                .where(
-                    DeploymentPackageMerge.deploymentFrameworkId == str(framework_id),
-                    DeploymentPackageMerge.fileHashes == file_hashes,
-                )
+                .where(DeploymentPackageMerge.fileHashes == file_hashes)
                 .order_by(DeploymentPackageMerge.createdAt.desc())
             )
         )
@@ -374,27 +337,14 @@ async def create_pending_merge(
         .first()
     )
 
-    if previous_match:
-        merge = DeploymentPackageMerge(
-            deploymentFrameworkId=str(framework_id),
-            packageVersion=pkg_ver,
-            fileHashes=file_hashes,
-            fileIds=new_file_ids,
-            status=previous_match.status,
-            mergeKey=previous_match.mergeKey,
-            mergeHistory=previous_match.mergeHistory,
-            controls=previous_match.controls,
-            summary=previous_match.summary,
-        )
-    else:
-        merge = DeploymentPackageMerge(
-            deploymentFrameworkId=str(framework_id),
-            packageVersion=pkg_ver,
-            fileHashes=file_hashes,
-            fileIds=new_file_ids,
-            mergeHistory=[],
-            controls={},
-        )
+    if existing:
+        return existing
+
+    merge = DeploymentPackageMerge(
+        fileHashes=file_hashes,
+        status="pending",
+        controls={},
+    )
     session.add(merge)
     await session.flush()
     return merge
@@ -409,41 +359,16 @@ async def create_pending_comparison(
 ):
     from vora_shared.models import PackageComparison
 
-    if not file_hashes or not framework_id:
+    if not file_hashes:
         return None
+
+    file_hashes = sorted(file_hashes)
+
     existing = (
-        await session.execute(
-            select(PackageComparison).where(
-                PackageComparison.deploymentFrameworkId == str(framework_id),
-                PackageComparison.packageVersion == package_version,
-            )
-        )
-    ).scalar_one_or_none()
-    if existing:
-        if set(existing.fileHashes) == set(file_hashes):
-            return existing
-
-        existing.fileHashes = file_hashes
-        existing.comparison.update(
-            {
-                "status": "pending",
-                "message": "Comparison pending",
-                "timestamp": None,
-                "comparison_time_seconds": None,
-                "comparison_result": existing.comparison.get("comparison_result", []),
-            }
-        )
-        flag_modified(existing, "comparison")
-        await session.flush()
-        return existing
-
-    # Check for previous match with same file hashes
-    previous_match = (
         (
             await session.execute(
                 select(PackageComparison)
                 .where(
-                    PackageComparison.deploymentFrameworkId == str(framework_id),
                     PackageComparison.fileHashes == file_hashes,
                 )
                 .order_by(PackageComparison.createdAt.desc())
@@ -453,31 +378,19 @@ async def create_pending_comparison(
         .first()
     )
 
-    if previous_match:
-        cloned_comparison = dict(previous_match.comparison)
-        cloned_comparison["package_version"] = package_version
+    if existing:
+        return existing
 
-        comparison = PackageComparison(
-            deploymentFrameworkId=str(framework_id),
-            assignedFrameworkId=str(assigned_framework_id),
-            packageVersion=package_version,
-            fileHashes=file_hashes,
-            comparison=cloned_comparison,
-        )
-    else:
-        comparison = PackageComparison(
-            deploymentFrameworkId=str(framework_id),
-            assignedFrameworkId=str(assigned_framework_id),
-            packageVersion=package_version,
-            fileHashes=file_hashes,
-            comparison={
-                "status": "pending",
-                "message": "Comparison pending",
-                "timestamp": None,
-                "comparison_time_seconds": None,
-                "comparison_result": [],
-            },
-        )
+    comparison = PackageComparison(
+        fileHashes=file_hashes,
+        comparison={
+            "status": "pending",
+            "message": "Comparison pending",
+            "timestamp": None,
+            "comparison_time_seconds": None,
+            "comparison_result": [],
+        },
+    )
     session.add(comparison)
     await session.flush()
     return comparison
@@ -492,42 +405,16 @@ async def create_pending_gap_analysis(
 ):
     from vora_shared.models import PackageGapAnalysis
 
-    if not file_hashes or not framework_id:
+    if not file_hashes:
         return None
+
+    file_hashes = sorted(file_hashes)
+
     existing = (
-        await session.execute(
-            select(PackageGapAnalysis).where(
-                PackageGapAnalysis.deploymentFrameworkId == str(framework_id),
-                PackageGapAnalysis.packageVersion == package_version,
-            )
-        )
-    ).scalar_one_or_none()
-    if existing:
-        if set(existing.fileHashes) == set(file_hashes):
-            return existing
-
-        existing.fileHashes = file_hashes
-        existing.gapAnalysis.update(
-            {
-                "status": "pending",
-                "message": "Gap analysis pending",
-                "timestamp": None,
-                "deployment_gap_results": existing.gapAnalysis.get("deployment_gap_results", []),
-            }
-        )
-        flag_modified(existing, "gapAnalysis")
-        await session.flush()
-        return existing
-
-    # Check for previous match with same file hashes
-    previous_match = (
         (
             await session.execute(
                 select(PackageGapAnalysis)
-                .where(
-                    PackageGapAnalysis.deploymentFrameworkId == str(framework_id),
-                    PackageGapAnalysis.fileHashes == file_hashes,
-                )
+                .where(PackageGapAnalysis.fileHashes == file_hashes)
                 .order_by(PackageGapAnalysis.createdAt.desc())
             )
         )
@@ -535,30 +422,18 @@ async def create_pending_gap_analysis(
         .first()
     )
 
-    if previous_match:
-        cloned_gap = dict(previous_match.gapAnalysis)
-        cloned_gap["package_version"] = package_version
+    if existing:
+        return existing
 
-        gap = PackageGapAnalysis(
-            deploymentFrameworkId=str(framework_id),
-            assignedFrameworkId=str(assigned_framework_id),
-            packageVersion=package_version,
-            fileHashes=file_hashes,
-            gapAnalysis=cloned_gap,
-        )
-    else:
-        gap = PackageGapAnalysis(
-            deploymentFrameworkId=str(framework_id),
-            assignedFrameworkId=str(assigned_framework_id),
-            packageVersion=package_version,
-            fileHashes=file_hashes,
-            gapAnalysis={
-                "status": "pending",
-                "message": "Gap analysis pending",
-                "timestamp": None,
-                "deployment_gap_results": [],
-            },
-        )
+    gap = PackageGapAnalysis(
+        fileHashes=file_hashes,
+        gapAnalysis={
+            "status": "pending",
+            "message": "Gap analysis pending",
+            "timestamp": None,
+            "deployment_gap_results": [],
+        },
+    )
     session.add(gap)
     await session.flush()
     return gap
@@ -604,12 +479,18 @@ def gap_point_matches(
 ) -> bool:
     if str((p.get("assigned_framework_deployment_points") or {}).get("id")) != str(assigned_point_id):
         return False
-    if p.get("deployment_framework_control_id") != deployment_control_id:
-        return False
-    if deployment_point_id and str((p.get("deployment_framework_deployment_points") or {}).get("id")) != str(
-        deployment_point_id
+
+    dc_id = p.get("deployment_framework_control_id")
+    if (dc_id if dc_id is not None else "") != (
+        deployment_control_id if deployment_control_id is not None else ""
     ):
         return False
+
+    if deployment_point_id:
+        dp_id = (p.get("deployment_framework_deployment_points") or {}).get("id")
+        if str(dp_id) != str(deployment_point_id):
+            return False
+
     return True
 
 
@@ -620,18 +501,13 @@ def find_gap_point(
     deployment_control_id: Any,
     deployment_point_id: Any | None,
 ) -> dict[str, Any] | None:
-    all_points = []
-    for section in results or []:
-        for control_obj in section.get("controls") or []:
-            rows = control_obj.get(assigned_control_id)
-            if isinstance(rows, list):
-                all_points.extend(rows)
-
+    # In gap analysis, results is a flat list of points
     return next(
         (
             p
-            for p in all_points
-            if gap_point_matches(p, assigned_point_id, deployment_control_id, deployment_point_id)
+            for p in results or []
+            if str(p.get("assigned_framework_control_id")) == str(assigned_control_id)
+            and gap_point_matches(p, assigned_point_id, deployment_control_id, deployment_point_id)
         ),
         None,
     )

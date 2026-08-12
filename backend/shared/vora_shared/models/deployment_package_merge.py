@@ -24,24 +24,11 @@ class DeploymentPackageMerge(Base):
     """Tracks deployment package merge operations."""
 
     __tablename__ = "deployment_package_merges"
-    __table_args__ = (
-        Index(
-            "ix_deployment_package_merge_df_pkg",
-            "deploymentFrameworkId",
-            "packageVersion",
-            unique=True,
-        ),
-        Index("ix_deployment_package_merge_created", "createdAt"),
-    )
+    __table_args__ = (Index("ix_deployment_package_merge_created", "createdAt"),)
 
     id: Mapped[str] = mapped_column(String(24), primary_key=True, default=new_id)
-    deploymentFrameworkId: Mapped[str] = mapped_column(String(24), nullable=False)
-    packageVersion: Mapped[str] = mapped_column(String(20), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
-    mergeKey: Mapped[str | None] = mapped_column(String(256), nullable=True)
     fileHashes: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
-    fileIds: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
-    mergeHistory: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, default=list)
     controls: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     summary: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     createdAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)

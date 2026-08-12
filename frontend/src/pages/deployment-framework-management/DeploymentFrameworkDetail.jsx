@@ -126,21 +126,21 @@ const DeploymentFrameworkDetailModals = ({
 
   const packageBadges = packageToDelete
     ? [
-        {
-          text: packageToDelete.type || "package",
-          className:
-            "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-        },
-        {
-          text: packageToDelete.status || STATUS_PENDING,
-          className:
-            "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
-        },
-        ...fileTypeSummary.map(({ fileType, count }) => ({
-          text: `${count} ${fileType}${count === 1 ? "" : "s"}`,
-          className: "bg-background border border-border text-muted-foreground",
-        })),
-      ]
+      {
+        text: packageToDelete.type || "package",
+        className:
+          "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+      },
+      {
+        text: packageToDelete.status || STATUS_PENDING,
+        className:
+          "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
+      },
+      ...fileTypeSummary.map(({ fileType, count }) => ({
+        text: `${count} ${fileType}${count === 1 ? "" : "s"}`,
+        className: "bg-background border border-border text-muted-foreground",
+      })),
+    ]
     : [];
 
   let packageWarningText = null;
@@ -782,300 +782,306 @@ const DeploymentFrameworkDetail = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 items-start">
-        {/* ── deployment package table ── */}
-        <div className="bg-card border border-border rounded p-2">
-          <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
-            <div>
-              <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Icon name="folder" size="16px" className="text-primary" />
-                Deployment Package
-              </h2>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                {preReleasePackage?.documents?.length || 0} documents · Current
-                version:{" "}
-                <strong>v{preReleasePackage?.packageVersion || "N/A"}</strong>
-              </p>
-            </div>
-            <div className="flex flex-col gap-0">
-              <p className="text-xs text-muted-foreground text-right">
-                Last updated:{" "}
-                {preReleasePackage?.updatedAt
-                  ? formatDateWithMonthNameAndTime(preReleasePackage.updatedAt)
-                  : "N/A"}
-              </p>
-              {showAuditorActions && (
-                <Button
-                  variant="link"
-                  size="xs"
-                  onClick={() => setMinorPatchModalOpen(true)}
-                  className="flex items-center gap-1.5 text-[12px] text-primary"
-                  disabled={
-                    isAssignedFrameworkRevoked || !isAssignedFrameworkFinalized
-                  }
-                >
-                  <Icon name="plus" size={13} /> Upload another document
-                </Button>
-              )}
-            </div>
+      {/* ── deployment package table ── */}
+      <div className="bg-card border border-border rounded p-2">
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Icon name="folder" size="16px" className="text-primary" />
+              Deployment Package
+            </h2>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              {preReleasePackage?.documents?.length || 0} documents · Current
+              version:{" "}
+              <strong>v{preReleasePackage?.packageVersion || "N/A"}</strong>
+            </p>
           </div>
-
-          <DeploymentFrameworkPackageTable
-            preReleasePackage={preReleasePackage}
-            frameworkId={framework?.id}
-            showActions={showAuditorActions}
-            onExtractionTriggered={handleExtractionTriggered}
-            onSuccess={() => fetchFrameworkDetails(true)}
-          />
+          <div className="flex flex-col gap-0">
+            <p className="text-xs text-muted-foreground text-right">
+              Last updated:{" "}
+              {preReleasePackage?.updatedAt
+                ? formatDateWithMonthNameAndTime(preReleasePackage.updatedAt)
+                : "N/A"}
+            </p>
+            {showAuditorActions && (
+              <Button
+                variant="link"
+                size="xs"
+                onClick={() => setMinorPatchModalOpen(true)}
+                className="flex items-center gap-1.5 text-[12px] text-primary"
+                disabled={
+                  isAssignedFrameworkRevoked || !isAssignedFrameworkFinalized
+                }
+              >
+                <Icon name="plus" size={13} /> Upload another document
+              </Button>
+            )}
+          </div>
         </div>
 
-        {/* Right Column: Sign-off Gate & Version History */}
-        <div className="space-y-2">
-          {/* sign off */}
-          <div className="bg-card border border-border rounded p-4">
-            <div className="flex items-center justify-between mb-1">
-              <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                🏅 Sign-off Gate
-              </h2>
-              {renderExpertSignOffActions({
-                isCurrentPackageExpertReviewApproved,
-                handleRunAnalysis,
-                handleMergeControls,
-                isAssignedFrameworkRevoked,
-                isAssignedFrameworkFinalized,
-                isAnalysisButtonRunning,
-                isMergeButtonRunning,
-                areAllDocumentsExtracted,
-                isMergeCompleted,
-                isAnalysisCompleted,
-                isAnalysisFailed,
-                setRequestReviewModalOpen,
-                navigate,
-                id,
-                currentPackage,
-                showAuditorActions,
-              })}
-            </div>
-            <p className="text-[11px] text-muted-foreground mb-4">
-              No version is deployed without explicit expert approval
-            </p>
+        <DeploymentFrameworkPackageTable
+          preReleasePackage={preReleasePackage}
+          frameworkId={framework?.id}
+          showActions={showAuditorActions}
+          onExtractionTriggered={handleExtractionTriggered}
+          onSuccess={() => fetchFrameworkDetails(true)}
+        />
+      </div>
 
-            {(() => {
-              const lastCompletedIndex = [...gateSteps]
-                .reverse()
-                .findIndex((s) => s.status === STATUS_DONE);
-              const activeIndex =
-                lastCompletedIndex === -1
-                  ? -1
-                  : gateSteps.length - 1 - lastCompletedIndex;
-              const progressPercent =
-                activeIndex === -1
-                  ? 0
-                  : (activeIndex / (gateSteps.length - 1)) * 100;
-              const activeStep =
-                gateSteps.find(
-                  (s) =>
-                    s.status === STATUS_PENDING || s.status === STATUS_FAILED
-                ) ||
-                gateSteps.find(
-                  (s) =>
-                    s.status === STATUS_DONE &&
-                    s.title.toLowerCase().includes("deploy")
-                ) ||
-                gateSteps[0];
+      {/* sign off */}
+      <div className="bg-card border border-border rounded p-4">
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            🏅 Sign-off Gate
+          </h2>
+          {renderExpertSignOffActions({
+            isCurrentPackageExpertReviewApproved,
+            handleRunAnalysis,
+            handleMergeControls,
+            isAssignedFrameworkRevoked,
+            isAssignedFrameworkFinalized,
+            isAnalysisButtonRunning,
+            isMergeButtonRunning,
+            areAllDocumentsExtracted,
+            isMergeCompleted,
+            isAnalysisCompleted,
+            isAnalysisFailed,
+            setRequestReviewModalOpen,
+            navigate,
+            id,
+            currentPackage,
+            showAuditorActions,
+          })}
+        </div>
+        <p className="text-[11px] text-muted-foreground mb-4">
+          No version is deployed without explicit expert approval
+        </p>
 
-              return (
-                <div className="space-y-3">
-                  {/* Stepper container */}
-                  <div className="relative flex items-center justify-between w-full px-2 py-3 bg-muted/10 dark:bg-muted/5 border border-border/50 rounded">
-                    {/* Background progress line */}
-                    <div className="absolute left-7.5 right-7.5 top-6 h-0.5 z-0">
-                      <div className="w-full h-full bg-muted dark:bg-muted/30 rounded-full" />
-                      <div
-                        className="absolute top-0 left-0 h-full bg-green-500 rounded-full transition-all duration-500 ease-in-out"
-                        style={{ width: `${progressPercent}%` }}
-                      />
-                    </div>
+        {(() => {
+          const lastCompletedIndex = [...gateSteps]
+            .reverse()
+            .findIndex((s) => s.status === STATUS_DONE);
+          const activeIndex =
+            lastCompletedIndex === -1
+              ? -1
+              : gateSteps.length - 1 - lastCompletedIndex;
+          const activeStep =
+            gateSteps.find(
+              (s) => s.status === STATUS_PENDING || s.status === STATUS_FAILED
+            ) ||
+            gateSteps.find(
+              (s) =>
+                s.status === STATUS_DONE &&
+                s.title.toLowerCase().includes("deploy")
+            ) ||
+            gateSteps[0];
 
-                    {gateSteps.map((step, i) => {
-                      const cleanTitle = step.title
-                        .replace("AI ", "")
-                        .replace(" Completed", "")
-                        .replace(" Running", "")
-                        .replace(" Pending", "");
+          return (
+            <div className="space-y-3">
+              {/* Stepper container */}
+              <div className="relative flex items-center justify-between w-full px-2 py-3 bg-muted/10 dark:bg-muted/5 border border-border/50 rounded">
+                {/* Progress lines container */}
+                <div className="absolute left-0 w-full top-6 h-0.5 z-0">
+                  {/* Background gray line */}
+                  <div
+                    className="absolute top-0 h-full bg-muted dark:bg-muted/30 rounded-full"
+                    style={{
+                      left: "30px",
+                      width: `calc( (100% - 16px) * ${(2 * gateSteps.length - 1) / (2 * gateSteps.length)} + 8px - 30px )`,
+                    }}
+                  />
+                  {/* Foreground green line */}
+                  <div
+                    className="absolute top-0 h-full bg-green-500 rounded-full transition-all duration-500 ease-in-out"
+                    style={{
+                      left: "30px",
+                      width:
+                        activeIndex === -1
+                          ? "0px"
+                          : `calc( (100% - 16px) * ${(2 * activeIndex + 1) / (2 * gateSteps.length)} + 8px - 30px )`,
+                    }}
+                  />
+                </div>
 
-                      return (
-                        <div
-                          key={step.title}
-                          className="flex flex-col items-center relative z-10 flex-1"
-                        >
-                          <TooltipProvider delayDuration={100}>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <div
-                                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold border-2 border-background dark:border-card cursor-pointer transition-all duration-200 hover:scale-110 shadow-sm
+                {gateSteps.map((step, i) => {
+                  const cleanTitle = step.title
+                    .replace("AI ", "")
+                    .replace(" Completed", "")
+                    .replace(" Running", "")
+                    .replace(" Pending", "");
+
+                  return (
+                    <div
+                      key={step.title}
+                      className="flex flex-col items-center relative z-10 flex-1"
+                    >
+                      <TooltipProvider delayDuration={100}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div
+                              className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold border-2 border-background dark:border-card cursor-pointer transition-all duration-200 hover:scale-110 shadow-sm
                                     ${step.status === STATUS_DONE ? "bg-green-500 text-white" : ""}
                                     ${step.status === STATUS_PENDING ? "bg-amber-400 text-white animate-pulse" : ""}
                                     ${step.status === STATUS_FAILED ? "bg-rose-500 text-white animate-bounce" : ""}
                                     ${step.status === STATUS_LOCKED ? "bg-muted text-muted-foreground border-border" : ""}
                                   `}
-                                >
-                                  {step.status === STATUS_DONE && (
-                                    <Icon name="check" size={10} />
-                                  )}
-                                  {step.status === STATUS_PENDING && (
-                                    <Icon name="clock" size={10} />
-                                  )}
-                                  {step.status === STATUS_FAILED && (
-                                    <Icon name="x" size={10} />
-                                  )}
-                                  {step.status === STATUS_LOCKED && i + 1}
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent className="bg-primary text-background border border-border p-2 w-70 text-wrap text-xs shadow-md [&_svg]:fill-primary [&_svg]:bg-primary">
-                                <p className="font-semibold text-[11px] text-background mb-0.5">
-                                  {step.title}
-                                </p>
-                                <p className="text-[10px] text-background/85 leading-normal">
-                                  {step.desc}
-                                </p>
-                                {step.meta && (
-                                  <p className="text-[10px] font-medium text-background/65 mt-1">
-                                    {step.meta}
-                                  </p>
-                                )}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
+                            >
+                              {step.status === STATUS_DONE && (
+                                <Icon name="check" size={10} />
+                              )}
+                              {step.status === STATUS_PENDING && (
+                                <Icon name="clock" size={10} />
+                              )}
+                              {step.status === STATUS_FAILED && (
+                                <Icon name="x" size={10} />
+                              )}
+                              {step.status === STATUS_LOCKED && i + 1}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent className="bg-primary text-background border border-border p-2 w-70 text-wrap text-xs shadow-md [&_svg]:fill-primary [&_svg]:bg-primary">
+                            <p className="font-semibold text-[11px] text-background mb-0.5">
+                              {step.title}
+                            </p>
+                            <p className="text-[10px] text-background/85 leading-normal">
+                              {step.desc}
+                            </p>
+                            {step.meta && (
+                              <p className="text-[10px] font-medium text-background/65 mt-1">
+                                {step.meta}
+                              </p>
+                            )}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
 
-                          <span
-                            className={`text-[9px] font-semibold text-center mt-1.5 max-w-21.25 leading-tight block truncate
+                      <span
+                        className={`text-[9px] font-semibold text-center mt-1.5 max-w-21.25 leading-tight block truncate
                               ${step.status === STATUS_LOCKED ? "text-muted-foreground/80" : "text-foreground"}
                             `}
-                          >
-                            {cleanTitle}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                      >
+                        {cleanTitle}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
 
-                  {/* Active step details box */}
-                  {activeStep && (
-                    <div
-                      className={`p-2.5 rounded border text-[11px] flex items-start gap-2.5 transition-all duration-300
+              {/* Active step details box */}
+              {activeStep && (
+                <div
+                  className={`p-2.5 rounded border text-[11px] flex items-start gap-2.5 transition-all duration-300
                         ${activeStep.status === STATUS_DONE ? "bg-green-500/5 border-green-500/25 text-foreground" : ""}
                         ${activeStep.status === STATUS_PENDING ? "bg-amber-500/5 border-amber-500/25 text-foreground shadow-xs" : ""}
                         ${activeStep.status === STATUS_FAILED ? "bg-rose-500/5 border-rose-500/25 text-foreground" : ""}
                       `}
-                    >
-                      <div className="shrink-0 mt-0.5">
-                        {activeStep.status === STATUS_DONE && (
-                          <Icon
-                            name="check"
-                            size={13}
-                            className="text-green-500"
-                          />
-                        )}
-                        {activeStep.status === STATUS_PENDING && (
-                          <Icon
-                            name="clock"
-                            size={13}
-                            className="text-amber-500 animate-pulse"
-                          />
-                        )}
-                        {activeStep.status === STATUS_FAILED && (
-                          <Icon name="x" size={13} className="text-rose-500" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="font-semibold text-foreground">
-                          {activeStep.title}
+                >
+                  <div className="shrink-0 mt-0.5">
+                    {activeStep.status === STATUS_DONE && (
+                      <Icon name="check" size={13} className="text-green-500" />
+                    )}
+                    {activeStep.status === STATUS_PENDING && (
+                      <Icon
+                        name="clock"
+                        size={13}
+                        className="text-amber-500 animate-pulse"
+                      />
+                    )}
+                    {activeStep.status === STATUS_FAILED && (
+                      <Icon name="x" size={13} className="text-rose-500" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="font-semibold text-foreground">
+                      {activeStep.title}
+                    </span>
+                    <span className="text-muted-foreground ml-1.5">
+                      — {activeStep.desc}
+                    </span>
+                    {activeStep.meta && (
+                      <p className="text-muted-foreground text-[10px] font-medium mt-0.5">
+                        {activeStep.meta}
+                      </p>
+                    )}
+                    {activeStep.comment && (
+                      <div className="mt-2 p-2 bg-rose-500/10 border border-rose-500/20 rounded text-rose-800 dark:text-rose-300">
+                        <span className="font-semibold block mb-0.5">
+                          Expert Comment:
                         </span>
-                        <span className="text-muted-foreground ml-1.5">
-                          — {activeStep.desc}
-                        </span>
-                        {activeStep.meta && (
-                          <p className="text-muted-foreground text-[10px] font-medium mt-0.5">
-                            Timestamp: {activeStep.meta}
-                          </p>
-                        )}
+                        <span className="italic">{activeStep.comment}</span>
                       </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-
-            {/* action required box */}
-            {isInternalExpert(user?.role) &&
-              currentReviewPackage?.expertReview?.status === "requested" && (
-                <div className="mt-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded p-3">
-                  <p className="text-[12px] font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1.5 mb-1.5">
-                    <Icon name="alert" size={13} /> Expert Action Required
-                  </p>
-                  <p className="text-[11px] text-muted-foreground mb-3">
-                    Review gap analysis and confirm or reject this deployment
-                    package version.
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="default"
-                      size="xs"
-                      onClick={() =>
-                        setExpertReviewModal({ open: true, action: "approve" })
-                      }
-                    >
-                      <Icon name="check" size={12} /> Approve
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="xs"
-                      onClick={() =>
-                        setExpertReviewModal({ open: true, action: "return" })
-                      }
-                    >
-                      <Icon name="x" size={12} /> Return
-                    </Button>
+                    )}
                   </div>
                 </div>
               )}
-          </div>
+            </div>
+          );
+        })()}
 
-          {/* ── version history ── */}
-          <div className="bg-card border border-border rounded p-2">
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <Icon name="history" size={15} /> Version History
-                  </h2>
-                  <Badge variant="blue">
-                    {framework?.packages?.length || 0} versions
-                  </Badge>
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  Review and manage previous versions of this deployment
-                  framework. Statuses:{" "}
-                  <span className="text-primary font-bold">Pending</span> (under
-                  review),{" "}
-                  <span className="text-primary font-bold">Returned</span>{" "}
-                  (changes requested),{" "}
-                  <span className="text-primary font-bold">Live</span>{" "}
-                  (currently active), and{" "}
-                  <span className="text-primary font-bold">Superseded</span>{" "}
-                  (replaced by a newer version).
-                </p>
+        {/* action required box */}
+        {isInternalExpert(user?.role) &&
+          currentReviewPackage?.expertReview?.status === "requested" && (
+            <div className="mt-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded p-3">
+              <p className="text-[12px] font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1.5 mb-1.5">
+                <Icon name="alert" size={13} /> Expert Action Required
+              </p>
+              <p className="text-[11px] text-muted-foreground mb-3">
+                Review gap analysis and confirm or reject this deployment
+                package version.
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="default"
+                  size="xs"
+                  onClick={() =>
+                    setExpertReviewModal({ open: true, action: "approve" })
+                  }
+                >
+                  <Icon name="check" size={12} /> Approve
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="xs"
+                  onClick={() =>
+                    setExpertReviewModal({ open: true, action: "return" })
+                  }
+                >
+                  <Icon name="x" size={12} /> Return
+                </Button>
               </div>
             </div>
+          )}
+      </div>
 
-            <DeploymentFrameworkVersionHistoryTable
-              framework={framework}
-              setPackageToDelete={setPackageToDelete}
-              currentPackage={currentPackage}
-            />
+      {/* ── version history ── */}
+      <div className="bg-card border border-border rounded p-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Icon name="history" size={15} /> Version History
+              </h2>
+              <Badge variant="blue">
+                {framework?.packages?.length || 0} versions
+              </Badge>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Review and manage previous versions of this deployment framework.
+              Statuses: <span className="text-primary font-bold">Pending</span>{" "}
+              (under review),{" "}
+              <span className="text-primary font-bold">Returned</span> (changes
+              requested), <span className="text-primary font-bold">Live</span>{" "}
+              (currently active), and{" "}
+              <span className="text-primary font-bold">Superseded</span>{" "}
+              (replaced by a newer version).
+            </p>
           </div>
         </div>
+
+        <DeploymentFrameworkVersionHistoryTable
+          framework={framework}
+          setPackageToDelete={setPackageToDelete}
+          currentPackage={currentPackage}
+        />
       </div>
 
       <DeploymentFrameworkDetailModals

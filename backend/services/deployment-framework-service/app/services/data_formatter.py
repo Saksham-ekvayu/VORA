@@ -178,38 +178,57 @@ def _get(blob: Any, key: str, default: Any = None) -> Any:
 
 def _format_gap_analysis(gap_data: Any, exclude_details: bool) -> dict[str, Any]:
     if gap_data:
+        gap_results = _get(gap_data, "deployment_gap_results") or []
+        total_points = len(gap_results)
+        reviewed_points = sum(1 for p in gap_results if (_get(p, "reviewComment") or "").strip())
         return {
             "status": _get(gap_data, "status"),
             "message": _get(gap_data, "message"),
             "timestamp": _get(gap_data, "timestamp"),
+            "total_points": total_points,
+            "reviewed_points": reviewed_points,
             **(
                 {}
                 if exclude_details
-                else {"deployment_gap_results": _get(gap_data, "deployment_gap_results") or []}
+                else {"deployment_gap_results": gap_results}
             ),
         }
     return {
         "status": "pending",
         "message": None,
         "timestamp": None,
+        "total_points": 0,
+        "reviewed_points": 0,
         **({} if exclude_details else {"deployment_gap_results": []}),
     }
 
 
 def _format_comparison(comp_data: Any, exclude_details: bool) -> dict[str, Any]:
     if comp_data:
+        comp_results = _get(comp_data, "comparison_result") or []
+        total_controls = 0
+        reviewed_controls = 0
+        for section in comp_results:
+            controls = _get(section, "controls") or []
+            total_controls += len(controls)
+            reviewed_controls += sum(1 for c in controls if (_get(c, "reviewComment") or "").strip())
+            
         return {
             "status": _get(comp_data, "status"),
             "message": _get(comp_data, "message"),
             "timestamp": _get(comp_data, "timestamp"),
             "comparison_time_seconds": _get(comp_data, "comparison_time_seconds"),
-            **({} if exclude_details else {"comparison_result": _get(comp_data, "comparison_result") or []}),
+            "total_controls": total_controls,
+            "reviewed_controls": reviewed_controls,
+            **({} if exclude_details else {"comparison_result": comp_results}),
         }
     return {
         "status": "pending",
         "message": None,
         "timestamp": None,
         "comparison_time_seconds": None,
+        "total_controls": 0,
+        "reviewed_controls": 0,
         **({} if exclude_details else {"comparison_result": []}),
     }
 
