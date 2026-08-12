@@ -29,7 +29,7 @@ __pycache__/
 *.egg-info/
 .venv/
 venv/
-.env
+backend/shared/.env
 .DS_Store
 *.log
 .pytest_cache/
