@@ -118,14 +118,14 @@ const ALL_NAV_ITEMS = [
     path: "/assigned-frameworks",
     roles: [ROLE_INTERNAL_EXPERT, ROLE_CUSTOMER_ADMIN, ROLE_AUDITOR],
   },
-  {
-    id: "framework-workflow",
-    title: "Workflow Setup",
-    description: "Setup framework approval levels",
-    icon: "git-merge",
-    path: "/framework-workflow",
-    roles: [ROLE_CUSTOMER_ADMIN],
-  },
+  // {
+  //   id: "framework-workflow",
+  //   title: "Workflow Setup",
+  //   description: "Setup framework approval levels",
+  //   icon: "git-merge",
+  //   path: "/framework-workflow",
+  //   roles: [ROLE_CUSTOMER_ADMIN],
+  // },
   {
     id: "monitoring-setup",
     title: "Monitoring Setup",
@@ -134,14 +134,6 @@ const ALL_NAV_ITEMS = [
     path: "/monitoring-setup",
     roles: [ROLE_CUSTOMER_ADMIN],
   },
-  // {
-  //   id: "documents",
-  //   title: "Deployment Documents",
-  //   description: "View & manage deployment documents",
-  //   icon: "attach-file",
-  //   path: "/deployment-documents",
-  //   roles: [ROLE_CUSTOMER_ADMIN, ROLE_AUDITOR, ROLE_USER],
-  // },
   {
     id: "profile",
     title: "My Profile",

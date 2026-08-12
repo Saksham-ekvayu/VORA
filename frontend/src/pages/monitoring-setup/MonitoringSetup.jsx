@@ -598,6 +598,9 @@ export default function MonitoringSetup() {
                   : "hover:bg-accent"
               }`}
             >
+              <span className="text-[10px] font-bold text-primary shrink-0">
+                {sec.id}
+              </span>
               <p
                 title={sec.name}
                 className={`text-xs font-semibold leading-snug line-clamp-1 text-left ${

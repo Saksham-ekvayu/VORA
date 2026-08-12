@@ -631,8 +631,6 @@ async def update_deployment_framework(
                 session,
                 result["newPackage"],
                 framework.id,
-                framework.assignedFrameworkId,
-                result["newPackage"].get("packageVersion"),
             )
 
             new_package = PackageVersion(**result["newPackage"])
@@ -760,8 +758,6 @@ async def upload_deployment_framework(
             session,
             package_data,
             new_framework_id,
-            meta.get("assignedFrameworkId"),
-            package_data.get("packageVersion"),
         )
 
         existing_framework = await helpers.check_existing_framework(
