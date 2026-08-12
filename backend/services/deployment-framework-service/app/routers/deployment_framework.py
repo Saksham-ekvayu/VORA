@@ -45,6 +45,21 @@ def not_found(resource: str = "Resource"):
     return error(f"{resource} not found", 404)
 
 
+class _FrameworkView:
+    """Read-only wrapper around a DeploymentFramework used to feed the data
+    formatter with a narrowed `packages` list without mutating the ORM
+    instance (mutating ORM attributes inside a session_scope() block commits
+    at exit, which would silently drop unrelated package versions).
+    """
+
+    def __init__(self, framework: Any, packages: list[Any]) -> None:
+        self._framework = framework
+        self.packages = dump_packages(packages)
+
+    def __getattr__(self, item: str) -> Any:
+        return getattr(self._framework, item)
+
+
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -65,16 +80,20 @@ def _expert_assigned(pkg, user_id: str) -> bool:
 
 
 def _filter_for_internal_expert(all_docs: list[Any], user_id: str) -> list[Any]:
-    filtered = []
+    """Return views of frameworks narrowed to packages assigned to the expert.
+
+    Returns `_FrameworkView` instances instead of mutating the ORM objects —
+    mutating `framework.packages` inside the caller's session_scope() block
+    would be committed at session exit and silently drop other packages.
+    """
+    filtered: list[Any] = []
     for doc in all_docs:
         packages = coerce_packages(doc.packages)
         assigned = [p for p in packages if _expert_assigned(p, str(user_id))]
         if assigned:
-            doc.packages = dump_packages(assigned)
-            latest = helpers.get_latest_package(assigned)
-            if latest:
-                doc.currentPackageVersion = latest.packageVersion
-            filtered.append(doc)
+            view = _FrameworkView(doc, assigned)
+            view.currentPackageVersion = helpers.get_latest_package(assigned).packageVersion
+            filtered.append(view)
     return filtered
 
 
@@ -395,11 +414,14 @@ async def get_deployment_framework_by_id(
             assigned_packages = [p for p in packages if _expert_assigned(p, str(user.id))]
             if not assigned_packages:
                 return not_found(FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"])
-            framework.packages = dump_packages(assigned_packages)
+            # Use a read-only view so the ORM attribute on the live row is
+            # never overwritten. See `_FrameworkView` docstring.
+            view_framework: Any = _FrameworkView(framework, assigned_packages)
             latest = helpers.get_latest_package(assigned_packages)
             if latest:
-                framework.currentPackageVersion = latest.packageVersion
+                view_framework.currentPackageVersion = latest.packageVersion
         else:
+            view_framework = framework
             current_package = helpers.get_current_package(framework)
             if user.role == "user" and (
                 not current_package
@@ -409,7 +431,7 @@ async def get_deployment_framework_by_id(
                 return error(BUSINESS_MESSAGES["FRAMEWORK_ACCESS_DENIED"], 403)
 
         maps = await data_formatter.hydrate_maps(session, [framework])
-        response_data = data_formatter.format_deployment_framework(framework, maps, True)
+        response_data = data_formatter.format_deployment_framework(view_framework, maps, True)
         return success(response_data, BUSINESS_MESSAGES["FRAMEWORK_RETRIEVED_SUCCESS"])
 
 
@@ -460,11 +482,14 @@ async def get_deployment_framework_package_by_version(
         if validation_error:
             return validation_error
 
-        framework.packages = dump_packages([found_package])
-        framework.currentPackageVersion = package_version
+        # Build a read-only view for the formatter so the response shows only the
+        # requested package. Do NOT mutate `framework.packages` here — any
+        # assignment to an ORM attribute inside a session_scope() block is
+        # committed at exit and would silently drop the other package versions.
+        view_framework = _FrameworkView(framework, [found_package])
 
         maps = await data_formatter.hydrate_maps(session, [framework])
-        response_data = data_formatter.format_deployment_framework(framework, maps, False)
+        response_data = data_formatter.format_deployment_framework(view_framework, maps, False)
         return success(response_data, BUSINESS_MESSAGES["FRAMEWORK_RETRIEVED_SUCCESS"])
 
 
@@ -1223,14 +1248,10 @@ async def review_deployment_package(
 # ─── POST /:id/packegeVersion/:packegeVersion/add-comparison-review-remark ──
 
 
-def _control_matches(
-    control: Any, assigned_control_id: str, deployment_control_id: str
-) -> bool:
+def _control_matches(control: Any, assigned_control_id: str, deployment_control_id: str) -> bool:
     c_assigned = _blob_get(control, "assigned_framework_control_id")
     c_deploy = _blob_get(control, "deployment_framework_control_id")
-    return c_assigned == assigned_control_id and (c_deploy or "") == (
-        deployment_control_id or ""
-    )
+    return c_assigned == assigned_control_id and (c_deploy or "") == (deployment_control_id or "")
 
 
 def _update_comparison_review_remark(
