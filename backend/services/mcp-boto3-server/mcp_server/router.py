@@ -12,6 +12,7 @@ from scheduler import (
     stop_scheduler,
     scheduler_status
 )
+from schemas.scheduler_schema import StartSchedulerRequest
 from collectors.collector_manager import collect_files
 router = APIRouter(
     prefix="/scheduler",
@@ -20,29 +21,8 @@ router = APIRouter(
 
 
 @router.post("/start")
-def start_scheduler(payload: dict):
-
-    """
-    Example Payload:
-
-    {
-        "source": "aws",
-        "scheduler_type": "interval",
-        "minutes": 1
-    }
-
-    OR
-
-    {
-        "source": "gitlab",
-        "scheduler_type": "cron",
-        "hour": 14,
-        "minute": 30
-    }
-    """
-
-    return start_dynamic_scheduler(payload)
-
+def start_scheduler(payload: StartSchedulerRequest):
+    return start_dynamic_scheduler(payload.model_dump())
 
 @router.get("/stop")
 def stop_scheduler_api():
@@ -168,56 +148,10 @@ async def create_full_config(
     request: FullConfigRequest,
     db: AsyncSession = Depends(get_session),
 ):
-    # IMPORTANT: pass db and use await
     result = await save_full_config(db, request)
-
-    source_ok = result["source_config_id"] is not None
-    sections_ok = result["sections_success"]
-
-    if not source_ok and not sections_ok:
-        return {
-            "status": False,
-            "message": "Failed to save source configuration and sections configuration",
-        }
-
-    if not source_ok:
-        return {
-            "status": False,
-            "message": "Sections configuration saved, but source configuration failed",
-            "source_config_id": None,
-        }
-
-    if not sections_ok:
-        return {
-            "status": False,
-            "message": "Source configuration saved, but sections configuration failed",
-            "source_config_id": result["source_config_id"],
-        }
-
-    try:
-        files = collect_files(
-            request.source_config.source_type,
-            request.source_config.config_json,
-        )
-
-    except ValueError as e:
-        return {
-            "status": False,
-            "message": f"Configuration saved, but collection failed: {e}",
-            "source_config_id": result["source_config_id"],
-        }
-
-    except Exception as e:
-        return {
-            "status": False,
-            "message": f"Configuration saved, but collection raised an unexpected error: {e}",
-            "source_config_id": result["source_config_id"],
-        }
 
     return {
         "status": True,
-        "message": "Configuration saved and files collected successfully",
+        "message": "Configuration saved successfully",
         "source_config_id": result["source_config_id"],
-        "file_count": len(files),
-        "files": files,
     }

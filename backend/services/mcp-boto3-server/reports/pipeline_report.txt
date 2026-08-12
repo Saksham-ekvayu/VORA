@@ -11,3 +11,102 @@
 2026-05-07 12:27:42,250 - INFO - Using Agent: Compliance_Audit_Agent
 2026-05-07 12:27:42,813 - INFO - Agent Response: {'success': True, 'message': 'File uploaded successfully as deployment-document', 'data': {'status': 'uploaded', 'filename': 'application.log', 'uuid': '32d656a56f364f8fb0487499cbb6b552', 'job_id': None, 'resourceType': 'deployment-document', 'file_hash': 'fe2fed43c08b413a935c4a542840864a', 'file_size': 892990, 'source': 'local', 'user_id': None, 'frameworkName': None, 'frameworkId': None, 'currentFileVersion': None, 'fileVersions': [], 'is_duplicate': True, 'duplicate_of_uuid': 'ade6eb4795064a6db72fba97b9b254c0', 'message': 'Duplicate file detected - extraction will be reused'}}
 2026-05-07 12:27:42,815 - INFO - Job "run_pipeline (trigger: interval[0:01:00], next run at: 2026-05-07 12:28:38 IST)" executed successfully
+
+2026-05-07 12:28:38,145 - INFO - Running job "run_pipeline (trigger: interval[0:01:00], next run at: 2026-05-07 12:29:38 IST)" (scheduled at 2026-05-07 12:28:38.134903+05:30)
+2026-05-07 12:28:38,897 - INFO - Running pipeline for source: aws
+2026-05-07 12:28:38,897 - INFO - Total files fetched: 2
+2026-05-07 12:28:38,897 - INFO - Processing: s3://my-audit-logs-bucket-test/ec2-logs/application.log
+2026-05-07 12:28:40,249 - INFO - Using Agent: Compliance_Audit_Agent
+2026-05-07 12:28:40,539 - INFO - Agent Response: {'success': True, 'message': 'File uploaded successfully as deployment-document', 'data': {'status': 'uploaded', 'filename': 'application.log', 'uuid': 'aca9ac55fa47469daf3144c64509651b', 'job_id': None, 'resourceType': 'deployment-document', 'file_hash': 'fe2fed43c08b413a935c4a542840864a', 'file_size': 892990, 'source': 'local', 'user_id': None, 'frameworkName': None, 'frameworkId': None, 'currentFileVersion': None, 'fileVersions': [], 'is_duplicate': True, 'duplicate_of_uuid': 'ade6eb4795064a6db72fba97b9b254c0', 'message': 'Duplicate file detected - extraction will be reused'}}
+2026-05-07 12:28:40,542 - INFO - Job "run_pipeline (trigger: interval[0:01:00], next run at: 2026-05-07 12:29:38 IST)" executed successfully
+2026-05-07 12:29:38,139 - INFO - Running job "run_pipeline (trigger: interval[0:01:00], next run at: 2026-05-07 12:30:38 IST)" (scheduled at 2026-05-07 12:29:38.134903+05:30)
+2026-05-07 12:29:38,872 - INFO - Running pipeline for source: aws
+2026-05-07 12:29:38,872 - INFO - Total files fetched: 2
+2026-05-07 12:29:38,873 - INFO - Processing: s3://my-audit-logs-bucket-test/ec2-logs/application.log
+2026-05-07 12:29:40,049 - INFO - Using Agent: Compliance_Audit_Agent
+2026-05-07 12:29:40,205 - INFO - Agent Response: {'success': True, 'message': 'File uploaded successfully as deployment-document', 'data': {'status': 'uploaded', 'filename': 'application.log', 'uuid': 'e87ea10a9e504b8382f71379ef5917ed', 'job_id': None, 'resourceType': 'deployment-document', 'file_hash': 'fe2fed43c08b413a935c4a542840864a', 'file_size': 892990, 'source': 'local', 'user_id': None, 'frameworkName': None, 'frameworkId': None, 'currentFileVersion': None, 'fileVersions': [], 'is_duplicate': True, 'duplicate_of_uuid': 'ade6eb4795064a6db72fba97b9b254c0', 'message': 'Duplicate file detected - extraction will be reused'}}
+2026-05-07 12:29:40,207 - INFO - Job "run_pipeline (trigger: interval[0:01:00], next run at: 2026-05-07 12:30:38 IST)" executed successfully
+2026-05-07 12:30:29,170 - INFO - Scheduler has been shut down
+2026-08-12 12:01:32,429 - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-08-12 12:01:32,431 - INFO - Added job "run_pipeline" to job store "default"
+2026-08-12 12:01:32,431 - INFO - Scheduler started
+2026-08-12 12:01:55,432 - INFO - Scheduler has been shut down
+2026-08-12 14:19:17,239 - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-08-12 14:19:17,241 - INFO - Added job "run_pipeline" to job store "default"
+2026-08-12 14:19:17,241 - INFO - Scheduler started
+2026-08-12 14:20:17,251 - INFO - Running job "run_pipeline (trigger: interval[0:01:00], next run at: 2026-08-12 14:20:17 IST)" (scheduled at 2026-08-12 14:20:17.238766+05:30)
+2026-08-12 14:20:18,271 - INFO - Running pipeline for source: aws
+2026-08-12 14:20:18,272 - INFO - Total files fetched: 2
+2026-08-12 14:20:18,272 - INFO - Processing: s3://my-audit-logs-bucket-test/ec2-logs/application.log
+2026-08-12 14:20:19,555 - INFO - Using Agent: Compliance_Audit_Agent
+2026-08-12 14:20:19,682 - INFO - Agent Response: {'detail': [{'type': 'missing', 'loc': ['body', 'id'], 'msg': 'Field required', 'input': None}]}
+2026-08-12 14:20:19,683 - ERROR - Error processing s3://my-audit-logs-bucket-test/ec2-logs/application.log: mark_processed() missing 1 required positional argument: 'file_path'
+2026-08-12 14:20:19,683 - INFO - Job "run_pipeline (trigger: interval[0:01:00], next run at: 2026-08-12 14:21:17 IST)" executed successfully
+2026-08-12 14:21:17,251 - INFO - Running job "run_pipeline (trigger: interval[0:01:00], next run at: 2026-08-12 14:22:17 IST)" (scheduled at 2026-08-12 14:21:17.238766+05:30)
+2026-08-12 14:21:17,628 - INFO - Running pipeline for source: aws
+2026-08-12 14:21:17,629 - INFO - Total files fetched: 2
+2026-08-12 14:21:17,629 - INFO - Processing: s3://my-audit-logs-bucket-test/ec2-logs/application.log
+2026-08-12 14:21:18,267 - INFO - Using Agent: Compliance_Audit_Agent
+2026-08-12 14:21:18,323 - INFO - Agent Response: {'detail': [{'type': 'missing', 'loc': ['body', 'id'], 'msg': 'Field required', 'input': None}]}
+2026-08-12 14:21:18,323 - ERROR - Error processing s3://my-audit-logs-bucket-test/ec2-logs/application.log: mark_processed() missing 1 required positional argument: 'file_path'
+2026-08-12 14:21:18,323 - INFO - Job "run_pipeline (trigger: interval[0:01:00], next run at: 2026-08-12 14:22:17 IST)" executed successfully
+2026-08-12 14:22:17,245 - INFO - Running job "run_pipeline (trigger: interval[0:01:00], next run at: 2026-08-12 14:23:17 IST)" (scheduled at 2026-08-12 14:22:17.238766+05:30)
+2026-08-12 14:22:18,141 - INFO - Running pipeline for source: aws
+2026-08-12 14:22:18,142 - INFO - Total files fetched: 2
+2026-08-12 14:22:18,143 - INFO - Processing: s3://my-audit-logs-bucket-test/ec2-logs/application.log
+2026-08-12 14:22:19,185 - INFO - Using Agent: Compliance_Audit_Agent
+2026-08-12 14:22:19,276 - INFO - Agent Response: {'detail': [{'type': 'missing', 'loc': ['body', 'id'], 'msg': 'Field required', 'input': None}]}
+2026-08-12 14:22:19,277 - ERROR - Error processing s3://my-audit-logs-bucket-test/ec2-logs/application.log: mark_processed() missing 1 required positional argument: 'file_path'
+2026-08-12 14:22:19,277 - INFO - Job "run_pipeline (trigger: interval[0:01:00], next run at: 2026-08-12 14:23:17 IST)" executed successfully
+2026-08-12 14:23:17,251 - INFO - Running job "run_pipeline (trigger: interval[0:01:00], next run at: 2026-08-12 14:24:17 IST)" (scheduled at 2026-08-12 14:23:17.238766+05:30)
+2026-08-12 14:23:17,736 - INFO - Running pipeline for source: aws
+2026-08-12 14:23:17,737 - INFO - Total files fetched: 2
+2026-08-12 14:23:17,737 - INFO - Processing: s3://my-audit-logs-bucket-test/ec2-logs/application.log
+2026-08-12 14:23:19,101 - INFO - Using Agent: Compliance_Audit_Agent
+2026-08-12 14:23:19,160 - INFO - Agent Response: {'detail': [{'type': 'missing', 'loc': ['body', 'id'], 'msg': 'Field required', 'input': None}]}
+2026-08-12 14:23:19,161 - ERROR - Error processing s3://my-audit-logs-bucket-test/ec2-logs/application.log: mark_processed() missing 1 required positional argument: 'file_path'
+2026-08-12 14:23:19,161 - INFO - Job "run_pipeline (trigger: interval[0:01:00], next run at: 2026-08-12 14:24:17 IST)" executed successfully
+2026-08-12 14:24:17,243 - INFO - Running job "run_pipeline (trigger: interval[0:01:00], next run at: 2026-08-12 14:25:17 IST)" (scheduled at 2026-08-12 14:24:17.238766+05:30)
+2026-08-12 14:24:18,111 - INFO - Running pipeline for source: aws
+2026-08-12 14:24:18,111 - INFO - Total files fetched: 2
+2026-08-12 14:24:18,112 - INFO - Processing: s3://my-audit-logs-bucket-test/ec2-logs/application.log
+2026-08-12 14:24:19,221 - INFO - Using Agent: Compliance_Audit_Agent
+2026-08-12 14:24:19,277 - INFO - Agent Response: {'detail': [{'type': 'missing', 'loc': ['body', 'id'], 'msg': 'Field required', 'input': None}]}
+2026-08-12 14:24:19,277 - ERROR - Error processing s3://my-audit-logs-bucket-test/ec2-logs/application.log: mark_processed() missing 1 required positional argument: 'file_path'
+2026-08-12 14:24:19,278 - INFO - Job "run_pipeline (trigger: interval[0:01:00], next run at: 2026-08-12 14:25:17 IST)" executed successfully
+2026-08-12 14:25:17,246 - INFO - Running job "run_pipeline (trigger: interval[0:01:00], next run at: 2026-08-12 14:26:17 IST)" (scheduled at 2026-08-12 14:25:17.238766+05:30)
+2026-08-12 14:25:18,215 - INFO - Running pipeline for source: aws
+2026-08-12 14:25:18,347 - INFO - Total files fetched: 2
+2026-08-12 14:25:18,347 - INFO - Processing: s3://my-audit-logs-bucket-test/ec2-logs/application.log
+2026-08-12 14:25:19,420 - INFO - Using Agent: Compliance_Audit_Agent
+2026-08-12 14:25:19,477 - INFO - Agent Response: {'detail': [{'type': 'missing', 'loc': ['body', 'id'], 'msg': 'Field required', 'input': None}]}
+2026-08-12 14:25:19,477 - ERROR - Error processing s3://my-audit-logs-bucket-test/ec2-logs/application.log: mark_processed() missing 1 required positional argument: 'file_path'
+2026-08-12 14:25:19,478 - INFO - Job "run_pipeline (trigger: interval[0:01:00], next run at: 2026-08-12 14:26:17 IST)" executed successfully
+2026-08-12 14:26:17,246 - INFO - Running job "run_pipeline (trigger: interval[0:01:00], next run at: 2026-08-12 14:27:17 IST)" (scheduled at 2026-08-12 14:26:17.238766+05:30)
+2026-08-12 14:26:17,637 - INFO - Running pipeline for source: aws
+2026-08-12 14:26:17,638 - INFO - Total files fetched: 2
+2026-08-12 14:26:17,638 - INFO - Processing: s3://my-audit-logs-bucket-test/ec2-logs/application.log
+2026-08-12 14:26:18,187 - INFO - Using Agent: Compliance_Audit_Agent
+2026-08-12 14:26:18,248 - INFO - Agent Response: {'detail': [{'type': 'missing', 'loc': ['body', 'id'], 'msg': 'Field required', 'input': None}]}
+2026-08-12 14:26:18,249 - ERROR - Error processing s3://my-audit-logs-bucket-test/ec2-logs/application.log: mark_processed() missing 1 required positional argument: 'file_path'
+2026-08-12 14:26:18,249 - INFO - Job "run_pipeline (trigger: interval[0:01:00], next run at: 2026-08-12 14:27:17 IST)" executed successfully
+2026-08-12 14:26:26,630 - INFO - Scheduler has been shut down
+2026-08-12 14:42:07,299 - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-08-12 14:42:07,301 - INFO - Added job "run_pipeline" to job store "default"
+2026-08-12 14:42:07,301 - INFO - Scheduler started
+2026-08-12 14:43:07,313 - INFO - Running job "run_pipeline (trigger: interval[0:01:00], next run at: 2026-08-12 14:43:07 IST)" (scheduled at 2026-08-12 14:43:07.299787+05:30)
+2026-08-12 14:43:08,243 - INFO - Running pipeline for source: aws
+2026-08-12 14:43:08,243 - INFO - Total files fetched: 2
+2026-08-12 14:43:08,243 - INFO - Processing: s3://my-audit-logs-bucket-test/ec2-logs/application.log
+2026-08-12 14:43:09,311 - INFO - Using Agent: Compliance_Audit_Agent
+2026-08-12 14:43:09,400 - INFO - Agent Response: {'detail': [{'type': 'missing', 'loc': ['body', 'id'], 'msg': 'Field required', 'input': None}]}
+2026-08-12 14:43:09,401 - ERROR - Error processing s3://my-audit-logs-bucket-test/ec2-logs/application.log: mark_processed() missing 1 required positional argument: 'file_path'
+2026-08-12 14:43:09,401 - INFO - Job "run_pipeline (trigger: interval[0:01:00], next run at: 2026-08-12 14:44:07 IST)" executed successfully
+2026-08-12 14:44:07,301 - INFO - Running job "run_pipeline (trigger: interval[0:01:00], next run at: 2026-08-12 14:45:07 IST)" (scheduled at 2026-08-12 14:44:07.299787+05:30)
+2026-08-12 14:44:08,135 - INFO - Running pipeline for source: aws
+2026-08-12 14:44:08,135 - INFO - Total files fetched: 2
+2026-08-12 14:44:08,135 - INFO - Processing: s3://my-audit-logs-bucket-test/ec2-logs/application.log
+2026-08-12 14:44:09,324 - INFO - Using Agent: Compliance_Audit_Agent
+2026-08-12 14:44:09,385 - INFO - Agent Response: {'detail': [{'type': 'missing', 'loc': ['body', 'id'], 'msg': 'Field required', 'input': None}]}
+2026-08-12 14:44:09,385 - ERROR - Error processing s3://my-audit-logs-bucket-test/ec2-logs/application.log: mark_processed() missing 1 required positional argument: 'file_path'
+2026-08-12 14:44:09,385 - INFO - Job "run_pipeline (trigger: interval[0:01:00], next run at: 2026-08-12 14:45:07 IST)" executed successfully

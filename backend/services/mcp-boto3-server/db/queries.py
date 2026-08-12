@@ -1,24 +1,22 @@
 import json
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from vora_shared.models.deployment_framework import DeploymentFramework
+from vora_shared.models.framework_merge import FrameworkMerge
 from vora_shared.models import (
     ProcessedFile,
     SourceConfig,
     SourceCredential,
 )
-
+from vora_shared.models import ProcessedFile
 # =========================================
 # PROCESSED FILES
 # =========================================
 
-async def is_processed(db: AsyncSession, file_path: str) -> bool:
+async def is_processed(db: AsyncSession, file_path: str):
     result = await db.execute(
-        select(ProcessedFile).where(
-            ProcessedFile.file_path == file_path
-        )
+        select(ProcessedFile).where(ProcessedFile.file_path == file_path)
     )
-
     return result.scalar_one_or_none() is not None
 
 
@@ -124,3 +122,64 @@ async def get_source_configs(
         })
 
     return response
+
+
+
+async def get_live_package(db: AsyncSession):
+    """
+    Return the latest LIVE deployment package from deployment_frameworks.
+    """
+
+    stmt = (
+        select(DeploymentFramework)
+        .order_by(DeploymentFramework.updatedAt.desc())
+    )
+
+    result = await db.execute(stmt)
+    frameworks = result.scalars().all()
+
+    for framework in frameworks:
+        for package in framework.packages or []:
+            if package.get("status") == "live":
+                return {
+                    "framework_id": framework.id,
+                    "framework_name": framework.frameworkName,
+                    "package_version": package.get("packageVersion"),
+                    "merge_document": package.get("mergeDocument"),
+                    "documents": package.get("documents", []),
+                }
+
+    return None
+
+async def get_live_framework(db: AsyncSession):
+    result = await db.execute(select(DeploymentFramework))
+    frameworks = result.scalars().all()
+
+    for framework in frameworks:
+        for pkg in framework.packages or []:
+            if pkg.get("status") == "live":
+                return {
+                    "framework_id": framework.id,
+                    "framework_name": framework.frameworkName,
+                    "package_version": pkg.get("packageVersion"),
+                    "merge_document": pkg.get("mergeDocument"),
+                }
+
+    return None
+
+
+async def get_framework_merge(db: AsyncSession, merge_id: str):
+    result = await db.execute(
+        select(FrameworkMerge).where(FrameworkMerge.id == merge_id)
+    )
+
+    merge = result.scalar_one_or_none()
+
+    if not merge:
+        return None
+
+    return {
+        "id": merge.id,
+        "controls": merge.controls,
+        "summary": merge.summary,
+    }
