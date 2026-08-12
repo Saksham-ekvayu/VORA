@@ -1227,21 +1227,28 @@ async def review_deployment_package(
 # ─── POST /:id/packegeVersion/:packegeVersion/add-comparison-review-remark ──
 
 
+def _control_matches(
+    control: Any, assigned_control_id: str, deployment_control_id: str
+) -> bool:
+    c_assigned = _blob_get(control, "assigned_framework_control_id")
+    c_deploy = _blob_get(control, "deployment_framework_control_id")
+    return c_assigned == assigned_control_id and (c_deploy or "") == (
+        deployment_control_id or ""
+    )
+
+
 def _update_comparison_review_remark(
     results: list[Any], assigned_control_id: str, deployment_control_id: str, comment: str | None
 ) -> bool:
     for section in results:
-        for c in _blob_get(section, "controls") or []:
-            c_assigned = _blob_get(c, "assigned_framework_control_id")
-            c_deploy = _blob_get(c, "deployment_framework_control_id")
-            if c_assigned == assigned_control_id and (c_deploy or "") == (
-                deployment_control_id or ""
-            ):
-                if isinstance(c, dict):
-                    c["reviewComment"] = comment or ""
-                else:
-                    c.reviewComment = comment or ""
-                return True
+        for control in _blob_get(section, "controls") or []:
+            if not _control_matches(control, assigned_control_id, deployment_control_id):
+                continue
+            if isinstance(control, dict):
+                control["reviewComment"] = comment or ""
+            else:
+                control.reviewComment = comment or ""
+            return True
     return False
 
 
