@@ -143,7 +143,7 @@ async def get_all_framework_categories(
 
     message = _get_paginated_message(data, search, is_active)
 
-    logger.info(f"[GET-CATEGORIES] Retrieved | count={len(data)} | total={pagination['total']} | user_id={auth.user.id}")
+    logger.info(f"[GET-CATEGORIES] Retrieved | count={len(data)} | total={pagination['totalItems']} | user_id={auth.user.id}")
     return paginated(data, pagination, message)
 
 
