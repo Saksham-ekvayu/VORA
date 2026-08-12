@@ -59,6 +59,42 @@ def create_package(
     return pkg
 
 
+def _find_document_history(framework: Any, original_file_name: str) -> list[Any]:
+    """Flat list of every prior document with the same original filename, across all packages."""
+    return [
+        doc
+        for pkg in (framework.packages or [])
+        for doc in (_g(pkg, "documents") or [])
+        if _g(doc, "originalFileName") == original_file_name
+    ]
+
+
+def _occurrence_based_version(document_history: list[Any]) -> str:
+    """Bump the version once per prior occurrence of this filename."""
+    version = _g(document_history[0], "fileVersion") or "1.0.0"
+    try:
+        version_service.parse_version(version)
+    except ValueError:
+        version = "1.0.0"
+    for _ in document_history[1:]:
+        version = version_service.increment_file_patch(version)
+    return version
+
+
+def _latest_document_version(document_history: list[Any]) -> str:
+    """Highest valid semver among prior fileVersions, defaulting to '1.0.0'."""
+    latest = "1.0.0"
+    for doc in document_history:
+        ver = _g(doc, "fileVersion") or "1.0.0"
+        try:
+            version_service.parse_version(ver)
+            if version_service.compare_versions(ver, latest) > 0:
+                latest = ver
+        except ValueError:
+            pass
+    return latest
+
+
 def resolve_document_file_version(framework: Any, document_data: dict[str, Any]) -> str:
     original_file_name = document_data.get("originalFileName")
     file_hash = document_data.get("fileHash")
@@ -66,39 +102,17 @@ def resolve_document_file_version(framework: Any, document_data: dict[str, Any])
     if not original_file_name or not file_hash:
         return document_data.get("fileVersion") or "1.0.0"
 
-    document_history = [
-        doc
-        for pkg in (framework.packages or [])
-        for doc in (_g(pkg, "documents") or [])
-        if _g(doc, "originalFileName") == original_file_name
-    ]
-
+    document_history = _find_document_history(framework, original_file_name)
     if not document_history:
         return "1.0.0"
 
-    occurrence_based_version = _g(document_history[0], "fileVersion") or "1.0.0"
-    try:
-        version_service.parse_version(occurrence_based_version)
-    except ValueError:
-        occurrence_based_version = "1.0.0"
-
-    for _ in document_history[1:]:
-        occurrence_based_version = version_service.increment_file_patch(occurrence_based_version)
-
-    latest_document_version = "1.0.0"
-    for doc in document_history:
-        ver = _g(doc, "fileVersion") or "1.0.0"
-        try:
-            version_service.parse_version(ver)
-            if version_service.compare_versions(ver, latest_document_version) > 0:
-                latest_document_version = ver
-        except ValueError:
-            pass
+    occurrence_version = _occurrence_based_version(document_history)
+    latest_version = _latest_document_version(document_history)
 
     base_version = (
-        latest_document_version
-        if version_service.compare_versions(latest_document_version, occurrence_based_version) >= 0
-        else occurrence_based_version
+        latest_version
+        if version_service.compare_versions(latest_version, occurrence_version) >= 0
+        else occurrence_version
     )
 
     return version_service.increment_file_patch(base_version)
@@ -157,7 +171,9 @@ class _FakePackage:
 def matches_update(doc: dict[str, Any], update: dict[str, Any]) -> bool:
     if update.get("fileId"):
         return str(doc.get("fileId")) == str(update["fileId"])
-    return bool(update.get("originalFileName") and doc.get("originalFileName") == update["originalFileName"])
+    return bool(
+        update.get("originalFileName") and doc.get("originalFileName") == update["originalFileName"]
+    )
 
 
 def create_document_from_update(update: dict[str, Any]) -> dict[str, Any]:
@@ -180,7 +196,8 @@ def apply_add_update(docs: list[dict], update: dict[str, Any]) -> list[dict]:
         (
             i
             for i, doc in enumerate(docs)
-            if update.get("originalFileName") and doc.get("originalFileName") == update["originalFileName"]
+            if update.get("originalFileName")
+            and doc.get("originalFileName") == update["originalFileName"]
         ),
         -1,
     )
@@ -242,15 +259,25 @@ def create_document_from_file(
 
 
 def get_current_package(framework: Any) -> Any | None:
-    if not framework or not getattr(framework, "packages", None) or not framework.currentPackageVersion:
+    if (
+        not framework
+        or not getattr(framework, "packages", None)
+        or not framework.currentPackageVersion
+    ):
         return None
     return next(
-        (pkg for pkg in framework.packages if _g(pkg, "packageVersion") == framework.currentPackageVersion),
+        (
+            pkg
+            for pkg in framework.packages
+            if _g(pkg, "packageVersion") == framework.currentPackageVersion
+        ),
         None,
     )
 
 
-def build_minor_patch(framework: Any, new_files: list[dict], document_updates: list[dict]) -> dict[str, Any]:
+def build_minor_patch(
+    framework: Any, new_files: list[dict], document_updates: list[dict]
+) -> dict[str, Any]:
     """new_files: list of {"filename": str, "content": bytes}."""
     current_package = get_current_package(framework)
     if not current_package:
@@ -258,7 +285,9 @@ def build_minor_patch(framework: Any, new_files: list[dict], document_updates: l
 
     new_version = version_service.increment_minor_patch(framework.currentPackageVersion)
 
-    replicated_docs = replicate_documents(_g(current_package, "documents") or [], document_updates, framework)
+    replicated_docs = replicate_documents(
+        _g(current_package, "documents") or [], document_updates, framework
+    )
 
     handled_names = {
         u.get("originalFileName")
@@ -280,7 +309,9 @@ def build_minor_patch(framework: Any, new_files: list[dict], document_updates: l
     return {"newPackage": new_package}
 
 
-def build_major_patch(framework: Any, new_files: list[dict], document_updates: list[dict]) -> dict[str, Any]:
+def build_major_patch(
+    framework: Any, new_files: list[dict], document_updates: list[dict]
+) -> dict[str, Any]:
     new_version = version_service.increment_major_patch(framework.currentPackageVersion)
 
     updated_docs = apply_document_updates([], document_updates)

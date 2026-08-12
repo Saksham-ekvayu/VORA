@@ -342,6 +342,7 @@ def _parse_deployment_points(raw: Any, ctrl_id: str) -> list:
                         "name": str(item.get("name") or item.get("dp") or ""),
                         "status": item.get("status", "pending"),
                         "path": item.get("path", ""),
+                        "source": item.get("source", ""),
                         "weightage": item.get("weightage", 10),
                         "remark": item.get("remark", ""),
                     }
@@ -353,6 +354,7 @@ def _parse_deployment_points(raw: Any, ctrl_id: str) -> list:
                         "name": str(item).strip(),
                         "status": "pending",
                         "path": "",
+                        "source": "",
                         "weightage": 10,
                         "remark": "",
                     }
@@ -372,6 +374,7 @@ def _parse_deployment_points(raw: Any, ctrl_id: str) -> list:
                 "name": point,
                 "status": "pending",
                 "path": "",
+                "source": "",
                 "weightage": 10,
                 "remark": "",
             }

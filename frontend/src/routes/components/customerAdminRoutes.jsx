@@ -9,9 +9,9 @@ import {
   DeploymentDocumentDetail,
   DeploymentFramework,
   DeploymentFrameworkDetail,
-  DeploymentSetup,
   FrameworkWorkflowSetup,
   FrameworkWorkflowList,
+  MonitoringSetup,
   Profiles,
 } from "../utils/routeImports";
 
@@ -54,9 +54,9 @@ const customerAdminRoutes = createProtectedRoutes([
     component: DeploymentDocumentDetail,
   },
   {
-    key: "deployment-setup",
-    path: "/deployment-setup",
-    component: DeploymentSetup,
+    key: "monitoring-setup",
+    path: "/monitoring-setup",
+    component: MonitoringSetup,
   },
   {
     key: "framework-workflow-list",

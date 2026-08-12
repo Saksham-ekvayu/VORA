@@ -43,8 +43,8 @@ export const OverallProtectionPage = lazy(
 export const DeploymentPointsPage = lazy(
   () => import("@/pages/dashboard-management/auditor/DeploymentPointsPage")
 );
-export const DeploymentSetup = lazy(
-  () => import("@/pages/deployment-setup/DeploymentSetup")
+export const MonitoringSetup = lazy(
+  () => import("@/pages/monitoring-setup/MonitoringSetup")
 );
 
 // Profile Pages
