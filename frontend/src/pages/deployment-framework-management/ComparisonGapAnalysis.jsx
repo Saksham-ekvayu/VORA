@@ -3,13 +3,13 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import Icon from "@/components/custom/Icon";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Link,
   useNavigate,
   useParams,
   useSearchParams,
 } from "react-router-dom";
+import { useAuth } from "@/context/authContext/useAuth";
 import {
   getDeploymentFrameworkPackageByVersion,
   downloadDeploymentFrameworkReport,
@@ -25,12 +25,16 @@ import {
   transformAssignedFrameworks,
 } from "./components/helper/deploymentFrameworkHelpers";
 import {
+  isAuditor,
+  STATUS_EXTRACTED,
+  STATUS_FAILED,
   STATUS_REVOKED,
   statusVariantMap,
   typeVariantMap,
   STATUS_UPLOADED,
   STATUS_PROCESSING,
 } from "@/utils/commonUtils";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ControlsPanel from "@/components/custom/ControlsPanel";
 import AnalysisActions from "./components/AnalysisActions";
@@ -117,6 +121,20 @@ export default function ComparisonGapAnalysis() {
   const packageVersion = searchParams.get("package-version");
   const activeTab = searchParams.get("tab") || "package";
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const showAuditorActions = isAuditor(user?.role);
+
+  const [activelyExtractingFileIds, setActivelyExtractingFileIds] = useState(
+    new Map()
+  );
+
+  const handleExtractionTriggered = useCallback((fileId) => {
+    setActivelyExtractingFileIds((prev) => {
+      const next = new Map(prev);
+      next.set(fileId, Date.now());
+      return next;
+    });
+  }, []);
 
   const handleTabChange = (value) => {
     setSearchParams(
@@ -163,6 +181,35 @@ export default function ComparisonGapAnalysis() {
     fetchDetails(true);
   }, [fetchDetails]);
 
+  useEffect(() => {
+    if (!framework) return;
+    const docs =
+      framework.packages?.find((pkg) => pkg.packageVersion === packageVersion)
+        ?.documents || [];
+    setActivelyExtractingFileIds((prev) => {
+      let changed = false;
+      const next = new Map(prev);
+      const now = Date.now();
+
+      for (const [fileId, timestamp] of prev.entries()) {
+        const doc = docs.find((d) => d.fileId === fileId);
+        if (doc) {
+          if (
+            doc.aiExtraction?.status === STATUS_PROCESSING ||
+            doc.aiExtraction?.status === STATUS_UPLOADED ||
+            ((doc.aiExtraction?.status === STATUS_EXTRACTED ||
+              doc.aiExtraction?.status === STATUS_FAILED) &&
+              now - timestamp > 15000)
+          ) {
+            next.delete(fileId);
+            changed = true;
+          }
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [framework, packageVersion]);
+
   // Resolve the package matching the query param version, fallback to first package
   const activePackage = useMemo(() => {
     if (!framework?.packages?.length) return null;
@@ -182,10 +229,13 @@ export default function ComparisonGapAnalysis() {
 
   const hasDocumentsProcessing = useMemo(() => {
     const docs = activePackage?.documents || [];
-    return docs.some((doc) =>
-      [STATUS_UPLOADED, STATUS_PROCESSING].includes(doc.aiExtraction?.status)
+    return docs.some(
+      (doc) =>
+        [STATUS_UPLOADED, STATUS_PROCESSING].includes(
+          doc.aiExtraction?.status
+        ) || activelyExtractingFileIds.has(doc.fileId)
     );
-  }, [activePackage]);
+  }, [activePackage, activelyExtractingFileIds]);
 
   const isMergeProcessing =
     activePackage?.mergeDocument?.status === STATUS_PROCESSING;
@@ -372,7 +422,9 @@ export default function ComparisonGapAnalysis() {
               frameworkId={framework?.id}
               documentWidth="max-w-full"
               showAllColumns={true}
-              showActions={false}
+              showActions={showAuditorActions}
+              onExtractionTriggered={handleExtractionTriggered}
+              onSuccess={() => fetchDetails(true)}
             />
           </div>
         </TabsContent>
