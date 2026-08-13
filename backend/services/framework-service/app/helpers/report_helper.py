@@ -205,6 +205,42 @@ def _build_control_block(control: dict, styles: dict) -> list:
     return flow
 
 
+def _calc_avg_dp_weightage(dps: list) -> float | None:
+    dp_weights = []
+    for dp in dps:
+        dp_w = _attr(dp, "weightage")
+        if dp_w is not None:
+            try:
+                dp_weights.append(float(dp_w))
+            except (ValueError, TypeError):
+                pass
+    return round(sum(dp_weights) / len(dp_weights), 1) if dp_weights else None
+
+def _parse_control(c) -> dict:
+    dps = _attr(c, "deployment_points") or []
+    c_weightage = _attr(c, "weightage")
+    if c_weightage is None and dps:
+        c_weightage = _calc_avg_dp_weightage(dps)
+
+    return {
+        "id": str(_attr(c, "id")) if _attr(c, "id") is not None else None,
+        "name": _attr(c, "name"),
+        "description": _attr(c, "description"),
+        "weightage": c_weightage,
+        "remark": _attr(c, "remark"),
+        "deployment_points": [
+            {"name": _attr(dp, "name"), "remark": _attr(dp, "remark")} for dp in dps
+        ],
+    }
+
+def _parse_section(section) -> dict:
+    return {
+        "id": str(_attr(section, "id")) if _attr(section, "id") is not None else None,
+        "name": _attr(section, "name"),
+        "controls": [_parse_control(c) for c in (_attr(section, "controls") or [])],
+    }
+
+
 def _framework_to_dict(framework, doc_extractions: dict = None) -> dict:
     """Convert nested pydantic/JSONB control structures to plain dicts for the PDF."""
     current = next(
@@ -225,44 +261,7 @@ def _framework_to_dict(framework, doc_extractions: dict = None) -> dict:
         return {"sections": []}
 
     controls_data = _attr(controls, "controls_data") or []
-    sections = []
-    for section in controls_data:
-        controls_list = []
-        for c in _attr(section, "controls") or []:
-            dps = _attr(c, "deployment_points") or []
-            
-            c_weightage = _attr(c, "weightage")
-            if c_weightage is None and dps:
-                dp_weights = []
-                for dp in dps:
-                    dp_w = _attr(dp, "weightage")
-                    if dp_w is not None:
-                        try:
-                            dp_weights.append(float(dp_w))
-                        except (ValueError, TypeError):
-                            pass
-                if dp_weights:
-                    c_weightage = round(sum(dp_weights) / len(dp_weights), 1)
-
-            controls_list.append(
-                {
-                    "id": str(_attr(c, "id")) if _attr(c, "id") is not None else None,
-                    "name": _attr(c, "name"),
-                    "description": _attr(c, "description"),
-                    "weightage": c_weightage,
-                    "remark": _attr(c, "remark"),
-                    "deployment_points": [
-                        {"name": _attr(dp, "name"), "remark": _attr(dp, "remark")} for dp in dps
-                    ],
-                }
-            )
-        sections.append(
-            {
-                "id": str(_attr(section, "id")) if _attr(section, "id") is not None else None,
-                "name": _attr(section, "name"),
-                "controls": controls_list,
-            }
-        )
+    sections = [_parse_section(section) for section in controls_data]
     return {"sections": sections}
 
 
