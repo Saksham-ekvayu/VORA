@@ -10,7 +10,11 @@ import {
 } from "@/services/deploymentFrameworkService";
 import { toast } from "sonner";
 import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
-import { aiExtractionConfig, STATUS_PENDING } from "@/utils/commonUtils";
+import {
+  aiExtractionConfig,
+  STATUS_EXTRACTED,
+  STATUS_PENDING,
+} from "@/utils/commonUtils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import DocumentControlsModal from "./DocumentControlsModal";
 
@@ -200,18 +204,20 @@ export default function DeploymentFrameworkPackageTable({
                   {hasActionsColumn && (
                     <td className="px-2.5 py-2 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        {showViewAction &&
-                          doc.aiExtraction?.status === "extracted" && (
-                            <Button
-                              size="xs"
-                              variant="outline"
-                              className="text-primary border-primary/30 hover:bg-primary/10 hover:text-primary/90"
-                              onClick={() => setViewingDocument(doc)}
-                            >
-                              <Icon name="eye" size={11} className="mr-1" />
-                              View
-                            </Button>
-                          )}
+                        {showViewAction && (
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            disabled={
+                              doc.aiExtraction?.status !== STATUS_EXTRACTED
+                            }
+                            className="text-primary border-primary/30 hover:bg-primary/10 hover:text-primary/90"
+                            onClick={() => setViewingDocument(doc)}
+                          >
+                            <Icon name="eye" size={11} className="mr-1" />
+                            View
+                          </Button>
+                        )}
                         {showActions && (
                           <Button
                             size="xs"

@@ -120,9 +120,9 @@ const MergeButton = ({ state, onMerge }) => {
   const isDisabled =
     state.viewContext === "detail"
       ? state.isAssignedFrameworkRevoked ||
-      !state.isAssignedFrameworkFinalized ||
-      state.isMergeCurrentlyRunning ||
-      !state.areAllDocumentsExtracted
+        !state.isAssignedFrameworkFinalized ||
+        state.isMergeCurrentlyRunning ||
+        !state.areAllDocumentsExtracted
       : state.isMergeCurrentlyRunning || !state.areAllDocumentsExtracted;
 
   return (

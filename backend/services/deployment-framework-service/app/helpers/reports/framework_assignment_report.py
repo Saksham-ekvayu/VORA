@@ -22,57 +22,21 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-COLORS = {
-    "primary": colors.HexColor("#0f766e"),
-    "primaryLight": colors.HexColor("#f0fdfa"),
-    "text": colors.HexColor("#1f2937"),
-    "muted": colors.HexColor("#4b5563"),
-    "light": colors.HexColor("#9ca3af"),
-    "border": colors.HexColor("#e5e7eb"),
-    "card": colors.HexColor("#f8fafc"),
-    "success": colors.HexColor("#15803d"),
-    "danger": colors.HexColor("#b91c1c"),
-    "warning": colors.HexColor("#d97706"),
-}
-
-_styles = getSampleStyleSheet()
-_STYLE_TITLE = ParagraphStyle("AFRTitle", parent=_styles["Title"], textColor=COLORS["primary"], fontSize=18)
-_STYLE_H1 = ParagraphStyle("AFRH1", parent=_styles["Heading1"], textColor=COLORS["text"], fontSize=20)
-_STYLE_MUTED = ParagraphStyle("AFRMuted", parent=_styles["Normal"], textColor=COLORS["muted"], fontSize=10)
-_STYLE_SECTION = ParagraphStyle(
-    "AFRSection", parent=_styles["Heading2"], textColor=COLORS["primary"], fontSize=11
-)
-_STYLE_CONTROL_TITLE = ParagraphStyle(
-    "AFRControlTitle",
-    parent=_styles["Normal"],
-    textColor=COLORS["text"],
-    fontSize=9.5,
-    fontName="Helvetica-Bold",
-)
-_STYLE_DESC = ParagraphStyle("AFRDesc", parent=_styles["Normal"], textColor=COLORS["muted"], fontSize=8.5)
-_STYLE_DP = ParagraphStyle("AFRDp", parent=_styles["Normal"], textColor=COLORS["muted"], fontSize=8)
-_STYLE_STAT_LABEL = ParagraphStyle(
-    "AFRStatLabel", parent=_styles["Normal"], fontSize=7.5, textColor=COLORS["muted"], alignment=1
-)
-_STYLE_STAT_VALUE = ParagraphStyle(
-    "AFRStatValue",
-    parent=_styles["Normal"],
-    fontSize=17,
-    textColor=COLORS["primary"],
-    alignment=1,
-    fontName="Helvetica-Bold",
+from vora_shared.pdf import (
+    COLORS,
+    REPORT_MARGINS,
+    REPORT_PAGESIZE,
+    build_stat_card,
+    control_separator,
+    draw_common_footer,
+    format_pdf_date,
+    get_shared_styles,
 )
 
+_styles_dict = get_shared_styles()
 
-def _display_date(value: Any) -> str:
-    if not value:
-        return "-"
-    if isinstance(value, str):
-        try:
-            value = datetime.fromisoformat(value.replace("Z", "+00:00"))
-        except ValueError:
-            return value
-    return value.strftime("%d %b %Y")
+
+
 
 
 def _display_user(user: Any) -> str:
@@ -82,59 +46,55 @@ def _display_user(user: Any) -> str:
         return user.name
     if hasattr(user, "email") and user.email:
         return user.email
+    if isinstance(user, dict):
+        if user.get("name"):
+            return user["name"]
+        if user.get("email"):
+            return user["email"]
     return str(user)
 
+def _safe_get(obj: Any, key: str, default: Any = None) -> Any:
+    if obj is None:
+        return default
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)
 
-def _stat_card(label: str, value: Any) -> Table:
-    table = Table(
-        [[Paragraph(str(value), _STYLE_STAT_VALUE)], [Paragraph(label, _STYLE_STAT_LABEL)]],
-        colWidths=[54 * mm],
-    )
-    table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, -1), COLORS["card"]),
-                ("BOX", (0, 0), (-1, -1), 0.75, COLORS["border"]),
-                ("TOPPADDING", (0, 0), (-1, -1), 6),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-            ]
-        )
-    )
-    return table
+
 
 
 def _add_header_section(story: list[Any], assignment: Any, file_version: Any, customer: Any):
-    story.append(Paragraph("Assigned Framework Report", _STYLE_TITLE))
-    story.append(HRFlowable(width="100%", color=COLORS["border"], thickness=1, spaceAfter=8))
+    story.append(Paragraph("<u>Assigned Framework Report</u>", _styles_dict["title"]))
+    story.append(Spacer(1, 10))
 
     fw_name = assignment.frameworkName or assignment.frameworkCode
-    story.append(Paragraph(fw_name, _STYLE_H1))
+    story.append(Paragraph(fw_name, _styles_dict["h1"]))
     story.append(
         Paragraph(
             f"Version: {assignment.frameworkVersion or '-'} &nbsp;|&nbsp; Current: v{file_version.fileVersion}",
-            _STYLE_MUTED,
+            _styles_dict["meta"],
         )
     )
     story.append(
         Paragraph(
-            f"Created On: {_display_date(assignment.createdAt)} &nbsp;|&nbsp; "
-            f"Updated On: {_display_date(assignment.updatedAt)}",
-            _STYLE_MUTED,
+            f"Created On: {format_pdf_date(assignment.createdAt)} &nbsp;|&nbsp; "
+            f"Updated On: {format_pdf_date(assignment.updatedAt)}",
+            _styles_dict["meta"],
         )
     )
     story.append(
         Paragraph(
             f"Customer: {_display_user(customer)} &nbsp;|&nbsp; "
-            f"Assigned By: {_display_user(assignment.assignment.assignedBy if assignment.assignment else None)} "
-            f"on {_display_date(assignment.assignment.assignedAt if assignment.assignment else None)}",
-            _STYLE_MUTED,
+            f"Assigned By: {_display_user(_safe_get(assignment.assignment, 'assignedBy'))} "
+            f"on {format_pdf_date(_safe_get(assignment.assignment, 'assignedAt'))}",
+            _styles_dict["meta"],
         )
     )
     story.append(
         Paragraph(
             f"Assignment Status: {str(assignment.status or 'assigned').upper()} &nbsp;|&nbsp; "
-            f"Finalization: {'FINALIZED' if assignment.finalization and assignment.finalization.isFinalized else 'PENDING'}",
-            _STYLE_MUTED,
+            f"Finalization: {'FINALIZED' if _safe_get(assignment.finalization, 'isFinalized') else 'PENDING'}",
+            _styles_dict["meta"],
         )
     )
     story.append(Spacer(1, 10 * mm))
@@ -157,7 +117,7 @@ def _add_stats_section(
         ("ORG SPECIFIC CONTROLS", org_specific_controls),
         ("AVG CUSTOMER WEIGHT", f"{avg_customer_weightage}/10"),
     ]
-    stat_cards = [_stat_card(label, value) for label, value in stats]
+    stat_cards = [build_stat_card(label, value, _styles_dict) for label, value in stats]
     rows = [stat_cards[i : i + 3] for i in range(0, len(stat_cards), 3)]
     stats_table = Table(rows, hAlign="LEFT", spaceBefore=0, spaceAfter=0)
     stats_table.setStyle(
@@ -190,9 +150,9 @@ def _get_control_label_info(control: Any) -> tuple[str, Any]:
 
 
 def _add_control_header(story: list[Any], control: Any, doc_width: float, label_text: str, accent: Any):
-    title_style = ParagraphStyle("AFRCtrlTitleAccent", parent=_STYLE_CONTROL_TITLE)
+    title_style = _styles_dict["control_title"]
     label_style = ParagraphStyle(
-        "AFRCtrlLabel", parent=_styles["Normal"], fontSize=8, textColor=accent, alignment=2
+        "AFRCtrlLabel", fontName="Helvetica", fontSize=8, textColor=accent, alignment=2
     )
 
     header_row = Table(
@@ -222,12 +182,12 @@ def _add_control_deployment_points(story: list[Any], control: Any):
     story.append(
         Paragraph(
             "Deployment Points",
-            ParagraphStyle("AFRDpHeader", parent=_styles["Normal"], fontSize=8, fontName="Helvetica-Bold"),
+            _styles_dict["dp_heading"],
         )
     )
     for idx, point in enumerate(control.deployment_points):
         remark_part = f" | Remark: {point.remark}" if point.remark else ""
-        story.append(Paragraph(f"{idx + 1}. {point.name}{remark_part}", _STYLE_DP))
+        story.append(Paragraph(f"{idx + 1}. {point.name}{remark_part}", _styles_dict["dp_text"]))
 
 
 def _add_single_control(story: list[Any], control: Any, doc_width: float):
@@ -235,27 +195,25 @@ def _add_single_control(story: list[Any], control: Any, doc_width: float):
     _add_control_header(story, control, doc_width, label_text, accent)
 
     if control.description:
-        story.append(Paragraph(control.description, _STYLE_DESC))
+        story.append(Paragraph(control.description, _styles_dict["control_desc"]))
 
     _add_control_deployment_points(story, control)
 
-    story.append(Spacer(1, 2 * mm))
-    story.append(HRFlowable(width="100%", color=COLORS["border"], thickness=0.5))
-    story.append(Spacer(1, 2 * mm))
+    story.extend(control_separator())
 
 
 def _add_controls_section(story: list[Any], sections: list[Any], doc_width: float):
     story.append(PageBreak())
-    story.append(Paragraph("Controls", _STYLE_SECTION))
+    story.append(Paragraph("Controls", _styles_dict["section_title"]))
     story.append(Spacer(1, 4 * mm))
 
     for section in sections:
         section_title = f"{section.id or ''} {section.name or ''}".strip()
-        section_bar = Table([[Paragraph(section_title, _STYLE_SECTION)]], colWidths=[doc_width])
+        section_bar = Table([[Paragraph(section_title, _styles_dict["section_title"])]], colWidths=[doc_width])
         section_bar.setStyle(
             TableStyle(
                 [
-                    ("BACKGROUND", (0, 0), (-1, -1), COLORS["primaryLight"]),
+                    ("BACKGROUND", (0, 0), (-1, -1), COLORS["primary_light"]),
                     ("TOPPADDING", (0, 0), (-1, -1), 6),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
                     ("LEFTPADDING", (0, 0), (-1, -1), 8),
@@ -273,11 +231,8 @@ def generate_framework_assignment_report_pdf(assignment: Any, file_version: Any,
     buffer = BytesIO()
     doc = SimpleDocTemplate(
         buffer,
-        pagesize=A4,
-        topMargin=18 * mm,
-        bottomMargin=14 * mm,
-        leftMargin=14 * mm,
-        rightMargin=14 * mm,
+        pagesize=REPORT_PAGESIZE,
+        **REPORT_MARGINS,
         title="Assigned Framework Report",
     )
 
@@ -322,22 +277,9 @@ def generate_framework_assignment_report_pdf(assignment: Any, file_version: Any,
     _add_controls_section(story, sections, doc.width)
 
     def _footer(canvas, doc_):
-        canvas.saveState()
-        canvas.setFont("Helvetica", 8)
-        canvas.setFillColor(COLORS["light"])
-        canvas.drawString(
-            14 * mm, 8 * mm, f"Generated by VORA Platform | {_display_date(datetime.now(timezone.utc))}"
-        )
-        canvas.drawRightString(doc_.pagesize[0] - 14 * mm, 8 * mm, f"Page {doc_.page}")
-        if doc_.page > 1:
-            canvas.setFont("Helvetica-Bold", 8)
-            header_fw_name = assignment.frameworkName or assignment.frameworkCode or "Framework"
-            canvas.drawString(
-                14 * mm,
-                doc_.pagesize[1] - 12 * mm,
-                f"{str(header_fw_name).upper()} - VERSION {assignment.frameworkVersion or '-'}",
-            )
-        canvas.restoreState()
+        header_fw_name = assignment.frameworkName or assignment.frameworkCode or "Framework"
+        header_text = f"{str(header_fw_name).upper()} - VERSION {assignment.frameworkVersion or '-'}"
+        draw_common_footer(canvas, doc_.page, REPORT_PAGESIZE, header_text)
 
     doc.build(story, onFirstPage=_footer, onLaterPages=_footer)
     return buffer.getvalue()

@@ -47,17 +47,17 @@ const OverviewActions = ({
   isDownloadingReport,
 }) => (
   <div className="flex flex-wrap items-center justify-end gap-2">
-    <span
-      className={`px-3 py-1 rounded text-xs font-bold whitespace-nowrap ${getAssignedFrameworkApprovalStatusClass(
-        framework?.status
-      )}`}
+    <Button
+      size="sm"
+      variant="outline"
+      className={`${getAssignedFrameworkApprovalStatusClass(framework?.status)}`}
     >
       {getAssignedFrameworkApprovalStatusLabel(framework?.status)}
-    </span>
+    </Button>
 
     {canFinalize && (
       <Button
-        size="xs"
+        size="sm"
         className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center gap-1"
         onClick={onFinalize}
         title="Finalize Framework Version"
@@ -67,7 +67,7 @@ const OverviewActions = ({
     )}
 
     <Button
-      size="xs"
+      size="sm"
       onClick={onDownloadReport}
       disabled={isDownloadingReport}
       title="Download assigned framework report"
@@ -81,7 +81,7 @@ const OverviewActions = ({
     </Button>
 
     <Button
-      size="xs"
+      size="sm"
       variant="outline"
       onClick={() => setShowHistoryModal(true)}
       title="View assignment history"
@@ -91,7 +91,7 @@ const OverviewActions = ({
     </Button>
 
     <Button
-      size="xs"
+      size="sm"
       onClick={() => navigate("/assigned-frameworks")}
       title="Go back"
     >
