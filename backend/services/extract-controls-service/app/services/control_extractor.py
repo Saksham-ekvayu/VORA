@@ -54,9 +54,13 @@ def _log_llm_call(tag: str, response: Any, elapsed: float):
         finish_reason = response.choices[0].finish_reason
         usage = getattr(response, "usage", None)
         usage_str = (
-            f" | tokens(prompt={usage.prompt_tokens},completion={usage.completion_tokens})" if usage else ""
+            f" | tokens(prompt={usage.prompt_tokens},completion={usage.completion_tokens})"
+            if usage
+            else ""
         )
-        logger.info(f"[{tag}] LLM call done in {elapsed:.1f}s | finish_reason={finish_reason}{usage_str}")
+        logger.info(
+            f"[{tag}] LLM call done in {elapsed:.1f}s | finish_reason={finish_reason}{usage_str}"
+        )
         if finish_reason == "length":
             logger.warning(f"[{tag}] Response truncated — hit max_tokens limit")
         return finish_reason
@@ -65,7 +69,9 @@ def _log_llm_call(tag: str, response: Any, elapsed: float):
         return None
 
 
-def extract_framework_controls(chunks: list, framework_id: str, is_deployment: bool = False) -> list:
+def extract_framework_controls(
+    chunks: list, framework_id: str, is_deployment: bool = False
+) -> list:
     """
     Extract controls from framework document using AI.
     Two-stage extraction:
@@ -152,10 +158,14 @@ Return ONLY JSON. No markdown. No text outside JSON."""
         return []
 
     # Stage 2: Generate deployment points (batched)
-    logger.info(f"[EXTRACT] Stage 2: Generating deployment points in batches of {DEPLOYMENT_BATCH_SIZE}")
+    logger.info(
+        f"[EXTRACT] Stage 2: Generating deployment points in batches of {DEPLOYMENT_BATCH_SIZE}"
+    )
 
     final_controls = []
-    total_batches = (len(controls) + DEPLOYMENT_BATCH_SIZE - 1) // DEPLOYMENT_BATCH_SIZE if controls else 0
+    total_batches = (
+        (len(controls) + DEPLOYMENT_BATCH_SIZE - 1) // DEPLOYMENT_BATCH_SIZE if controls else 0
+    )
 
     for batch_idx in range(0, len(controls), DEPLOYMENT_BATCH_SIZE):
         batch = controls[batch_idx : batch_idx + DEPLOYMENT_BATCH_SIZE]
@@ -211,7 +221,9 @@ Return ONLY JSON. No markdown."""
             merged_batch = []
             for orig_ctrl in batch:
                 c_id = str(orig_ctrl.get("Control_id", "")).strip()
-                orig_ctrl["Deployment_points"] = dp_map.get(c_id, orig_ctrl.get("Deployment_points", ""))
+                orig_ctrl["Deployment_points"] = dp_map.get(
+                    c_id, orig_ctrl.get("Deployment_points", "")
+                )
                 merged_batch.append(orig_ctrl)
 
             final_controls.extend(merged_batch)
@@ -237,12 +249,12 @@ Return ONLY JSON. No markdown."""
 def convert_to_section_structure(controls: list, resource_type: str = "framework") -> list:
     """
     Convert flat control list to section-wise nested structure with hierarchical support.
-    
+
     Hierarchy auto-detection from control ID:
     - A.5 = Section + Control (2 parts)
     - A.5.1 = Control (3 parts, belongs to section A)
     - A.5.1.1 = Sub-control of A.5.1 (4+ parts)
-    
+
     NO HARDCODING - purely dynamic based on ID structure.
     """
     if not controls:
@@ -268,7 +280,9 @@ def convert_to_section_structure(controls: list, resource_type: str = "framework
             section_name = str(ctrl.get("Section_name") or "").strip()
         else:
             ctrl_id = str(ctrl.get("Control_id") or f"CTR-{idx+1:03d}").strip()
-            ctrl_name = str(ctrl.get("Client_control_name") or ctrl.get("Control_name") or "").strip()
+            ctrl_name = str(
+                ctrl.get("Client_control_name") or ctrl.get("Control_name") or ""
+            ).strip()
             ctrl_desc = str(
                 ctrl.get("Client_control_description") or ctrl.get("Control_description") or ""
             ).strip()
@@ -313,18 +327,18 @@ def convert_to_section_structure(controls: list, resource_type: str = "framework
     # Step 2: Organize controls into sections with hierarchy
     added_as_root = 0
     added_as_sub = 0
-    
+
     for ctrl_id, ctrl_obj in control_by_id.items():
         parts = _parse_id(ctrl_id)
-        
+
         # Determine hierarchy based on number of parts:
         # A.5 (2 parts) → Section
         # A.5.1 (3 parts) → Control (root in its section)
         # A.5.1.1 (4 parts) → Sub-control of A.5.1
-        
+
         parent_id = None
         sec_key = None
-        
+
         if len(parts) >= 4:
             # This is a sub-control (4+ parts like A.5.1.1)
             parent_id = ".".join(parts[:-1])  # Parent = A.5.1
@@ -336,34 +350,38 @@ def convert_to_section_structure(controls: list, resource_type: str = "framework
             else:
                 # No parent, treat as root - belongs to section A.5
                 sec_key = ".".join(parts[:2]).upper()  # Section = A.5
-        
+
         elif len(parts) == 3:
             # This is a control (3 parts like A.5.1)
             # Belongs to section A.5
             sec_key = ".".join(parts[:2]).upper()  # Section = A.5
-        
+
         elif len(parts) == 2:
             # This is a section header itself (2 parts like A.5)
             sec_key = ".".join(parts).upper()
-        
+
         else:
             # Fallback
-            sec_key = parts[0].upper() if parts and parts[0] and parts[0] not in ("CTR",) else "NOSEC"
-        
+            sec_key = (
+                parts[0].upper() if parts and parts[0] and parts[0] not in ("CTR",) else "NOSEC"
+            )
+
         # Get section name from stored mapping
         sec_display = section_for_control.get(ctrl_id, {}).get("name", sec_key)
-        
+
         # Create section if needed
         if sec_key and sec_key not in sections:
             sections[sec_key] = {
                 "id": sec_key,
-                "name": clean_section_name(sec_display).title() if sec_display else f"Section {sec_key}",
+                "name": (
+                    clean_section_name(sec_display).title() if sec_display else f"Section {sec_key}"
+                ),
                 "controls": [],
             }
-        
+
         if not sec_key:
             continue
-        
+
         # This is a root control - add it to the section
         ctrl_entry = {
             "id": ctrl_obj["id"],
@@ -381,12 +399,14 @@ def convert_to_section_structure(controls: list, resource_type: str = "framework
                 parent_id = ".".join(other_parts[:-1])
                 if parent_id == ctrl_id:
                     sub_obj = control_by_id[other_id]
-                    sub_controls.append({
-                        "id": sub_obj["id"],
-                        "name": sub_obj["name"],
-                        "description": sub_obj["description"],
-                        "deployment_points": sub_obj["deployment_points"],
-                    })
+                    sub_controls.append(
+                        {
+                            "id": sub_obj["id"],
+                            "name": sub_obj["name"],
+                            "description": sub_obj["description"],
+                            "deployment_points": sub_obj["deployment_points"],
+                        }
+                    )
                     logger.debug(f"[STRUCTURE] {other_id} → sub-control of {ctrl_id}")
 
         if sub_controls:
@@ -398,10 +418,10 @@ def convert_to_section_structure(controls: list, resource_type: str = "framework
 
     result = list(sections.values())
     root_cnt = sum(len(s["controls"]) for s in result)
-    sub_cnt = sum(
-        sum(len(c.get("controls", [])) for c in s["controls"]) for s in result
+    sub_cnt = sum(sum(len(c.get("controls", [])) for c in s["controls"]) for s in result)
+    logger.info(
+        f"[STRUCTURE]  {len(result)} sections | {root_cnt} root | {sub_cnt} sub-controls | (added: {added_as_root} root, {added_as_sub} sub)"
     )
-    logger.info(f"[STRUCTURE] ✅ {len(result)} sections | {root_cnt} root | {sub_cnt} sub-controls | (added: {added_as_root} root, {added_as_sub} sub)")
     return result
 
 
