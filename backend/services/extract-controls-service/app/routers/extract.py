@@ -339,6 +339,103 @@ async def merge_deployment_package(df_id: str, pkg_ver: str):
 # ---------------------------------------------------------------------------
 
 
+@router.post("/deployment-document/{dd_id}/ai-extract")
+async def extract_deployment_document_controls(dd_id: str):
+    """
+    Initiate AI extraction for a deployment document (async background task).
+    The deployment document contains a single file - no need to specify file_id.
+    Creates immediate DB entry with processing status.
+    """
+    try:
+        dd_id = str(dd_id).strip()
+
+        if not dd_id:
+            return error("Invalid dd_id")
+
+        logger.info(f"[API] Deployment Document extraction requested | dd={dd_id}")
+
+        # Validate deployment document exists and get file info
+        file_hash = None
+        file_id = None
+        async with session_scope() as session:
+            dd = await session.get(DeploymentDocument, dd_id)
+            if not dd:
+                return not_found(f"Deployment Document not found: {dd_id}")
+
+            doc_data = dd.document or {}
+            if isinstance(doc_data, dict):
+                file_info = doc_data
+                file_id = file_info.get("fileId")
+                file_hash = file_info.get("fileHash")
+                logger.info(f"[API] File found | fileId={file_id} | hash={file_hash}")
+
+            if not file_hash or not file_id:
+                return not_found(f"No file found in deployment document: {dd_id}")
+
+        # Create document_extraction entry immediately with "processing" status
+        doc_extraction_id = None
+        if file_hash:
+            async with session_scope() as session:
+                logger.info("[API] Creating document_extraction entry with status=processing...")
+
+                # Check if already exists and is currently processing
+                existing = (
+                    await session.execute(
+                        select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash)
+                    )
+                ).scalar_one_or_none()
+
+                if existing:
+                    ai_data = existing.aiExtraction or {}
+                    if ai_data.get("status") == "processing":
+                        logger.info(f"[API] ⚠️ Extraction already in progress | id={existing.id}")
+                        return success(
+                            message="Extraction already in progress",
+                            data={
+                                "dd_id": dd_id,
+                                "file_hash": file_hash,
+                                "extraction_id": existing.id,
+                                "status": "processing",
+                            },
+                        )
+                    doc_extraction_id = existing.id
+                    logger.info(f"[API] Using existing document_extraction | id={doc_extraction_id}")
+                else:
+                    doc_extraction = DocumentExtraction(
+                        id=new_id(),
+                        fileHash=file_hash,
+                        aiExtraction={
+                            "status": "processing",
+                            "timestamp": _iso(),
+                            "message": "Deployment document AI extraction in progress",
+                        },
+                    )
+                    session.add(doc_extraction)
+                    await session.flush()
+                    doc_extraction_id = doc_extraction.id
+                    logger.info(f"[API] ✅ Created document_extraction | id={doc_extraction_id}")
+
+        # Queue extraction as background task (don't wait for it)
+        task = asyncio.create_task(run_deployment_document_extraction(dd_id, file_id))
+        _background_tasks.add(task)
+        task.add_done_callback(_background_tasks.discard)
+        logger.info("[API] ✅ Deployment Document extraction task queued")
+
+        return success(
+            message="Deployment Document extraction started",
+            data={
+                "dd_id": dd_id,
+                "file_hash": file_hash,
+                "extraction_id": doc_extraction_id,
+                "status": "processing",
+            },
+        )
+
+    except Exception as exc:
+        logger.exception(f"[API] ❌ Deployment Document request failed: {exc}")
+        return server_error(str(exc))
+
+
 # ---------------------------------------------------------------------------
 # Deployment Document Extraction Data Retrieval
 # ---------------------------------------------------------------------------
