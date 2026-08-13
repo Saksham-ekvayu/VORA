@@ -30,134 +30,19 @@ from reportlab.platypus import (
     HRFlowable,
 )
 
-COLORS = {
-    "primary": colors.HexColor("#0f766e"),
-    "primary_light": colors.HexColor("#f0fdfa"),
-    "secondary": colors.HexColor("#0d9488"),
-    "dark_text": colors.HexColor("#1f2937"),
-    "muted_text": colors.HexColor("#4b5563"),
-    "light_text": colors.HexColor("#9ca3af"),
-    "border": colors.HexColor("#e5e7eb"),
-    "card_bg": colors.HexColor("#f8fafc"),
-    "green": colors.HexColor("#16a34a"),
-    "amber": colors.HexColor("#d97706"),
-    "gray": colors.HexColor("#4b5563"),
-    "remark_bg": colors.HexColor("#fef9c3"),
-    "remark_border": colors.HexColor("#fde047"),
-    "remark_text": colors.HexColor("#854d0e"),
-}
+from vora_shared.pdf import (
+    COLORS,
+    REPORT_MARGINS,
+    REPORT_PAGESIZE,
+    build_stat_card,
+    control_separator,
+    format_pdf_date,
+    get_shared_frame,
+    get_shared_styles,
+)
 
 
-def _fmt_date(value) -> str:
-    if not value:
-        return ""
-    if isinstance(value, str):
-        try:
-            value = datetime.fromisoformat(value.replace("Z", "+00:00"))
-        except Exception:
-            return value
-    return value.strftime("%d %b %Y")
 
-
-def _styles() -> dict[str, ParagraphStyle]:
-    base = getSampleStyleSheet()
-    return {
-        "title": ParagraphStyle(
-            "ReportTitle",
-            parent=base["Title"],
-            fontName="Helvetica-Bold",
-            fontSize=28,
-            leading=32,
-            textColor=COLORS["primary"],
-            alignment=1,
-        ),
-        "framework_name": ParagraphStyle(
-            "FrameworkName",
-            fontName="Helvetica-Bold",
-            fontSize=20,
-            leading=24,
-            textColor=COLORS["dark_text"],
-            spaceAfter=8,
-        ),
-        "meta": ParagraphStyle(
-            "Meta",
-            fontName="Helvetica",
-            fontSize=10.5,
-            textColor=COLORS["muted_text"],
-            spaceAfter=4,
-            leading=14,
-        ),
-        "section_title": ParagraphStyle(
-            "SectionTitle",
-            fontName="Helvetica-Bold",
-            fontSize=12,
-            textColor=COLORS["dark_text"],
-            spaceBefore=14,
-            spaceAfter=8,
-        ),
-        "section_header": ParagraphStyle(
-            "SectionHeader",
-            fontName="Helvetica-Bold",
-            fontSize=10.5,
-            textColor=COLORS["primary"],
-        ),
-        "control_title": ParagraphStyle(
-            "ControlTitle",
-            fontName="Helvetica-Bold",
-            fontSize=10,
-            textColor=COLORS["dark_text"],
-        ),
-        "control_weightage": ParagraphStyle(
-            "ControlWeightage",
-            fontName="Helvetica-Bold",
-            fontSize=9,
-            textColor=COLORS["muted_text"],
-            alignment=2,
-        ),
-        "control_desc": ParagraphStyle(
-            "ControlDesc",
-            fontName="Helvetica",
-            fontSize=9,
-            textColor=COLORS["muted_text"],
-            spaceBefore=3,
-            spaceAfter=3,
-        ),
-        "remark": ParagraphStyle(
-            "Remark",
-            fontName="Helvetica",
-            fontSize=8.5,
-            textColor=COLORS["remark_text"],
-        ),
-        "dp_heading": ParagraphStyle(
-            "DpHeading",
-            fontName="Helvetica-Bold",
-            fontSize=8.5,
-            textColor=COLORS["dark_text"],
-            spaceBefore=4,
-            spaceAfter=3,
-        ),
-        "dp_text": ParagraphStyle(
-            "DpText",
-            fontName="Helvetica",
-            fontSize=8.5,
-            textColor=COLORS["dark_text"],
-        ),
-        "no_controls": ParagraphStyle(
-            "NoControls",
-            fontName="Helvetica-Oblique",
-            fontSize=9,
-            textColor=COLORS["muted_text"],
-        ),
-        "table_cell": ParagraphStyle(
-            "TableCell", fontName="Helvetica", fontSize=8.5, textColor=COLORS["dark_text"]
-        ),
-        "table_header": ParagraphStyle(
-            "TableHeader",
-            fontName="Helvetica-Bold",
-            fontSize=8,
-            textColor=COLORS["primary"],
-        ),
-    }
 
 
 def _stat_status_color(ai_status: str) -> colors.Color:
@@ -168,7 +53,7 @@ def _stat_status_color(ai_status: str) -> colors.Color:
     return COLORS["gray"]
 
 
-def _build_stats_table(sections: list[dict]) -> Table:
+def _build_stats_table(sections: list[dict], styles: dict) -> Table:
     total_sections = len(sections)
     total_controls = sum(len(s.get("controls") or []) for s in sections)
     all_controls = [c for s in sections for c in (s.get("controls") or [])]
@@ -186,34 +71,13 @@ def _build_stats_table(sections: list[dict]) -> Table:
         ("AVG PRIORITY SCORE", f"{avg_weightage}/10"),
     ]
 
-    value_style = ParagraphStyle(
-        "StatValue", fontName="Helvetica-Bold", fontSize=18, leading=22, textColor=COLORS["primary"], spaceAfter=6
+    stat_cards = [build_stat_card(label, val, styles) for label, val in stats]
+    rows = [stat_cards[i : i + 4] for i in range(0, len(stat_cards), 4)]
+    stats_table = Table(rows, hAlign="LEFT", spaceBefore=0, spaceAfter=0)
+    stats_table.setStyle(
+        TableStyle([("LEFTPADDING", (0, 0), (-1, -1), 4), ("RIGHTPADDING", (0, 0), (-1, -1), 4)])
     )
-    label_style = ParagraphStyle(
-        "StatLabel", fontName="Helvetica-Bold", fontSize=8, leading=10, textColor=COLORS["muted_text"]
-    )
-
-    combined_cells = []
-    for label, val in stats:
-        cell_content = [Paragraph(val, value_style), Paragraph(label, label_style)]
-        combined_cells.append(cell_content)
-
-    table = Table([combined_cells], colWidths=[120] * 4)
-    table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, -1), COLORS["card_bg"]),
-                ("BOX", (0, 0), (-1, -1), 0.75, COLORS["border"]),
-                ("INNERGRID", (0, 0), (-1, -1), 0.75, COLORS["border"]),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 10),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 10),
-                ("TOPPADDING", (0, 0), (-1, -1), 10),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
-            ]
-        )
-    )
-    return table
+    return stats_table
 
 
 def _attr(obj, key, default=None):
@@ -336,9 +200,7 @@ def _build_control_block(control: dict, styles: dict) -> list:
                 text += f" | Guideline Remark: {dp['remark']}"
             flow.append(Paragraph(text, styles["dp_text"]))
 
-    flow.append(Spacer(1, 2 * mm))
-    flow.append(HRFlowable(width="100%", color=COLORS["border"], thickness=0.5))
-    flow.append(Spacer(1, 2 * mm))
+    flow.extend(control_separator())
     return flow
 
 
@@ -409,7 +271,7 @@ def _create_header_story(framework, styles: dict) -> list:
 
     story.append(Paragraph("<u>Industry Framework Report</u>", styles["title"]))
     story.append(Spacer(1, 10))
-    story.append(Paragraph(framework.frameworkName, styles["framework_name"]))
+    story.append(Paragraph(framework.frameworkName, styles["h1"]))
     story.append(
         Paragraph(
             f"Version: {framework.frameworkVersion}  |  Current: v{framework.currentFileVersion}",
@@ -419,9 +281,9 @@ def _create_header_story(framework, styles: dict) -> list:
 
     dates_text = []
     if framework.createdAt:
-        dates_text.append(f"Created On: {_fmt_date(framework.createdAt)}")
+        dates_text.append(f"Created On: {format_pdf_date(framework.createdAt)}")
     if framework.updatedAt:
-        dates_text.append(f"Updated On: {_fmt_date(framework.updatedAt)}")
+        dates_text.append(f"Updated On: {format_pdf_date(framework.updatedAt)}")
     if dates_text:
         story.append(Paragraph("  \u2022  ".join(dates_text), styles["meta"]))
 
@@ -439,7 +301,7 @@ def _add_approval_status(story, framework, approval_by_user, styles: dict):
         status_text += f"  \u2022  {verb}: {approver_name}"
         approval_date = _attr(approval, "date")
         if approval and approval_date:
-            status_text += f" on {_fmt_date(approval_date)}"
+            status_text += f" on {format_pdf_date(approval_date)}"
     story.append(Paragraph(status_text, styles["meta"]))
     story.append(Spacer(1, 14))
 
@@ -522,21 +384,18 @@ def _on_page(canvas, framework):
 
 
 def generate_framework_report_pdf(framework, approval_by_user=None, doc_extractions: dict = None) -> bytes:
-    styles = _styles()
+    styles = get_shared_styles()
     buffer = io.BytesIO()
 
-    frame = Frame(14 * mm, 14 * mm, A4[0] - 28 * mm, A4[1] - 32 * mm, id="normal")
+    frame = get_shared_frame(id="normal")
 
     def page_callback(canvas, doc):
         _on_page(canvas, framework)
 
     doc = BaseDocTemplate(
         buffer,
-        pagesize=A4,
-        topMargin=18 * mm,
-        bottomMargin=14 * mm,
-        leftMargin=14 * mm,
-        rightMargin=14 * mm,
+        pagesize=REPORT_PAGESIZE,
+        **REPORT_MARGINS,
         title=f"{framework.frameworkName} Report",
     )
     doc.addPageTemplates([PageTemplate(id="report", frames=[frame], onPage=page_callback)])
@@ -549,7 +408,7 @@ def generate_framework_report_pdf(framework, approval_by_user=None, doc_extracti
 
     # Build stats
     fw_dict = _framework_to_dict(framework, doc_extractions)
-    story.append(_build_stats_table(fw_dict["sections"]))
+    story.append(_build_stats_table(fw_dict["sections"], styles))
     story.append(Spacer(1, 18))
 
     # Build file info
