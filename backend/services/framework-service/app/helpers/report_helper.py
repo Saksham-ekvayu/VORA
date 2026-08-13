@@ -47,9 +47,14 @@ COLORS = {
 }
 
 
-def _fmt_date(value: datetime | None) -> str:
+def _fmt_date(value) -> str:
     if not value:
         return ""
+    if isinstance(value, str):
+        try:
+            value = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except Exception:
+            return value
     return value.strftime("%d %b %Y")
 
 
