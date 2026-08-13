@@ -4,19 +4,19 @@ import logging
 
 from vora_shared.database import session_scope
 
-from db.queries import (
+from app.db.queries import (
     get_live_framework,
     get_framework_merge,
     is_processed,
     mark_processed,
 )
 
-from collectors.collector_manager import collect_files
-from services.downloader import download_file
-from services.agent_client import call_agent
-from utils.live_logs import add_live_log
+from app.collectors.collector_manager import collect_files
+from app.services.downloader import download_file
+from app.services.agent_client import call_agent
+from app.utils.live_logs import add_live_log
 
-from pipeline.helpers import extract_deployment_points
+from app.pipeline.helpers import extract_deployment_points
 
 
 def run_pipeline(source: str = "aws"):
