@@ -215,9 +215,9 @@ async def run_comparison(
         logger.info("[COMPARISON-RUNNER] Loading model...")
         model = _get_embedder()
         if model:
-            logger.info("[COMPARISON-RUNNER] ✅ Model loaded successfully")
+            logger.info("[COMPARISON-RUNNER] Model loaded successfully")
         else:
-            logger.info("[COMPARISON-RUNNER] ⚠️  Using string similarity fallback (model not available)")
+            logger.info("[COMPARISON-RUNNER]  Using string similarity fallback (model not available)")
 
         logger.info("[COMPARISON-RUNNER] Fetching deployment framework...")
         async with session_scope() as session:
@@ -239,7 +239,7 @@ async def run_comparison(
                 logger.error(f"No merge controls found for package '{pkg_ver}'")
                 return
 
-            logger.info(f"[COMPARISON-RUNNER] ✅ Loaded {len(df_sections)} deployment framework sections")
+            logger.info(f"[COMPARISON-RUNNER] Loaded {len(df_sections)} deployment framework sections")
 
             logger.info("[COMPARISON-RUNNER] Loading assignment framework controls...")
             assignment_sections = await _load_assignment_sections(session, str(fa_id))
@@ -248,7 +248,7 @@ async def run_comparison(
                 return
 
             logger.info(
-                f"[COMPARISON-RUNNER] ✅ Loaded {len(assignment_sections)} assignment framework sections"
+                f"[COMPARISON-RUNNER] Loaded {len(assignment_sections)} assignment framework sections"
             )
             logger.info("[COMPARISON-RUNNER] Starting similarity scoring...")
 
@@ -311,7 +311,7 @@ async def run_comparison(
 
             if pc is None:
                 logger.warning(
-                    f"[COMPARISON-RUNNER] ⚠️ PackageComparison not found (id={comparison_id}), creating new"
+                    f"[COMPARISON-RUNNER] PackageComparison not found (id={comparison_id}), creating new"
                 )
                 pc = PackageComparison(
                     id=new_id(),
@@ -320,13 +320,13 @@ async def run_comparison(
                 )
                 session.add(pc)
             else:
-                logger.info("[COMPARISON-RUNNER] ✅ Found existing PackageComparison, updating")
+                logger.info("[COMPARISON-RUNNER] Found existing PackageComparison, updating")
                 pc.comparison = comparison_payload
                 pc.updatedAt = _utcnow()
                 session.add(pc)
 
             await session.flush()
-            logger.info(f"[COMPARISON-RUNNER] ✅ Updated PackageComparison: {pc.id}")
+            logger.info(f"[COMPARISON-RUNNER] Updated PackageComparison: {pc.id}")
 
             # Update job status
             # Annotate DF package
@@ -343,12 +343,12 @@ async def run_comparison(
                 df.packages = packages
                 session.add(df)
                 await session.flush()
-                logger.info("[COMPARISON-RUNNER] ✅ Updated deployment framework packages")
+                logger.info("[COMPARISON-RUNNER] Updated deployment framework packages")
 
             # Commit all changes
             logger.info("[COMPARISON-RUNNER] Committing all changes to database...")
             await session.commit()
-            logger.info("[COMPARISON-RUNNER] ✅ All changes committed successfully")
+            logger.info("[COMPARISON-RUNNER] All changes committed successfully")
 
             # Fresh query from database to verify update
             logger.info("[COMPARISON-RUNNER] Verifying update - fresh query from database...")
@@ -356,25 +356,25 @@ async def run_comparison(
             if verified_pc and verified_pc.comparison:
                 status_in_db = verified_pc.comparison.get("status", "unknown")
                 results_count = len(verified_pc.comparison.get("comparison_result", []))
-                logger.info("[COMPARISON-RUNNER] ✅ Verified in database:")
+                logger.info("[COMPARISON-RUNNER] Verified in database:")
                 logger.info(f"  Status: {status_in_db}")
                 logger.info(f"  Results count: {results_count}")
             else:
-                logger.warning("[COMPARISON-RUNNER] ⚠️ Could not verify - record not found after commit")
+                logger.warning("[COMPARISON-RUNNER] Could not verify - record not found after commit")
 
         logger.info(f"{'='*80}")
-        logger.info("[COMPARISON-RUNNER-SUCCESS] ✅ Comparison complete!")
+        logger.info("[COMPARISON-RUNNER-SUCCESS] Comparison complete!")
         logger.info(f"  Deployment Framework ID: {df_id}")
         logger.info(f"  Package Version: {pkg_ver}")
         logger.info(f"  Framework Assignment ID: {fa_id}")
         logger.info(f"  Total Comparison Sections: {len(grouped)}")
         logger.info(f"  Processing Time: {elapsed:.2f}s")
-        logger.info("[COMPARISON-RUNNER-SAVED] ✅ Data saved to: PackageComparison table")
+        logger.info("[COMPARISON-RUNNER-SAVED] Data saved to: PackageComparison table")
         logger.info(f"{'='*80}")
 
     except Exception as exc:  # noqa: BLE001
         logger.error(f"{'='*80}")
-        logger.error("[COMPARISON-RUNNER-ERROR] ❌ run_comparison failed!")
+        logger.error("[COMPARISON-RUNNER-ERROR] run_comparison failed!")
         logger.error(f"  Deployment Framework ID: {df_id}")
         logger.error(f"  Package Version: {pkg_ver}")
         logger.error(f"  Error: {str(exc)}")

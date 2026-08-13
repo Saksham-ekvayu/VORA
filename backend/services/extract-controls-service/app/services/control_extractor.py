@@ -58,7 +58,7 @@ def _log_llm_call(tag: str, response: Any, elapsed: float):
         )
         logger.info(f"[{tag}] LLM call done in {elapsed:.1f}s | finish_reason={finish_reason}{usage_str}")
         if finish_reason == "length":
-            logger.warning(f"[{tag}] ⚠️ Response truncated — hit max_tokens limit")
+            logger.warning(f"[{tag}] Response truncated — hit max_tokens limit")
         return finish_reason
     except Exception:
         logger.info(f"[{tag}] LLM call done in {elapsed:.1f}s")
@@ -215,7 +215,7 @@ Return ONLY JSON. No markdown."""
                 merged_batch.append(orig_ctrl)
 
             final_controls.extend(merged_batch)
-            logger.info(f"[EXTRACT] Batch {batch_num}/{total_batches} ✅ OK")
+            logger.info(f"[EXTRACT] Batch {batch_num}/{total_batches} OK")
 
         except json.JSONDecodeError as e:
             logger.exception(f"[EXTRACT] Batch {batch_num} JSON parse failed: {e}")
@@ -230,7 +230,7 @@ Return ONLY JSON. No markdown."""
             logger.exception(f"[EXTRACT] Batch {batch_num} API error: {e}")
             final_controls.extend(batch)
 
-    logger.info(f"[EXTRACT] ✅ Complete: {len(final_controls)} controls extracted")
+    logger.info(f"[EXTRACT] Complete: {len(final_controls)} controls extracted")
     return final_controls
 
 
@@ -423,6 +423,7 @@ def _parse_deployment_points(raw: Any) -> list:
                         "name": str(item.get("name") or item.get("dp") or ""),
                         "status": item.get("status", "pending"),
                         "path": item.get("path", ""),
+                        "source": item.get("source", ""),
                         "weightage": item.get("weightage", 10),
                         "remark": item.get("remark", ""),
                     }
@@ -434,6 +435,7 @@ def _parse_deployment_points(raw: Any) -> list:
                         "name": str(item).strip(),
                         "status": "pending",
                         "path": "",
+                        "source": "",
                         "weightage": 10,
                         "remark": "",
                     }
@@ -453,6 +455,7 @@ def _parse_deployment_points(raw: Any) -> list:
                 "name": point,
                 "status": "pending",
                 "path": "",
+                "source": "",
                 "weightage": 10,
                 "remark": "",
             }

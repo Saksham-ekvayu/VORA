@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 import secrets
 from datetime import datetime, timezone
 from pathlib import Path
@@ -272,7 +272,7 @@ async def create_customer(
         await session.flush()
         result = customer_dict(new_customer, ctx.user)
 
-    logger.info(f"[CREATE-CUSTOMER] ✅ Created | customer_id={str(new_customer.id)} | tenant={tenant_id} | email={body.email}")
+    logger.info(f"[CREATE-CUSTOMER] Created | customer_id={str(new_customer.id)} | tenant={tenant_id} | email={body.email}")
     return success(result, "Customer created successfully")
 
 
@@ -301,7 +301,7 @@ async def get_all_customers(
         creators = await _batch_fetch_creators(session, data)
         result = [customer_dict(c, creators.get(created_by_user_id(c.createdBy))) for c in data]
 
-    logger.info(f"[GET-CUSTOMERS] ✅ Retrieved | count={len(result)} | total={pagination['total']} | user_id={ctx.user.id}")
+    logger.info(f"[GET-CUSTOMERS] Retrieved | count={len(result)} | total={pagination['totalItems']} | user_id={ctx.user.id}")
     return paginated(result, pagination, "Customers retrieved successfully")
 
 
@@ -348,7 +348,7 @@ async def get_customer_by_id(
             "pagination": users_pagination,
         }
 
-    logger.info(f"[GET-CUSTOMER] ✅ Retrieved | customer_id={id} | users_count={len(users_data)} | user_id={ctx.user.id}")
+    logger.info(f"[GET-CUSTOMER] Retrieved | customer_id={id} | users_count={len(users_data)} | user_id={ctx.user.id}")
     return success(customer_details, "Customer details retrieved successfully")
 
 
@@ -387,7 +387,7 @@ async def update_customer(
             creator = await session.get(User, creator_id)
         result = customer_dict(customer, creator)
 
-    logger.info(f"[PATCH-CUSTOMER] ✅ Updated | customer_id={id} | user_id={ctx.user.id}")
+    logger.info(f"[PATCH-CUSTOMER] Updated | customer_id={id} | user_id={ctx.user.id}")
     return success(result, "Customer updated successfully")
 
 
@@ -414,7 +414,7 @@ async def toggle_customer_status(id: str, ctx: Annotated[AuthenticatedUser, Depe
         result = customer_dict(customer, creator)
         action = "activated" if customer.isActive else "deactivated"
 
-    logger.info(f"[PATCH-CUSTOMER-STATUS] ✅ {action.upper()} | customer_id={id} | status={customer.isActive}")
+    logger.info(f"[PATCH-CUSTOMER-STATUS] {action.upper()} | customer_id={id} | status={customer.isActive}")
     return success(result, f"Customer {action} successfully")
 
 
@@ -432,7 +432,7 @@ async def delete_customer(id: str, ctx: Annotated[AuthenticatedUser, Depends(aut
             return error(msg.CUSTOMER_NOT_FOUND, 404)
         await session.delete(customer)
 
-    logger.info(f"[DELETE-CUSTOMER] ✅ Deleted | customer_id={id} | user_id={ctx.user.id}")
+    logger.info(f"[DELETE-CUSTOMER] Deleted | customer_id={id} | user_id={ctx.user.id}")
     return success(None, "Customer deleted successfully")
 
 
@@ -462,7 +462,7 @@ async def update_customer_avatar_by_admin(
             avatar_url = await save_avatar(avatar, f"customer-{customer.tenantId}")
             logger.info(f"[POST-CUSTOMER-AVATAR-ADMIN] Avatar saved | customer_id={id} | url={avatar_url}")
         except AvatarUploadError as exc:
-            logger.error(f"[POST-CUSTOMER-AVATAR-ADMIN] Error | customer_id={id} | error: {exc.message}")
+            logger.exception(f"[POST-CUSTOMER-AVATAR-ADMIN] Error | customer_id={id} | error: {exc.message}")
             return error(exc.message, 400, field="avatar")
 
         old_avatar = customer.avatar
@@ -476,7 +476,7 @@ async def update_customer_avatar_by_admin(
         result = customer_dict(customer, creator)
 
     delete_avatar_file(old_avatar)
-    logger.info(f"[POST-CUSTOMER-AVATAR-ADMIN] ✅ Updated | customer_id={id} | user_id={ctx.user.id}")
+    logger.info(f"[POST-CUSTOMER-AVATAR-ADMIN] Updated | customer_id={id} | user_id={ctx.user.id}")
     return success(result, msg.AVATAR_UPDATED)
 
 
@@ -550,7 +550,7 @@ async def create_user(
             msg.USER_CREATED_EMAIL_FAILED,
         )
 
-    logger.info(f"[CREATE-USER] ✅ Created | user_id={user_id} | email={user_email} | role={body.role}")
+    logger.info(f"[CREATE-USER] Created | user_id={user_id} | email={user_email} | role={body.role}")
     return success({"id": user_id, "tenantId": tenant}, msg.USER_CREATED)
 
 
@@ -603,7 +603,7 @@ async def update_user(
             "tenantId": str(user.tenantId) if user.tenantId else None,
         }
 
-    logger.info(f"[PATCH-USER] ✅ Updated | user_id={id} | role={body.role} | by={ctx.user.id}")
+    logger.info(f"[PATCH-USER] Updated | user_id={id} | role={body.role} | by={ctx.user.id}")
     return success(result, "User updated successfully")
 
 
@@ -665,7 +665,7 @@ async def get_all_users(
     if not users_list:
         message = msg.NO_USERS_MATCH_CRITERIA if (search or is_active or role) else msg.NO_USERS_AVAILABLE
 
-    logger.info(f"[GET-USERS] ✅ Retrieved | count={len(users_list)} | total={pagination['total']} | user_id={ctx.user.id}")
+    logger.info(f"[GET-USERS] Retrieved | count={len(users_list)} | total={pagination['totalItems']} | user_id={ctx.user.id}")
     return paginated(users_list, pagination, message)
 
 
@@ -703,7 +703,7 @@ async def get_user_by_id(id: str, ctx: Annotated[AuthenticatedUser, Depends(auth
             ).scalar_one_or_none()
             response_data["customer"] = customer_summary(customer)
 
-    logger.info(f"[GET-USER] ✅ Retrieved | target_user={id} | role={user.role} | by={ctx.user.id}")
+    logger.info(f"[GET-USER] Retrieved | target_user={id} | role={user.role} | by={ctx.user.id}")
     return success(response_data, "User detail retrieved successfully")
 
 
@@ -746,7 +746,7 @@ async def toggle_user_status(id: str, ctx: Annotated[AuthenticatedUser, Depends(
         }
 
     action = msg.USER_ACTIVATED if new_status else msg.USER_DEACTIVATED
-    logger.info(f"[PATCH-USER-STATUS] ✅ {action.upper()} | target_user={id} | status={new_status} | by={ctx.user.id}")
+    logger.info(f"[PATCH-USER-STATUS] {action.upper()} | target_user={id} | status={new_status} | by={ctx.user.id}")
     return success(result, action)
 
 
@@ -784,5 +784,5 @@ async def delete_user(id: str, ctx: Annotated[AuthenticatedUser, Depends(authent
         }
         await session.delete(user)
 
-    logger.info(f"[DELETE-USER] ✅ Deleted | target_user={id} | by={ctx.user.id}")
+    logger.info(f"[DELETE-USER] Deleted | target_user={id} | by={ctx.user.id}")
     return success(result, msg.USER_DELETED)

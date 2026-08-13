@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+﻿from datetime import datetime, timezone
 from typing import Annotated
 import logging
 
@@ -116,7 +116,7 @@ async def edit_profile(
         tenant = str(db_user.tenantId) if db_user.tenantId else None
         user_id = str(db_user.id)
 
-    logger.info(f"[PATCH-PROFILE] ✅ Profile updated | user_id: {ctx.user.id} | tenant: {tenant}")
+    logger.info(f"[PATCH-PROFILE] Profile updated | user_id: {ctx.user.id} | tenant: {tenant}")
     return success({"id": user_id, "tenantId": tenant}, msg.PROFILE_UPDATED)
 
 
@@ -176,7 +176,7 @@ async def update_avatar(
         avatar_url = await save_avatar(avatar, str(user.id))
         logger.info(f"[POST-AVATAR] Avatar saved | user_id: {ctx.user.id} | url: {avatar_url}")
     except AvatarUploadError as exc:
-        logger.error(f"[POST-AVATAR] Error | user_id: {ctx.user.id} | error: {exc.message}")
+        logger.exception(f"[POST-AVATAR] Error | user_id: {ctx.user.id} | error: {exc.message}")
         return error(exc.message, 400, field="avatar")
 
     async with session_scope() as session:
@@ -190,7 +190,7 @@ async def update_avatar(
 
     delete_avatar_file(old_avatar)
 
-    logger.info(f"[POST-AVATAR] ✅ Avatar updated | user_id: {ctx.user.id} | avatar_url: {avatar_url}")
+    logger.info(f"[POST-AVATAR] Avatar updated | user_id: {ctx.user.id} | avatar_url: {avatar_url}")
     return success({"id": user_id, "avatar": avatar_url}, msg.AVATAR_UPDATED)
 
 
@@ -210,7 +210,7 @@ async def update_customer_avatar(
         avatar_url = await save_avatar(avatar, f"customer-{tenant_id}")
         logger.info(f"[POST-CUSTOMER-AVATAR] Avatar saved | tenant_id: {tenant_id} | url: {avatar_url}")
     except AvatarUploadError as exc:
-        logger.error(f"[POST-CUSTOMER-AVATAR] Error | tenant_id: {tenant_id} | error: {exc.message}")
+        logger.exception(f"[POST-CUSTOMER-AVATAR] Error | tenant_id: {tenant_id} | error: {exc.message}")
         return error(exc.message, 400, field="avatar")
 
     async with session_scope() as session:
@@ -227,7 +227,7 @@ async def update_customer_avatar(
 
     delete_avatar_file(old_avatar)
 
-    logger.info(f"[POST-CUSTOMER-AVATAR] ✅ Customer avatar updated | tenant_id: {ctx.tenant_id} | customer_id: {customer_id}")
+    logger.info(f"[POST-CUSTOMER-AVATAR] Customer avatar updated | tenant_id: {ctx.tenant_id} | customer_id: {customer_id}")
     return success(
         {"id": customer_id, "avatar": avatar_url},
         msg.AVATAR_UPDATED,

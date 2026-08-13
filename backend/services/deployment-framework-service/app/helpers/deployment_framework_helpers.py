@@ -117,7 +117,9 @@ def get_upload_file_path(file_url: str | None) -> str | None:
     if not file_url or file_url.startswith("/api/"):
         return None
     relative = (
-        file_url.replace("/uploads/", "", 1) if file_url.startswith("/uploads/") else file_url.lstrip("/")
+        file_url.replace("/uploads/", "", 1)
+        if file_url.startswith("/uploads/")
+        else file_url.lstrip("/")
     )
     return str((Path(file_storage.UPLOAD_BASE_PATH) / relative).resolve())
 
@@ -136,7 +138,9 @@ async def create_pending_extraction(session: AsyncSession, file_hash: str | None
     if not file_hash:
         return None
     existing = (
-        await session.execute(select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash))
+        await session.execute(
+            select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash)
+        )
     ).scalar_one_or_none()
     if existing:
         return existing
@@ -215,7 +219,11 @@ def _version_sort_key(v: str) -> tuple[int, int, int]:
 
 
 def process_and_save_file(
-    content: bytes, filename: str, user_id: str, framework_version: str, document_version: str = "1.0.0"
+    content: bytes,
+    filename: str,
+    user_id: str,
+    framework_version: str,
+    document_version: str = "1.0.0",
 ) -> dict[str, Any] | None:
     path_info = file_storage.generate_deployment_file_path(
         filename, user_id, "deployment-framework", framework_version
@@ -314,9 +322,7 @@ def _field(doc: Any, key: str, default: Any = None) -> Any:
     return _g(doc, key, default)
 
 
-async def create_pending_merge(
-    session: AsyncSession, file_hashes: list[str], framework_id: str, package_data: dict[str, Any]
-):
+async def create_pending_merge(session: AsyncSession, file_hashes: list[str]):
     from vora_shared.models import DeploymentPackageMerge
 
     if not file_hashes:
@@ -352,9 +358,6 @@ async def create_pending_merge(
 async def create_pending_comparison(
     session: AsyncSession,
     file_hashes: list[str],
-    framework_id: str,
-    assigned_framework_id: str,
-    package_version: str,
 ):
     from vora_shared.models import PackageComparison
 
@@ -398,9 +401,6 @@ async def create_pending_comparison(
 async def create_pending_gap_analysis(
     session: AsyncSession,
     file_hashes: list[str],
-    framework_id: str,
-    assigned_framework_id: str,
-    package_version: str,
 ):
     from vora_shared.models import PackageGapAnalysis
 
@@ -442,29 +442,33 @@ async def ensure_package_analysis_refs(
     session: AsyncSession,
     package_data: dict[str, Any],
     framework_id: str,
-    assigned_framework_id: str,
-    package_version: str,
 ) -> None:
     if not package_data or not framework_id:
         return
     file_hashes = sorted(
-        {_field(doc, "fileHash") for doc in package_data.get("documents", []) if _field(doc, "fileHash")}
+        {
+            _field(doc, "fileHash")
+            for doc in package_data.get("documents", [])
+            if _field(doc, "fileHash")
+        }
     )
     if not file_hashes:
         return
 
-    merge_doc = await create_pending_merge(session, file_hashes, framework_id, package_data)
+    merge_doc = await create_pending_merge(session, file_hashes)
     if merge_doc:
         package_data["mergeDocument"] = merge_doc.id
 
     comparison_doc = await create_pending_comparison(
-        session, file_hashes, framework_id, assigned_framework_id, package_version
+        session,
+        file_hashes,
     )
     if comparison_doc:
         package_data["comparison"] = comparison_doc.id
 
     gap_doc = await create_pending_gap_analysis(
-        session, file_hashes, framework_id, assigned_framework_id, package_version
+        session,
+        file_hashes,
     )
     if gap_doc:
         package_data["gapAnalysis"] = gap_doc.id
@@ -476,7 +480,9 @@ def gap_point_matches(
     deployment_control_id: Any,
     deployment_point_id: Any | None,
 ) -> bool:
-    if str((p.get("assigned_framework_deployment_points") or {}).get("id")) != str(assigned_point_id):
+    if str((p.get("assigned_framework_deployment_points") or {}).get("id")) != str(
+        assigned_point_id
+    ):
         return False
 
     dc_id = p.get("deployment_framework_control_id")

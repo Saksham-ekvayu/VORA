@@ -73,7 +73,7 @@ async def create_framework_category(
         await session.flush()
         category_id = str(category.id)
 
-    logger.info(f"[CREATE-CATEGORY] ✅ Created | category_id={category_id} | code={fields['code']} | user_id={auth.user.id}")
+    logger.info(f"[CREATE-CATEGORY] Created | category_id={category_id} | code={fields['code']} | user_id={auth.user.id}")
     return success({"id": category_id}, MESSAGES["FRAMEWORK_CATEGORY_CREATED"], 201)
 
 
@@ -143,7 +143,7 @@ async def get_all_framework_categories(
 
     message = _get_paginated_message(data, search, is_active)
 
-    logger.info(f"[GET-CATEGORIES] ✅ Retrieved | count={len(data)} | total={pagination['total']} | user_id={auth.user.id}")
+    logger.info(f"[GET-CATEGORIES] Retrieved | count={len(data)} | total={pagination['totalItems']} | user_id={auth.user.id}")
     return paginated(data, pagination, message)
 
 
@@ -166,7 +166,7 @@ async def get_framework_category_by_id(
 
     users_by_id = await fetch_users_by_ids(user_ids)
 
-    logger.info(f"[GET-CATEGORY] ✅ Retrieved | category_id={id} | user_id={auth.user.id}")
+    logger.info(f"[GET-CATEGORY] Retrieved | category_id={id} | user_id={auth.user.id}")
     return success(
         {"category": _format_category(category, users_by_id)},
         MESSAGES["FRAMEWORK_CATEGORY_SUCCESS"],
@@ -221,7 +221,7 @@ async def update_framework_category(
             category.isActive = fields["isActive"]
         category_id = str(category.id)
 
-    logger.info(f"[PUT-CATEGORY] ✅ Updated | category_id={id} | code={category.code} | user_id={auth.user.id}")
+    logger.info(f"[PUT-CATEGORY] Updated | category_id={id} | code={category.code} | user_id={auth.user.id}")
     return success({"id": category_id}, MESSAGES["FRAMEWORK_CATEGORY_UPDATED"])
 
 
@@ -329,7 +329,7 @@ async def delete_framework_category(
 
     message = MESSAGES["FRAMEWORK_CATEGORY_DELETED_WITH_ACCESS"].replace("{count}", str(deleted_count))
 
-    logger.info(f"[DELETE-CATEGORY] ✅ Deleted | category_id={id} | access_count={deleted_count} | user_id={auth.user.id}")
+    logger.info(f"[DELETE-CATEGORY] Deleted | category_id={id} | access_count={deleted_count} | user_id={auth.user.id}")
     return success(
         {"id": str(id), "deletedAccessRecords": deleted_count},
         message,

@@ -73,11 +73,11 @@ async def get_admin_dashboard_analytics(
 
         response_data = build_response_data(stats, chart_labels, chart_data, recent_created_users, customers)
 
-        logger.info(f"[ADMIN-ANALYTICS] ✅ Dashboard loaded | users={len(all_users)} | customers={len(customers)} | frameworks={model_counts['totalFrameworks']}")
+        logger.info(f"[ADMIN-ANALYTICS] Dashboard loaded | users={len(all_users)} | customers={len(customers)} | frameworks={model_counts['totalFrameworks']}")
         return success(response_data, MESSAGES["DASHBOARD_ANALYTICS_SUCCESS"])
     except Exception as exc:
         import logging
         logger = logging.getLogger(__name__)
-        logger.error(f"[ADMIN-ANALYTICS] Error: {exc}")
+        logger.exception(f"[ADMIN-ANALYTICS] Error: {exc}")
         logger.exception("Dashboard analytics error")
         return error(MESSAGES["DASHBOARD_ANALYTICS_FAILED"], 500)

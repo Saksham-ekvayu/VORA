@@ -72,7 +72,7 @@ def get_framework_previous_controls(
         if controls_data:
             prev_file_hash = fv.get("fileHash")
             logger.info(
-                f"[MERGE] ✅ Previous controls found | fileVersion={fv.get('fileVersion')} "
+                f"[MERGE] Previous controls found | fileVersion={fv.get('fileVersion')} "
                 f"| sections={len(controls_data)} | fileHash={prev_file_hash}"
             )
             return controls_data, fv.get("fileVersion"), prev_file_hash
@@ -181,6 +181,7 @@ def merge_controls_cumulative(
                                 "name": new_dp.get("name", ""),
                                 "status": "pending",
                                 "path": "",
+                                "source": "",
                                 "weightage": 0,
                                 "remark": "",
                             }
@@ -212,7 +213,7 @@ def merge_controls_cumulative(
                 sec["id"] = f"SEC-{idx:02d}"
 
     logger.info(
-        f"[MERGE] ✅ Merge complete | merged={summary['merged_controls']} "
+        f"[MERGE] Merge complete | merged={summary['merged_controls']} "
         f"| new_controls={summary['new_controls']} | new_dps={summary['new_dps']} "
         f"| new_sections={summary['new_sections']} | total_sections={len(merged_result)}"
     )

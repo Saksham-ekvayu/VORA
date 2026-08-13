@@ -1,0 +1,86 @@
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
+import utils.live_logs as live_log_manager
+from mcp_server.controller import run_pipeline
+import logging  
+live_logs = []
+
+scheduler = BackgroundScheduler()
+
+current_scheduler_config = {
+    "source": "aws",
+    "scheduler_type": "interval",
+    "minutes": 1
+}
+
+
+def start_dynamic_scheduler(payload: dict):
+    source = payload["source"]
+    scheduler_type = payload.get("scheduler_type", "interval")
+
+    scheduler.remove_all_jobs()
+
+    if scheduler_type == "interval":
+        scheduler.add_job(
+            run_pipeline,
+            "interval",
+            minutes=payload.get("minutes", 1),
+            args=[source],
+            id="mcp_pipeline",
+            replace_existing=True,
+        )
+    else:
+        scheduler.add_job(
+            run_pipeline,
+            "cron",
+            hour=payload.get("hour", 0),
+            minute=payload.get("minute", 0),
+            args=[source],
+            id="mcp_pipeline",
+            replace_existing=True,
+        )
+
+    if not scheduler.running:
+        scheduler.start()
+
+    return {
+        "status": True,
+        "message": f"Scheduler started for {source}",
+    }
+
+
+def stop_scheduler():
+    if scheduler.running==False:
+        return{
+            "Status": False,
+            "Message":"Scheduler is already stop"
+        }
+    if scheduler.running:
+        scheduler.shutdown(wait=False)
+        live_log_manager.live_logs.clear()
+
+    return {
+        "status": True,
+        "message": "Scheduler stopped successfully"
+    }
+
+
+def scheduler_status():
+
+    jobs = scheduler.get_jobs()
+
+    return {
+        "running": scheduler.running,
+        "jobs": [job.id for job in jobs],
+        "config": current_scheduler_config
+    }
+def add_live_log(message):
+
+    live_logs.append(message)
+
+    # STORE ONLY LAST 100 LOGS
+    if len(live_logs) > 1000:
+        live_logs.pop(0)
+
+    logging.info(message)

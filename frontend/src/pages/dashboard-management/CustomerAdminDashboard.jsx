@@ -47,6 +47,7 @@ function TopStatCard({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className="rounded bg-card border border-border p-4 flex items-center gap-4 text-left w-full hover:border-primary/40 hover:shadow-md transition-all group cursor-pointer"
     >
@@ -536,7 +537,7 @@ export default function CustomerAdminDashboard() {
         )
       : 0);
 
-  const getDeploymentSetupValue = () => {
+  const getMonitoringSetupValue = () => {
     if (stats.controlsConfigured != null && stats.controlsTotal != null) {
       return `${stats.controlsConfigured} / ${stats.controlsTotal}`;
     }
@@ -546,7 +547,7 @@ export default function CustomerAdminDashboard() {
     return "—";
   };
 
-  const deploymentSetupValue = getDeploymentSetupValue();
+  const monitoringSetupValue = getMonitoringSetupValue();
 
   if (loading) return <LoadingSpinner className="min-h-[70vh]" />;
 
@@ -639,22 +640,22 @@ export default function CustomerAdminDashboard() {
           onClick={() => navigate("/deployment-frameworks")}
         />
         <TopStatCard
-          title="Deployment Point Configured"
+          title="Monitoring Point Configured"
           icon="shield-check"
           iconColor="text-emerald-500"
           iconBg="bg-emerald-500/10"
           borderColor="border-emerald-500/40"
-          value={deploymentSetupValue}
-          onClick={() => navigate("/deployment-setup")}
+          value={monitoringSetupValue}
+          onClick={() => navigate("/monitoring-setup")}
         />
       </div>
 
-      {/* ── Row 2: (Deployment Setup + Profiles) | Timeline Chart ─────── */}
+      {/* ── Row 2: (Monitoring Setup + Profiles) | Timeline Chart ─────── */}
       <div className="grid xl:grid-cols-2 gap-3 items-stretch">
         <div className="flex flex-col gap-3 h-full">
-          {/* Deployment Point Setup Progress */}
+          {/* Monitoring Point Setup Progress */}
           <CardWrapper
-            title="Deployment Point Configured Progress"
+            title="Monitoring Point Configured Progress"
             right={
               <div className="flex items-center gap-2">
                 <FrameworkSetupFilter
@@ -675,7 +676,7 @@ export default function CustomerAdminDashboard() {
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono text-muted-foreground">
                   {activeSetupProgress.configured ?? 0} /{" "}
-                  {activeSetupProgress.total ?? 0} Deployment point
+                  {activeSetupProgress.total ?? 0} Monitoring point
                 </span>
                 <span className="text-xs font-bold text-primary">
                   {cfgPct}% complete

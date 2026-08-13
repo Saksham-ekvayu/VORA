@@ -75,11 +75,11 @@ async def start_comparison(request: ComparisonRequest):
         async with session_scope() as session:
             df = await session.get(DeploymentFramework, deployment_framework_id)
             if not df:
-                logger.error(f"[COMPARISON] ❌ Deployment Framework not found: {deployment_framework_id}")
+                logger.error(f"[COMPARISON] Deployment Framework not found: {deployment_framework_id}")
                 return not_found(f"Deployment Framework not found: {deployment_framework_id}")
 
             framework_assignment_id = df.assignedFrameworkId
-            logger.info(f"[COMPARISON] ✅ Deployment Framework found: {df.frameworkName}")
+            logger.info(f"[COMPARISON] Deployment Framework found: {df.frameworkName}")
             logger.info(f"    Current Package Version: {df.currentPackageVersion}")
             logger.info(f"    Resolved Framework Assignment ID: {framework_assignment_id}")
 
@@ -88,19 +88,19 @@ async def start_comparison(request: ComparisonRequest):
         async with session_scope() as session:
             fa = await session.get(FrameworkAssignment, framework_assignment_id)
             if not fa:
-                logger.error(f"[COMPARISON] ❌ Framework Assignment not found: {framework_assignment_id}")
+                logger.error(f"[COMPARISON] Framework Assignment not found: {framework_assignment_id}")
                 return not_found(f"Framework Assignment not found: {framework_assignment_id}")
 
-            logger.info(f"[COMPARISON] ✅ Framework Assignment found: {fa.frameworkName}")
+            logger.info(f"[COMPARISON] Framework Assignment found: {fa.frameworkName}")
             logger.info(f"    Framework ID: {fa.frameworkId}")
             logger.info(f"    Framework Version: {fa.frameworkVersion}")
 
         # ===== VALIDATION 3: Check Package version exists =====
         logger.info("[COMPARISON] Validation 3: Checking Package version...")
         if not package_version or package_version.strip() == "":
-            logger.error("[COMPARISON] ❌ Invalid package version")
+            logger.error("[COMPARISON] Invalid package version")
             return error("Package version cannot be empty")
-        logger.info(f"[COMPARISON] ✅ Package version valid: {package_version}")
+        logger.info(f"[COMPARISON] Package version valid: {package_version}")
 
         # ===== Update or create comparison record in database =====
         logger.info("[COMPARISON] Updating/Creating comparison record...")
@@ -153,7 +153,7 @@ async def start_comparison(request: ComparisonRequest):
                 comparison_id = comparison.id
 
             await session.commit()
-            logger.info(f"[COMPARISON] ✅ Comparison record ready | id={comparison_id}")
+            logger.info(f"[COMPARISON] Comparison record ready | id={comparison_id}")
 
         # ===== Queue comparison as background task =====
         logger.info("[COMPARISON] Queueing background task...")
@@ -162,7 +162,7 @@ async def start_comparison(request: ComparisonRequest):
         )
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)
-        logger.info("[COMPARISON] ✅ Comparison task queued")
+        logger.info("[COMPARISON] Comparison task queued")
 
         return success(
             message="Comparison started successfully",
@@ -177,7 +177,7 @@ async def start_comparison(request: ComparisonRequest):
         )
 
     except Exception as exc:
-        logger.exception(f"[COMPARISON-START] ❌ Error: {exc}")
+        logger.exception(f"[COMPARISON-START] Error: {exc}")
         return server_error(str(exc))
 
 
