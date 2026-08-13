@@ -1,6 +1,6 @@
-from collectors.aws_collector import fetch_s3_files
-from collectors.local_collector import fetch_local_files
-from collectors.gitlab_collector import fetch_gitlab_files
+from app.collectors.aws_collector import fetch_s3_files
+from app.collectors.local_collector import fetch_local_files
+from app.collectors.gitlab_collector import fetch_gitlab_files
 
 
 def collect_files(source, config):
