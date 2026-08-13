@@ -99,7 +99,9 @@ def _status_for_score(score: float, thresholds: dict[str, Any], statuses: dict[s
     return statuses.get("not_implemented", "Not Implemented")
 
 
-async def _load_comparison_grouped(session, df: DeploymentFramework, pkg_ver: str) -> list[dict[str, Any]]:
+async def _load_comparison_grouped(
+    session, df: DeploymentFramework, pkg_ver: str
+) -> list[dict[str, Any]]:
     # Load comparison results from PackageComparison table
     comparison_id = None
     for pkg in df.packages or []:
@@ -191,21 +193,33 @@ async def run_gap(
                         # Try to load merged controls directly from package (after our fix)
                         merged_pkg_controls = pkg.get("mergedControls")
                         if isinstance(merged_pkg_controls, dict):
-                            merged_controls_from_pkg = merged_pkg_controls.get("controls_data") or []
-                            logger.info(f"[GAP-RUNNER] ✅ Loaded {len(merged_controls_from_pkg)} sections from package.mergedControls")
+                            merged_controls_from_pkg = (
+                                merged_pkg_controls.get("controls_data") or []
+                            )
+                            logger.info(
+                                f"[GAP-RUNNER]  Loaded {len(merged_controls_from_pkg)} sections from package.mergedControls"
+                            )
                         else:
-                            logger.info(f"[GAP-RUNNER] ⚠️  No mergedControls in package (type: {type(merged_pkg_controls)})")
+                            logger.info(
+                                f"[GAP-RUNNER]   No mergedControls in package (type: {type(merged_pkg_controls)})"
+                            )
                         break
 
                 # Fall back to loading from DeploymentPackageMerge if not in package
                 if not merged_controls_from_pkg and merge_doc_id:
-                    logger.info(f"[GAP-RUNNER] Trying to load from DeploymentPackageMerge: {merge_doc_id}")
+                    logger.info(
+                        f"[GAP-RUNNER] Trying to load from DeploymentPackageMerge: {merge_doc_id}"
+                    )
                     pm = await session.get(DeploymentPackageMerge, merge_doc_id)
                     if pm and isinstance(pm.controls, dict):
                         merged_controls_from_pkg = pm.controls.get("controls_data") or []
-                        logger.info(f"[GAP-RUNNER] ✅ Loaded {len(merged_controls_from_pkg)} sections from DeploymentPackageMerge")
+                        logger.info(
+                            f"[GAP-RUNNER]  Loaded {len(merged_controls_from_pkg)} sections from DeploymentPackageMerge"
+                        )
                     else:
-                        logger.warning(f"[GAP-RUNNER] ⚠️  DeploymentPackageMerge not found or invalid: {merge_doc_id}")
+                        logger.warning(
+                            f"[GAP-RUNNER]   DeploymentPackageMerge not found or invalid: {merge_doc_id}"
+                        )
 
                 merge_controls = merged_controls_from_pkg
                 logger.info(f"[GAP-RUNNER] Total merged controls loaded: {len(merge_controls)}")
@@ -225,9 +239,13 @@ async def run_gap(
                                 if ctrl_name:
                                     dps_count = len(ctrl.get("deployment_points") or [])
                                     merged_control_map[ctrl_name] = ctrl
-                                    logger.info(f"[GAP-RUNNER] 📌 Indexed control '{ctrl_name}' with {dps_count} DPs")
+                                    logger.info(
+                                        f"[GAP-RUNNER] 📌 Indexed control '{ctrl_name}' with {dps_count} DPs"
+                                    )
 
-                logger.info(f"[GAP-RUNNER] ✅ Built index of {len(merged_control_map)} merged controls")
+                logger.info(
+                    f"[GAP-RUNNER]  Built index of {len(merged_control_map)} merged controls"
+                )
 
                 # Build minimal comparison-like structure from assignment controls
                 comparison_sections = []
@@ -238,7 +256,7 @@ async def run_gap(
                     for ctrl in section.get("controls") or []:
                         if not isinstance(ctrl, dict):
                             continue
-                        
+
                         # Try to find matching merged control and extract DPs
                         merged_dps = []
                         ctrl_name_lower = (ctrl.get("name") or "").strip().lower()
@@ -253,17 +271,22 @@ async def run_gap(
                                 for dp in raw_dps
                                 if isinstance(dp, dict)
                             ]
-                            logger.info(f"[GAP-RUNNER] ✅ Matched '{ctrl_name_lower}': {len(merged_dps)} DPs")
+                            logger.info(
+                                f"[GAP-RUNNER]  Matched '{ctrl_name_lower}': {len(merged_dps)} DPs"
+                            )
                             for dp in merged_dps:
                                 logger.info(f"              └─ {dp['point']}")
                         else:
-                            logger.info(f"[GAP-RUNNER] ⚠️  No match for '{ctrl_name_lower}' (not in {len(merged_control_map)} indexed controls)")
-                        
+                            logger.info(
+                                f"[GAP-RUNNER]   No match for '{ctrl_name_lower}' (not in {len(merged_control_map)} indexed controls)"
+                            )
+
                         items.append(
                             {
                                 "assigned_framework_control_id": str(ctrl.get("id") or ""),
                                 "assigned_framework_control_name": ctrl.get("name") or "",
-                                "assigned_framework_control_description": ctrl.get("description") or "",
+                                "assigned_framework_control_description": ctrl.get("description")
+                                or "",
                                 "assigned_framework_deployment_points": [
                                     {
                                         "id": str(dp.get("id") or new_id()),
@@ -304,7 +327,9 @@ async def run_gap(
                     continue
 
                 assigned_id = str(
-                    item.get("assigned_framework_control_id") or item.get("Framework_control_id") or "Unknown"
+                    item.get("assigned_framework_control_id")
+                    or item.get("Framework_control_id")
+                    or "Unknown"
                 )
                 assigned_name = item.get("assigned_framework_control_name") or ""
                 assigned_desc = item.get("assigned_framework_control_description") or ""
@@ -320,7 +345,9 @@ async def run_gap(
                 ]
 
                 logger.info(f"[GAP-RUNNER] DP comparison for control: {assigned_name}")
-                logger.info(f"  Assigned DPs: {len(assigned_dps)}, Deployment DPs: {len(deployment_dps)}")
+                logger.info(
+                    f"  Assigned DPs: {len(assigned_dps)}, Deployment DPs: {len(deployment_dps)}"
+                )
 
                 # DP-to-DP comparison: for each assigned DP, find best match in deployment DPs using semantic similarity
                 for af_dp in assigned_dps:
@@ -348,7 +375,9 @@ async def run_gap(
 
                             # _similarity returns 0-1, convert to 0-100 for threshold comparison
                             dp_similarity = _similarity(af_dp_text, df_dp_text)
-                            dp_score = dp_similarity * 100 if dp_similarity <= 1.0 else dp_similarity
+                            dp_score = (
+                                dp_similarity * 100 if dp_similarity <= 1.0 else dp_similarity
+                            )
                         else:
                             dp_score = 0.0
 
@@ -416,7 +445,9 @@ async def run_gap(
                     pga.updatedAt = _utcnow()
                     session.add(pga)
                 else:
-                    logger.warning(f"[GAP-RUNNER] PackageGapAnalysis with gap_id={gap_id} not found")
+                    logger.warning(
+                        f"[GAP-RUNNER] PackageGapAnalysis with gap_id={gap_id} not found"
+                    )
 
             # Last resort: create new if still not found
             if not pga:
