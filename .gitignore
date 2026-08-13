@@ -39,6 +39,7 @@ backend/shared/.env
 
 # Media
 uploads
+docs-md
 
 # Alembic Migrations
 backend/shared/alembic/versions/
