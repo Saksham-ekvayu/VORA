@@ -12,6 +12,10 @@ from vora_shared.models import ProcessedFile
 # =========================================
 # PROCESSED FILES
 # =========================================
+import sys
+from pathlib import Path
+shared_path = Path(__file__).resolve().parents[3] / "shared"
+sys.path.insert(0, str(shared_path))
 
 async def is_processed(db: AsyncSession, file_path: str):
     result = await db.execute(

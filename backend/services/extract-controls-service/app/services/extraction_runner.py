@@ -86,36 +86,94 @@ def _load_document_chunks(file_path: str, chunk_size: int = 1000) -> list[str]:
 
         # Handle PDF
         if ext == ".pdf":
+            logger.info("[LOAD] Starting PDF extraction...")
+            text_extracted = False
+            
+            # Try 1: pdfplumber text extraction
             try:
                 import pdfplumber
-
+                logger.info("[LOAD] Attempt 1: pdfplumber text extraction...")
                 with pdfplumber.open(file_path) as pdf:
-                    for page in pdf.pages:
-                        # Extract tables
-                        tables = page.extract_tables()
-                        if tables:
-                            for table in tables:
-                                for row in table:
-                                    row_text = " ".join([cell or "" for cell in row if cell])
-                                    if row_text.strip():
-                                        text_lines.append(row_text.strip())
-                        # Extract text
-                        page_text = page.extract_text()
-                        if page_text:
-                            for line in page_text.split("\n"):
-                                if line.strip():
-                                    text_lines.append(line.strip())
-            except ImportError:
-                logger.warning("[LOAD] pdfplumber not available, trying pypdf")
-                import pypdf
+                    logger.info(f"[LOAD] PDF has {len(pdf.pages)} pages")
+                    if len(pdf.pages) > 0:
+                        for page_num, page in enumerate(pdf.pages, 1):
+                            try:
+                                page_text = page.extract_text()
+                                if page_text and page_text.strip():
+                                    for line in page_text.split("\n"):
+                                        if line.strip():
+                                            text_lines.append(line.strip())
+                                    text_extracted = True
+                            except Exception as e:
+                                logger.warning(f"[LOAD] Page {page_num} pdfplumber failed: {e}")
+                        if text_extracted:
+                            logger.info(f"[LOAD] ✅ pdfplumber extracted {len(text_lines)} lines")
+            except Exception as e:
+                logger.warning(f"[LOAD] pdfplumber failed: {e}")
+            
+            # Try 2: If pdfplumber didn't work, use OCR directly
+            if not text_extracted:
+                logger.info("[LOAD] Attempt 2: OCR extraction (pdf2image + pytesseract)...")
+                try:
+                    import pdf2image
+                    import pytesseract
+                    
+                    logger.info("[LOAD] Converting PDF to images...")
+                    images = pdf2image.convert_from_path(file_path, dpi=300)
+                    logger.info(f"[LOAD] Converted to {len(images)} images")
+                    
+                    if images:
+                        for page_num, image in enumerate(images, 1):
+                            try:
+                                logger.info(f"[LOAD] OCR scanning page {page_num}/{len(images)}...")
+                                ocr_text = pytesseract.image_to_string(image, lang='eng')
+                                if ocr_text and ocr_text.strip():
+                                    for line in ocr_text.split("\n"):
+                                        if line.strip():
+                                            text_lines.append(line.strip())
+                                    text_extracted = True
+                                    logger.info(f"[LOAD] Page {page_num}: OCR extracted {len(ocr_text.split(chr(10)))} lines")
+                            except Exception as page_err:
+                                logger.warning(f"[LOAD] Page {page_num} OCR failed: {page_err}")
+                        
+                        if text_extracted:
+                            logger.info(f"[LOAD] ✅ OCR extraction complete: {len(text_lines)} total lines")
+                    else:
+                        logger.error("[LOAD] ❌ pdf2image returned no images")
+                        
+                except ImportError as imp_err:
+                    logger.error(f"[LOAD] ❌ OCR libraries not installed: {imp_err}")
+                    logger.error("[LOAD] Install: pip install pdf2image pytesseract")
+                    logger.error("[LOAD] Also install: apt-get install tesseract-ocr poppler-utils")
+                except Exception as ocr_err:
+                    logger.error(f"[LOAD] ❌ OCR extraction failed: {ocr_err}")
+            
+            # Try 3: pypdf as last resort
+            if not text_extracted:
+                logger.info("[LOAD] Attempt 3: pypdf text extraction...")
+                try:
+                    import pypdf
+                    with open(file_path, 'rb') as f:
+                        try:
+                            reader = pypdf.PdfReader(f)
+                            logger.info(f"[LOAD] pypdf found {len(reader.pages)} pages")
+                            for page_num, page in enumerate(reader.pages, 1):
+                                try:
+                                    page_text = page.extract_text()
+                                    if page_text and page_text.strip():
+                                        for line in page_text.split("\n"):
+                                            if line.strip():
+                                                text_lines.append(line.strip())
+                                        text_extracted = True
+                                except Exception as e:
+                                    logger.warning(f"[LOAD] Page {page_num} pypdf failed: {e}")
+                            if text_extracted:
+                                logger.info(f"[LOAD] ✅ pypdf extracted {len(text_lines)} lines")
+                        except Exception as reader_err:
+                            logger.warning(f"[LOAD] pypdf reader failed: {reader_err}")
+                except Exception as e:
+                    logger.warning(f"[LOAD] pypdf not available: {e}")
 
-                reader = pypdf.PdfReader(file_path)
-                for page in reader.pages:
-                    page_text = page.extract_text()
-                    if page_text:
-                        for line in page_text.split("\n"):
-                            if line.strip():
-                                text_lines.append(line.strip())
 
         # Handle Word documents
         elif ext == ".docx":
@@ -916,6 +974,12 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
             )
             await session.commit()
 
+            # Step 4: Clear stale comparison results so they get recalculated
+            logger.info("[PACKAGE-MERGE] Step 4: Clearing stale comparison results...")
+            await _clear_deployment_framework_comparison_results(session, df_id, pkg_ver)
+            await session.commit()
+            logger.info("[PACKAGE-MERGE] ✅ Cleared stale comparisons - will be recalculated on next run")
+
             logger.info(f"{'='*80}")
             logger.info("[PACKAGE-MERGE-SUCCESS] Package merge complete!")
             logger.info(f"  Deployment Framework ID: {df_id}")
@@ -954,6 +1018,40 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
                         await session.commit()
         except Exception as db_exc:
             logger.error(f"[PACKAGE-MERGE] Failed to update failure status: {db_exc}")
+
+
+async def _clear_deployment_framework_comparison_results(
+    session: Any, df_id: str, pkg_ver: str
+) -> None:
+    """Clear/reset stale comparison results after merge so they get recalculated."""
+    try:
+        from vora_shared.models import PackageComparison
+
+        # Find all comparisons for this deployment framework package
+        comparisons = (
+            await session.execute(
+                select(PackageComparison).where(
+                    PackageComparison.deploymentFrameworkId == df_id
+                )
+            )
+        ).scalars().all()
+
+        cleared_count = 0
+        for pc in comparisons:
+            if isinstance(pc.comparison, dict):
+                # Reset the comparison_result to empty so it gets recalculated
+                pc.comparison["comparison_result"] = []
+                pc.comparison["comparison_score"] = 0
+                pc.comparison["status"] = "pending_recalculation"
+                session.add(pc)
+                cleared_count += 1
+
+        if cleared_count > 0:
+            logger.info(f"[PACKAGE-MERGE] Cleared {cleared_count} comparison records for recalculation")
+        await session.flush()
+
+    except Exception as e:
+        logger.warning(f"[PACKAGE-MERGE] ⚠️ Could not clear comparisons (non-critical): {e}")
 
 
 async def _get_or_create_doc_extraction(
@@ -1014,3 +1112,273 @@ async def _save_merge_to_framework_merge(
             f"[MERGE-TABLE] Saved merge "
             f"| hashes={len(sorted_hashes)} | controls={controls_payload['total_controls']}"
         )
+
+
+async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
+    """Load DeploymentDocument, extract controls using AI, save to document_extraction table"""
+    dd_id = str(dd_id).strip()
+    file_id = str(file_id).strip()
+    uploaded_ts = _iso()
+
+    logger.info(f"{'='*80}")
+    logger.info("[DD-EXTRACT-START] Deployment Document Extraction Started")
+    logger.info(f"  Deployment Document ID: {dd_id}")
+    logger.info(f"  File ID: {file_id}")
+    logger.info(f"  Timestamp: {uploaded_ts}")
+    logger.info(f"{'='*80}")
+
+    try:
+        # Get deployment document and file info
+        logger.info("[DD-EXTRACT] Step 1: Loading deployment document from database...")
+        async with session_scope() as session:
+            from vora_shared.models import DeploymentDocument
+
+            dd = await session.get(DeploymentDocument, dd_id)
+            if not dd:
+                logger.error(f"[DD-EXTRACT] ❌ Deployment Document not found: {dd_id}")
+                return
+
+            logger.info(f"[DD-EXTRACT] ✅ Deployment Document found: {dd.frameworkName}")
+
+            # Find package and file
+            packages = dd.packages or []
+            pkg_ver = dd.currentPackageVersion
+            pkg_info = None
+            for pkg in packages:
+                if isinstance(pkg, dict) and pkg.get("packageVersion") == pkg_ver:
+                    pkg_info = pkg
+                    break
+
+            if not pkg_info:
+                logger.error(f"[DD-EXTRACT] ❌ Package not found: {pkg_ver}")
+                return
+
+            documents = pkg_info.get("documents") or []
+            file_info = None
+            for doc in documents:
+                if isinstance(doc, dict) and str(doc.get("fileId")) == file_id:
+                    file_info = doc
+                    break
+
+            if not file_info:
+                logger.error(f"[DD-EXTRACT] ❌ File not found in deployment document: {file_id}")
+                return
+
+            file_path = file_info.get("fileUrl")
+            if file_path and file_path.startswith("/uploads/"):
+                from pathlib import Path
+
+                from vora_shared.file_storage import UPLOAD_BASE_PATH
+
+                relative = file_path.replace("/uploads/", "", 1)
+                file_path = str((Path(UPLOAD_BASE_PATH) / relative).resolve())
+
+            file_hash = file_info.get("fileHash")
+            logger.info("[DD-EXTRACT] ✅ File found")
+            logger.info(f"  File Path: {file_path}")
+            logger.info(f"  File Hash: {file_hash}")
+
+            logger.info("[DD-EXTRACT] Step 1.5: Updating status to 'processing'...")
+            await _update_deployment_document_ai_status(
+                session,
+                dd_id,
+                file_id,
+                {
+                    "status": "processing",
+                    "timestamp": uploaded_ts,
+                    "message": "Deployment document ai extraction in progress",
+                },
+            )
+            logger.info("[DD-EXTRACT] ✅ Status updated to 'processing'")
+
+        # Load document from file
+        logger.info("[DD-EXTRACT] Step 2: Loading document from disk...")
+        chunks = await asyncio.to_thread(_load_document_chunks, file_path)
+        if not chunks:
+            logger.error("[DD-EXTRACT] ❌ No text extracted from document")
+            return
+
+        logger.info(f"[DD-EXTRACT] ✅ Document loaded: {len(chunks)} chunks extracted")
+
+        # Extract controls using AI (client controls for deployment documents)
+        logger.info("[DD-EXTRACT] Step 3: Running AI extraction...")
+        controls_flat = await asyncio.to_thread(extract_framework_controls, chunks, dd_id, True)
+        logger.info(
+            f"[DD-EXTRACT] ✅ Framework ai extraction complete: {len(controls_flat)} controls extracted"
+        )
+
+        # Convert to section structure
+        logger.info("[DD-EXTRACT] Step 4: Converting to section structure...")
+        controls_structured = await asyncio.to_thread(
+            convert_to_section_structure, controls_flat, resource_type="deployment"
+        )
+        logger.info(f"[DD-EXTRACT] ✅ Structure converted: {len(controls_structured)} sections")
+
+        # Build controls payload
+        total_controls = sum(len(s.get("controls", [])) for s in controls_structured)
+        controls_payload = {
+            "total_controls": total_controls,
+            "total_sections": len(controls_structured),
+            "controls_data": controls_structured,
+        }
+        logger.info(f"[DD-EXTRACT] Total controls: {total_controls}")
+
+        completed_ts = _iso()
+        history = _status_history(uploaded_ts, uploaded_ts, completed_ts)
+
+        # Prepare extraction data
+        extraction_data = {
+            "status": "extracted",
+            "timestamp": completed_ts,
+            "message": "Deployment document AI extraction completed",
+            "statusHistory": {
+                "processingTimeSeconds": history["processing_time_seconds"],
+                "completedAt": history["completed_at"],
+                "history": [
+                    {
+                        "status": ("extracted" if h["status"] == "completed" else h["status"]),
+                        "timestamp": h["timestamp"],
+                        "message": h.get("message"),
+                    }
+                    for h in history["history"]
+                ],
+            },
+            "controls": controls_payload,
+        }
+
+        # Update deployment document with extracted data
+        logger.info("[DD-EXTRACT] Step 5: Saving to database...")
+        async with session_scope() as session:
+            logger.info("[DD-EXTRACT] 5a: Updating deployment document's aiExtraction...")
+            await _update_deployment_document_ai_status(
+                session,
+                dd_id,
+                file_id,
+                extraction_data,
+                replace=True,
+            )
+            logger.info("[DD-EXTRACT] ✅ Deployment document updated")
+
+            # Save to document_extraction table (by fileHash) - PRIMARY TABLE
+            if file_hash:
+                logger.info("[DD-EXTRACT] 5b: Saving to document_extraction table...")
+                doc_extraction = await _get_or_create_doc_extraction(session, file_hash, None)
+                doc_extraction.aiExtraction = extraction_data
+                session.add(doc_extraction)
+                await session.flush()
+                await session.commit()
+                logger.info("[DD-EXTRACT] ✅ Saved to document_extractions table")
+                logger.info("  Table: document_extractions")
+                logger.info(f"  ID: {doc_extraction.id}")
+                logger.info(f"  FileHash: {file_hash}")
+                logger.info("  Status: extracted")
+                logger.info(f"  Total Controls: {total_controls}")
+            else:
+                logger.warning("[DD-EXTRACT] ⚠️ No fileHash - skipping document_extraction save")
+
+        logger.info(f"{'='*80}")
+        logger.info("[DD-EXTRACT-SUCCESS] ✅ Deployment document extraction complete!")
+        logger.info(f"  Deployment Document ID: {dd_id}")
+        logger.info(f"  File ID: {file_id}")
+        logger.info(f"  Total Controls: {total_controls}")
+        logger.info(f"  Total Sections: {len(controls_structured)}")
+        logger.info(f"  Processing Time: {history['processing_time_seconds']:.2f}s")
+        logger.info("[DD-EXTRACT-SAVED] ✅ Data saved to: document_extractions table")
+        logger.info(f"{'='*80}")
+
+    except Exception as exc:
+        logger.error(f"{'='*80}")
+        logger.error("[DD-EXTRACT-ERROR] ❌ Deployment document extraction failed!")
+        logger.error(f"  Deployment Document ID: {dd_id}")
+        logger.error(f"  File ID: {file_id}")
+        logger.error(f"  Error: {str(exc)}")
+        logger.error(f"{'='*80}")
+        logger.exception("[DD-EXTRACT] Exception traceback:")
+
+        fail_ts = _iso()
+        try:
+            async with session_scope() as session:
+                await _update_deployment_document_ai_status(
+                    session,
+                    dd_id,
+                    file_id,
+                    {
+                        "status": "failed",
+                        "timestamp": fail_ts,
+                        "message": f"Extraction failed: {str(exc)}",
+                    },
+                )
+                logger.info("[DD-EXTRACT] Updated status to 'failed' in database")
+        except Exception as db_exc:
+            logger.error(f"[DD-EXTRACT] Failed to update status in database: {db_exc}")
+
+
+async def _update_deployment_document_ai_status(
+    session: Any, dd_id: str, file_id: str, status_data: dict[str, Any], replace: bool = False
+) -> None:
+    """Update deployment document's aiExtraction field in the packages structure"""
+    from vora_shared.models import DeploymentDocument
+    from sqlalchemy.orm.attributes import flag_modified
+
+    dd = await session.get(DeploymentDocument, dd_id)
+    if not dd:
+        return
+
+    packages = list(dd.packages or [])
+    updated = False
+
+    for p_idx, pkg in enumerate(packages):
+        if not isinstance(pkg, dict):
+            continue
+        docs = list(pkg.get("documents") or [])
+        for d_idx, doc in enumerate(docs):
+            if isinstance(doc, dict) and str(doc.get("fileId")) == file_id:
+                file_hash = str(doc.get("fileHash") or "")
+                existing_ai = doc.get("aiExtraction")
+                existing_id = existing_ai if isinstance(existing_ai, str) else None
+
+                extraction = await _get_or_create_doc_extraction(session, file_hash, existing_id)
+
+                if replace:
+                    extraction.aiExtraction = status_data
+                else:
+                    ai = dict(extraction.aiExtraction or {})
+                    ai.update(status_data)
+                    extraction.aiExtraction = ai
+
+                doc["aiExtraction"] = extraction.id
+                docs[d_idx] = doc
+                updated = True
+                break
+        if updated:
+            pkg["documents"] = docs
+            packages[p_idx] = pkg
+            break
+
+    if updated:
+        dd.packages = packages
+        flag_modified(dd, "packages")
+        session.add(dd)
+
+
+async def _get_or_create_doc_extraction(
+    session: Any, file_hash: str, existing_id: str | None = None
+) -> DocumentExtraction:
+    """Get or create a DocumentExtraction record by file hash"""
+    existing = (
+        await session.execute(
+            select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash)
+        )
+    ).scalar_one_or_none()
+
+    if existing:
+        return existing
+
+    doc_extraction = DocumentExtraction(
+        id=existing_id or new_id(),
+        fileHash=file_hash,
+        aiExtraction={"status": "processing", "timestamp": _iso(), "message": "Processing..."},
+    )
+    session.add(doc_extraction)
+    await session.flush()
+    return doc_extraction
