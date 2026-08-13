@@ -1,8 +1,8 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.cron import CronTrigger
-import utils.live_logs as live_log_manager
-from mcp_server.controller import run_pipeline
+import app.utils.live_logs as live_log_manager
+from app.mcp_server.controller import run_pipeline
 import logging  
 live_logs = []
 
