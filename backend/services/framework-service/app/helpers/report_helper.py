@@ -27,6 +27,7 @@ from reportlab.platypus import (
     Spacer,
     Table,
     TableStyle,
+    HRFlowable,
 )
 
 COLORS = {
@@ -177,13 +178,12 @@ def _build_stats_table(sections: list[dict]) -> Table:
         if all_controls
         else 0
     )
-    overall_pct = round((avg_weightage / 10) * 100) if avg_weightage else 0
 
     stats = [
         ("TOTAL SECTIONS", str(total_sections)),
         ("TOTAL CONTROLS", str(total_controls)),
         ("DEPLOYMENT POINTS", str(total_dps)),
-        ("AVG PRIORITY SCORE", f"{avg_weightage}/10 ({overall_pct}%)"),
+        ("AVG PRIORITY SCORE", f"{avg_weightage}/10"),
     ]
 
     value_style = ParagraphStyle(
@@ -279,12 +279,15 @@ def _build_file_table(framework, styles: dict, doc_extractions: dict = None) -> 
 def _build_control_block(control: dict, styles: dict) -> list:
     flow: list = []
 
+    weight = control.get('weightage')
+    weight_display = "—" if weight is None else str(weight)
+
     header_table = Table(
         [
             [
                 Paragraph(f"[{control.get('id')}] {control.get('name')}", styles["control_title"]),
                 Paragraph(
-                    f"Priority Weightage: {control.get('weightage', '—')}/10",
+                    f"Priority Weightage: {weight_display}/10",
                     styles["control_weightage"],
                 ),
             ]
@@ -328,25 +331,14 @@ def _build_control_block(control: dict, styles: dict) -> list:
     if deployment_points:
         flow.append(Paragraph("Deployment Guidelines:", styles["dp_heading"]))
         for idx, dp in enumerate(deployment_points, start=1):
-            text = f"<b>{idx}.</b> {dp.get('name', '')}"
+            text = f"{idx}. {dp.get('name', '')}"
             if dp.get("remark"):
-                text += f"<br/><font size=8 color='#4b5563'>Guideline Remark: {dp['remark']}</font>"
-            dp_table = Table([[Paragraph(text, styles["dp_text"])]], colWidths=[480])
-            dp_table.setStyle(
-                TableStyle(
-                    [
-                        ("BACKGROUND", (0, 0), (-1, -1), COLORS["card_bg"]),
-                        ("BOX", (0, 0), (-1, -1), 0.5, COLORS["border"]),
-                        ("LEFTPADDING", (0, 0), (-1, -1), 8),
-                        ("TOPPADDING", (0, 0), (-1, -1), 5),
-                        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                    ]
-                )
-            )
-            flow.append(Spacer(1, 3))
-            flow.append(dp_table)
+                text += f" | Guideline Remark: {dp['remark']}"
+            flow.append(Paragraph(text, styles["dp_text"]))
 
-    flow.append(Spacer(1, 24))
+    flow.append(Spacer(1, 2 * mm))
+    flow.append(HRFlowable(width="100%", color=COLORS["border"], thickness=0.5))
+    flow.append(Spacer(1, 2 * mm))
     return flow
 
 
@@ -375,12 +367,26 @@ def _framework_to_dict(framework, doc_extractions: dict = None) -> dict:
         controls_list = []
         for c in _attr(section, "controls") or []:
             dps = _attr(c, "deployment_points") or []
+            
+            c_weightage = _attr(c, "weightage")
+            if c_weightage is None and dps:
+                dp_weights = []
+                for dp in dps:
+                    dp_w = _attr(dp, "weightage")
+                    if dp_w is not None:
+                        try:
+                            dp_weights.append(float(dp_w))
+                        except (ValueError, TypeError):
+                            pass
+                if dp_weights:
+                    c_weightage = round(sum(dp_weights) / len(dp_weights), 1)
+
             controls_list.append(
                 {
                     "id": str(_attr(c, "id")) if _attr(c, "id") is not None else None,
                     "name": _attr(c, "name"),
                     "description": _attr(c, "description"),
-                    "weightage": _attr(c, "weightage"),
+                    "weightage": c_weightage,
                     "remark": _attr(c, "remark"),
                     "deployment_points": [
                         {"name": _attr(dp, "name"), "remark": _attr(dp, "remark")} for dp in dps
@@ -498,18 +504,18 @@ def _on_page(canvas, framework):
         canvas.setFont("Helvetica-Bold", 8)
         canvas.setFillColor(COLORS["light_text"])
         canvas.drawString(
-            20 * mm,
+            14 * mm,
             A4[1] - 12 * mm,
             f"{framework.frameworkName.upper()} - VERSION {framework.frameworkVersion}",
         )
         canvas.setStrokeColor(COLORS["border"])
-        canvas.line(20 * mm, A4[1] - 14 * mm, A4[0] - 20 * mm, A4[1] - 14 * mm)
+        canvas.line(14 * mm, A4[1] - 14 * mm, A4[0] - 14 * mm, A4[1] - 14 * mm)
 
         canvas.setFont("Helvetica", 8)
-        canvas.drawRightString(A4[0] - 20 * mm, 10 * mm, f"Page {page_num}")
+        canvas.drawRightString(A4[0] - 14 * mm, 8 * mm, f"Page {page_num}")
         canvas.drawString(
-            20 * mm,
-            10 * mm,
+            14 * mm,
+            8 * mm,
             f"Generated by VORA Platform  \u2022  {datetime.now().strftime('%m/%d/%Y')}",
         )
     canvas.restoreState()
@@ -519,7 +525,7 @@ def generate_framework_report_pdf(framework, approval_by_user=None, doc_extracti
     styles = _styles()
     buffer = io.BytesIO()
 
-    frame = Frame(20 * mm, 15 * mm, A4[0] - 40 * mm, A4[1] - 35 * mm, id="normal")
+    frame = Frame(14 * mm, 14 * mm, A4[0] - 28 * mm, A4[1] - 32 * mm, id="normal")
 
     def page_callback(canvas, doc):
         _on_page(canvas, framework)
@@ -527,10 +533,10 @@ def generate_framework_report_pdf(framework, approval_by_user=None, doc_extracti
     doc = BaseDocTemplate(
         buffer,
         pagesize=A4,
-        topMargin=20 * mm,
-        bottomMargin=15 * mm,
-        leftMargin=20 * mm,
-        rightMargin=20 * mm,
+        topMargin=18 * mm,
+        bottomMargin=14 * mm,
+        leftMargin=14 * mm,
+        rightMargin=14 * mm,
         title=f"{framework.frameworkName} Report",
     )
     doc.addPageTemplates([PageTemplate(id="report", frames=[frame], onPage=page_callback)])

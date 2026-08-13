@@ -161,8 +161,8 @@ def format_control(control: AssignmentControl) -> dict[str, Any]:
                 else True
             ),
             "weightage": {
-                "framework_weightage": control.customization.weightage.framework_weightage or 0,
-                "customer_weightage": control.customization.weightage.customer_weightage or 0,
+                "framework_weightage": control.customization.weightage.framework_weightage if control.customization.weightage else 0,
+                "customer_weightage": control.customization.weightage.customer_weightage if control.customization.weightage else 0,
             },
         }
 

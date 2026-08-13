@@ -36,9 +36,15 @@ COLORS = {
 }
 
 _styles = getSampleStyleSheet()
-_STYLE_TITLE = ParagraphStyle("AFRTitle", parent=_styles["Title"], textColor=COLORS["primary"], fontSize=18)
-_STYLE_H1 = ParagraphStyle("AFRH1", parent=_styles["Heading1"], textColor=COLORS["text"], fontSize=20)
-_STYLE_MUTED = ParagraphStyle("AFRMuted", parent=_styles["Normal"], textColor=COLORS["muted"], fontSize=10)
+_STYLE_TITLE = ParagraphStyle(
+    "AFRTitle", parent=_styles["Title"], fontName="Helvetica-Bold", textColor=COLORS["primary"], fontSize=28, leading=32, alignment=1
+)
+_STYLE_H1 = ParagraphStyle(
+    "AFRH1", parent=_styles["Heading1"], fontName="Helvetica-Bold", textColor=COLORS["text"], fontSize=20, leading=24, spaceAfter=8
+)
+_STYLE_MUTED = ParagraphStyle(
+    "AFRMuted", parent=_styles["Normal"], fontName="Helvetica", textColor=COLORS["muted"], fontSize=10.5, leading=14, spaceAfter=4
+)
 _STYLE_SECTION = ParagraphStyle(
     "AFRSection", parent=_styles["Heading2"], textColor=COLORS["primary"], fontSize=11
 )
@@ -70,9 +76,11 @@ def _display_date(value: Any) -> str:
     if isinstance(value, str):
         try:
             value = datetime.fromisoformat(value.replace("Z", "+00:00"))
-        except ValueError:
+        except Exception:
             return value
-    return value.strftime("%d %b %Y")
+    if hasattr(value, "strftime"):
+        return value.strftime("%d %b %Y")
+    return str(value)
 
 
 def _display_user(user: Any) -> str:
@@ -82,8 +90,19 @@ def _display_user(user: Any) -> str:
         return user.name
     if hasattr(user, "email") and user.email:
         return user.email
+    if isinstance(user, dict):
+        if user.get("name"):
+            return user["name"]
+        if user.get("email"):
+            return user["email"]
     return str(user)
 
+def _safe_get(obj: Any, key: str, default: Any = None) -> Any:
+    if obj is None:
+        return default
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)
 
 def _stat_card(label: str, value: Any) -> Table:
     table = Table(
@@ -104,8 +123,8 @@ def _stat_card(label: str, value: Any) -> Table:
 
 
 def _add_header_section(story: list[Any], assignment: Any, file_version: Any, customer: Any):
-    story.append(Paragraph("Assigned Framework Report", _STYLE_TITLE))
-    story.append(HRFlowable(width="100%", color=COLORS["border"], thickness=1, spaceAfter=8))
+    story.append(Paragraph("<u>Assigned Framework Report</u>", _STYLE_TITLE))
+    story.append(Spacer(1, 10))
 
     fw_name = assignment.frameworkName or assignment.frameworkCode
     story.append(Paragraph(fw_name, _STYLE_H1))
@@ -125,15 +144,15 @@ def _add_header_section(story: list[Any], assignment: Any, file_version: Any, cu
     story.append(
         Paragraph(
             f"Customer: {_display_user(customer)} &nbsp;|&nbsp; "
-            f"Assigned By: {_display_user(assignment.assignment.assignedBy if assignment.assignment else None)} "
-            f"on {_display_date(assignment.assignment.assignedAt if assignment.assignment else None)}",
+            f"Assigned By: {_display_user(_safe_get(assignment.assignment, 'assignedBy'))} "
+            f"on {_display_date(_safe_get(assignment.assignment, 'assignedAt'))}",
             _STYLE_MUTED,
         )
     )
     story.append(
         Paragraph(
             f"Assignment Status: {str(assignment.status or 'assigned').upper()} &nbsp;|&nbsp; "
-            f"Finalization: {'FINALIZED' if assignment.finalization and assignment.finalization.isFinalized else 'PENDING'}",
+            f"Finalization: {'FINALIZED' if _safe_get(assignment.finalization, 'isFinalized') else 'PENDING'}",
             _STYLE_MUTED,
         )
     )
