@@ -12,6 +12,7 @@ from vora_shared.models.deployment_framework import (
     FrameworkPackageDocument,
     PackageVersion,
 )
+from vora_shared.models.deployment_document import DeploymentDocument
 from vora_shared.models.deployment_package_merge import DeploymentPackageMerge
 from vora_shared.models.document_extraction import (
     AiExtractionInfo,
@@ -58,6 +59,7 @@ __all__ = [
     "Customer",
     "CustomerAddress",
     "CustomerCreatedBy",
+    "DeploymentDocument",
     "DeploymentFramework",
     "DeploymentPackageMerge",
     "DocumentExtraction",

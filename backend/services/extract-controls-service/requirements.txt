@@ -13,4 +13,7 @@ pypdf>=4.0.0
 python-docx>=0.8.11
 pandas>=2.0.0
 websockets>=14.0
+pytesseract>=0.3.10
+pdf2image>=1.16.0
+pillow>=10.0.0
 -e ../../shared

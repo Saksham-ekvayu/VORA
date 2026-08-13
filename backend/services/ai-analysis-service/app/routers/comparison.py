@@ -297,3 +297,56 @@ async def list_comparisons(page: int = 1, page_size: int = 10):
     except Exception as exc:
         logger.exception("list_comparisons error")
         return server_error(str(exc))
+
+
+# ---------------------------------------------------------------------------
+# DELETE /comparison/{comparison_id} — Delete comparison
+# ---------------------------------------------------------------------------
+
+
+@router.delete("/{comparison_id}")
+async def delete_comparison(comparison_id: str):
+    """
+    Delete a comparison record by ID.
+
+    Args:
+        comparison_id: ID of the comparison to delete
+
+    Returns:
+        Success message
+    """
+    try:
+        comparison_id = str(comparison_id).strip()
+        if not comparison_id:
+            return error("Invalid comparison_id")
+
+        logger.info(f"[COMPARISON-DELETE] Deleting comparison | id={comparison_id}")
+
+        async with session_scope() as session:
+            comparison = await session.get(PackageComparison, comparison_id)
+            if not comparison:
+                logger.warning(f"[COMPARISON-DELETE] Comparison not found: {comparison_id}")
+                return not_found(f"Comparison not found: {comparison_id}")
+
+            comp_data = comparison.comparison or {}
+            df_id = comp_data.get("deployment_framework_id")
+            pkg_ver = comp_data.get("package_version")
+
+            await session.delete(comparison)
+            await session.commit()
+
+            logger.info(f"[COMPARISON-DELETE] ✅ Deleted successfully")
+            logger.info(f"  Deployment Framework ID: {df_id}")
+            logger.info(f"  Package Version: {pkg_ver}")
+
+            return success(
+                message="Comparison deleted successfully",
+                data={
+                    "id": comparison_id,
+                    "deployment_framework_id": df_id,
+                    "package_version": pkg_ver,
+                },
+            )
+    except Exception as exc:
+        logger.exception(f"delete_comparison error: {exc}")
+        return server_error(str(exc))

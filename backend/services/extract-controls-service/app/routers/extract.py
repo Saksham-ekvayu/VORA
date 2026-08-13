@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.services.extraction_runner import (
+    run_deployment_document_extraction,
     run_deployment_framework_extraction,
     run_deployment_package_merge,
     run_framework_extraction,
@@ -18,6 +19,7 @@ from vora_shared.database import session_scope
 from vora_shared.ids import new_id
 from vora_shared.models import (
     DocumentExtraction,
+    DeploymentDocument,
     Framework,
 )
 from vora_shared.query_builder import build_pagination_meta, clamp_limit, clamp_page
@@ -89,7 +91,7 @@ async def extract_framework_controls(framework_id: str, file_id: str):
             async with session_scope() as session:
                 logger.info("[API] Creating document_extraction entry with status=processing...")
 
-                # Check if already exists
+                # Check if already exists and is currently processing
                 existing = (
                     await session.execute(
                         select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash)
@@ -97,6 +99,19 @@ async def extract_framework_controls(framework_id: str, file_id: str):
                 ).scalar_one_or_none()
 
                 if existing:
+                    ai_data = existing.aiExtraction or {}
+                    if ai_data.get("status") == "processing":
+                        logger.info(f"[API] ⚠️ Extraction already in progress | id={existing.id}")
+                        return success(
+                            message="Extraction already in progress",
+                            data={
+                                "framework_id": framework_id,
+                                "file_id": file_id,
+                                "file_hash": file_hash,
+                                "extraction_id": existing.id,
+                                "status": "processing",
+                            },
+                        )
                     doc_extraction_id = existing.id
                     logger.info(f"[API] Using existing document_extraction | id={doc_extraction_id}")
                 else:
@@ -199,7 +214,7 @@ async def extract_deployment_framework_controls(df_id: str, pkg_ver: str, file_i
             async with session_scope() as session:
                 logger.info("[API] Creating document_extraction entry with status=processing...")
 
-                # Check if already exists
+                # Check if already exists and is currently processing
                 existing = (
                     await session.execute(
                         select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash)
@@ -207,6 +222,20 @@ async def extract_deployment_framework_controls(df_id: str, pkg_ver: str, file_i
                 ).scalar_one_or_none()
 
                 if existing:
+                    ai_data = existing.aiExtraction or {}
+                    if ai_data.get("status") == "processing":
+                        logger.info(f"[API] ⚠️ Extraction already in progress | id={existing.id}")
+                        return success(
+                            message="Extraction already in progress",
+                            data={
+                                "df_id": df_id,
+                                "pkg_ver": pkg_ver,
+                                "file_id": file_id,
+                                "file_hash": file_hash,
+                                "extraction_id": existing.id,
+                                "status": "processing",
+                            },
+                        )
                     doc_extraction_id = existing.id
                     logger.info(f"[API] Using existing document_extraction | id={doc_extraction_id}")
                 else:
@@ -306,8 +335,64 @@ async def merge_deployment_package(df_id: str, pkg_ver: str):
 
 
 # ---------------------------------------------------------------------------
-# Document Extraction Data Retrieval
+# Deployment Document Extraction
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# Deployment Document Extraction Data Retrieval
+# ---------------------------------------------------------------------------
+
+
+@router.get("/deployment-document/{dd_id}")
+async def get_deployment_document(dd_id: str):
+    """
+    Get a deployment document by ID with its extraction data.
+    Returns the document info along with any AI extraction results.
+    """
+    try:
+        dd_id = str(dd_id).strip()
+        if not dd_id:
+            return error("Invalid dd_id")
+
+        logger.info(f"[GET-DD] Fetching deployment document | id={dd_id}")
+        async with session_scope() as session:
+            dd = await session.get(DeploymentDocument, dd_id)
+            if not dd:
+                return not_found(f"Deployment Document not found: {dd_id}")
+
+            logger.info(f"[GET-DD] ✅ Retrieved deployment document | id={dd_id}")
+
+            # Get extraction data if document has aiExtraction
+            doc_data = dd.document or {}
+            ai_extraction = doc_data.get("aiExtraction") if isinstance(doc_data, dict) else None
+
+            return success(
+                message="Deployment document retrieved successfully",
+                data={
+                    "id": dd.id,
+                    "tenantId": dd.tenantId,
+                    "deploymentFrameworkId": dd.deploymentFrameworkId,
+                    "frameworkName": dd.frameworkName,
+                    "frameworkCode": dd.frameworkCode,
+                    "frameworkVersion": dd.frameworkVersion,
+                    "uploadedBy": dd.uploadedBy,
+                    "document": dd.document,
+                    "aiExtraction": ai_extraction,
+                    "createdAt": _serialize_dt(dd.createdAt),
+                    "updatedAt": _serialize_dt(dd.updatedAt),
+                },
+            )
+    except Exception as exc:
+        logger.error(f"[GET-DD] Error for dd_id={dd_id}: {exc}")
+        logger.exception("get_deployment_document error")
+        return server_error(str(exc))
+
+
+# ---------------------------------------------------------------------------
+# Deployment Document Extraction
+# ---------------------------------------------------------------------------
+
 
 
 @router.get("/document-extraction/{file_hash}")

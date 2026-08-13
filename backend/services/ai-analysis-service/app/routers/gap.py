@@ -289,3 +289,56 @@ async def list_gap_analyses(page: int = 1, page_size: int = 10):
     except Exception as exc:
         logger.exception("list_gap_analyses error")
         return server_error(str(exc))
+
+
+# ---------------------------------------------------------------------------
+# DELETE /deployment-gap/{gap_id} — Delete gap analysis
+# ---------------------------------------------------------------------------
+
+
+@router.delete("/{gap_id}")
+async def delete_gap_analysis(gap_id: str):
+    """
+    Delete a gap analysis record by ID.
+
+    Args:
+        gap_id: ID of the gap analysis to delete
+
+    Returns:
+        Success message
+    """
+    try:
+        gap_id = str(gap_id).strip()
+        if not gap_id:
+            return error("Invalid gap_id")
+
+        logger.info(f"[GAP-DELETE] Deleting gap analysis | id={gap_id}")
+
+        async with session_scope() as session:
+            gap_analysis = await session.get(PackageGapAnalysis, gap_id)
+            if not gap_analysis:
+                logger.warning(f"[GAP-DELETE] Gap analysis not found: {gap_id}")
+                return not_found(f"Gap analysis not found: {gap_id}")
+
+            gap_data = gap_analysis.gapAnalysis or {}
+            df_id = gap_data.get("deployment_framework_id")
+            pkg_ver = gap_data.get("package_version")
+
+            await session.delete(gap_analysis)
+            await session.commit()
+
+            logger.info(f"[GAP-DELETE] ✅ Deleted successfully")
+            logger.info(f"  Deployment Framework ID: {df_id}")
+            logger.info(f"  Package Version: {pkg_ver}")
+
+            return success(
+                message="Gap analysis deleted successfully",
+                data={
+                    "id": gap_id,
+                    "deployment_framework_id": df_id,
+                    "package_version": pkg_ver,
+                },
+            )
+    except Exception as exc:
+        logger.exception(f"delete_gap_analysis error: {exc}")
+        return server_error(str(exc))
