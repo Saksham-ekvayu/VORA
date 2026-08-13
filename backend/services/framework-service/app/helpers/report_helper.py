@@ -60,23 +60,26 @@ def _styles() -> dict[str, ParagraphStyle]:
             "ReportTitle",
             parent=base["Title"],
             fontName="Helvetica-Bold",
-            fontSize=18,
+            fontSize=28,
+            leading=32,
             textColor=COLORS["primary"],
             alignment=1,
         ),
         "framework_name": ParagraphStyle(
             "FrameworkName",
             fontName="Helvetica-Bold",
-            fontSize=18,
+            fontSize=20,
+            leading=24,
             textColor=COLORS["dark_text"],
-            spaceAfter=4,
+            spaceAfter=8,
         ),
         "meta": ParagraphStyle(
             "Meta",
             fontName="Helvetica",
             fontSize=10.5,
             textColor=COLORS["muted_text"],
-            spaceAfter=2,
+            spaceAfter=4,
+            leading=14,
         ),
         "section_title": ParagraphStyle(
             "SectionTitle",
@@ -179,10 +182,10 @@ def _build_stats_table(sections: list[dict]) -> Table:
     ]
 
     value_style = ParagraphStyle(
-        "StatValue", fontName="Helvetica-Bold", fontSize=13, textColor=COLORS["primary"]
+        "StatValue", fontName="Helvetica-Bold", fontSize=18, leading=22, textColor=COLORS["primary"], spaceAfter=6
     )
     label_style = ParagraphStyle(
-        "StatLabel", fontName="Helvetica-Bold", fontSize=7, textColor=COLORS["muted_text"]
+        "StatLabel", fontName="Helvetica-Bold", fontSize=8, leading=10, textColor=COLORS["muted_text"]
     )
 
     combined_cells = []
@@ -216,7 +219,7 @@ def _attr(obj, key, default=None):
     return getattr(obj, key, default)
 
 
-def _build_file_table(framework, styles: dict) -> Table:
+def _build_file_table(framework, styles: dict, doc_extractions: dict = None) -> Table:
     header = [
         Paragraph("VERSION", styles["table_header"]),
         Paragraph("FILE NAME", styles["table_header"]),
@@ -230,6 +233,8 @@ def _build_file_table(framework, styles: dict) -> Table:
         file_size = _attr(fv, "fileSize")
         original_name = _attr(fv, "originalFileName")
         ai_extraction = _attr(fv, "aiExtraction")
+        if isinstance(ai_extraction, str) and doc_extractions and ai_extraction in doc_extractions:
+            ai_extraction = doc_extractions[ai_extraction].aiExtraction
         is_current = file_version == framework.currentFileVersion
         size_str = f"{file_size / (1024 * 1024):.2f} MB" if file_size else "—"
         ai_status = (_attr(ai_extraction, "status") if ai_extraction else None) or "pending"
@@ -336,11 +341,11 @@ def _build_control_block(control: dict, styles: dict) -> list:
             flow.append(Spacer(1, 3))
             flow.append(dp_table)
 
-    flow.append(Spacer(1, 8))
+    flow.append(Spacer(1, 24))
     return flow
 
 
-def _framework_to_dict(framework) -> dict:
+def _framework_to_dict(framework, doc_extractions: dict = None) -> dict:
     """Convert nested pydantic/JSONB control structures to plain dicts for the PDF."""
     current = next(
         (
@@ -351,6 +356,10 @@ def _framework_to_dict(framework) -> dict:
         None,
     )
     ai_extraction = _attr(current, "aiExtraction") if current else None
+    
+    if isinstance(ai_extraction, str) and doc_extractions and ai_extraction in doc_extractions:
+        ai_extraction = doc_extractions[ai_extraction].aiExtraction
+        
     controls = _attr(ai_extraction, "controls") if ai_extraction else None
     if not controls:
         return {"sections": []}
@@ -387,7 +396,7 @@ def _create_header_story(framework, styles: dict) -> list:
     """Create the header section of the report."""
     story = []
 
-    story.append(Paragraph("Industry Framework Report", styles["title"]))
+    story.append(Paragraph("<u>Industry Framework Report</u>", styles["title"]))
     story.append(Spacer(1, 10))
     story.append(Paragraph(framework.frameworkName, styles["framework_name"]))
     story.append(
@@ -424,11 +433,11 @@ def _add_approval_status(story, framework, approval_by_user, styles: dict):
     story.append(Spacer(1, 14))
 
 
-def _add_file_info(story, framework, styles: dict):
+def _add_file_info(story, framework, styles: dict, doc_extractions: dict = None):
     """Add file information section to the story."""
     if framework.fileVersions:
         story.append(Paragraph("File Information", styles["section_title"]))
-        story.append(_build_file_table(framework, styles))
+        story.append(_build_file_table(framework, styles, doc_extractions))
 
 
 def _add_controls_section(story, sections: list, styles: dict):
@@ -501,7 +510,7 @@ def _on_page(canvas, framework):
     canvas.restoreState()
 
 
-def generate_framework_report_pdf(framework, approval_by_user=None) -> bytes:
+def generate_framework_report_pdf(framework, approval_by_user=None, doc_extractions: dict = None) -> bytes:
     styles = _styles()
     buffer = io.BytesIO()
 
@@ -528,12 +537,12 @@ def generate_framework_report_pdf(framework, approval_by_user=None) -> bytes:
     _add_approval_status(story, framework, approval_by_user, styles)
 
     # Build stats
-    fw_dict = _framework_to_dict(framework)
+    fw_dict = _framework_to_dict(framework, doc_extractions)
     story.append(_build_stats_table(fw_dict["sections"]))
     story.append(Spacer(1, 18))
 
     # Build file info
-    _add_file_info(story, framework, styles)
+    _add_file_info(story, framework, styles, doc_extractions)
 
     # Build controls section
     _add_controls_section(story, fw_dict["sections"], styles)

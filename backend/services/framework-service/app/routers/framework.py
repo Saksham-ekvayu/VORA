@@ -437,7 +437,19 @@ async def download_framework_report(id: str, ctx: Annotated[AuthenticatedUser, D
 
         approved_by_id = framework_helper.approval_by(framework)
         approved_by_user = await session.get(User, str(approved_by_id)) if approved_by_id else None
-        pdf_bytes = generate_framework_report_pdf(framework, approved_by_user)
+        
+        versions = framework_helper.parse_file_versions(framework)
+        doc_ids = [v.aiExtraction for v in versions if v.aiExtraction and isinstance(v.aiExtraction, str)]
+        doc_extractions = {}
+        if doc_ids:
+            exts = (
+                (await session.execute(select(DocumentExtraction).where(DocumentExtraction.id.in_(doc_ids))))
+                .scalars()
+                .all()
+            )
+            doc_extractions = {e.id: e for e in exts}
+            
+        pdf_bytes = generate_framework_report_pdf(framework, approved_by_user, doc_extractions)
 
         safe_name = re.sub(r"[^a-zA-Z0-9]", "_", framework.frameworkName)
         filename = f"{safe_name}_report.pdf"
