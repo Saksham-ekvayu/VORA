@@ -101,7 +101,7 @@ async def extract_framework_controls(framework_id: str, file_id: str):
                 if existing:
                     ai_data = existing.aiExtraction or {}
                     if ai_data.get("status") == "processing":
-                        logger.info(f"[API] ⚠️ Extraction already in progress | id={existing.id}")
+                        logger.info(f"[API]  Extraction already in progress | id={existing.id}")
                         return success(
                             message="Extraction already in progress",
                             data={
@@ -113,7 +113,9 @@ async def extract_framework_controls(framework_id: str, file_id: str):
                             },
                         )
                     doc_extraction_id = existing.id
-                    logger.info(f"[API] Using existing document_extraction | id={doc_extraction_id}")
+                    logger.info(
+                        f"[API] Using existing document_extraction | id={doc_extraction_id}"
+                    )
                 else:
                     doc_extraction = DocumentExtraction(
                         id=new_id(),
@@ -224,7 +226,7 @@ async def extract_deployment_framework_controls(df_id: str, pkg_ver: str, file_i
                 if existing:
                     ai_data = existing.aiExtraction or {}
                     if ai_data.get("status") == "processing":
-                        logger.info(f"[API] ⚠️ Extraction already in progress | id={existing.id}")
+                        logger.info(f"[API]  Extraction already in progress | id={existing.id}")
                         return success(
                             message="Extraction already in progress",
                             data={
@@ -237,7 +239,9 @@ async def extract_deployment_framework_controls(df_id: str, pkg_ver: str, file_i
                             },
                         )
                     doc_extraction_id = existing.id
-                    logger.info(f"[API] Using existing document_extraction | id={doc_extraction_id}")
+                    logger.info(
+                        f"[API] Using existing document_extraction | id={doc_extraction_id}"
+                    )
                 else:
                     doc_extraction = DocumentExtraction(
                         id=new_id(),
@@ -388,7 +392,7 @@ async def extract_deployment_document_controls(dd_id: str):
                 if existing:
                     ai_data = existing.aiExtraction or {}
                     if ai_data.get("status") == "processing":
-                        logger.info(f"[API] ⚠️ Extraction already in progress | id={existing.id}")
+                        logger.info(f"[API]  Extraction already in progress | id={existing.id}")
                         return success(
                             message="Extraction already in progress",
                             data={
@@ -399,7 +403,9 @@ async def extract_deployment_document_controls(dd_id: str):
                             },
                         )
                     doc_extraction_id = existing.id
-                    logger.info(f"[API] Using existing document_extraction | id={doc_extraction_id}")
+                    logger.info(
+                        f"[API] Using existing document_extraction | id={doc_extraction_id}"
+                    )
                 else:
                     doc_extraction = DocumentExtraction(
                         id=new_id(),
@@ -413,13 +419,13 @@ async def extract_deployment_document_controls(dd_id: str):
                     session.add(doc_extraction)
                     await session.flush()
                     doc_extraction_id = doc_extraction.id
-                    logger.info(f"[API] ✅ Created document_extraction | id={doc_extraction_id}")
+                    logger.info(f"[API]  Created document_extraction | id={doc_extraction_id}")
 
         # Queue extraction as background task (don't wait for it)
         task = asyncio.create_task(run_deployment_document_extraction(dd_id, file_id))
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)
-        logger.info("[API] ✅ Deployment Document extraction task queued")
+        logger.info("[API]  Deployment Document extraction task queued")
 
         return success(
             message="Deployment Document extraction started",
@@ -432,7 +438,7 @@ async def extract_deployment_document_controls(dd_id: str):
         )
 
     except Exception as exc:
-        logger.exception(f"[API] ❌ Deployment Document request failed: {exc}")
+        logger.exception(f"[API]  Deployment Document request failed: {exc}")
         return server_error(str(exc))
 
 
@@ -458,7 +464,7 @@ async def get_deployment_document(dd_id: str):
             if not dd:
                 return not_found(f"Deployment Document not found: {dd_id}")
 
-            logger.info(f"[GET-DD] ✅ Retrieved deployment document | id={dd_id}")
+            logger.info(f"[GET-DD]  Retrieved deployment document | id={dd_id}")
 
             # Get extraction data if document has aiExtraction
             doc_data = dd.document or {}
@@ -489,7 +495,6 @@ async def get_deployment_document(dd_id: str):
 # ---------------------------------------------------------------------------
 # Deployment Document Extraction
 # ---------------------------------------------------------------------------
-
 
 
 @router.get("/document-extraction/{file_hash}")
@@ -524,7 +529,9 @@ async def get_document_extraction(file_hash: str):
 
             ai_data = doc_extraction.aiExtraction or {}
             status = ai_data.get("status", "pending")
-            logger.info(f"[GET-EXTRACTION] Retrieved extraction | id={doc_extraction.id} | status={status}")
+            logger.info(
+                f"[GET-EXTRACTION] Retrieved extraction | id={doc_extraction.id} | status={status}"
+            )
 
             return success(
                 message="Document extraction data retrieved successfully",
@@ -560,7 +567,9 @@ async def list_document_extractions(page: int = 1, page_size: int = 10):
 
         logger.info(f"[LIST-EXTRACTIONS] Listing extractions | page={page} | page_size={page_size}")
         async with session_scope() as session:
-            total = (await session.execute(select(func.count()).select_from(DocumentExtraction))).scalar_one()
+            total = (
+                await session.execute(select(func.count()).select_from(DocumentExtraction))
+            ).scalar_one()
 
             rows = (
                 (
@@ -579,7 +588,9 @@ async def list_document_extractions(page: int = 1, page_size: int = 10):
             for doc in rows:
                 ai_data = doc.aiExtraction or {}
                 controls = ai_data.get("controls", {})
-                total_controls = controls.get("total_controls", 0) if isinstance(controls, dict) else 0
+                total_controls = (
+                    controls.get("total_controls", 0) if isinstance(controls, dict) else 0
+                )
 
                 items.append(
                     {
