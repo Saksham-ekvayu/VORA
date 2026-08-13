@@ -2,7 +2,7 @@ import json
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from vora_shared.models.deployment_framework import DeploymentFramework
-from vora_shared.models.framework_merge import FrameworkMerge
+from vora_shared.models.deployment_package_merge import DeploymentPackageMerge
 from vora_shared.models import (
     ProcessedFile,
     SourceConfig,
@@ -174,7 +174,9 @@ async def get_live_framework(db: AsyncSession):
 
 async def get_framework_merge(db: AsyncSession, merge_id: str):
     result = await db.execute(
-        select(FrameworkMerge).where(FrameworkMerge.id == merge_id)
+        select(DeploymentPackageMerge).where(
+            DeploymentPackageMerge.id == merge_id
+        )
     )
 
     merge = result.scalar_one_or_none()
@@ -186,4 +188,6 @@ async def get_framework_merge(db: AsyncSession, merge_id: str):
         "id": merge.id,
         "controls": merge.controls,
         "summary": merge.summary,
+        "status": merge.status,
+        "file_hashes": merge.fileHashes,
     }
