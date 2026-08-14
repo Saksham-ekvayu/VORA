@@ -1,3 +1,4 @@
+import os
 import json
 
 # =========================================
@@ -13,13 +14,103 @@ from vora_shared.models import (
     SourceConfig,
     SourceCredential,
 )
-from vora_shared.models.deployment_framework import DeploymentFramework
-from vora_shared.models.deployment_package_merge import DeploymentPackageMerge
-
+import hashlib
+from vora_shared.models import ProcessedFile
+from vora_shared.models.deployment_document import DeploymentDocument, DeploymentFrameworkDocument
+from vora_shared.ids import new_id
+import logging
+# =========================================
+# PROCESSED FILES
+# =========================================
+import sys
+from pathlib import Path
 shared_path = Path(__file__).resolve().parents[3] / "shared"
 sys.path.insert(0, str(shared_path))
+def generate_file_hash(file_path: str) -> str:
+    sha256 = hashlib.sha256()
 
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            sha256.update(chunk)
 
+    return sha256.hexdigest()
+
+async def get_deployment_document_by_hash(
+    db: AsyncSession,
+    file_hash: str,
+):
+    result = await db.execute(select(DeploymentDocument))
+
+    documents = result.scalars().all()
+
+    for doc in documents:
+        if doc.document.get("fileHash") == file_hash:
+            return doc
+
+    return None
+async def get_deployment_document_by_hash(db: AsyncSession, file_hash: str):
+    result = await db.execute(select(DeploymentDocument))
+    documents = result.scalars().all()
+
+    for doc in documents:
+        if doc.document.get("fileHash") == file_hash:
+            return doc
+
+    return None
+async def save_deployment_document(
+    db: AsyncSession,
+    framework: dict,
+    file_path: str,
+    uploaded_by: str = "system-pipeline",
+):
+    logging.info(f"Saving deployment document for: {file_path}")
+
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(file_path)
+
+    file_hash = generate_file_hash(file_path)
+
+    existing = await get_deployment_document_by_hash(db, file_hash)
+    if existing:
+        logging.info(f"Document already exists: {existing.id}")
+        return existing
+
+    file_name = os.path.basename(file_path)
+    ext = file_name.split(".")[-1].lower()
+
+    if ext not in {"pdf", "doc", "docx"}:
+        raise ValueError(f"Unsupported file type: {ext}")
+
+    document_payload = DeploymentFrameworkDocument(
+        fileId=new_id(),
+        fileUrl=file_path,
+        fileHash=file_hash,
+        originalFileName=file_name,
+        fileSize=os.path.getsize(file_path),
+        fileType=ext,
+        fileVersion=framework["package_version"],
+    )
+
+    deployment_document = DeploymentDocument(
+        tenantId="default-tenant",
+        deploymentFrameworkId=framework["framework_id"],
+        frameworkName=framework["framework_name"],
+        frameworkVersion=framework["package_version"],
+        uploadedBy=uploaded_by,
+        document=document_payload.model_dump(mode="json"),
+    )
+
+    db.add(deployment_document)
+
+    await db.flush()
+    await db.commit()
+    await db.refresh(deployment_document)
+
+    logging.info(
+        f"Deployment document saved successfully: {deployment_document.id}"
+    )
+
+    return deployment_document
 async def is_processed(db: AsyncSession, file_path: str):
     result = await db.execute(select(ProcessedFile).where(ProcessedFile.file_path == file_path))
     return result.scalar_one_or_none() is not None
