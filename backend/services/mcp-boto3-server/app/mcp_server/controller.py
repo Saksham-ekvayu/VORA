@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 from app.collectors.collector_manager import collect_files
@@ -7,7 +6,9 @@ from app.db.queries import (
     get_live_framework,
     is_processed,
     mark_processed,
+    save_deployment_document,
 )
+from app.services.ai_extractor import trigger_ai_extraction
 from app.pipeline.helpers import extract_source_paths
 from app.services.agent_client import call_agent
 from app.services.downloader import download_file
@@ -15,8 +16,8 @@ from app.utils.live_logs import add_live_log
 from vora_shared.database import session_scope
 
 
-def run_pipeline(source: str = "aws"):
-    asyncio.run(_run_pipeline(source))
+async def run_pipeline(source: str = "aws"):
+    await _run_pipeline(source)
 
 
 async def _run_pipeline(source: str):
@@ -83,13 +84,44 @@ async def _run_pipeline(source: str):
                 else:
                     local_path = path
 
+                # use the saved_path from collectors when available
+                saved_path = f.get("saved_path") or local_path
+
+                # persist into deployment_documents table
+                try:
+                    deployment_document = await save_deployment_document(
+                        db=db,
+                        framework=framework,
+                        file_path=saved_path,
+                        uploaded_by="system-pipeline",
+                    )
+
+                    document_id = deployment_document.id
+
+                    logging.info(f"Deployment document id: {document_id}")
+                    add_live_log(f"Deployment document id: {document_id}")
+
+                    # trigger AI extraction (sync call)
+                    ai_response = trigger_ai_extraction(document_id)
+
+                    logging.info(f"AI Extraction Response: {ai_response}")
+                    add_live_log(f"AI Extraction Response: {ai_response}")
+
+                except Exception as e:
+                    logging.exception(f"Failed to save deployment document: {e}")
+                    add_live_log(f"Failed to save deployment document: {e}")
+                    # continue processing but mark as error
+                    await mark_processed(db, path)
+                    continue
+
                 payload = {
                     "id": framework["framework_id"],
                     "framework_name": framework["framework_name"],
                     "package_version": framework["package_version"],
                     "merge_document": merge_id,
                     "deployment_framework": deployment_data,
-                    "file_path": local_path,
+                    "file_path": saved_path,
+                    "deployment_document_id": document_id,
                 }
 
                 response = call_agent(payload, "Compliance_Audit_Agent")
