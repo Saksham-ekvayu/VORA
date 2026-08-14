@@ -19,6 +19,7 @@ from reportlab.lib.units import mm
 from reportlab.platypus import (
     BaseDocTemplate,
     Frame,
+    HRFlowable,
     KeepTogether,
     NextPageTemplate,
     PageBreak,
@@ -27,9 +28,7 @@ from reportlab.platypus import (
     Spacer,
     Table,
     TableStyle,
-    HRFlowable,
 )
-
 from vora_shared.pdf import (
     COLORS,
     REPORT_MARGINS,
@@ -41,9 +40,6 @@ from vora_shared.pdf import (
     get_shared_frame,
     get_shared_styles,
 )
-
-
-
 
 
 def _stat_status_color(ai_status: str) -> colors.Color:
@@ -144,7 +140,7 @@ def _build_file_table(framework, styles: dict, doc_extractions: dict = None) -> 
 def _build_control_block(control: dict, styles: dict) -> list:
     flow: list = []
 
-    weight = control.get('weightage')
+    weight = control.get("weightage")
     weight_display = "—" if weight is None else str(weight)
 
     header_table = Table(
@@ -216,6 +212,7 @@ def _calc_avg_dp_weightage(dps: list) -> float | None:
                 pass
     return round(sum(dp_weights) / len(dp_weights), 1) if dp_weights else None
 
+
 def _parse_control(c) -> dict:
     dps = _attr(c, "deployment_points") or []
     c_weightage = _attr(c, "weightage")
@@ -228,10 +225,9 @@ def _parse_control(c) -> dict:
         "description": _attr(c, "description"),
         "weightage": c_weightage,
         "remark": _attr(c, "remark"),
-        "deployment_points": [
-            {"name": _attr(dp, "name"), "remark": _attr(dp, "remark")} for dp in dps
-        ],
+        "deployment_points": [{"name": _attr(dp, "name"), "remark": _attr(dp, "remark")} for dp in dps],
     }
+
 
 def _parse_section(section) -> dict:
     return {
@@ -252,10 +248,10 @@ def _framework_to_dict(framework, doc_extractions: dict = None) -> dict:
         None,
     )
     ai_extraction = _attr(current, "aiExtraction") if current else None
-    
+
     if isinstance(ai_extraction, str) and doc_extractions and ai_extraction in doc_extractions:
         ai_extraction = doc_extractions[ai_extraction].aiExtraction
-        
+
     controls = _attr(ai_extraction, "controls") if ai_extraction else None
     if not controls:
         return {"sections": []}

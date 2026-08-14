@@ -236,7 +236,9 @@ async def create_customer(
     body: Annotated[CreateCustomerRequest, Body()],
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
-    logger.info(f"[CREATE-CUSTOMER] Request started | user_id={ctx.user.id} | email={body.email} | name={body.name}")
+    logger.info(
+        f"[CREATE-CUSTOMER] Request started | user_id={ctx.user.id} | email={body.email} | name={body.name}"
+    )
     async with session_scope() as session:
         if await _check_customer_email_exists(session, body.email):
             logger.warning(f"[CREATE-CUSTOMER] Validation failed | reason: email_exists | email={body.email}")
@@ -272,7 +274,9 @@ async def create_customer(
         await session.flush()
         result = customer_dict(new_customer, ctx.user)
 
-    logger.info(f"[CREATE-CUSTOMER] Created | customer_id={str(new_customer.id)} | tenant={tenant_id} | email={body.email}")
+    logger.info(
+        f"[CREATE-CUSTOMER] Created | customer_id={str(new_customer.id)} | tenant={tenant_id} | email={body.email}"
+    )
     return success(result, "Customer created successfully")
 
 
@@ -286,7 +290,9 @@ async def get_all_customers(
     sort_by: Annotated[str | None, Query(alias="sortBy")] = None,
     sort_order: Annotated[str | None, Query(alias="sortOrder")] = None,
 ):
-    logger.info(f"[GET-CUSTOMERS] Request started | user_id={ctx.user.id} | page={page} | limit={limit} | search={search} | is_active={is_active}")
+    logger.info(
+        f"[GET-CUSTOMERS] Request started | user_id={ctx.user.id} | page={page} | limit={limit} | search={search} | is_active={is_active}"
+    )
     allowed_sort_fields = ["name", "email", "tenantId", "createdAt", "updatedAt"]
     allowed_search_fields = ["name", "email", "tenantId", "phone"]
 
@@ -301,7 +307,9 @@ async def get_all_customers(
         creators = await _batch_fetch_creators(session, data)
         result = [customer_dict(c, creators.get(created_by_user_id(c.createdBy))) for c in data]
 
-    logger.info(f"[GET-CUSTOMERS] Retrieved | count={len(result)} | total={pagination['totalItems']} | user_id={ctx.user.id}")
+    logger.info(
+        f"[GET-CUSTOMERS] Retrieved | count={len(result)} | total={pagination['totalItems']} | user_id={ctx.user.id}"
+    )
     return paginated(result, pagination, "Customers retrieved successfully")
 
 
@@ -348,7 +356,9 @@ async def get_customer_by_id(
             "pagination": users_pagination,
         }
 
-    logger.info(f"[GET-CUSTOMER] Retrieved | customer_id={id} | users_count={len(users_data)} | user_id={ctx.user.id}")
+    logger.info(
+        f"[GET-CUSTOMER] Retrieved | customer_id={id} | users_count={len(users_data)} | user_id={ctx.user.id}"
+    )
     return success(customer_details, "Customer details retrieved successfully")
 
 
@@ -358,7 +368,9 @@ async def update_customer(
     body: Annotated[UpdateCustomerRequest, Body()],
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
-    logger.info(f"[PATCH-CUSTOMER] Update request | user_id={ctx.user.id} | customer_id={id} | email={body.email} | name={body.name}")
+    logger.info(
+        f"[PATCH-CUSTOMER] Update request | user_id={ctx.user.id} | customer_id={id} | email={body.email} | name={body.name}"
+    )
     if not is_valid_id(id):
         logger.warning(f"[PATCH-CUSTOMER] Invalid ID | customer_id={id}")
         return error(msg.CUSTOMER_NOT_FOUND, 404)
@@ -443,9 +455,13 @@ async def update_customer_avatar_by_admin(
     avatar: Annotated[UploadFile | None, File()] = None,
 ):
     """Admin uploads a customer avatar by customer id (from updated Mongo API)."""
-    logger.info(f"[POST-CUSTOMER-AVATAR-ADMIN] Request started | user_id={ctx.user.id} | customer_id={id} | filename={avatar.filename if avatar else 'None'}")
+    logger.info(
+        f"[POST-CUSTOMER-AVATAR-ADMIN] Request started | user_id={ctx.user.id} | customer_id={id} | filename={avatar.filename if avatar else 'None'}"
+    )
     if avatar is None:
-        logger.warning(f"[POST-CUSTOMER-AVATAR-ADMIN] Validation failed | customer_id={id} | reason: avatar_required")
+        logger.warning(
+            f"[POST-CUSTOMER-AVATAR-ADMIN] Validation failed | customer_id={id} | reason: avatar_required"
+        )
         return error(msg.AVATAR_REQUIRED, 400, field="avatar")
 
     if not is_valid_id(id):
@@ -489,14 +505,18 @@ async def update_customer_avatar_by_admin(
 async def create_user(
     body: Annotated[CreateUserRequest, Body()], ctx: Annotated[AuthenticatedUser, Depends(authenticate)]
 ):
-    logger.info(f"[CREATE-USER] Request started | user_id={ctx.user.id} | role={ctx.user.role} | new_email={body.email} | new_role={body.role}")
+    logger.info(
+        f"[CREATE-USER] Request started | user_id={ctx.user.id} | role={ctx.user.role} | new_email={body.email} | new_role={body.role}"
+    )
     current_role = ctx.user.role
     creator_tenant_id = ctx.tenant_id
 
     # Validate permissions
     new_tenant_id, error_response = _validate_user_creation_permissions(current_role, body, creator_tenant_id)
     if error_response:
-        logger.warning(f"[CREATE-USER] Permission denied | current_role={current_role} | new_role={body.role}")
+        logger.warning(
+            f"[CREATE-USER] Permission denied | current_role={current_role} | new_role={body.role}"
+        )
         return error_response
 
     async with session_scope() as session:
@@ -568,7 +588,9 @@ async def update_user(
     body: Annotated[UpdateUserRequest, Body()],
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
-    logger.info(f"[PATCH-USER] Request started | user_id={ctx.user.id} | target_user={id} | new_role={body.role}")
+    logger.info(
+        f"[PATCH-USER] Request started | user_id={ctx.user.id} | target_user={id} | new_role={body.role}"
+    )
     current_user = ctx.user
     tenant_id = ctx.tenant_id
 
@@ -618,7 +640,9 @@ async def get_all_users(
     sort_by: Annotated[str | None, Query(alias="sortBy")] = None,
     sort_order: Annotated[str | None, Query(alias="sortOrder")] = None,
 ):
-    logger.info(f"[GET-USERS] Request started | user_id={ctx.user.id} | page={page} | limit={limit} | role={role} | is_active={is_active}")
+    logger.info(
+        f"[GET-USERS] Request started | user_id={ctx.user.id} | page={page} | limit={limit} | role={role} | is_active={is_active}"
+    )
     current_role = ctx.user.role
     tenant_id = ctx.tenant_id
 
@@ -665,7 +689,9 @@ async def get_all_users(
     if not users_list:
         message = msg.NO_USERS_MATCH_CRITERIA if (search or is_active or role) else msg.NO_USERS_AVAILABLE
 
-    logger.info(f"[GET-USERS] Retrieved | count={len(users_list)} | total={pagination['totalItems']} | user_id={ctx.user.id}")
+    logger.info(
+        f"[GET-USERS] Retrieved | count={len(users_list)} | total={pagination['totalItems']} | user_id={ctx.user.id}"
+    )
     return paginated(users_list, pagination, message)
 
 
@@ -687,7 +713,9 @@ async def get_user_by_id(id: str, ctx: Annotated[AuthenticatedUser, Depends(auth
 
         if current_role == "customer-admin":
             if not _validate_customer_admin_permission(user, str(ctx.user.id)):
-                logger.warning(f"[GET-USER] Permission denied | current_user={ctx.user.id} | target_user={id}")
+                logger.warning(
+                    f"[GET-USER] Permission denied | current_user={ctx.user.id} | target_user={id}"
+                )
                 return error(msg.ONLY_VIEW_CREATED_USERS, 403)
 
         creator = None
@@ -733,7 +761,9 @@ async def toggle_user_status(id: str, ctx: Annotated[AuthenticatedUser, Depends(
 
         if current_role == "customer-admin":
             if not _validate_customer_admin_permission(user, str(ctx.user.id)):
-                logger.warning(f"[PATCH-USER-STATUS] Permission denied | current_user={ctx.user.id} | target_user={id}")
+                logger.warning(
+                    f"[PATCH-USER-STATUS] Permission denied | current_user={ctx.user.id} | target_user={id}"
+                )
                 return error(msg.ONLY_CHANGE_STATUS_CREATED_USERS, 403)
 
         new_status = not user.isActive
@@ -746,7 +776,9 @@ async def toggle_user_status(id: str, ctx: Annotated[AuthenticatedUser, Depends(
         }
 
     action = msg.USER_ACTIVATED if new_status else msg.USER_DEACTIVATED
-    logger.info(f"[PATCH-USER-STATUS] {action.upper()} | target_user={id} | status={new_status} | by={ctx.user.id}")
+    logger.info(
+        f"[PATCH-USER-STATUS] {action.upper()} | target_user={id} | status={new_status} | by={ctx.user.id}"
+    )
     return success(result, action)
 
 
@@ -772,7 +804,9 @@ async def delete_user(id: str, ctx: Annotated[AuthenticatedUser, Depends(authent
 
         if current_role == "customer-admin":
             if not _validate_customer_admin_permission(user, str(ctx.user.id)):
-                logger.warning(f"[DELETE-USER] Permission denied | current_user={ctx.user.id} | target_user={id}")
+                logger.warning(
+                    f"[DELETE-USER] Permission denied | current_user={ctx.user.id} | target_user={id}"
+                )
                 return error(msg.ONLY_DELETE_CREATED_USERS, 403)
 
         if user.role == "expert":

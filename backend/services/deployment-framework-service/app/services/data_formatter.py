@@ -186,11 +186,7 @@ def _format_gap_analysis(gap_data: Any, exclude_details: bool) -> dict[str, Any]
             "timestamp": _get(gap_data, "timestamp"),
             "total_points": total_points,
             "reviewed_points": reviewed_points,
-            **(
-                {}
-                if exclude_details
-                else {"deployment_gap_results": gap_results}
-            ),
+            **({} if exclude_details else {"deployment_gap_results": gap_results}),
         }
     return {
         "status": "pending",
@@ -211,7 +207,7 @@ def _format_comparison(comp_data: Any, exclude_details: bool) -> dict[str, Any]:
             controls = _get(section, "controls") or []
             total_controls += len(controls)
             reviewed_controls += sum(1 for c in controls if (_get(c, "reviewComment") or "").strip())
-            
+
         return {
             "status": _get(comp_data, "status"),
             "message": _get(comp_data, "message"),

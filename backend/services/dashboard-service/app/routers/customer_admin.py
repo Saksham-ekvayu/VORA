@@ -215,16 +215,12 @@ def _process_assignments_and_progress(
         finalization = assignment.finalization or {}
         assigned_frameworks_list.append(
             {
-                "id": (
-                    str(assignment.id) if assignment and getattr(assignment, "id", None) else None
-                ),
+                "id": (str(assignment.id) if assignment and getattr(assignment, "id", None) else None),
                 "code": assignment.frameworkCode,
                 "name": assignment.frameworkName,
                 "version": assignment.frameworkVersion,
                 "assignmentStatus": assignment.status,
-                "finalizationStatus": (
-                    "finalized" if _get(finalization, "isFinalized") else "pending"
-                ),
+                "finalizationStatus": ("finalized" if _get(finalization, "isFinalized") else "pending"),
                 "assignedAt": assignment.createdAt,
             }
         )
@@ -263,9 +259,7 @@ def _add_activity_entry(
         )
 
 
-def _get_assignment_actor(
-    users: dict[str, User], user_id: str | None, default: str
-) -> tuple[str, str]:
+def _get_assignment_actor(users: dict[str, User], user_id: str | None, default: str) -> tuple[str, str]:
     """Get actor name and email from user ID."""
     if not user_id:
         return default, f"{default.lower()}@example.com"
@@ -409,9 +403,7 @@ def _add_package_review_activities(
     expert_review = _get(pkg, "expertReview") or {}
     assigned_expert = _get(expert_review, "assignedExpert")
     expert = users.get(str(assigned_expert)) if assigned_expert else None
-    expert_name = (
-        (expert.name if expert else None) or (expert.email if expert else None) or "Expert"
-    )
+    expert_name = (expert.name if expert else None) or (expert.email if expert else None) or "Expert"
 
     requested_at = _get(expert_review, "requestedAt")
     if expert_review and requested_at:
@@ -702,9 +694,7 @@ async def _fetch_document_extractions(session, file_hashes: set) -> list[Documen
     )
 
 
-async def _fetch_package_analyses(
-    session, merge_ids: list, comparison_ids: list, gap_ids: list
-) -> tuple:
+async def _fetch_package_analyses(session, merge_ids: list, comparison_ids: list, gap_ids: list) -> tuple:
     """Fetch package comparisons, gap analyses, and merges."""
     comparisons = []
     gap_analyses = []
@@ -712,22 +702,14 @@ async def _fetch_package_analyses(
 
     if gap_ids:
         gap_analyses = list(
-            (
-                await session.execute(
-                    select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_ids))
-                )
-            )
+            (await session.execute(select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_ids))))
             .scalars()
             .all()
         )
 
     if comparison_ids:
         comparisons = list(
-            (
-                await session.execute(
-                    select(PackageComparison).where(PackageComparison.id.in_(comparison_ids))
-                )
-            )
+            (await session.execute(select(PackageComparison).where(PackageComparison.id.in_(comparison_ids))))
             .scalars()
             .all()
         )
@@ -798,11 +780,7 @@ async def get_customer_admin_dashboard(
 
         async with session_scope() as session:
             users = list(
-                (
-                    await session.execute(
-                        select(User).where(User.tenantId == tenant_id, User.id != user.id)
-                    )
-                )
+                (await session.execute(select(User).where(User.tenantId == tenant_id, User.id != user.id)))
                 .scalars()
                 .all()
             )
@@ -865,8 +843,8 @@ async def get_customer_admin_dashboard(
             ]
 
             document_extractions = await _fetch_document_extractions(session, file_hashes)
-            package_comparisons, package_gap_analyses, package_merges = (
-                await _fetch_package_analyses(session, merge_ids, comparison_ids, gap_ids)
+            package_comparisons, package_gap_analyses, package_merges = await _fetch_package_analyses(
+                session, merge_ids, comparison_ids, gap_ids
             )
 
             package_merges_map = {str(pm.id): pm for pm in package_merges}
@@ -881,9 +859,7 @@ async def get_customer_admin_dashboard(
             activity_users_map: dict[str, User] = {}
             if user_ids:
                 fetched = (
-                    (await session.execute(select(User).where(User.id.in_(list(user_ids)))))
-                    .scalars()
-                    .all()
+                    (await session.execute(select(User).where(User.id.in_(list(user_ids))))).scalars().all()
                 )
                 activity_users_map = {str(u.id): u for u in fetched}
 
@@ -922,9 +898,7 @@ async def get_customer_admin_dashboard(
                     "configured": controls_configured,
                     "total": controls_total,
                     "percentage": (
-                        round((controls_configured / controls_total) * 100)
-                        if controls_total > 0
-                        else 0
+                        round((controls_configured / controls_total) * 100) if controls_total > 0 else 0
                     ),
                 },
                 "setupProgressByFramework": progress["setupProgressByFramework"],
