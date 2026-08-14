@@ -26,6 +26,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# ------------------------------------------------
+# Shared PostgreSQL connection for all services
+# ------------------------------------------------
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     settings = get_settings()
@@ -34,6 +37,9 @@ async def lifespan(_: FastAPI):
     await disconnect_db()
 
 
+# ------------------------------------------------
+# FastAPI app
+# ------------------------------------------------
 app = create_vora_app(title="framework-service", lifespan=lifespan)
 
 app.include_router(framework.router, prefix="/framework")
