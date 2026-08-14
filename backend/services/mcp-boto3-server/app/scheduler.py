@@ -2,18 +2,18 @@ import logging
 
 import app.utils.live_logs as live_log_manager
 from app.mcp_server.controller import run_pipeline
-from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 live_logs = []
 
-scheduler = BackgroundScheduler()
+scheduler = AsyncIOScheduler()
 
 current_scheduler_config = {"source": "aws", "scheduler_type": "interval", "minutes": 1}
 
 
-def start_dynamic_scheduler(payload: dict):
+async def start_dynamic_scheduler(payload: dict):
     source = payload["source"]
     scheduler_type = payload.get("scheduler_type", "interval")
 
@@ -40,7 +40,11 @@ def start_dynamic_scheduler(payload: dict):
         )
 
     if not scheduler.running:
-        scheduler.start()
+        try:
+            scheduler.start()
+        except Exception as e:
+            logging.exception("Failed to start scheduler")
+            return {"status": False, "message": f"Failed to start scheduler: {e}"}
 
     return {
         "status": True,

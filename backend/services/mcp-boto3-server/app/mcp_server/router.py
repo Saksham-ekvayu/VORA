@@ -16,8 +16,8 @@ router = APIRouter(prefix="/scheduler", tags=["Scheduler APIs"])
 
 
 @router.post("/start")
-def start_scheduler(payload: StartSchedulerRequest):
-    return start_dynamic_scheduler(payload.model_dump())
+async def start_scheduler(payload: StartSchedulerRequest):
+    return await start_dynamic_scheduler(payload.model_dump())
 
 
 @router.get("/stop")
