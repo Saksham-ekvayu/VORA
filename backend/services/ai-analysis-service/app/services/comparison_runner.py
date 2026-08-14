@@ -158,11 +158,12 @@ async def _fallback_to_package_merge(session, pkg: dict) -> list[dict[str, Any]]
     merge_doc_id = pkg.get("mergeDocument")
     if not merge_doc_id:
         return []
-        
+
     pm = await session.get(DeploymentPackageMerge, merge_doc_id)
     if pm and isinstance(pm.controls, dict):
         return pm.controls.get("controls_data") or []
     return []
+
 
 async def _get_sections_from_package(session, pkg: dict) -> list[dict[str, Any]] | None:
     merged = pkg.get("mergedControls") or {}
@@ -179,6 +180,7 @@ async def _get_sections_from_package(session, pkg: dict) -> list[dict[str, Any]]
         return await _fallback_to_package_merge(session, pkg)
 
     return sections
+
 
 async def _load_merge_sections(session, pkg_ver: str, df: DeploymentFramework):
     for pkg in df.packages or []:
@@ -203,7 +205,9 @@ async def _load_assignment_sections(session, assignment_id: str) -> list[dict[st
     return []
 
 
-def _find_best_match(fa_ctrl: dict[str, Any], df_controls: list[dict[str, Any]]) -> tuple[float, dict[str, Any]]:
+def _find_best_match(
+    fa_ctrl: dict[str, Any], df_controls: list[dict[str, Any]]
+) -> tuple[float, dict[str, Any]]:
     best_score = 0.0
     best_df: dict[str, Any] = {}
     fa_text = _control_text(fa_ctrl)
@@ -214,7 +218,10 @@ def _find_best_match(fa_ctrl: dict[str, Any], df_controls: list[dict[str, Any]])
             best_df = df_ctrl
     return best_score, best_df
 
-def _build_comparison_item(fa_ctrl: dict[str, Any], best_df: dict[str, Any], best_score: float) -> dict[str, Any]:
+
+def _build_comparison_item(
+    fa_ctrl: dict[str, Any], best_df: dict[str, Any], best_score: float
+) -> dict[str, Any]:
     return {
         "deployment_framework_control_id": str(best_df.get("id") or ""),
         "deployment_framework_control_name": best_df.get("name") or "",
@@ -227,6 +234,7 @@ def _build_comparison_item(fa_ctrl: dict[str, Any], best_df: dict[str, Any], bes
         "comparison_score": best_score,
         "reviewComment": "",
     }
+
 
 def _build_comparison_results(df_sections: list, assignment_sections: list) -> list[dict[str, Any]]:
     df_controls = _flatten_controls(df_sections)
@@ -245,7 +253,7 @@ def _build_comparison_results(df_sections: list, assignment_sections: list) -> l
         best_score, best_df = _find_best_match(fa_ctrl, df_controls)
         item = _build_comparison_item(fa_ctrl, best_df, best_score)
         section_map[sid]["controls"].append(item)
-        
+
     return list(section_map.values())
 
 

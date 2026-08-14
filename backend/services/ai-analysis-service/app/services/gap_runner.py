@@ -245,7 +245,7 @@ async def _synthesize_comparison_sections(
     for section in assignment_sections or []:
         if not isinstance(section, dict):
             continue
-        
+
         items = []
         for ctrl in section.get("controls") or []:
             processed = _process_assignment_control_for_synthesis(ctrl, merged_control_map)
@@ -266,7 +266,7 @@ def _find_best_dp_match(af_dp_text: str, deployment_dps: list[dict[str, Any]]) -
     best_dp_score = 0.0
     best_df_dp_id = ""
     best_df_dp_text = ""
-    
+
     if not af_dp_text:
         return 0.0, "", ""
 
@@ -277,28 +277,34 @@ def _find_best_dp_match(af_dp_text: str, deployment_dps: list[dict[str, Any]]) -
             continue
         df_dp_id = str(df_dp.get("id") or "")
         df_dp_text = df_dp.get("point") or ""
-        
+
         if df_dp_text:
             dp_similarity = _similarity(af_dp_text, df_dp_text)
             dp_score = dp_similarity * 100 if dp_similarity <= 1.0 else dp_similarity
-            
+
             if dp_score > best_dp_score:
                 best_dp_score = dp_score
                 best_df_dp_id = df_dp_id
                 best_df_dp_text = df_dp_text
-                
+
     return best_dp_score, best_df_dp_id, best_df_dp_text
 
 
-def _process_control_item(item: dict, section_id: str, section_name: str, thresholds: dict, statuses: dict) -> list[dict]:
-    assigned_id = str(item.get("assigned_framework_control_id") or item.get("Framework_control_id") or "Unknown")
+def _process_control_item(
+    item: dict, section_id: str, section_name: str, thresholds: dict, statuses: dict
+) -> list[dict]:
+    assigned_id = str(
+        item.get("assigned_framework_control_id") or item.get("Framework_control_id") or "Unknown"
+    )
     assigned_name = item.get("assigned_framework_control_name") or ""
     assigned_desc = item.get("assigned_framework_control_description") or ""
     df_control_id = item.get("deployment_framework_control_id") or ""
     df_control_name = item.get("deployment_framework_control_name") or ""
 
     assigned_dps = item.get("assigned_framework_deployment_points") or [{"id": new_id(), "point": "General"}]
-    deployment_dps = item.get("deployment_framework_deployment_points") or [{"id": new_id(), "point": "General"}]
+    deployment_dps = item.get("deployment_framework_deployment_points") or [
+        {"id": new_id(), "point": "General"}
+    ]
 
     logger.info(f"[GAP-RUNNER] DP comparison for control: {assigned_name}")
     logger.info(f"  Assigned DPs: {len(assigned_dps)}, Deployment DPs: {len(deployment_dps)}")
@@ -307,29 +313,31 @@ def _process_control_item(item: dict, section_id: str, section_name: str, thresh
     for af_dp in assigned_dps:
         if not isinstance(af_dp, dict):
             continue
-        
+
         af_dp_id = str(af_dp.get("id") or "")
         af_dp_text = af_dp.get("point") or ""
         best_dp_score, best_df_dp_id, best_df_dp_text = _find_best_dp_match(af_dp_text, deployment_dps)
-        
+
         impl_status = _status_for_score(best_dp_score / 100.0, thresholds, statuses)
 
-        results.append({
-            "assigned_framework_control_id": assigned_id,
-            "assigned_framework_control_name": assigned_name,
-            "assigned_framework_control_description": assigned_desc,
-            "assigned_framework_section_id": section_id,
-            "assigned_framework_section_name": section_name,
-            "assigned_framework_deployment_points": {"id": af_dp_id, "point": af_dp_text},
-            "deployment_framework_control_id": df_control_id,
-            "deployment_framework_control_name": df_control_name,
-            "deployment_framework_deployment_points": {"id": best_df_dp_id, "point": best_df_dp_text},
-            "comparison_score": float(item.get("comparison_score") or 0),
-            "similarity_score": round(best_dp_score, 2),
-            "implementation_status": impl_status,
-            "gap_score": round(max(0.0, 100.0 - best_dp_score) / 100.0, 4),
-            "reviewComment": "",
-        })
+        results.append(
+            {
+                "assigned_framework_control_id": assigned_id,
+                "assigned_framework_control_name": assigned_name,
+                "assigned_framework_control_description": assigned_desc,
+                "assigned_framework_section_id": section_id,
+                "assigned_framework_section_name": section_name,
+                "assigned_framework_deployment_points": {"id": af_dp_id, "point": af_dp_text},
+                "deployment_framework_control_id": df_control_id,
+                "deployment_framework_control_name": df_control_name,
+                "deployment_framework_deployment_points": {"id": best_df_dp_id, "point": best_df_dp_text},
+                "comparison_score": float(item.get("comparison_score") or 0),
+                "similarity_score": round(best_dp_score, 2),
+                "implementation_status": impl_status,
+                "gap_score": round(max(0.0, 100.0 - best_dp_score) / 100.0, 4),
+                "reviewComment": "",
+            }
+        )
     return results
 
 
@@ -350,7 +358,7 @@ def _calculate_gap_results(
         for item in section.get("controls") or []:
             if not isinstance(item, dict):
                 continue
-                
+
             item_results = _process_control_item(item, section_id, section_name, thresholds, statuses)
             for row in item_results:
                 gap_results.append(row)
@@ -481,9 +489,7 @@ async def run_gap(
                     logger.error("No comparison results or controls available for gap analysis")
                     return
 
-            gap_results = _calculate_gap_results(
-                comparison_sections, thresholds, statuses
-            )
+            gap_results = _calculate_gap_results(comparison_sections, thresholds, statuses)
 
             pga = await _save_gap_analysis_result(session, df_id, str(fa_id), pkg_ver, gap_id, gap_results)
 
