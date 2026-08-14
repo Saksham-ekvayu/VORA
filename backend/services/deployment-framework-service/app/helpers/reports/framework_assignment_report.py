@@ -21,7 +21,6 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
-
 from vora_shared.pdf import (
     COLORS,
     REPORT_MARGINS,
@@ -34,9 +33,6 @@ from vora_shared.pdf import (
 )
 
 _styles_dict = get_shared_styles()
-
-
-
 
 
 def _display_user(user: Any) -> str:
@@ -53,14 +49,13 @@ def _display_user(user: Any) -> str:
             return user["email"]
     return str(user)
 
+
 def _safe_get(obj: Any, key: str, default: Any = None) -> Any:
     if obj is None:
         return default
     if isinstance(obj, dict):
         return obj.get(key, default)
     return getattr(obj, key, default)
-
-
 
 
 def _add_header_section(story: list[Any], assignment: Any, file_version: Any, customer: Any):
@@ -209,7 +204,9 @@ def _add_controls_section(story: list[Any], sections: list[Any], doc_width: floa
 
     for section in sections:
         section_title = f"{section.id or ''} {section.name or ''}".strip()
-        section_bar = Table([[Paragraph(section_title, _styles_dict["section_title"])]], colWidths=[doc_width])
+        section_bar = Table(
+            [[Paragraph(section_title, _styles_dict["section_title"])]], colWidths=[doc_width]
+        )
         section_bar.setStyle(
             TableStyle(
                 [

@@ -263,7 +263,9 @@ async def forgot_password(body: EmailOnlyRequest):
         load_template(TEMPLATES_DIR, "forgot-password-otp", {"otp": otp, "userName": user_name}),
     )
     if not email_sent:
-        logger.error(f"[FORGOT-PASSWORD] Failed to send reset OTP email for: {body.email} | user_id: {user_id}")
+        logger.error(
+            f"[FORGOT-PASSWORD] Failed to send reset OTP email for: {body.email} | user_id: {user_id}"
+        )
         return error(msg.EMAIL_SEND_FAILED, 500)
 
     logger.info(f"[FORGOT-PASSWORD] Reset OTP sent successfully to: {body.email} | user_id: {user_id}")
@@ -287,7 +289,9 @@ async def reset_password(body: ResetPasswordRequest):
             return error(msg.OTP_NOT_FOUND, 400, field="otp")
 
         if otp.purpose and otp.purpose != "password_reset":
-            logger.warning(f"[RESET-PASSWORD] Wrong OTP purpose for: {body.email} | expected: password_reset | actual: {otp.purpose}")
+            logger.warning(
+                f"[RESET-PASSWORD] Wrong OTP purpose for: {body.email} | expected: password_reset | actual: {otp.purpose}"
+            )
             return error(msg.OTP_WRONG_PURPOSE, 400, field="otp")
 
         expires_at = otp.expiresAt

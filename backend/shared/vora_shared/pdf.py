@@ -4,10 +4,10 @@ from datetime import datetime
 from typing import Any
 
 from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import Frame, HRFlowable, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib.pagesizes import A4
 
 REPORT_PAGESIZE = A4
 REPORT_MARGINS = {
@@ -233,6 +233,7 @@ def build_stat_card(label: str, value: Any, styles: dict) -> Table:
         )
     )
     return table
+
 
 def get_shared_frame(id: str = "normal") -> Frame:
     """Returns a unified ReportLab Frame respecting the shared margins."""

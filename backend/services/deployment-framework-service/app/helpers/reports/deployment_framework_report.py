@@ -25,9 +25,8 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
-
+from vora_shared.pdf import COLORS as SHARED_COLORS
 from vora_shared.pdf import (
-    COLORS as SHARED_COLORS,
     REPORT_MARGINS,
     REPORT_PAGESIZE,
     control_separator,
@@ -249,19 +248,19 @@ def _spider_drawing(controls: list[dict[str, Any]]) -> Drawing | None:
     if not controls:
         return None
     available_width = REPORT_PAGESIZE[0] - (REPORT_MARGINS["leftMargin"] + REPORT_MARGINS["rightMargin"])
-    
+
     # Increase canvas to use landscape width better, chart itself is a square
     d = Drawing(available_width, 420)
     chart = SpiderChart()
-    
+
     # Center the square chart (360x360) within the available width
     chart.width = 360
     chart.height = 360
     chart.x = (available_width - chart.width) / 2
     chart.y = 30
-    
+
     chart.data = [[c["score"] for c in controls]]
-    
+
     chart.labels = [c["id"] for c in controls]
     chart.spokeLabels.fontName = "Helvetica"
     if len(controls) > 70:
@@ -272,7 +271,7 @@ def _spider_drawing(controls: list[dict[str, Any]]) -> Drawing | None:
         chart.spokeLabels.fontSize = 6
     else:
         chart.spokeLabels.fontSize = 7
-        
+
     chart.strands[0].strokeColor = _COLORS["primary"]
     chart.strands[0].fillColor = colors.Color(
         _COLORS["primary"].red, _COLORS["primary"].green, _COLORS["primary"].blue, alpha=0.15
@@ -391,11 +390,11 @@ def _add_charts(
             ],
             "Implementation",
         )
-        
+
         match_high = sum(1 for c in controls if c["match"] == HIGH)
         match_med = sum(1 for c in controls if c["match"] == MEDIUM)
         match_low = sum(1 for c in controls if c["match"] == LOW)
-        
+
         match_chart = _donut_drawing(
             [
                 ("High Match", match_high, _COLORS["green"]),
@@ -404,7 +403,7 @@ def _add_charts(
             ],
             "Match Distribution",
         )
-        
+
         charts_table = Table([[impl_chart, match_chart]], colWidths=["50%", "50%"], hAlign="CENTER")
         story.append(charts_table)
         story.append(Spacer(1, 4 * mm))
@@ -417,7 +416,7 @@ def _add_charts(
                 f"Spider chart mapping all {len(controls)} controls by achieved compliance score.",
                 _SMALL_MUTED,
             ),
-            spider
+            spider,
         ]
         story.append(KeepTogether(spider_elements))
         story.append(PageBreak())
@@ -434,6 +433,7 @@ def _calc_avg_dp_weightage(dps: list[dict[str, Any]]) -> float | None:
                 pass
     return round(sum(dp_weights) / len(dp_weights), 1) if dp_weights else None
 
+
 def _get_control_weightage(ctrl: dict[str, Any]) -> str | int | float:
     weight_display = ctrl.get("weightage")
     if weight_display is None:
@@ -445,14 +445,18 @@ def _get_control_weightage(ctrl: dict[str, Any]) -> str | int | float:
         return int(weight_display)
     return weight_display
 
+
 def _build_merge_control_block(ctrl: dict[str, Any]) -> list:
     ctrl_block = []
     weight_display = _get_control_weightage(ctrl)
-    
+
     ctrl_header_table = Table(
         [
             [
-                Paragraph(f"[{ctrl.get('id', '')}] {ctrl.get('name', 'Unnamed Control')}", _shared_styles["control_title"]),
+                Paragraph(
+                    f"[{ctrl.get('id', '')}] {ctrl.get('name', 'Unnamed Control')}",
+                    _shared_styles["control_title"],
+                ),
                 Paragraph(f"Weightage: {weight_display}/10", _shared_styles["control_weightage"]),
             ]
         ],
@@ -468,10 +472,10 @@ def _build_merge_control_block(ctrl: dict[str, Any]) -> list:
         )
     )
     ctrl_block.append(ctrl_header_table)
-    
+
     if ctrl.get("description"):
         ctrl_block.append(Paragraph(ctrl["description"], _shared_styles["control_desc"]))
-        
+
     if ctrl.get("remark"):
         remark_table = Table(
             [[Paragraph(f"<b>Remark:</b> {ctrl['remark']}", _shared_styles["remark"])]],
@@ -490,7 +494,7 @@ def _build_merge_control_block(ctrl: dict[str, Any]) -> list:
         )
         ctrl_block.append(Spacer(1, 4))
         ctrl_block.append(remark_table)
-    
+
     deployment_points = ctrl.get("deployment_points") or []
     if deployment_points:
         ctrl_block.append(Paragraph("Deployment Guidelines:", _shared_styles["dp_heading"]))
@@ -499,14 +503,22 @@ def _build_merge_control_block(ctrl: dict[str, Any]) -> list:
             if dp.get("remark"):
                 text += f" | Guideline Remark: {dp['remark']}"
             ctrl_block.append(Paragraph(text, _shared_styles["dp_text"]))
-    
+
     ctrl_block.extend(control_separator())
     return ctrl_block
+
 
 def _build_merge_section_block(section: dict[str, Any]) -> list:
     block = []
     header_table = Table(
-        [[Paragraph(f"{section.get('id', '')} {section.get('name', 'Unnamed Section')}", _shared_styles["section_header"])]],
+        [
+            [
+                Paragraph(
+                    f"{section.get('id', '')} {section.get('name', 'Unnamed Section')}",
+                    _shared_styles["section_header"],
+                )
+            ]
+        ],
         colWidths=["100%"],
     )
     header_table.setStyle(
@@ -520,17 +532,18 @@ def _build_merge_section_block(section: dict[str, Any]) -> list:
         )
     )
     block.append(KeepTogether([header_table, Spacer(1, 6)]))
-    
+
     controls = section.get("controls") or []
     if not controls:
         block.append(Paragraph("No controls in this section.", _shared_styles["no_controls"]))
         block.append(Spacer(1, 8))
         return block
-        
+
     for ctrl in controls:
         block.extend(_build_merge_control_block(ctrl))
-        
+
     return block
+
 
 def _add_merge_details(story: list, merge_sections: list):
     if not merge_sections:
@@ -561,9 +574,7 @@ def _add_control_compliance_table(story: list, controls: list):
                 str(c["notImpl"]),
             ]
         )
-    detail_table = Table(
-        rows, colWidths=["10%", "48%", "8%", "10%", "8%", "8%", "8%"], hAlign="LEFT"
-    )
+    detail_table = Table(rows, colWidths=["10%", "48%", "8%", "10%", "8%", "8%", "8%"], hAlign="LEFT")
     style_cmds = [
         ("BACKGROUND", (0, 0), (-1, 0), _COLORS["primaryLight"]),
         ("TEXTCOLOR", (0, 0), (-1, 0), _COLORS["primary"]),
@@ -616,9 +627,14 @@ def _add_deployment_point_analysis(story: list, controls: list, dp_data: dict, t
                 [
                     f"D{idx + 1}",
                     Paragraph(gap["clientDp"], _shared_styles["table_cell"]),
-                    Paragraph(gap["matchedFp"] or "No matching deployment point", _shared_styles["table_cell"]),
+                    Paragraph(
+                        gap["matchedFp"] or "No matching deployment point", _shared_styles["table_cell"]
+                    ),
                     f"{gap['sim']:.1f}%",
-                    Paragraph(f"<font color='#{_status_badge_colors(gap['status'])[1].hexval()[2:]}'>{gap['status']}</font>", _shared_styles["table_cell"]),
+                    Paragraph(
+                        f"<font color='#{_status_badge_colors(gap['status'])[1].hexval()[2:]}'>{gap['status']}</font>",
+                        _shared_styles["table_cell"],
+                    ),
                 ]
             )
         gap_table = Table(gap_rows, colWidths=["5%", "37.5%", "37.5%", "8%", "12%"], hAlign="LEFT")

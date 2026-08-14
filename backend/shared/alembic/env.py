@@ -21,11 +21,10 @@ import sys
 # Add shared package to sys.path so we can import vora_shared
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from vora_shared.config import get_settings
-from vora_shared.database import Base
-
 # Import all models so they are registered with Base.metadata before Alembic reads it
 import vora_shared.models
+from vora_shared.config import get_settings
+from vora_shared.database import Base
 
 # add your model's MetaData object here
 # for 'autogenerate' support

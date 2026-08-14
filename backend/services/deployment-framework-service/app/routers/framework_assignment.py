@@ -196,7 +196,9 @@ async def download_framework_assignment_report(
         if info.assignedBy:
             session.expunge(assignment)
             # Report helper may expect populated user; keep id string / user object
-            assignment.assignment = info.model_copy(update={"assignedBy": users.get(str(info.assignedBy), info.assignedBy)})
+            assignment.assignment = info.model_copy(
+                update={"assignedBy": users.get(str(info.assignedBy), info.assignedBy)}
+            )
 
         version = file_version or assignment.currentFileVersion
         file_versions = coerce_file_versions(assignment.fileVersions)

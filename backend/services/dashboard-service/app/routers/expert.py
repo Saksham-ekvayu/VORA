@@ -221,9 +221,12 @@ async def get_expert_dashboard_analytics(
     end_date: Annotated[str | None, Query(alias="endDate")] = None,
 ):
     import logging
+
     logger = logging.getLogger(__name__)
-    logger.info(f"[EXPERT-ANALYTICS] Dashboard request | user_id={auth.user.id} | start_date={start_date} | end_date={end_date}")
-    
+    logger.info(
+        f"[EXPERT-ANALYTICS] Dashboard request | user_id={auth.user.id} | start_date={start_date} | end_date={end_date}"
+    )
+
     user = auth.user
 
     async with session_scope() as session:
@@ -253,7 +256,9 @@ async def get_expert_dashboard_analytics(
     approved_uploads = sum(1 for fw in frameworks if _approval_status(fw) == "approved")
     approval_progress = round((approved_uploads / total_uploads) * 100) if total_uploads else 0
 
-    logger.info(f"[EXPERT-ANALYTICS] Dashboard loaded | uploads={total_uploads} | approved={approved_uploads} | progress={approval_progress}%")
+    logger.info(
+        f"[EXPERT-ANALYTICS] Dashboard loaded | uploads={total_uploads} | approved={approved_uploads} | progress={approval_progress}%"
+    )
     return success(
         {
             "stats": {
