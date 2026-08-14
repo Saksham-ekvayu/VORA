@@ -25,6 +25,12 @@ export const STATUS_DONE = "done";
 export const STATUS_LOCKED = "locked";
 export const STATUS_MERGED = "merged";
 export const STATUS_LIVE = "live";
+export const STATUS_SKIPPED = "skipped";
+export const STATUS_RETURNED = "returned";
+export const STATUS_SUPERSEDED = "superseded";
+export const STATUS_IN_REVIEW = "in-review";
+export const STATUS_DEPLOYED = "deployed";
+export const STATUS_ARCHIVED = "archived";
 
 export const STATUS_IMPLEMENTED = "implemented";
 export const STATUS_PARTIAL = "partially implemented";
@@ -156,6 +162,12 @@ export const typeVariantMap = {
   "pre-release": "amber",
   "in-review": "amber",
   deployed: "blue",
+};
+
+export const packageTypeColorMap = {
+  blue: { border: "border-t-blue-500", bg: "bg-blue-500" },
+  green: { border: "border-t-green-500", bg: "bg-green-500" },
+  default: { border: "border-t-amber-400", bg: "bg-amber-400" },
 };
 
 export const getExpertReviewBadgeVariant = (status) => {
@@ -359,7 +371,7 @@ export const STATUS_VISUALS = {
     labelColor: "text-red-800 dark:text-red-300",
     label: "Rejected",
   },
-  skipped: {
+  [STATUS_SKIPPED]: {
     icon: "warning",
     bgColor: "bg-yellow-50 dark:bg-yellow-500/10",
     borderColor: "border-yellow-200 dark:border-yellow-500/20",
@@ -367,7 +379,7 @@ export const STATUS_VISUALS = {
     labelColor: "text-yellow-800 dark:text-yellow-300",
     label: "Skipped",
   },
-  live: {
+  [STATUS_LIVE]: {
     icon: "check-circle",
     bgColor: "bg-green-50 dark:bg-green-500/10",
     borderColor: "border-green-200 dark:border-green-500/20",
@@ -375,7 +387,7 @@ export const STATUS_VISUALS = {
     labelColor: "text-green-800 dark:text-green-300",
     label: "Live",
   },
-  returned: {
+  [STATUS_RETURNED]: {
     icon: "refresh",
     bgColor: "bg-red-50 dark:bg-red-500/10",
     borderColor: "border-red-200 dark:border-red-500/20",
@@ -383,7 +395,7 @@ export const STATUS_VISUALS = {
     labelColor: "text-red-800 dark:text-red-300",
     label: "Returned",
   },
-  superseded: {
+  [STATUS_SUPERSEDED]: {
     icon: "arrow-up",
     bgColor: "bg-blue-50 dark:bg-blue-500/10",
     borderColor: "border-blue-200 dark:border-blue-500/20",
@@ -391,7 +403,7 @@ export const STATUS_VISUALS = {
     labelColor: "text-blue-800 dark:text-blue-300",
     label: "Superseded",
   },
-  "in-review": {
+  [STATUS_IN_REVIEW]: {
     icon: "hourglass",
     bgColor: "bg-amber-50 dark:bg-amber-500/10",
     borderColor: "border-amber-200 dark:border-amber-500/20",
@@ -399,13 +411,29 @@ export const STATUS_VISUALS = {
     labelColor: "text-amber-800 dark:text-amber-300",
     label: "In Review",
   },
-  deployed: {
+  [STATUS_DEPLOYED]: {
     icon: "check-circle",
     bgColor: "bg-primary/5 dark:bg-primary/10",
     borderColor: "border-primary/20",
     iconColor: "text-primary",
     labelColor: "text-primary",
     label: "Deployed",
+  },
+  [STATUS_REVOKED]: {
+    icon: "x-circle",
+    bgColor: "bg-red-50 dark:bg-red-500/10",
+    borderColor: "border-red-200 dark:border-red-500/20",
+    iconColor: "text-red-800 dark:text-red-300",
+    labelColor: "text-red-800 dark:text-red-300",
+    label: "Revoked",
+  },
+  [STATUS_ARCHIVED]: {
+    icon: "archive",
+    bgColor: "bg-gray-50 dark:bg-gray-500/10",
+    borderColor: "border-gray-200 dark:border-gray-500/20",
+    iconColor: "text-gray-800 dark:text-gray-300",
+    labelColor: "text-gray-800 dark:text-gray-300",
+    label: "Archived",
   },
   default: {
     icon: "warning",
