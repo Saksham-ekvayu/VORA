@@ -177,9 +177,10 @@ export const getExpertReviewBadgeIcon = (status) => {
 };
 
 export const getAssignedFrameworkApprovalStatusClass = (status) => {
-  if (status === "assigned") return "bg-primary/10 text-primary";
-  if (status === "revoked") return "bg-red-50 text-red-700";
-  return "bg-yellow-50 text-yellow-700";
+  if (status === "assigned")
+    return "bg-primary/10 border-primary/30 text-primary";
+  if (status === "revoked") return "bg-red-50 border-red-300 text-red-700";
+  return "bg-yellow-50 border-yellow-300 text-yellow-700";
 };
 
 export const getApprovalStatusClass = (status) => {

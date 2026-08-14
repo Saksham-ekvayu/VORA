@@ -1,6 +1,6 @@
-from collectors.aws_collector import fetch_s3_files
-from collectors.local_collector import fetch_local_files
-from collectors.gitlab_collector import fetch_gitlab_files
+from app.collectors.aws_collector import fetch_s3_files
+from app.collectors.local_collector import fetch_local_files
+from app.collectors.gitlab_collector import fetch_gitlab_files
 
 
 def collect_files(source, config):
@@ -11,10 +11,17 @@ def collect_files(source, config):
         )
 
     elif source == "local":
-        return fetch_local_files(
-            directory=config.get("directory"),
-            allowed_extensions=config.get("extensions")
-        )
+        paths = config.get("paths", [])
+        if not paths and config.get("directory"):
+            paths = [config.get("directory")]
+            
+        all_files = []
+        for path in set(paths):
+            all_files.extend(fetch_local_files(
+                directory=path,
+                allowed_extensions=config.get("extensions")
+            ))
+        return all_files
 
     elif source == "gitlab":
         return fetch_gitlab_files(

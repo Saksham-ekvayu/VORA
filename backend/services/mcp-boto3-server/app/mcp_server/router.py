@@ -1,19 +1,19 @@
 from fastapi import APIRouter,Depends
 from fastapi.responses import FileResponse
 import os
-from services.downloader import download_file
-from utils.live_logs import live_logs
-from schemas.source_schema import FullConfigRequest
-from db.queries import save_full_config
+from app.services.downloader import download_file
+from app.utils.live_logs import live_logs
+from app.schemas.source_schema import FullConfigRequest
+from app.db.queries import save_full_config
 from sqlalchemy.ext.asyncio import AsyncSession
 from vora_shared.database import get_session
-from scheduler import (
+from app.scheduler import (
     start_dynamic_scheduler,
     stop_scheduler,
     scheduler_status
 )
-from schemas.scheduler_schema import StartSchedulerRequest
-from collectors.collector_manager import collect_files
+from app.schemas.scheduler_schema import StartSchedulerRequest
+from app.collectors.collector_manager import collect_files
 router = APIRouter(
     prefix="/scheduler",
     tags=["Scheduler APIs"]

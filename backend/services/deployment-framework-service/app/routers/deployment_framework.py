@@ -1018,7 +1018,7 @@ def _validate_report_statuses(found_package: Any, maps: dict[str, Any]) -> JSONR
     )
     gap = maps["gaps"].get(str(found_package.gapAnalysis)) if found_package.gapAnalysis else None
 
-    merge_status = _blob_get(merge.controls if merge else None, "status") or "pending"
+    merge_status = getattr(merge, "status", "pending") if merge else "pending"
     comparison_status = (
         _blob_get(comparison.comparison if comparison else None, "status") or "pending"
     )

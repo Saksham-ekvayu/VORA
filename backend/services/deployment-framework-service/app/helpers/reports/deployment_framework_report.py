@@ -12,17 +12,27 @@ from reportlab.graphics.charts.piecharts import Pie
 from reportlab.graphics.charts.spider import SpiderChart
 from reportlab.graphics.shapes import Drawing, String
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.pagesizes import landscape
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import (
     HRFlowable,
+    KeepTogether,
     PageBreak,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
     Table,
     TableStyle,
+)
+
+from vora_shared.pdf import (
+    COLORS as SHARED_COLORS,
+    REPORT_MARGINS,
+    REPORT_PAGESIZE,
+    control_separator,
+    draw_common_footer,
+    get_shared_styles,
 )
 
 IMPLEMENTED = "Implemented"
@@ -33,30 +43,27 @@ MEDIUM = "Medium"
 LOW = "Low"
 
 _COLORS = {
-    "primary": colors.HexColor("#0f766e"),
-    "primaryLight": colors.HexColor("#f0fdfa"),
-    "secondary": colors.HexColor("#0d9488"),
-    "accent": colors.HexColor("#f59e0b"),
-    "darkText": colors.HexColor("#1f2937"),
-    "mutedText": colors.HexColor("#4b5563"),
-    "lightText": colors.HexColor("#9ca3af"),
-    "borderColor": colors.HexColor("#e5e7eb"),
-    "cardBg": colors.HexColor("#f8fafc"),
-    "green": colors.HexColor("#16a34a"),
-    "amber": colors.HexColor("#d97706"),
-    "red": colors.HexColor("#dc2626"),
-    "gray": colors.HexColor("#4b5563"),
+    "primary": SHARED_COLORS["primary"],
+    "primaryLight": SHARED_COLORS["primary_light"],
+    "secondary": SHARED_COLORS["secondary"],
+    "accent": SHARED_COLORS["warning"],
+    "darkText": SHARED_COLORS["dark_text"],
+    "mutedText": SHARED_COLORS["muted_text"],
+    "lightText": SHARED_COLORS["light_text"],
+    "borderColor": SHARED_COLORS["border"],
+    "cardBg": SHARED_COLORS["card_bg"],
+    "green": SHARED_COLORS["green"],
+    "amber": SHARED_COLORS["amber"],
+    "red": SHARED_COLORS["danger"],
+    "gray": SHARED_COLORS["gray"],
 }
 
-_styles = getSampleStyleSheet()
-_H_TITLE = ParagraphStyle("DFRTitle", parent=_styles["Title"], textColor=_COLORS["primary"], fontSize=18)
-_H1 = ParagraphStyle("DFRH1", parent=_styles["Heading1"], textColor=_COLORS["darkText"], fontSize=20)
-_MUTED = ParagraphStyle("DFRMuted", parent=_styles["Normal"], textColor=_COLORS["mutedText"], fontSize=11)
-_SECTION = ParagraphStyle(
-    "DFRSection", parent=_styles["Heading2"], textColor=_COLORS["darkText"], fontSize=12
-)
+_base_styles = getSampleStyleSheet()
+_shared_styles = get_shared_styles()
+
+_SECTION = _shared_styles["section_title"]
 _SMALL_MUTED = ParagraphStyle(
-    "DFRSmallMuted", parent=_styles["Normal"], textColor=_COLORS["mutedText"], fontSize=8.5
+    "DFRSmallMuted", parent=_base_styles["Normal"], textColor=_COLORS["mutedText"], fontSize=8.5
 )
 
 
@@ -108,13 +115,12 @@ def _map_dp_row(row: dict[str, Any], idx: int) -> dict[str, Any]:
 
 def _build_dp_data(gap_results: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     dp_data: dict[str, list[dict[str, Any]]] = {}
-    for section in gap_results or []:
-        for control_obj in section.get("controls") or []:
-            for control_id, dp_rows in control_obj.items():
-                for row in dp_rows or []:
-                    dep_id = row.get("deployment_framework_control_id") or control_id
-                    dp_data.setdefault(dep_id, [])
-                    dp_data[dep_id].append(_map_dp_row(row, len(dp_data[dep_id])))
+    for row in gap_results or []:
+        dep_id = row.get("deployment_framework_control_id") or row.get("assigned_framework_control_id")
+        if not dep_id:
+            continue
+        dp_data.setdefault(dep_id, [])
+        dp_data[dep_id].append(_map_dp_row(row, len(dp_data[dep_id])))
     return dp_data
 
 
@@ -207,9 +213,9 @@ def _status_badge_colors(status: str) -> tuple[Any, Any]:
 
 def _donut_drawing(chart_data: list[tuple[str, int, Any]], center_label: str) -> Drawing:
     total = sum(v for _, v, _ in chart_data)
-    d = Drawing(180, 150)
+    d = Drawing(240, 150)
     pie = Pie()
-    pie.x = 40
+    pie.x = 120
     pie.y = 20
     pie.width = 100
     pie.height = 100
@@ -221,35 +227,52 @@ def _donut_drawing(chart_data: list[tuple[str, int, Any]], center_label: str) ->
         pie.slices[i].strokeColor = colors.white
         pie.slices[i].strokeWidth = 1
     d.add(pie)
-    d.add(String(90, 5, center_label, fontSize=8, fillColor=_COLORS["mutedText"], textAnchor="middle"))
-    legend_y = 130
+    d.add(String(170, 5, center_label, fontSize=8, fillColor=_COLORS["mutedText"], textAnchor="middle"))
+    legend_y = 110
     for label, value, color in chart_data:
         pct = (value / total * 100) if total else 0
-        d.add(String(0, legend_y, "\u25a0", fillColor=color, fontSize=9))
+        d.add(String(10, legend_y, "\u25a0", fillColor=color, fontSize=9))
         d.add(
             String(
-                10,
+                20,
                 legend_y,
                 f"{label}: {value} ({pct:.1f}%)",
                 fontSize=7,
                 fillColor=_COLORS["darkText"],
             )
         )
-        legend_y -= 10
+        legend_y -= 12
     return d
 
 
 def _spider_drawing(controls: list[dict[str, Any]]) -> Drawing | None:
     if not controls:
         return None
-    d = Drawing(480, 380)
+    available_width = REPORT_PAGESIZE[0] - (REPORT_MARGINS["leftMargin"] + REPORT_MARGINS["rightMargin"])
+    
+    # Increase canvas to use landscape width better, chart itself is a square
+    d = Drawing(available_width, 420)
     chart = SpiderChart()
-    chart.x = 60
-    chart.y = 30
+    
+    # Center the square chart (360x360) within the available width
     chart.width = 360
-    chart.height = 320
+    chart.height = 360
+    chart.x = (available_width - chart.width) / 2
+    chart.y = 30
+    
     chart.data = [[c["score"] for c in controls]]
+    
     chart.labels = [c["id"] for c in controls]
+    chart.spokeLabels.fontName = "Helvetica"
+    if len(controls) > 70:
+        chart.spokeLabels.fontSize = 4
+    elif len(controls) > 40:
+        chart.spokeLabels.fontSize = 5
+    elif len(controls) > 20:
+        chart.spokeLabels.fontSize = 6
+    else:
+        chart.spokeLabels.fontSize = 7
+        
     chart.strands[0].strokeColor = _COLORS["primary"]
     chart.strands[0].fillColor = colors.Color(
         _COLORS["primary"].red, _COLORS["primary"].green, _COLORS["primary"].blue, alpha=0.15
@@ -272,7 +295,7 @@ def _add_expert_review_section(story: list, expert_review: dict):
             Paragraph(
                 f"<b>Expert Review:</b> {expert.get('name', '—')} ({expert.get('email', '')}) "
                 f"— {str(expert_review.get('status')).upper()}",
-                _MUTED,
+                _shared_styles["meta"],
             )
         )
         if expert_review.get("comments"):
@@ -288,11 +311,11 @@ def _add_document_table(story: list, documents: list):
         rows.append(
             [
                 f"v{fv.get('fileVersion', '1.0.0')}",
-                fv.get("originalFileName", "—"),
+                Paragraph(fv.get("originalFileName", "—"), _shared_styles["table_cell"]),
                 _format_size(fv.get("fileSize")),
             ]
         )
-    file_table = Table(rows, colWidths=[25 * mm, 180 * mm, 25 * mm], hAlign="LEFT")
+    file_table = Table(rows, colWidths=["15%", "70%", "15%"], hAlign="LEFT")
     file_table.setStyle(
         TableStyle(
             [
@@ -325,14 +348,14 @@ def _add_implementation_status_table(story: list, controls: list, total_dp: int)
     ]
     stat_style_val = ParagraphStyle(
         "DFRStatVal",
-        parent=_styles["Normal"],
+        parent=_base_styles["Normal"],
         fontSize=14,
         fontName="Helvetica-Bold",
         textColor=_COLORS["primary"],
         alignment=1,
     )
     stat_style_label = ParagraphStyle(
-        "DFRStatLabel", parent=_styles["Normal"], fontSize=7, textColor=_COLORS["mutedText"], alignment=1
+        "DFRStatLabel", parent=_base_styles["Normal"], fontSize=7, textColor=_COLORS["mutedText"], alignment=1
     )
     stat_cells = [[Paragraph(v, stat_style_val)] for _, v in stats]
     stat_label_cells = [[Paragraph(l, stat_style_label)] for l, _ in stats]
@@ -340,7 +363,7 @@ def _add_implementation_status_table(story: list, controls: list, total_dp: int)
         [stat_cells[i][0] for i in range(len(stats))],
         [stat_label_cells[i][0] for i in range(len(stats))],
     ]
-    stat_table = Table(combined_rows, colWidths=[46 * mm] * len(stats), hAlign="LEFT")
+    stat_table = Table(combined_rows, colWidths=[f"{100.0/len(stats)}%"] * len(stats), hAlign="LEFT")
     stat_table.setStyle(
         TableStyle(
             [
@@ -368,21 +391,146 @@ def _add_charts(
             ],
             "Implementation",
         )
-        story.append(impl_chart)
+        
+        match_high = sum(1 for c in controls if c["match"] == HIGH)
+        match_med = sum(1 for c in controls if c["match"] == MEDIUM)
+        match_low = sum(1 for c in controls if c["match"] == LOW)
+        
+        match_chart = _donut_drawing(
+            [
+                ("High Match", match_high, _COLORS["green"]),
+                ("Medium Match", match_med, _COLORS["amber"]),
+                ("Low Match", match_low, _COLORS["red"]),
+            ],
+            "Match Distribution",
+        )
+        
+        charts_table = Table([[impl_chart, match_chart]], colWidths=["50%", "50%"], hAlign="CENTER")
+        story.append(charts_table)
         story.append(Spacer(1, 4 * mm))
 
     spider = _spider_drawing(controls)
     if spider:
-        story.append(Paragraph("Compliance Radar Analysis", _SECTION))
-        story.append(
+        spider_elements = [
+            Paragraph("Compliance Radar Analysis", _SECTION),
             Paragraph(
                 f"Spider chart mapping all {len(controls)} controls by achieved compliance score.",
                 _SMALL_MUTED,
-            )
-        )
-        story.append(spider)
+            ),
+            spider
+        ]
+        story.append(KeepTogether(spider_elements))
         story.append(PageBreak())
 
+
+def _calc_avg_dp_weightage(dps: list[dict[str, Any]]) -> float | None:
+    dp_weights = []
+    for dp in dps:
+        dp_w = dp.get("weightage")
+        if dp_w is not None:
+            try:
+                dp_weights.append(float(dp_w))
+            except (ValueError, TypeError):
+                pass
+    return round(sum(dp_weights) / len(dp_weights), 1) if dp_weights else None
+
+def _get_control_weightage(ctrl: dict[str, Any]) -> str | int | float:
+    weight_display = ctrl.get("weightage")
+    if weight_display is None:
+        weight_display = _calc_avg_dp_weightage(ctrl.get("deployment_points") or [])
+
+    if weight_display is None:
+        return "N/A"
+    if isinstance(weight_display, (int, float)) and float(weight_display).is_integer():
+        return int(weight_display)
+    return weight_display
+
+def _build_merge_control_block(ctrl: dict[str, Any]) -> list:
+    ctrl_block = []
+    weight_display = _get_control_weightage(ctrl)
+    
+    ctrl_header_table = Table(
+        [
+            [
+                Paragraph(f"[{ctrl.get('id', '')}] {ctrl.get('name', 'Unnamed Control')}", _shared_styles["control_title"]),
+                Paragraph(f"Weightage: {weight_display}/10", _shared_styles["control_weightage"]),
+            ]
+        ],
+        colWidths=["75%", "25%"],
+    )
+    ctrl_header_table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (0, 0), 6),
+                ("LINEBEFORE", (0, 0), (0, 0), 3, SHARED_COLORS["secondary"]),
+            ]
+        )
+    )
+    ctrl_block.append(ctrl_header_table)
+    
+    if ctrl.get("description"):
+        ctrl_block.append(Paragraph(ctrl["description"], _shared_styles["control_desc"]))
+        
+    if ctrl.get("remark"):
+        remark_table = Table(
+            [[Paragraph(f"<b>Remark:</b> {ctrl['remark']}", _shared_styles["remark"])]],
+            colWidths=["100%"],
+        )
+        remark_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, -1), SHARED_COLORS["remark_bg"]),
+                    ("BOX", (0, 0), (-1, -1), 0.5, SHARED_COLORS["remark_border"]),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                    ("TOPPADDING", (0, 0), (-1, -1), 6),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ]
+            )
+        )
+        ctrl_block.append(Spacer(1, 4))
+        ctrl_block.append(remark_table)
+    
+    deployment_points = ctrl.get("deployment_points") or []
+    if deployment_points:
+        ctrl_block.append(Paragraph("Deployment Guidelines:", _shared_styles["dp_heading"]))
+        for idx, dp in enumerate(deployment_points, start=1):
+            text = f"{idx}. {dp.get('name', 'Unnamed DP')}"
+            if dp.get("remark"):
+                text += f" | Guideline Remark: {dp['remark']}"
+            ctrl_block.append(Paragraph(text, _shared_styles["dp_text"]))
+    
+    ctrl_block.extend(control_separator())
+    return ctrl_block
+
+def _build_merge_section_block(section: dict[str, Any]) -> list:
+    block = []
+    header_table = Table(
+        [[Paragraph(f"{section.get('id', '')} {section.get('name', 'Unnamed Section')}", _shared_styles["section_header"])]],
+        colWidths=["100%"],
+    )
+    header_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), SHARED_COLORS["primary_light"]),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
+    )
+    block.append(KeepTogether([header_table, Spacer(1, 6)]))
+    
+    controls = section.get("controls") or []
+    if not controls:
+        block.append(Paragraph("No controls in this section.", _shared_styles["no_controls"]))
+        block.append(Spacer(1, 8))
+        return block
+        
+    for ctrl in controls:
+        block.extend(_build_merge_control_block(ctrl))
+        
+    return block
 
 def _add_merge_details(story: list, merge_sections: list):
     if not merge_sections:
@@ -390,25 +538,9 @@ def _add_merge_details(story: list, merge_sections: list):
     total_merge_controls = sum(len(s.get("controls") or []) for s in merge_sections)
     if not total_merge_controls:
         return
-    story.append(Paragraph("Merge Extraction Details", _SECTION))
+    story.append(Paragraph("Merge Extraction Details", _shared_styles["section_title"]))
     for section in merge_sections:
-        story.append(
-            Paragraph(
-                f"<b>{section.get('id', '')} - {section.get('name', 'Unnamed Section')}</b>",
-                ParagraphStyle(
-                    "DFRMergeSection",
-                    parent=_styles["Normal"],
-                    fontSize=10,
-                    textColor=_COLORS["primary"],
-                ),
-            )
-        )
-        for ctrl in section.get("controls") or []:
-            story.append(
-                Paragraph(f"{ctrl.get('id', '')} - {ctrl.get('name', 'Unnamed Control')}", _SMALL_MUTED)
-            )
-            for dp in ctrl.get("deployment_points") or []:
-                story.append(Paragraph(f"• {dp.get('id', '')}: {dp.get('name', 'Unnamed DP')}", _SMALL_MUTED))
+        story.extend(_build_merge_section_block(section))
     story.append(Spacer(1, 4 * mm))
 
 
@@ -421,7 +553,7 @@ def _add_control_compliance_table(story: list, controls: list):
         rows.append(
             [
                 c["assigned_id"] or c["id"],
-                c["name"],
+                Paragraph(c["name"], _shared_styles["table_cell"]),
                 f"{c['score']}%",
                 c["match"],
                 str(c["impl"]),
@@ -430,7 +562,7 @@ def _add_control_compliance_table(story: list, controls: list):
             ]
         )
     detail_table = Table(
-        rows, colWidths=[22 * mm, 110 * mm, 18 * mm, 22 * mm, 12 * mm, 12 * mm, 12 * mm], hAlign="LEFT"
+        rows, colWidths=["10%", "48%", "8%", "10%", "8%", "8%", "8%"], hAlign="LEFT"
     )
     style_cmds = [
         ("BACKGROUND", (0, 0), (-1, 0), _COLORS["primaryLight"]),
@@ -467,11 +599,14 @@ def _add_deployment_point_analysis(story: list, controls: list, dp_data: dict, t
                 f"Deployment: [{ctrl['deployment_id'] or 'N/A'}] {ctrl['deployment_name'] or '—'}",
                 ParagraphStyle(
                     "DFRGapHeader",
-                    parent=_styles["Normal"],
+                    parent=_base_styles["Normal"],
                     fontSize=8.5,
+                    leading=13,
                     textColor=_COLORS["primary"],
                     backColor=_COLORS["primaryLight"],
-                    borderPadding=4,
+                    borderPadding=6,
+                    spaceBefore=12,
+                    spaceAfter=4,
                 ),
             )
         )
@@ -480,13 +615,13 @@ def _add_deployment_point_analysis(story: list, controls: list, dp_data: dict, t
             gap_rows.append(
                 [
                     f"D{idx + 1}",
-                    gap["clientDp"],
-                    gap["matchedFp"] or "No matching deployment point",
+                    Paragraph(gap["clientDp"], _shared_styles["table_cell"]),
+                    Paragraph(gap["matchedFp"] or "No matching deployment point", _shared_styles["table_cell"]),
                     f"{gap['sim']:.1f}%",
-                    gap["status"],
+                    Paragraph(f"<font color='#{_status_badge_colors(gap['status'])[1].hexval()[2:]}'>{gap['status']}</font>", _shared_styles["table_cell"]),
                 ]
             )
-        gap_table = Table(gap_rows, colWidths=[10 * mm, 95 * mm, 95 * mm, 15 * mm, 25 * mm], hAlign="LEFT")
+        gap_table = Table(gap_rows, colWidths=["5%", "37.5%", "37.5%", "8%", "12%"], hAlign="LEFT")
         gap_style_cmds = [
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f1f5f9")),
             ("FONTSIZE", (0, 0), (-1, -1), 7.5),
@@ -507,11 +642,8 @@ def generate_deployment_framework_report_pdf(framework: Any, package_data: dict[
     buffer = BytesIO()
     doc = SimpleDocTemplate(
         buffer,
-        pagesize=landscape(A4),
-        topMargin=16 * mm,
-        bottomMargin=12 * mm,
-        leftMargin=14 * mm,
-        rightMargin=14 * mm,
+        pagesize=REPORT_PAGESIZE,
+        **REPORT_MARGINS,
         title="Deployment Framework Report",
     )
 
@@ -527,7 +659,7 @@ def generate_deployment_framework_report_pdf(framework: Any, package_data: dict[
 
     story: list[Any] = []
 
-    story.append(Paragraph("Deployment Framework Report", _H_TITLE))
+    story.append(Paragraph("Deployment Framework Report", _shared_styles["title"]))
     story.append(HRFlowable(width="100%", color=_COLORS["borderColor"], thickness=1, spaceAfter=6))
 
     badge_row = " &nbsp;&nbsp; ".join(
@@ -538,19 +670,19 @@ def generate_deployment_framework_report_pdf(framework: Any, package_data: dict[
             f"<font color='#1a73e8'><b>{str(package_data.get('status', 'pending')).title()}</b></font>",
         ]
     )
-    story.append(Paragraph(badge_row, _MUTED))
+    story.append(Paragraph(badge_row, _shared_styles["meta"]))
     story.append(Spacer(1, 4 * mm))
-    story.append(Paragraph(fw_name, _H1))
+    story.append(Paragraph(fw_name, _shared_styles["h1"]))
     story.append(
         Paragraph(
             f"{fw_name} Deployment Framework Gap Analysis &amp; Compliance Audit Report "
             f"— Package v{package_data.get('packageVersion', '1.0.0')}, {package_data.get('trigger', '')}",
-            _MUTED,
+            _shared_styles["meta"],
         )
     )
 
     _add_expert_review_section(story, package_data.get("expertReview"))
-    story.append(PageBreak())
+    story.append(Spacer(1, 6 * mm))
 
     _add_document_table(story, package_data.get("documents") or [])
     _add_implementation_status_table(story, controls, total_dp)
@@ -560,19 +692,8 @@ def generate_deployment_framework_report_pdf(framework: Any, package_data: dict[
     _add_deployment_point_analysis(story, controls, dp_data, total_dp)
 
     def _footer(canvas, doc_):
-        canvas.saveState()
-        canvas.setFont("Helvetica", 8)
-        canvas.setFillColor(_COLORS["lightText"])
-        canvas.drawString(14 * mm, 6 * mm, "Generated by VORA Platform")
-        canvas.drawRightString(doc_.pagesize[0] - 14 * mm, 6 * mm, f"Page {doc_.page}")
-        if doc_.page > 1:
-            canvas.setFont("Helvetica-Bold", 8)
-            canvas.drawString(
-                14 * mm,
-                doc_.pagesize[1] - 10 * mm,
-                f"{fw_name.upper()} - PACKAGE v{package_data.get('packageVersion', '1.0.0')}",
-            )
-        canvas.restoreState()
+        header_text = f"{fw_name.upper()} - PACKAGE v{package_data.get('packageVersion', '1.0.0')}"
+        draw_common_footer(canvas, doc_.page, doc_.pagesize, header_text)
 
     doc.build(story, onFirstPage=_footer, onLaterPages=_footer)
     return buffer.getvalue()
