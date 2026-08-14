@@ -614,19 +614,21 @@ export default function MonitoringSetup() {
                   : "hover:bg-accent"
               }`}
             >
-              <span className="text-[10px] font-bold text-primary shrink-0">
-                {sec.id}
-              </span>
-              <p
-                title={sec.name}
-                className={`text-xs font-semibold leading-snug line-clamp-1 text-left ${
-                  selectedSection?._key === sec._key
-                    ? "text-primary"
-                    : "text-foreground"
-                }`}
-              >
-                {capitalizeFirst(sec.name)}
-              </p>
+              <div className="flex gap-2">
+                <span className="text-[10px] font-bold text-primary shrink-0">
+                  {sec.id}
+                </span>
+                <p
+                  title={sec.name}
+                  className={`text-xs font-semibold leading-snug line-clamp-1 text-left ${
+                    selectedSection?._key === sec._key
+                      ? "text-primary"
+                      : "text-foreground"
+                  }`}
+                >
+                  {capitalizeFirst(sec.name)}
+                </p>
+              </div>
               <Badge className="min-w-4 h-4 px-1 rounded-full flex items-center justify-center text-[9px] font-semibold shrink-0">
                 {getMatchingControlsCount(sec)}
               </Badge>
