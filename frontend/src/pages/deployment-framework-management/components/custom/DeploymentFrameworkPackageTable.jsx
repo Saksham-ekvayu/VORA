@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import FileTypeCard from "@/components/custom/FileTypeCard";
 import Icon from "@/components/custom/Icon";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,17 @@ export default function DeploymentFrameworkPackageTable({
   const [uploadingFileId, setUploadingFileId] = useState(null);
   const [viewingDocument, setViewingDocument] = useState(null);
   const hasActionsColumn = showActions || showViewAction;
+
+  useEffect(() => {
+    if (viewingDocument && preReleasePackage?.documents) {
+      const updatedDoc = preReleasePackage.documents.find(
+        (d) => d.fileId === viewingDocument.fileId
+      );
+      if (updatedDoc) {
+        setViewingDocument(updatedDoc);
+      }
+    }
+  }, [preReleasePackage, viewingDocument?.fileId, viewingDocument]);
 
   const handleDownload = async (fileId, fileName) => {
     try {
@@ -143,16 +154,14 @@ export default function DeploymentFrameworkPackageTable({
                   <td className="px-2.5 py-2">
                     <div className="flex items-center justify-center gap-1.5">
                       <span
-                        className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                          doc.replicated ? "bg-blue-500" : "bg-green-500"
-                        }`}
+                        className={`w-1.5 h-1.5 rounded-full shrink-0 ${doc.replicated ? "bg-blue-500" : "bg-green-500"
+                          }`}
                       />
                       <span
-                        className={`text-[11px] font-medium ${
-                          doc.replicated
+                        className={`text-[11px] font-medium ${doc.replicated
                             ? "text-blue-600 dark:text-blue-400"
                             : "text-green-600 dark:text-green-400"
-                        }`}
+                          }`}
                       >
                         {doc.replicated ? "Yes" : "No"}
                       </span>
@@ -176,11 +185,10 @@ export default function DeploymentFrameworkPackageTable({
 
                   <td className="px-2.5 py-2">
                     <span
-                      className={`flex items-center justify-center gap-1 text-[11px] font-medium ${
-                        uploadingFileId === doc.fileId
+                      className={`flex items-center justify-center gap-1 text-[11px] font-medium ${uploadingFileId === doc.fileId
                           ? "text-blue-600 dark:text-blue-400"
                           : status.textClass
-                      }`}
+                        }`}
                     >
                       <Icon
                         name={
@@ -191,7 +199,7 @@ export default function DeploymentFrameworkPackageTable({
                         size={12}
                         className={
                           uploadingFileId === doc.fileId ||
-                          doc.aiExtraction?.status === "processing"
+                            doc.aiExtraction?.status === "processing"
                             ? "animate-spin"
                             : ""
                         }
@@ -246,6 +254,9 @@ export default function DeploymentFrameworkPackageTable({
           isOpen={!!viewingDocument}
           onClose={() => setViewingDocument(null)}
           document={viewingDocument}
+          frameworkId={frameworkId}
+          packageVersion={preReleasePackage?.packageVersion}
+          onSuccess={onSuccess}
         />
       )}
     </div>
