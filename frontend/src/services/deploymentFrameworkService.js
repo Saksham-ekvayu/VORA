@@ -523,6 +523,19 @@ export function addGapReviewRemark(id, packageVersion, data) {
   );
 }
 
+/**
+ * Deploy an approved deployment package
+ */
+export function deployDeploymentPackage(frameworkId, packageVersion) {
+  return apiRequest(
+    `${FRAMEWORK_BASE}/${frameworkId}/packages/${packageVersion}/deploy`,
+    {
+      method: "PATCH",
+    },
+    true
+  );
+}
+
 export default {
   getAssignmentFrameworks,
   getAssignedFrameworksById,
@@ -555,4 +568,5 @@ export default {
   addReviewRemark,
   addGapReviewRemark,
   reviewDeploymentPackage,
+  deployDeploymentPackage,
 };

@@ -27,8 +27,9 @@ import {
   STATUS_FAILED,
   STATUS_LOCKED,
   STATUS_UPLOADED,
-  getExpertReviewBadgeVariant,
-  getExpertReviewBadgeIcon,
+  STATUS_LIVE,
+  typeVariantMap,
+  packageTypeColorMap,
 } from "@/utils/commonUtils";
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
@@ -44,6 +45,7 @@ import {
   deleteDeploymentFrameworkPackage,
   getDeploymentFrameworkById,
   deleteDeploymentFramework,
+  deployDeploymentPackage,
 } from "@/services/deploymentFrameworkService";
 import LoadingSpinner from "@/components/custom/Loader/LoadingSpinner";
 import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
@@ -301,6 +303,7 @@ const DeploymentFrameworkDetail = () => {
   const [activelyExtractingFileIds, setActivelyExtractingFileIds] = useState(
     new Set()
   );
+  const [isDeploying, setIsDeploying] = useState(false);
 
   const { loading, framework, fetchFrameworkDetails } = useFrameworkData(id);
 
@@ -330,6 +333,24 @@ const DeploymentFrameworkDetail = () => {
   const preReleasePackage = packageViewModel.preReleasePackage;
   const livePackage = packageViewModel.livePackage;
   const currentReviewPackage = packageViewModel.currentReviewPackage;
+
+  const handleDeployPackage = async () => {
+    if (!currentReviewPackage) return;
+    setIsDeploying(true);
+    try {
+      const response = await deployDeploymentPackage(
+        id,
+        currentReviewPackage.packageVersion
+      );
+      toast.success(response.message || "Package deployed successfully");
+      await fetchFrameworkDetails(true);
+    } catch (error) {
+      console.error("Error deploying package:", error);
+      toast.error(error?.message || "Failed to deploy package");
+    } finally {
+      setIsDeploying(false);
+    }
+  };
 
   const runningStatuses = useMemo(
     () =>
@@ -439,6 +460,13 @@ const DeploymentFrameworkDetail = () => {
   const isAssignedFrameworkFinalized =
     assignedFramework?.finalization?.isFinalized === true;
 
+  const preReleaseVariant =
+    typeVariantMap[preReleasePackage?.type] || "default";
+  const packageTypeColors =
+    packageTypeColorMap[preReleaseVariant] || packageTypeColorMap.default;
+  const packageTypeBorderColor = packageTypeColors.border;
+  const packageTypeSpanColor = packageTypeColors.bg;
+
   return (
     <div className="space-y-2 my-2">
       {/* ── Revoked Banner ── */}
@@ -465,35 +493,25 @@ const DeploymentFrameworkDetail = () => {
           </p>
         </Link>
         {/* current version */}
-        <div className="bg-card border border-border rounded p-4 border-t-3 border-t-amber-400">
+        <div
+          className={`bg-card border border-border rounded p-4 border-t-3 ${packageTypeBorderColor}`}
+        >
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
             Current Package Version
           </p>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="w-2 h-2 rounded bg-amber-400 shrink-0" />
+            <span
+              className={`w-2 h-2 rounded shrink-0 ${packageTypeSpanColor}`}
+            />
             <span className="text-base font-bold text-foreground">
               v{preReleasePackage?.packageVersion}
             </span>
-            <Badge variant="amber" className="capitalize">
+            <Badge
+              variant={typeVariantMap[preReleasePackage?.type] || "default"}
+              className="capitalize"
+            >
               {preReleasePackage?.type}
             </Badge>
-            {preReleasePackage?.expertReview?.status &&
-              preReleasePackage.expertReview.status !== STATUS_PENDING && (
-                <Badge
-                  variant={getExpertReviewBadgeVariant(
-                    preReleasePackage.expertReview.status
-                  )}
-                  className="capitalize"
-                >
-                  <Icon
-                    name={getExpertReviewBadgeIcon(
-                      preReleasePackage.expertReview.status
-                    )}
-                    size={10}
-                  />{" "}
-                  {preReleasePackage.expertReview.status}
-                </Badge>
-              )}
           </div>
           <p className="text-[11px] text-muted-foreground mt-1">
             {preReleasePackage?.documents?.length || 0} documents uploaded
@@ -842,6 +860,40 @@ const DeploymentFrameworkDetail = () => {
                   <Icon name="x" size={12} /> Return
                 </Button>
               </div>
+            </div>
+          )}
+
+        {isAuditor(user?.role) &&
+          assignedFramework?.finalization?.isFinalized === true &&
+          currentReviewPackage?.expertReview?.status === STATUS_APPROVED &&
+          currentReviewPackage?.status !== STATUS_LIVE && (
+            <div className="mt-4 bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 rounded p-3 flex justify-between items-center gap-2">
+              <div className="flex flex-col">
+                <p className="text-[12px] font-semibold text-green-700 dark:text-green-400 flex items-center gap-1.5 mb-1.5">
+                  <Icon name="check-circle" size={13} /> Ready for Deployment
+                </p>
+                <p className="text-[11px] text-muted-foreground mb-3">
+                  The deployment package has been approved by the expert and is
+                  ready to be deployed.
+                </p>
+              </div>
+              <Button
+                variant="default"
+                size="xs"
+                onClick={handleDeployPackage}
+                disabled={isDeploying}
+              >
+                {isDeploying ? (
+                  <>
+                    <Icon name="loader" size={12} className="animate-spin" />{" "}
+                    Deploying...
+                  </>
+                ) : (
+                  <>
+                    <Icon name="rocket" size={12} /> Deploy Package
+                  </>
+                )}
+              </Button>
             </div>
           )}
       </div>
