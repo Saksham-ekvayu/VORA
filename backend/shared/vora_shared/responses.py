@@ -103,7 +103,7 @@ def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSO
     return error(message, exc.status_code)
 
 
-def request_validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+def request_validation_exception_handler(_request: Request, exc: RequestValidationError) -> JSONResponse:
     """Reformat FastAPI's 422 validation errors into Node's express-validator style
     400 {success, message, errors: [{field, message, value}]} envelope."""
     errors = []
