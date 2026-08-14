@@ -133,6 +133,19 @@ async def _load_assignment_controls(session, assignment_id: str) -> list[dict[st
     return []
 
 
+async def _fetch_from_package_merge(session, merge_doc_id: str) -> list[dict[str, Any]]:
+    if not merge_doc_id:
+        return []
+    logger.info(f"[GAP-RUNNER] Trying to load from DeploymentPackageMerge: {merge_doc_id}")
+    pm = await session.get(DeploymentPackageMerge, merge_doc_id)
+    if pm and isinstance(pm.controls, dict):
+        controls = pm.controls.get("controls_data") or []
+        logger.info(f"[GAP-RUNNER]  Loaded {len(controls)} sections from DeploymentPackageMerge")
+        return controls
+    logger.warning(f"[GAP-RUNNER]   DeploymentPackageMerge not found or invalid: {merge_doc_id}")
+    return []
+
+
 async def _load_merged_controls(session, df: DeploymentFramework, pkg_ver: str) -> list[dict[str, Any]]:
     merge_doc_id = None
     merged_controls_from_pkg = []
@@ -152,18 +165,68 @@ async def _load_merged_controls(session, df: DeploymentFramework, pkg_ver: str) 
                 )
             break
 
-    if not merged_controls_from_pkg and merge_doc_id:
-        logger.info(f"[GAP-RUNNER] Trying to load from DeploymentPackageMerge: {merge_doc_id}")
-        pm = await session.get(DeploymentPackageMerge, merge_doc_id)
-        if pm and isinstance(pm.controls, dict):
-            merged_controls_from_pkg = pm.controls.get("controls_data") or []
-            logger.info(
-                f"[GAP-RUNNER]  Loaded {len(merged_controls_from_pkg)} sections from DeploymentPackageMerge"
-            )
-        else:
-            logger.warning(f"[GAP-RUNNER]   DeploymentPackageMerge not found or invalid: {merge_doc_id}")
+    if not merged_controls_from_pkg:
+        merged_controls_from_pkg = await _fetch_from_package_merge(session, merge_doc_id)
 
     return merged_controls_from_pkg
+
+
+def _extract_controls_from_section(section: dict) -> list[dict]:
+    controls = []
+    if isinstance(section, dict):
+        for ctrl in section.get("controls") or []:
+            if isinstance(ctrl, dict):
+                controls.append(ctrl)
+    return controls
+
+
+def _build_merged_control_map(merge_controls: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    merged_control_map = {}
+    for section in merge_controls:
+        for ctrl in _extract_controls_from_section(section):
+            ctrl_name = (ctrl.get("name") or "").strip().lower()
+            if ctrl_name:
+                dps_count = len(ctrl.get("deployment_points") or [])
+                merged_control_map[ctrl_name] = ctrl
+                logger.info(f"[GAP-RUNNER] 📌 Indexed control '{ctrl_name}' with {dps_count} DPs")
+    return merged_control_map
+
+
+def _process_assignment_control_for_synthesis(ctrl: dict, merged_control_map: dict) -> dict | None:
+    if not isinstance(ctrl, dict):
+        return None
+
+    merged_dps = []
+    ctrl_name_lower = (ctrl.get("name") or "").strip().lower()
+    if ctrl_name_lower in merged_control_map:
+        matched_merged = merged_control_map[ctrl_name_lower]
+        raw_dps = matched_merged.get("deployment_points") or []
+        merged_dps = [
+            {"id": str(dp.get("id") or new_id()), "point": dp.get("name") or ""}
+            for dp in raw_dps
+            if isinstance(dp, dict)
+        ]
+        logger.info(f"[GAP-RUNNER]  Matched '{ctrl_name_lower}': {len(merged_dps)} DPs")
+        for dp in merged_dps:
+            logger.info(f"              └─ {dp['point']}")
+    else:
+        logger.info(f"[GAP-RUNNER]   No match for '{ctrl_name_lower}'")
+
+    return {
+        "assigned_framework_control_id": str(ctrl.get("id") or ""),
+        "assigned_framework_control_name": ctrl.get("name") or "",
+        "assigned_framework_control_description": ctrl.get("description") or "",
+        "assigned_framework_deployment_points": [
+            {"id": str(dp.get("id") or new_id()), "point": dp.get("name") or ""}
+            for dp in (ctrl.get("deployment_points") or [])
+            if isinstance(dp, dict)
+        ],
+        "deployment_framework_control_id": "",
+        "deployment_framework_control_name": "",
+        "deployment_framework_control_description": "",
+        "deployment_framework_deployment_points": merged_dps,
+        "comparison_score": 0.0,
+    }
 
 
 async def _synthesize_comparison_sections(
@@ -175,60 +238,20 @@ async def _synthesize_comparison_sections(
     if not assignment_sections and not merge_controls:
         return []
 
-    merged_control_map = {}
-    for section in merge_controls:
-        if isinstance(section, dict):
-            for ctrl in section.get("controls") or []:
-                if isinstance(ctrl, dict):
-                    ctrl_name = (ctrl.get("name") or "").strip().lower()
-                    if ctrl_name:
-                        dps_count = len(ctrl.get("deployment_points") or [])
-                        merged_control_map[ctrl_name] = ctrl
-                        logger.info(f"[GAP-RUNNER] 📌 Indexed control '{ctrl_name}' with {dps_count} DPs")
-
+    merged_control_map = _build_merged_control_map(merge_controls)
     logger.info(f"[GAP-RUNNER]  Built index of {len(merged_control_map)} merged controls")
 
     comparison_sections = []
     for section in assignment_sections or []:
         if not isinstance(section, dict):
             continue
+        
         items = []
         for ctrl in section.get("controls") or []:
-            if not isinstance(ctrl, dict):
-                continue
-            merged_dps = []
-            ctrl_name_lower = (ctrl.get("name") or "").strip().lower()
-            if ctrl_name_lower in merged_control_map:
-                matched_merged = merged_control_map[ctrl_name_lower]
-                raw_dps = matched_merged.get("deployment_points") or []
-                merged_dps = [
-                    {"id": str(dp.get("id") or new_id()), "point": dp.get("name") or ""}
-                    for dp in raw_dps
-                    if isinstance(dp, dict)
-                ]
-                logger.info(f"[GAP-RUNNER]  Matched '{ctrl_name_lower}': {len(merged_dps)} DPs")
-                for dp in merged_dps:
-                    logger.info(f"              └─ {dp['point']}")
-            else:
-                logger.info(f"[GAP-RUNNER]   No match for '{ctrl_name_lower}'")
+            processed = _process_assignment_control_for_synthesis(ctrl, merged_control_map)
+            if processed:
+                items.append(processed)
 
-            items.append(
-                {
-                    "assigned_framework_control_id": str(ctrl.get("id") or ""),
-                    "assigned_framework_control_name": ctrl.get("name") or "",
-                    "assigned_framework_control_description": ctrl.get("description") or "",
-                    "assigned_framework_deployment_points": [
-                        {"id": str(dp.get("id") or new_id()), "point": dp.get("name") or ""}
-                        for dp in (ctrl.get("deployment_points") or [])
-                        if isinstance(dp, dict)
-                    ],
-                    "deployment_framework_control_id": "",
-                    "deployment_framework_control_name": "",
-                    "deployment_framework_control_description": "",
-                    "deployment_framework_deployment_points": merged_dps,
-                    "comparison_score": 0.0,
-                }
-            )
         comparison_sections.append(
             {
                 "id": section.get("id") or new_id(),
@@ -239,14 +262,84 @@ async def _synthesize_comparison_sections(
     return comparison_sections
 
 
+def _find_best_dp_match(af_dp_text: str, deployment_dps: list[dict[str, Any]]) -> tuple[float, str, str]:
+    best_dp_score = 0.0
+    best_df_dp_id = ""
+    best_df_dp_text = ""
+    
+    if not af_dp_text:
+        return 0.0, "", ""
+
+    from app.services.comparison_runner import _similarity
+
+    for df_dp in deployment_dps:
+        if not isinstance(df_dp, dict):
+            continue
+        df_dp_id = str(df_dp.get("id") or "")
+        df_dp_text = df_dp.get("point") or ""
+        
+        if df_dp_text:
+            dp_similarity = _similarity(af_dp_text, df_dp_text)
+            dp_score = dp_similarity * 100 if dp_similarity <= 1.0 else dp_similarity
+            
+            if dp_score > best_dp_score:
+                best_dp_score = dp_score
+                best_df_dp_id = df_dp_id
+                best_df_dp_text = df_dp_text
+                
+    return best_dp_score, best_df_dp_id, best_df_dp_text
+
+
+def _process_control_item(item: dict, section_id: str, section_name: str, thresholds: dict, statuses: dict) -> list[dict]:
+    assigned_id = str(item.get("assigned_framework_control_id") or item.get("Framework_control_id") or "Unknown")
+    assigned_name = item.get("assigned_framework_control_name") or ""
+    assigned_desc = item.get("assigned_framework_control_description") or ""
+    df_control_id = item.get("deployment_framework_control_id") or ""
+    df_control_name = item.get("deployment_framework_control_name") or ""
+
+    assigned_dps = item.get("assigned_framework_deployment_points") or [{"id": new_id(), "point": "General"}]
+    deployment_dps = item.get("deployment_framework_deployment_points") or [{"id": new_id(), "point": "General"}]
+
+    logger.info(f"[GAP-RUNNER] DP comparison for control: {assigned_name}")
+    logger.info(f"  Assigned DPs: {len(assigned_dps)}, Deployment DPs: {len(deployment_dps)}")
+
+    results = []
+    for af_dp in assigned_dps:
+        if not isinstance(af_dp, dict):
+            continue
+        
+        af_dp_id = str(af_dp.get("id") or "")
+        af_dp_text = af_dp.get("point") or ""
+        best_dp_score, best_df_dp_id, best_df_dp_text = _find_best_dp_match(af_dp_text, deployment_dps)
+        
+        impl_status = _status_for_score(best_dp_score / 100.0, thresholds, statuses)
+
+        results.append({
+            "assigned_framework_control_id": assigned_id,
+            "assigned_framework_control_name": assigned_name,
+            "assigned_framework_control_description": assigned_desc,
+            "assigned_framework_section_id": section_id,
+            "assigned_framework_section_name": section_name,
+            "assigned_framework_deployment_points": {"id": af_dp_id, "point": af_dp_text},
+            "deployment_framework_control_id": df_control_id,
+            "deployment_framework_control_name": df_control_name,
+            "deployment_framework_deployment_points": {"id": best_df_dp_id, "point": best_df_dp_text},
+            "comparison_score": float(item.get("comparison_score") or 0),
+            "similarity_score": round(best_dp_score, 2),
+            "implementation_status": impl_status,
+            "gap_score": round(max(0.0, 100.0 - best_dp_score) / 100.0, 4),
+            "reviewComment": "",
+        })
+    return results
+
+
 def _calculate_gap_results(
     comparison_sections: list[dict[str, Any]], thresholds: dict[str, Any], statuses: dict[str, Any]
-) -> tuple[list[dict[str, Any]], dict[str, list[dict[str, Any]]]]:
+) -> list[dict[str, Any]]:
     logger.info("[GAP-RUNNER] Processing comparison sections for gap analysis...")
     logger.info("[GAP-RUNNER] Running DP-to-DP semantic similarity comparison...")
 
     gap_results = []
-    grouped_by_control = {}
 
     for section in comparison_sections:
         if not isinstance(section, dict):
@@ -257,75 +350,13 @@ def _calculate_gap_results(
         for item in section.get("controls") or []:
             if not isinstance(item, dict):
                 continue
-            assigned_id = str(
-                item.get("assigned_framework_control_id") or item.get("Framework_control_id") or "Unknown"
-            )
-            assigned_name = item.get("assigned_framework_control_name") or ""
-            assigned_desc = item.get("assigned_framework_control_description") or ""
-            df_control_id = item.get("deployment_framework_control_id") or ""
-            df_control_name = item.get("deployment_framework_control_name") or ""
-
-            assigned_dps = item.get("assigned_framework_deployment_points") or [
-                {"id": new_id(), "point": "General"}
-            ]
-            deployment_dps = item.get("deployment_framework_deployment_points") or [
-                {"id": new_id(), "point": "General"}
-            ]
-
-            logger.info(f"[GAP-RUNNER] DP comparison for control: {assigned_name}")
-            logger.info(f"  Assigned DPs: {len(assigned_dps)}, Deployment DPs: {len(deployment_dps)}")
-
-            for af_dp in assigned_dps:
-                if not isinstance(af_dp, dict):
-                    continue
-                af_dp_id = str(af_dp.get("id") or "")
-                af_dp_text = af_dp.get("point") or ""
-                best_dp_score = 0.0
-                best_df_dp_id = ""
-                best_df_dp_text = ""
-
-                for df_dp in deployment_dps:
-                    if not isinstance(df_dp, dict):
-                        continue
-                    df_dp_id = str(df_dp.get("id") or "")
-                    df_dp_text = df_dp.get("point") or ""
-
-                    if af_dp_text and df_dp_text:
-                        from app.services.comparison_runner import _similarity
-
-                        dp_similarity = _similarity(af_dp_text, df_dp_text)
-                        dp_score = dp_similarity * 100 if dp_similarity <= 1.0 else dp_similarity
-                    else:
-                        dp_score = 0.0
-
-                    if dp_score > best_dp_score:
-                        best_dp_score = dp_score
-                        best_df_dp_id = df_dp_id
-                        best_df_dp_text = df_dp_text
-
-                impl_status = _status_for_score(best_dp_score / 100.0, thresholds, statuses)
-
-                gap_row = {
-                    "assigned_framework_control_id": assigned_id,
-                    "assigned_framework_control_name": assigned_name,
-                    "assigned_framework_control_description": assigned_desc,
-                    "assigned_framework_section_id": section_id,
-                    "assigned_framework_section_name": section_name,
-                    "assigned_framework_deployment_points": {"id": af_dp_id, "point": af_dp_text},
-                    "deployment_framework_control_id": df_control_id,
-                    "deployment_framework_control_name": df_control_name,
-                    "deployment_framework_deployment_points": {"id": best_df_dp_id, "point": best_df_dp_text},
-                    "comparison_score": float(item.get("comparison_score") or 0),
-                    "similarity_score": round(best_dp_score, 2),
-                    "implementation_status": impl_status,
-                    "gap_score": round(max(0.0, 100.0 - best_dp_score) / 100.0, 4),
-                    "reviewComment": "",
-                }
-                gap_results.append(gap_row)
-                grouped_by_control.setdefault(assigned_id, []).append(gap_row)
+                
+            item_results = _process_control_item(item, section_id, section_name, thresholds, statuses)
+            for row in item_results:
+                gap_results.append(row)
 
     logger.info(f"[GAP-RUNNER] Completed DP-to-DP comparisons: {len(gap_results)} deployment point gaps")
-    return gap_results, grouped_by_control
+    return gap_results
 
 
 async def _save_gap_analysis_result(
@@ -393,7 +424,7 @@ async def _save_failure_status(gap_id: str | None, exc: Exception):
                     session.add(pga)
                     await session.commit()
     except Exception as db_exc:
-        logger.error(f"[GAP-RUNNER-ERROR] Failed to update failure status: {db_exc}")
+        logger.exception(f"[GAP-RUNNER-ERROR] Failed to update failure status: {db_exc}")
 
 
 async def run_gap(
@@ -450,7 +481,7 @@ async def run_gap(
                     logger.error("No comparison results or controls available for gap analysis")
                     return
 
-            gap_results, grouped_by_control = _calculate_gap_results(
+            gap_results = _calculate_gap_results(
                 comparison_sections, thresholds, statuses
             )
 
@@ -487,7 +518,7 @@ async def run_gap(
         logger.error("[GAP-RUNNER-ERROR] run_gap failed!")
         logger.error(f"  Deployment Framework ID: {df_id}")
         logger.error(f"  Package Version: {pkg_ver}")
-        logger.error(f"  Error: {str(exc)}")
+        logger.exception(f"  Error: {str(exc)}")
         logger.error(f"{'='*80}")
         logger.exception("run_gap exception traceback:")
         await _save_failure_status(gap_id, exc)
