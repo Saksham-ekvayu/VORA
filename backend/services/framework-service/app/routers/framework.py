@@ -682,7 +682,7 @@ async def upload_framework(
     try:
         meta = framework_helper.parse_upload_metadata(metadata)
     except Exception as exc:
-        logger.error(f"[UPLOAD-FRAMEWORK] Invalid metadata | error={exc}")
+        logger.exception(f"[UPLOAD-FRAMEWORK] Invalid metadata | error={exc}")
         return error(f"Invalid metadata JSON format: {exc}", 400)
 
     framework_name = meta.get("frameworkName")

@@ -154,29 +154,39 @@ async def _parse_document_extraction(session, doc: dict) -> list[dict[str, Any]]
     return []
 
 
-async def _load_merge_sections(session, df_id: str, pkg_ver: str, df: DeploymentFramework):
+async def _fallback_to_package_merge(session, pkg: dict) -> list[dict[str, Any]]:
+    merge_doc_id = pkg.get("mergeDocument")
+    if not merge_doc_id:
+        return []
+
+    pm = await session.get(DeploymentPackageMerge, merge_doc_id)
+    if pm and isinstance(pm.controls, dict):
+        return pm.controls.get("controls_data") or []
+    return []
+
+
+async def _get_sections_from_package(session, pkg: dict) -> list[dict[str, Any]] | None:
+    merged = pkg.get("mergedControls") or {}
+    if isinstance(merged, dict):
+        if controls := (merged.get("controls_data") or merged.get("controls")):
+            return controls
+
+    sections: list[dict[str, Any]] = []
+    for doc in pkg.get("documents") or []:
+        if isinstance(doc, dict):
+            sections.extend(await _parse_document_extraction(session, doc))
+
+    if not sections:
+        return await _fallback_to_package_merge(session, pkg)
+
+    return sections
+
+
+async def _load_merge_sections(session, pkg_ver: str, df: DeploymentFramework):
     for pkg in df.packages or []:
-        if not isinstance(pkg, dict) or pkg.get("packageVersion") != pkg_ver:
-            continue
-
-        merged = pkg.get("mergedControls") or {}
-        if isinstance(merged, dict):
-            controls = merged.get("controls_data") or merged.get("controls") or []
-            if controls:
-                return controls
-
-        sections: list[dict[str, Any]] = []
-        for doc in pkg.get("documents") or []:
-            if isinstance(doc, dict):
-                sections.extend(await _parse_document_extraction(session, doc))
-
-        if not sections and (merge_doc_id := pkg.get("mergeDocument")):
-            pm = await session.get(DeploymentPackageMerge, merge_doc_id)
-            if pm and isinstance(pm.controls, dict):
-                if controls := pm.controls.get("controls_data"):
-                    return controls
-
-        return sections
+        if isinstance(pkg, dict) and pkg.get("packageVersion") == pkg_ver:
+            res = await _get_sections_from_package(session, pkg)
+            return res if res is not None else []
     return []
 
 
@@ -195,6 +205,37 @@ async def _load_assignment_sections(session, assignment_id: str) -> list[dict[st
     return []
 
 
+def _find_best_match(
+    fa_ctrl: dict[str, Any], df_controls: list[dict[str, Any]]
+) -> tuple[float, dict[str, Any]]:
+    best_score = 0.0
+    best_df: dict[str, Any] = {}
+    fa_text = _control_text(fa_ctrl)
+    for df_ctrl in df_controls:
+        score = _similarity(fa_text, _control_text(df_ctrl))
+        if score > best_score:
+            best_score = score
+            best_df = df_ctrl
+    return best_score, best_df
+
+
+def _build_comparison_item(
+    fa_ctrl: dict[str, Any], best_df: dict[str, Any], best_score: float
+) -> dict[str, Any]:
+    return {
+        "deployment_framework_control_id": str(best_df.get("id") or ""),
+        "deployment_framework_control_name": best_df.get("name") or "",
+        "deployment_framework_control_description": best_df.get("description") or "",
+        "deployment_framework_deployment_points": _dp_list(best_df),
+        "assigned_framework_control_id": str(fa_ctrl.get("id") or ""),
+        "assigned_framework_control_name": fa_ctrl.get("name") or "",
+        "assigned_framework_control_description": fa_ctrl.get("description") or "",
+        "assigned_framework_deployment_points": _dp_list(fa_ctrl),
+        "comparison_score": best_score,
+        "reviewComment": "",
+    }
+
+
 def _build_comparison_results(df_sections: list, assignment_sections: list) -> list[dict[str, Any]]:
     df_controls = _flatten_controls(df_sections)
     fa_controls = _flatten_controls(assignment_sections)
@@ -209,30 +250,10 @@ def _build_comparison_results(df_sections: list, assignment_sections: list) -> l
                 "controls": [],
             }
 
-        best_score = 0.0
-        best_df: dict[str, Any] | None = None
-        fa_text = _control_text(fa_ctrl)
-        for df_ctrl in df_controls:
-            score = _similarity(fa_text, _control_text(df_ctrl))
-            if score > best_score:
-                best_score = score
-                best_df = df_ctrl
+        best_score, best_df = _find_best_match(fa_ctrl, df_controls)
+        item = _build_comparison_item(fa_ctrl, best_df, best_score)
+        section_map[sid]["controls"].append(item)
 
-        best_df = best_df or {}
-        section_map[sid]["controls"].append(
-            {
-                "deployment_framework_control_id": str(best_df.get("id") or ""),
-                "deployment_framework_control_name": best_df.get("name") or "",
-                "deployment_framework_control_description": best_df.get("description") or "",
-                "deployment_framework_deployment_points": _dp_list(best_df),
-                "assigned_framework_control_id": str(fa_ctrl.get("id") or ""),
-                "assigned_framework_control_name": fa_ctrl.get("name") or "",
-                "assigned_framework_control_description": fa_ctrl.get("description") or "",
-                "assigned_framework_deployment_points": _dp_list(fa_ctrl),
-                "comparison_score": best_score,
-                "reviewComment": "",
-            }
-        )
     return list(section_map.values())
 
 
@@ -341,7 +362,7 @@ async def run_comparison(
             logger.info(f"[COMPARISON-RUNNER] Resolved framework_assignment_id: {fa_id}")
             logger.info("[COMPARISON-RUNNER] Loading deployment framework controls...")
 
-            df_sections = await _load_merge_sections(session, df_id, pkg_ver, df)
+            df_sections = await _load_merge_sections(session, pkg_ver, df)
             if not df_sections:
                 logger.error(f"No merge controls found for package '{pkg_ver}'")
                 return
