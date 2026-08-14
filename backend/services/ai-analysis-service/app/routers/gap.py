@@ -217,12 +217,8 @@ async def get_gap_analysis(gap_id: str):
                     "timestamp": gap_data.get("timestamp"),
                     "deployment_gap_results": gap_data.get("deployment_gap_results", []),
                     "gap_time_seconds": gap_data.get("gap_time_seconds"),
-                    "createdAt": (
-                        gap_analysis.createdAt.isoformat() if gap_analysis.createdAt else None
-                    ),
-                    "updatedAt": (
-                        gap_analysis.updatedAt.isoformat() if gap_analysis.updatedAt else None
-                    ),
+                    "createdAt": (gap_analysis.createdAt.isoformat() if gap_analysis.createdAt else None),
+                    "updatedAt": (gap_analysis.updatedAt.isoformat() if gap_analysis.updatedAt else None),
                 },
             )
     except Exception as exc:
@@ -253,9 +249,7 @@ async def list_gap_analyses(page: int = 1, page_size: int = 10):
 
         async with session_scope() as session:
             # Get fresh session without any cached objects
-            total = (
-                await session.execute(select(func.count()).select_from(PackageGapAnalysis))
-            ).scalar_one()
+            total = (await session.execute(select(func.count()).select_from(PackageGapAnalysis))).scalar_one()
 
             rows = (
                 (

@@ -16,6 +16,7 @@ from vora_shared.ids import new_id
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
+
 class DeploymentFrameworkDocument(BaseModel):
     fileId: str
     fileUrl: str
@@ -26,6 +27,7 @@ class DeploymentFrameworkDocument(BaseModel):
     fileVersion: str
     aiExtraction: str | None = None
     uploadedAt: datetime = Field(default_factory=_utcnow)
+
 
 class DeploymentDocument(Base):
     __tablename__ = "deployment_documents"

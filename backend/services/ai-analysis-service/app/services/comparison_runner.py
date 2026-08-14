@@ -236,16 +236,16 @@ def _build_comparison_results(df_sections: list, assignment_sections: list) -> l
     return list(section_map.values())
 
 
-async def _update_package_comparison(session, comparison_id: str | None, comparison_payload: dict) -> PackageComparison:
+async def _update_package_comparison(
+    session, comparison_id: str | None, comparison_payload: dict
+) -> PackageComparison:
     logger.info("[COMPARISON-RUNNER] Updating PackageComparison record...")
     pc = None
     if comparison_id:
         pc = await session.get(PackageComparison, comparison_id)
 
     if pc is None:
-        logger.warning(
-            f"[COMPARISON-RUNNER] PackageComparison not found (id={comparison_id}), creating new"
-        )
+        logger.warning(f"[COMPARISON-RUNNER] PackageComparison not found (id={comparison_id}), creating new")
         pc = PackageComparison(
             id=new_id(),
             fileHashes=[],
@@ -278,6 +278,27 @@ async def _update_df_package_comparison(session, df_id: str, pkg_ver: str, pc_id
         session.add(df)
         await session.flush()
         logger.info("[COMPARISON-RUNNER] Updated deployment framework packages")
+
+
+async def _save_failure_status(comparison_id: str | None, exc: Exception):
+    try:
+        async with session_scope() as session:
+            pc = None
+            if comparison_id:
+                pc = await session.get(PackageComparison, str(comparison_id))
+
+            if pc:
+                pc.comparison = {
+                    "status": "failed",
+                    "message": f"Comparison failed: {str(exc)}",
+                    "timestamp": _iso(),
+                    "comparison_time_seconds": None,
+                    "comparison_result": [],
+                }
+                session.add(pc)
+                await session.commit()
+    except Exception as db_exc:
+        logger.exception(f"[COMPARISON-RUNNER-ERROR] Failed to update failure status: {db_exc}")
 
 
 async def run_comparison(
@@ -387,22 +408,4 @@ async def run_comparison(
         logger.exception(f"  Error: {str(exc)}")
         logger.error(f"{'='*80}")
         logger.exception("run_comparison exception traceback:")
-
-        try:
-            async with session_scope() as session:
-                pc = None
-                if comparison_id:
-                    pc = await session.get(PackageComparison, str(comparison_id))
-
-                if pc:
-                    pc.comparison = {
-                        "status": "failed",
-                        "message": f"Comparison failed: {str(exc)}",
-                        "timestamp": _iso(),
-                        "comparison_time_seconds": None,
-                        "comparison_result": [],
-                    }
-                    session.add(pc)
-                    await session.commit()
-        except Exception as db_exc:
-            logger.exception(f"[COMPARISON-RUNNER-ERROR] Failed to update failure status: {db_exc}")
+        await _save_failure_status(comparison_id, exc)

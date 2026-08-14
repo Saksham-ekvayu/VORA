@@ -209,7 +209,9 @@ async def get_available_categories(
     sort_by: Annotated[str | None, Query(alias="sortBy")] = None,
     sort_order: Annotated[str | None, Query(alias="sortOrder")] = None,
 ):
-    logger.info(f"[GET-CATEGORIES] Fetching available categories | user_id={ctx.user.id} | page={page} | limit={limit} | search={search} | isActive={is_active} | accessStatus={access_status}")
+    logger.info(
+        f"[GET-CATEGORIES] Fetching available categories | user_id={ctx.user.id} | page={page} | limit={limit} | search={search} | isActive={is_active} | accessStatus={access_status}"
+    )
     user = ctx.user
     from vora_shared.models import FrameworkAccess
 
@@ -305,7 +307,9 @@ async def get_all_frameworks(
     sort_by: Annotated[str | None, Query(alias="sortBy")] = None,
     sort_order: Annotated[str | None, Query(alias="sortOrder")] = None,
 ):
-    logger.info(f"[LIST-FRAMEWORKS] Fetching all frameworks | user_id={ctx.user.id} | page={page} | limit={limit}")
+    logger.info(
+        f"[LIST-FRAMEWORKS] Fetching all frameworks | user_id={ctx.user.id} | page={page} | limit={limit}"
+    )
     page_num = clamp_page(page)
     limit_num = clamp_limit(limit)
 
@@ -437,7 +441,7 @@ async def download_framework_report(id: str, ctx: Annotated[AuthenticatedUser, D
 
         approved_by_id = framework_helper.approval_by(framework)
         approved_by_user = await session.get(User, str(approved_by_id)) if approved_by_id else None
-        
+
         versions = framework_helper.parse_file_versions(framework)
         doc_ids = [v.aiExtraction for v in versions if v.aiExtraction and isinstance(v.aiExtraction, str)]
         doc_extractions = {}
@@ -448,7 +452,7 @@ async def download_framework_report(id: str, ctx: Annotated[AuthenticatedUser, D
                 .all()
             )
             doc_extractions = {e.id: e for e in exts}
-            
+
         pdf_bytes = generate_framework_report_pdf(framework, approved_by_user, doc_extractions)
 
         safe_name = re.sub(r"[^a-zA-Z0-9]", "_", framework.frameworkName)
@@ -516,7 +520,9 @@ async def reject_framework(
     body: RejectFrameworkBody,
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
-    logger.info(f"[REJECT-FRAMEWORK] Rejection request | id={id} | user_id={ctx.user.id} | reason={body.reason[:50] if body.reason else ''}")
+    logger.info(
+        f"[REJECT-FRAMEWORK] Rejection request | id={id} | user_id={ctx.user.id} | reason={body.reason[:50] if body.reason else ''}"
+    )
     user = ctx.user
 
     async with session_scope() as session:
@@ -560,7 +566,9 @@ async def assign_framework_to_customer(
     body: AssignFrameworkToCustomerBody,
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
-    logger.info(f"[ASSIGN-FRAMEWORK] Assignment request | customerId={body.customerId} | tenantId={body.tenantId} | frameworkIds={body.frameworkIds} | user_id={ctx.user.id}")
+    logger.info(
+        f"[ASSIGN-FRAMEWORK] Assignment request | customerId={body.customerId} | tenantId={body.tenantId} | frameworkIds={body.frameworkIds} | user_id={ctx.user.id}"
+    )
     user = ctx.user
 
     if not body.customerId or not body.tenantId or not body.frameworkIds:
@@ -666,7 +674,9 @@ async def upload_framework(
     metadata: Annotated[str, Form()],
     file: Annotated[UploadFile | None, File()] = None,
 ):
-    logger.info(f"[UPLOAD-FRAMEWORK] Upload request | user_id={ctx.user.id} | file={file.filename if file else 'none'} | filename={file.filename if file else 'N/A'}")
+    logger.info(
+        f"[UPLOAD-FRAMEWORK] Upload request | user_id={ctx.user.id} | file={file.filename if file else 'none'} | filename={file.filename if file else 'N/A'}"
+    )
     user = ctx.user
 
     try:
@@ -910,7 +920,9 @@ async def get_framework_files(
     framework_id: Annotated[str, ApiPath(alias="frameworkId")],
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
-    logger.info(f"[GET-FRAMEWORK-FILES] Fetching framework files | framework_id={framework_id} | user_id={ctx.user.id}")
+    logger.info(
+        f"[GET-FRAMEWORK-FILES] Fetching framework files | framework_id={framework_id} | user_id={ctx.user.id}"
+    )
     user = ctx.user
 
     async with session_scope() as session:
@@ -952,7 +964,9 @@ async def get_framework_file_by_id(
     file_id: Annotated[str, ApiPath(alias="fileId")],
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
-    logger.info(f"[GET-FRAMEWORK-FILE] Fetching framework file | framework_id={framework_id} | file_id={file_id} | user_id={ctx.user.id}")
+    logger.info(
+        f"[GET-FRAMEWORK-FILE] Fetching framework file | framework_id={framework_id} | file_id={file_id} | user_id={ctx.user.id}"
+    )
     user = ctx.user
 
     async with session_scope() as session:
@@ -995,7 +1009,9 @@ async def download_framework_file(
     framework_id: Annotated[str, ApiPath(alias="frameworkId")],
     file_id: Annotated[str, ApiPath(alias="fileId")],
 ):
-    logger.info(f"[DOWNLOAD-FRAMEWORK-FILE] Download request | framework_id={framework_id} | file_id={file_id}")
+    logger.info(
+        f"[DOWNLOAD-FRAMEWORK-FILE] Download request | framework_id={framework_id} | file_id={file_id}"
+    )
 
     async with session_scope() as session:
         framework = await session.get(Framework, str(framework_id))
@@ -1030,7 +1046,9 @@ async def preview_framework_file(
     file_id: Annotated[str, ApiPath(alias="fileId")],
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
-    logger.info(f"[PREVIEW-FRAMEWORK-FILE] Preview request | framework_id={framework_id} | file_id={file_id} | user_id={ctx.user.id}")
+    logger.info(
+        f"[PREVIEW-FRAMEWORK-FILE] Preview request | framework_id={framework_id} | file_id={file_id} | user_id={ctx.user.id}"
+    )
     user = ctx.user
 
     async with session_scope() as session:
@@ -1065,7 +1083,9 @@ async def delete_framework_file(
     file_id: Annotated[str, ApiPath(alias="fileId")],
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
-    logger.info(f"[DELETE-FRAMEWORK-FILE] Delete request | framework_id={framework_id} | file_id={file_id} | user_id={ctx.user.id}")
+    logger.info(
+        f"[DELETE-FRAMEWORK-FILE] Delete request | framework_id={framework_id} | file_id={file_id} | user_id={ctx.user.id}"
+    )
     user = ctx.user
 
     async with session_scope() as session:
@@ -1127,7 +1147,9 @@ async def add_framework_control(
     body: AddControlBody,
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
-    logger.info(f"[ADD-CONTROL] Adding control | id={id} | file_version={file_version} | user_id={ctx.user.id}")
+    logger.info(
+        f"[ADD-CONTROL] Adding control | id={id} | file_version={file_version} | user_id={ctx.user.id}"
+    )
     user = ctx.user
 
     if (not body.sectionId and not body.newSection) or not body.name:
@@ -1218,7 +1240,9 @@ async def update_framework_control(
     body: UpdateControlBody,
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
-    logger.info(f"[UPDATE-CONTROL] Updating control | id={id} | file_version={file_version} | control_id={control_id} | user_id={ctx.user.id}")
+    logger.info(
+        f"[UPDATE-CONTROL] Updating control | id={id} | file_version={file_version} | control_id={control_id} | user_id={ctx.user.id}"
+    )
     user = ctx.user
 
     if not body.name and body.description is None and body.deployment_points is None:
@@ -1283,7 +1307,9 @@ async def update_framework_control_weightage(
     body: UpdateControlWeightageBody,
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
-    logger.info(f"[UPDATE-CONTROL-WEIGHTAGE] Updating control weightage | id={id} | file_version={file_version} | control_id={control_id} | weightage={body.weightage} | user_id={ctx.user.id}")
+    logger.info(
+        f"[UPDATE-CONTROL-WEIGHTAGE] Updating control weightage | id={id} | file_version={file_version} | control_id={control_id} | weightage={body.weightage} | user_id={ctx.user.id}"
+    )
     user = ctx.user
 
     if body.weightage is None or body.weightage < 0:
@@ -1340,7 +1366,9 @@ async def delete_framework_control(
     control_id: Annotated[str, ApiPath(alias="controlId")],
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
 ):
-    logger.info(f"[DELETE-CONTROL] Deleting control | id={id} | file_version={file_version} | control_id={control_id} | user_id={ctx.user.id}")
+    logger.info(
+        f"[DELETE-CONTROL] Deleting control | id={id} | file_version={file_version} | control_id={control_id} | user_id={ctx.user.id}"
+    )
     user = ctx.user
 
     async with session_scope() as session:

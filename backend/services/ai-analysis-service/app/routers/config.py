@@ -60,9 +60,7 @@ async def get_thresholds():
         logger.info("[GET-THRESHOLDS] Fetching active thresholds")
         async with session_scope() as session:
             config = (
-                await session.execute(
-                    select(GapThresholdConfig).where(GapThresholdConfig.is_active == True)
-                )
+                await session.execute(select(GapThresholdConfig).where(GapThresholdConfig.is_active == True))
             ).scalar_one_or_none()
 
             if not config:
@@ -121,15 +119,11 @@ async def create_thresholds(request: ThresholdsRequest):
         async with session_scope() as session:
             # Deactivate any existing active config
             existing_active = (
-                await session.execute(
-                    select(GapThresholdConfig).where(GapThresholdConfig.is_active == True)
-                )
+                await session.execute(select(GapThresholdConfig).where(GapThresholdConfig.is_active == True))
             ).scalar_one_or_none()
 
             if existing_active:
-                logger.info(
-                    f"[CREATE-THRESHOLDS] Deactivating existing config: {existing_active.id}"
-                )
+                logger.info(f"[CREATE-THRESHOLDS] Deactivating existing config: {existing_active.id}")
                 existing_active.is_active = False
                 session.add(existing_active)
 

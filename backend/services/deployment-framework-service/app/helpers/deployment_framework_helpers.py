@@ -117,9 +117,7 @@ def get_upload_file_path(file_url: str | None) -> str | None:
     if not file_url or file_url.startswith("/api/"):
         return None
     relative = (
-        file_url.replace("/uploads/", "", 1)
-        if file_url.startswith("/uploads/")
-        else file_url.lstrip("/")
+        file_url.replace("/uploads/", "", 1) if file_url.startswith("/uploads/") else file_url.lstrip("/")
     )
     return str((Path(file_storage.UPLOAD_BASE_PATH) / relative).resolve())
 
@@ -138,9 +136,7 @@ async def create_pending_extraction(session: AsyncSession, file_hash: str | None
     if not file_hash:
         return None
     existing = (
-        await session.execute(
-            select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash)
-        )
+        await session.execute(select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash))
     ).scalar_one_or_none()
     if existing:
         return existing
@@ -446,11 +442,7 @@ async def ensure_package_analysis_refs(
     if not package_data or not framework_id:
         return
     file_hashes = sorted(
-        {
-            _field(doc, "fileHash")
-            for doc in package_data.get("documents", [])
-            if _field(doc, "fileHash")
-        }
+        {_field(doc, "fileHash") for doc in package_data.get("documents", []) if _field(doc, "fileHash")}
     )
     if not file_hashes:
         return
@@ -480,9 +472,7 @@ def gap_point_matches(
     deployment_control_id: Any,
     deployment_point_id: Any | None,
 ) -> bool:
-    if str((p.get("assigned_framework_deployment_points") or {}).get("id")) != str(
-        assigned_point_id
-    ):
+    if str((p.get("assigned_framework_deployment_points") or {}).get("id")) != str(assigned_point_id):
         return False
 
     dc_id = p.get("deployment_framework_control_id")
