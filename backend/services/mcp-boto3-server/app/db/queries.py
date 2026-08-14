@@ -1,34 +1,31 @@
 import json
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from vora_shared.models.deployment_framework import DeploymentFramework
-from vora_shared.models.deployment_package_merge import DeploymentPackageMerge
-from vora_shared.models import (
-    ProcessedFile,
-    SourceConfig,
-    SourceCredential,
-)
-from vora_shared.models import ProcessedFile
+
 # =========================================
 # PROCESSED FILES
 # =========================================
 import sys
 from pathlib import Path
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from vora_shared.models import (
+    ProcessedFile,
+    SourceConfig,
+    SourceCredential,
+)
+from vora_shared.models.deployment_framework import DeploymentFramework
+from vora_shared.models.deployment_package_merge import DeploymentPackageMerge
+
 shared_path = Path(__file__).resolve().parents[3] / "shared"
 sys.path.insert(0, str(shared_path))
 
+
 async def is_processed(db: AsyncSession, file_path: str):
-    result = await db.execute(
-        select(ProcessedFile).where(ProcessedFile.file_path == file_path)
-    )
+    result = await db.execute(select(ProcessedFile).where(ProcessedFile.file_path == file_path))
     return result.scalar_one_or_none() is not None
 
 
-async def mark_processed(
-    db: AsyncSession,
-    file_path: str,
-    status: str = "done"
-) -> bool:
+async def mark_processed(db: AsyncSession, file_path: str, status: str = "done") -> bool:
     try:
         processed = ProcessedFile(
             file_path=file_path,
@@ -48,6 +45,7 @@ async def mark_processed(
 # =========================================
 # SOURCE CONFIG / CREDENTIALS
 # =========================================
+
 
 async def save_source_config(
     db: AsyncSession,
@@ -85,6 +83,7 @@ async def save_source_config(
 # FULL CONFIG
 # =========================================
 
+
 async def save_full_config(
     db: AsyncSession,
     data,
@@ -104,6 +103,7 @@ async def save_full_config(
 # GET SOURCE CONFIGS
 # =========================================
 
+
 async def get_source_configs(
     db: AsyncSession,
 ):
@@ -114,19 +114,20 @@ async def get_source_configs(
     response = []
 
     for config in configs:
-        response.append({
-            "id": config.id,
-            "control_name": config.control_name,
-            "dp_name": config.dp_name,
-            "organization_name": config.organization_name,
-            "source_type": config.source_type,
-            "source_name": config.source_name,
-            "is_active": config.is_active,
-            "created_at": config.created_at,
-        })
+        response.append(
+            {
+                "id": config.id,
+                "control_name": config.control_name,
+                "dp_name": config.dp_name,
+                "organization_name": config.organization_name,
+                "source_type": config.source_type,
+                "source_name": config.source_name,
+                "is_active": config.is_active,
+                "created_at": config.created_at,
+            }
+        )
 
     return response
-
 
 
 async def get_live_package(db: AsyncSession):
@@ -134,10 +135,7 @@ async def get_live_package(db: AsyncSession):
     Return the latest LIVE deployment package from deployment_frameworks.
     """
 
-    stmt = (
-        select(DeploymentFramework)
-        .order_by(DeploymentFramework.updatedAt.desc())
-    )
+    stmt = select(DeploymentFramework).order_by(DeploymentFramework.updatedAt.desc())
 
     result = await db.execute(stmt)
     frameworks = result.scalars().all()
@@ -154,6 +152,7 @@ async def get_live_package(db: AsyncSession):
                 }
 
     return None
+
 
 async def get_live_framework(db: AsyncSession):
     result = await db.execute(select(DeploymentFramework))
@@ -173,11 +172,7 @@ async def get_live_framework(db: AsyncSession):
 
 
 async def get_framework_merge(db: AsyncSession, merge_id: str):
-    result = await db.execute(
-        select(DeploymentPackageMerge).where(
-            DeploymentPackageMerge.id == merge_id
-        )
-    )
+    result = await db.execute(select(DeploymentPackageMerge).where(DeploymentPackageMerge.id == merge_id))
 
     merge = result.scalar_one_or_none()
 
