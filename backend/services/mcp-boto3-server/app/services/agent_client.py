@@ -1,10 +1,8 @@
 import os
+
 import requests
 
-AGENT_API = os.getenv(
-    "AGENT_API",
-    "http://192.168.1.30:7000/api/load/upload"
-)
+AGENT_API = os.getenv("AGENT_API", "http://192.168.1.30:7000/api/load/upload")
 
 
 def call_agent(payload: dict, agent_name: str):

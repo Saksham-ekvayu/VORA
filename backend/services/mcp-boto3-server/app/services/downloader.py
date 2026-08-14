@@ -1,5 +1,6 @@
-import boto3
 import os
+
+import boto3
 
 aws_folder = "aws_files"
 
@@ -19,16 +20,9 @@ def download_file(s3_path):
 
         filename = os.path.basename(key)
 
-        local_path = os.path.join(
-            aws_folder,
-            filename
-        )
+        local_path = os.path.join(aws_folder, filename)
 
-        s3.download_file(
-            bucket,
-            key,
-            local_path
-        )
+        s3.download_file(bucket, key, local_path)
 
         return local_path
 

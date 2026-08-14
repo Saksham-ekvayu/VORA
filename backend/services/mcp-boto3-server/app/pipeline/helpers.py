@@ -56,11 +56,7 @@ def extract_source_paths(controls_data: dict[str, Any], source: str) -> list[str
 
     deployment_points = extract_deployment_points(controls_data)
 
-    return [
-        dp["path"]
-        for dp in deployment_points
-        if dp["source"] == source
-    ]
+    return [dp["path"] for dp in deployment_points if dp["source"] == source]
 
 
 def group_paths_by_source(controls_data: dict[str, Any]) -> dict[str, list[str]]:

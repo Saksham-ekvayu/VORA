@@ -1,17 +1,18 @@
 import asyncio
 import logging
-from vora_shared.database import session_scope
+
+from app.collectors.collector_manager import collect_files
 from app.db.queries import (
-    get_live_framework,
     get_framework_merge,
+    get_live_framework,
     is_processed,
     mark_processed,
 )
 from app.pipeline.helpers import extract_source_paths
-from app.collectors.collector_manager import collect_files
-from app.services.downloader import download_file
 from app.services.agent_client import call_agent
+from app.services.downloader import download_file
 from app.utils.live_logs import add_live_log
+from vora_shared.database import session_scope
 
 
 def run_pipeline(source: str = "aws"):

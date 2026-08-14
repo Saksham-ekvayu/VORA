@@ -1,27 +1,22 @@
-
 import asyncio
 import logging
 import os
 
-from vora_shared.database import session_scope
-
+from app.collectors.collector_manager import collect_files
 from app.db.queries import (
-    get_live_framework,
     get_framework_merge,
+    get_live_framework,
     is_processed,
     mark_processed,
     save_deployment_document,
 )
-
-from app.collectors.collector_manager import collect_files
+from app.pipeline.helpers import extract_deployment_points
+from app.services.agent_client import call_agent
 from app.services.downloader import download_file
 from app.services.agent_client import call_agent
-from app.services.ai_extractor import trigger_ai_extraction
 from app.utils.live_logs import add_live_log
-from app.pipeline.helpers import (
-    extract_deployment_points,
-    save_file_to_uploads,
-)
+
+from app.pipeline.helpers import extract_deployment_points
 
 
 def run_pipeline(source: str = "local"):
@@ -54,12 +49,8 @@ async def _run_pipeline(source: str):
             add_live_log(f"Merge document not found: {merge_id}")
             return
 
-    logging.info(
-        f"LIVE package found: {framework['package_version']}"
-    )
-    add_live_log(
-        f"LIVE package found: {framework['package_version']}"
-    )
+    logging.info(f"LIVE package found: {framework['package_version']}")
+    add_live_log(f"LIVE package found: {framework['package_version']}")
 
     # ------------------------------------------------
     # STEP 2: EXTRACT DEPLOYMENT POINTS
@@ -68,20 +59,12 @@ async def _run_pipeline(source: str):
 
     deployment_points = extract_deployment_points(deployment_data)
 
-    logging.info(
-        f"Deployment points found: {len(deployment_points)}"
-    )
-    add_live_log(
-        f"Deployment points found: {len(deployment_points)}"
-    )
+    logging.info(f"Deployment points found: {len(deployment_points)}")
+    add_live_log(f"Deployment points found: {len(deployment_points)}")
 
     if not deployment_points:
-        logging.info(
-            "No deployment points with path and source found"
-        )
-        add_live_log(
-            "No deployment points with path and source found"
-        )
+        logging.info("No deployment points with path and source found")
+        add_live_log("No deployment points with path and source found")
         return
 
     # ------------------------------------------------
@@ -92,7 +75,7 @@ async def _run_pipeline(source: str):
         for dp in deployment_points
         if dp["source"].lower() == source.lower()
     ]
-    print("checkking the file is working or not")
+
     logging.info(f"Source paths: {source_paths}")
     add_live_log(f"Source paths: {source_paths}")
 
@@ -125,9 +108,7 @@ async def _run_pipeline(source: str):
             path = f.get("file_path")
 
             if not path:
-                logging.warning(
-                    f"Skipping invalid file entry: {f}"
-                )
+                logging.warning(f"Skipping invalid file entry: {f}")
                 continue
 
             # Skip already processed files
@@ -221,3 +202,4 @@ async def _run_pipeline(source: str):
                 add_live_log(
                     f"Error processing {path}: {e}"
                 )
+

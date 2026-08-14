@@ -1,18 +1,16 @@
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.interval import IntervalTrigger
-from apscheduler.triggers.cron import CronTrigger
+import logging
+
 import app.utils.live_logs as live_log_manager
 from app.mcp_server.controller import run_pipeline
-import logging  
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
+
 live_logs = []
 
 scheduler = BackgroundScheduler()
 
-current_scheduler_config = {
-    "source": "aws",
-    "scheduler_type": "interval",
-    "minutes": 1
-}
+current_scheduler_config = {"source": "aws", "scheduler_type": "interval", "minutes": 1}
 
 
 def start_dynamic_scheduler(payload: dict):
@@ -51,19 +49,13 @@ def start_dynamic_scheduler(payload: dict):
 
 
 def stop_scheduler():
-    if scheduler.running==False:
-        return{
-            "Status": False,
-            "Message":"Scheduler is already stop"
-        }
+    if scheduler.running == False:
+        return {"Status": False, "Message": "Scheduler is already stop"}
     if scheduler.running:
         scheduler.shutdown(wait=False)
         live_log_manager.live_logs.clear()
 
-    return {
-        "status": True,
-        "message": "Scheduler stopped successfully"
-    }
+    return {"status": True, "message": "Scheduler stopped successfully"}
 
 
 def scheduler_status():
@@ -73,8 +65,10 @@ def scheduler_status():
     return {
         "running": scheduler.running,
         "jobs": [job.id for job in jobs],
-        "config": current_scheduler_config
+        "config": current_scheduler_config,
     }
+
+
 def add_live_log(message):
 
     live_logs.append(message)

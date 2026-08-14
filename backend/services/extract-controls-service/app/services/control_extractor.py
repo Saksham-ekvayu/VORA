@@ -142,7 +142,7 @@ Return ONLY JSON. No markdown. No text outside JSON."""
             messages=[{"role": "user", "content": prompt_stage1}],
             temperature=0,
             max_tokens=CONTROL_EXTRACTION_MAX_TOKENS,
-            timeout=120,  # 2 minute timeout
+            timeout=3600,  # 1 hour timeout
         )
         elapsed = (datetime.now() - t_start).total_seconds()
         _log_llm_call("EXTRACT-STAGE1", response, elapsed)
@@ -203,7 +203,7 @@ Return ONLY JSON. No markdown."""
                 messages=[{"role": "user", "content": prompt_stage2}],
                 temperature=0,
                 max_tokens=DEPLOYMENT_MAX_TOKENS,
-                timeout=120,  # 2 minute timeout
+                timeout=3600,  # 1 hour timeout
             )
             elapsed = (datetime.now() - t_start).total_seconds()
             finish_reason = _log_llm_call(f"EXTRACT-STAGE2-batch{batch_num}", response, elapsed)
