@@ -164,6 +164,12 @@ export const typeVariantMap = {
   deployed: "blue",
 };
 
+export const packageTypeColorMap = {
+  blue: { border: "border-t-blue-500", bg: "bg-blue-500" },
+  green: { border: "border-t-green-500", bg: "bg-green-500" },
+  default: { border: "border-t-amber-400", bg: "bg-amber-400" },
+};
+
 export const getExpertReviewBadgeVariant = (status) => {
   const map = {
     approved: "default",

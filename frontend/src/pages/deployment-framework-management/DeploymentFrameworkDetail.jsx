@@ -29,6 +29,7 @@ import {
   STATUS_UPLOADED,
   STATUS_LIVE,
   typeVariantMap,
+  packageTypeColorMap,
 } from "@/utils/commonUtils";
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
@@ -459,6 +460,13 @@ const DeploymentFrameworkDetail = () => {
   const isAssignedFrameworkFinalized =
     assignedFramework?.finalization?.isFinalized === true;
 
+  const preReleaseVariant =
+    typeVariantMap[preReleasePackage?.type] || "default";
+  const packageTypeColors =
+    packageTypeColorMap[preReleaseVariant] || packageTypeColorMap.default;
+  const packageTypeBorderColor = packageTypeColors.border;
+  const packageTypeSpanColor = packageTypeColors.bg;
+
   return (
     <div className="space-y-2 my-2">
       {/* ── Revoked Banner ── */}
@@ -486,26 +494,14 @@ const DeploymentFrameworkDetail = () => {
         </Link>
         {/* current version */}
         <div
-          className={`bg-card border border-border rounded p-4 border-t-3 ${
-            typeVariantMap[preReleasePackage?.type] === "blue"
-              ? "border-t-blue-500"
-              : typeVariantMap[preReleasePackage?.type] === "green"
-                ? "border-t-green-500"
-                : "border-t-amber-400"
-          }`}
+          className={`bg-card border border-border rounded p-4 border-t-3 ${packageTypeBorderColor}`}
         >
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
             Current Package Version
           </p>
           <div className="flex items-center gap-2 flex-wrap">
             <span
-              className={`w-2 h-2 rounded shrink-0 ${
-                typeVariantMap[preReleasePackage?.type] === "blue"
-                  ? "bg-blue-500"
-                  : typeVariantMap[preReleasePackage?.type] === "green"
-                    ? "bg-green-500"
-                    : "bg-amber-400"
-              }`}
+              className={`w-2 h-2 rounded shrink-0 ${packageTypeSpanColor}`}
             />
             <span className="text-base font-bold text-foreground">
               v{preReleasePackage?.packageVersion}
