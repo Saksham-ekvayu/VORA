@@ -616,3 +616,169 @@ async def list_document_extractions(page: int = 1, page_size: int = 10):
         logger.error(f"[LIST-EXTRACTIONS] Error: {exc}")
         logger.exception("list_document_extractions error")
         return server_error(str(exc))
+
+
+# ---------------------------------------------------------------------------
+# Extraction Refresh/Retry
+# ---------------------------------------------------------------------------
+
+
+@router.post("/extraction/{extraction_id}/retry")
+async def retry_extraction(extraction_id: str):
+    """
+    Retry/refresh a stuck extraction by resetting it to 'pending' state.
+    This allows re-triggering extraction from scratch.
+
+    Args:
+        extraction_id: The document_extraction ID to retry
+
+    Returns:
+        Success with updated extraction status
+    """
+    try:
+        extraction_id = str(extraction_id).strip()
+        if not extraction_id:
+            return error("Invalid extraction_id")
+
+        logger.info(f"[RETRY] Retry requested for extraction | id={extraction_id}")
+
+        async with session_scope() as session:
+            # Query fresh from DB
+            stmt = select(DocumentExtraction).where(DocumentExtraction.id == extraction_id)
+            result = await session.execute(stmt)
+            doc_extraction = result.scalar_one_or_none()
+            
+            if not doc_extraction:
+                return not_found(f"Extraction not found: {extraction_id}")
+
+            # Reset to pending state
+            ai_data = {
+                "status": "pending",
+                "timestamp": _iso(),
+                "message": "Extraction reset and queued for retry",
+                "statusHistory": {
+                    "processingTimeSeconds": 0,
+                    "completedAt": None,
+                    "history": [
+                        {
+                            "status": "pending",
+                            "timestamp": _iso(),
+                            "message": "Extraction reset for retry",
+                        }
+                    ],
+                },
+            }
+
+            doc_extraction.aiExtraction = ai_data
+            session.add(doc_extraction)
+            await session.flush()
+            await session.commit()
+
+            logger.info(
+                f"[RETRY] ✅ Extraction reset to pending | id={extraction_id} | file_hash={doc_extraction.fileHash}"
+            )
+
+            return success(
+                message="Extraction reset to pending and ready for retry",
+                data={
+                    "extraction_id": extraction_id,
+                    "file_hash": doc_extraction.fileHash,
+                    "status": "pending",
+                    "timestamp": ai_data["timestamp"],
+                },
+            )
+
+    except Exception as exc:  # noqa: BLE001
+        logger.error(f"[RETRY] ❌ Error for extraction_id={extraction_id}: {exc}")
+        logger.exception("retry_extraction error")
+        return server_error(str(exc))
+
+
+@router.post("/deployment-document/{dd_id}/ai-extract/retry")
+async def retry_deployment_document_extraction(dd_id: str):
+    """
+    Retry/refresh a stuck deployment document extraction.
+    Resets status to 'pending' and re-queues the extraction task.
+
+    Args:
+        dd_id: The deployment document ID to retry
+
+    Returns:
+        Success with retry status
+    """
+    try:
+        dd_id = str(dd_id).strip()
+        if not dd_id:
+            return error("Invalid dd_id")
+
+        logger.info(f"[RETRY-DD] Retry requested for deployment document | dd={dd_id}")
+
+        # Get file info from deployment document
+        file_id = None
+        file_hash = None
+        async with session_scope() as session:
+            dd = await session.get(DeploymentDocument, dd_id)
+            if not dd:
+                return not_found(f"Deployment Document not found: {dd_id}")
+
+            doc_data = dd.document or {}
+            if isinstance(doc_data, dict):
+                file_id = doc_data.get("fileId")
+                file_hash = doc_data.get("fileHash")
+
+            if not file_hash or not file_id:
+                return error(f"No file found in deployment document: {dd_id}")
+
+        # Reset extraction to pending
+        if file_hash:
+            async with session_scope() as session:
+                stmt = select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash)
+                result = await session.execute(stmt)
+                existing = result.scalar_one_or_none()
+
+                if existing:
+                    ai_data = {
+                        "status": "pending",
+                        "timestamp": _iso(),
+                        "message": "Deployment document extraction reset for retry",
+                        "statusHistory": {
+                            "processingTimeSeconds": 0,
+                            "completedAt": None,
+                            "history": [
+                                {
+                                    "status": "pending",
+                                    "timestamp": _iso(),
+                                    "message": "Extraction reset for retry",
+                                }
+                            ],
+                        },
+                    }
+
+                    existing.aiExtraction = ai_data
+                    session.add(existing)
+                    await session.flush()
+                    await session.commit()
+
+                    logger.info(f"[RETRY-DD] ✅ Extraction reset to pending | id={existing.id}")
+
+        # Queue new extraction task
+        task = asyncio.create_task(run_deployment_document_extraction(dd_id, file_id))
+        _background_tasks.add(task)
+        task.add_done_callback(_background_tasks.discard)
+        logger.info("[RETRY-DD] Deployment Document extraction task re-queued")
+
+        return success(
+            message="Deployment Document extraction reset and re-queued",
+            data={
+                "dd_id": dd_id,
+                "file_hash": file_hash,
+                "status": "pending",
+                "retry_timestamp": _iso(),
+            },
+        )
+
+    except Exception as exc:  # noqa: BLE001
+        logger.error(f"[RETRY-DD] ❌ Error for dd_id={dd_id}: {exc}")
+        logger.exception("retry_deployment_document_extraction error")
+        return server_error(str(exc))
+
