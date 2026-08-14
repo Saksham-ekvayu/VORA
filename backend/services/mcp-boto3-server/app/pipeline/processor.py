@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 
 from app.collectors.collector_manager import collect_files
 from app.db.queries import (
@@ -7,21 +8,24 @@ from app.db.queries import (
     get_live_framework,
     is_processed,
     mark_processed,
+    save_deployment_document,
 )
 from app.pipeline.helpers import extract_deployment_points
 from app.services.agent_client import call_agent
 from app.services.downloader import download_file
+from app.services.agent_client import call_agent
 from app.utils.live_logs import add_live_log
-from vora_shared.database import session_scope
+
+from app.pipeline.helpers import extract_deployment_points
 
 
-def run_pipeline(source: str = "aws"):
+def run_pipeline(source: str = "local"):
     asyncio.run(_run_pipeline(source))
 
 
 async def _run_pipeline(source: str):
     # ------------------------------------------------
-    # STEP 1: CHECK LIVE PACKAGE
+    # STEP 1: GET LIVE FRAMEWORK
     # ------------------------------------------------
     async with session_scope() as db:
         framework = await get_live_framework(db)
@@ -49,7 +53,7 @@ async def _run_pipeline(source: str):
     add_live_log(f"LIVE package found: {framework['package_version']}")
 
     # ------------------------------------------------
-    # STEP 2: USE CANONICAL MERGED CONTROLS
+    # STEP 2: EXTRACT DEPLOYMENT POINTS
     # ------------------------------------------------
     deployment_data = merge_data["controls"]
 
@@ -66,7 +70,11 @@ async def _run_pipeline(source: str):
     # ------------------------------------------------
     # STEP 3: FILTER PATHS FOR CURRENT SOURCE
     # ------------------------------------------------
-    source_paths = [dp["path"] for dp in deployment_points if dp["source"].lower() == source.lower()]
+    source_paths = [
+        dp["path"]
+        for dp in deployment_points
+        if dp["source"].lower() == source.lower()
+    ]
 
     logging.info(f"Source paths: {source_paths}")
     add_live_log(f"Source paths: {source_paths}")
@@ -112,21 +120,66 @@ async def _run_pipeline(source: str):
                 logging.info(f"Processing: {path}")
                 add_live_log(f"Processing: {path}")
 
-                # Download S3 files locally
+                # ------------------------------------------------
+                # DOWNLOAD IF S3
+                # ------------------------------------------------
                 if path.startswith("s3://"):
                     local_path = download_file(path)
                 else:
                     local_path = path
 
-                # Prepare payload for Compliance Audit Agent
+                # ------------------------------------------------
+                # SAVE FILE INTO uploads/deployment_document
+                # ------------------------------------------------
+                saved_path = save_file_to_uploads(local_path)
+
+                logging.info(f"Saved file: {saved_path}")
+                add_live_log(f"Saved file: {saved_path}")
+            
+                # ------------------------------------------------
+                # SAVE INTO deployment_documents TABLE
+                # ------------------------------------------------
+                deployment_document = await save_deployment_document(
+                    db=db,
+                    framework=framework,
+                    file_path=saved_path,
+                    uploaded_by="system",
+                )
+
+                document_id = deployment_document.id
+
+                logging.info(
+                    f"Deployment document id: {document_id}"
+                )
+                add_live_log(
+                    f"Deployment document id: {document_id}"
+                )
+
+                # ------------------------------------------------
+                # TRIGGER AI EXTRACTION
+                # ------------------------------------------------
+                print("checking")
+                ai_response = trigger_ai_extraction(document_id)
+
+                logging.info(
+                    f"AI Extraction Response: {ai_response}"
+                )
+                add_live_log(
+                    f"AI Extraction Response: {ai_response}"
+                )
+
+                # ------------------------------------------------
+                # OPTIONAL: CALL COMPLIANCE AUDIT AGENT
+                # ------------------------------------------------
                 payload = {
                     "id": framework["framework_id"],
                     "framework_name": framework["framework_name"],
                     "package_version": framework["package_version"],
                     "merge_document": merge_id,
                     "deployment_framework": deployment_data,
-                    "file_path": local_path,
+                    "file_path": saved_path,
                     "source_path": path,
+                    "deployment_document_id": document_id,
                 }
 
                 response = call_agent(
@@ -137,9 +190,16 @@ async def _run_pipeline(source: str):
                 logging.info(f"Agent Response: {response}")
                 add_live_log(f"Agent Response: {response}")
 
-                # Mark as processed
+                # ------------------------------------------------
+                # MARK AS PROCESSED
+                # ------------------------------------------------
                 await mark_processed(db, path)
 
             except Exception as e:
-                logging.exception(f"Error processing {path}: {e}")
-                add_live_log(f"Error processing {path}: {e}")
+                logging.exception(
+                    f"Error processing {path}: {e}"
+                )
+                add_live_log(
+                    f"Error processing {path}: {e}"
+                )
+
