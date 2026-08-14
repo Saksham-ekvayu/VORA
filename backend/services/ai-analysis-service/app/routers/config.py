@@ -60,7 +60,9 @@ async def get_thresholds():
         logger.info("[GET-THRESHOLDS] Fetching active thresholds")
         async with session_scope() as session:
             config = (
-                await session.execute(select(GapThresholdConfig).where(GapThresholdConfig.is_active == True))
+                await session.execute(
+                    select(GapThresholdConfig).where(GapThresholdConfig.is_active == True)
+                )
             ).scalar_one_or_none()
 
             if not config:
@@ -99,7 +101,7 @@ async def get_thresholds():
                 },
             )
     except Exception as exc:
-        logger.error(f"[GET-THRESHOLDS] Error: {exc}")
+        logger.exception(f"[GET-THRESHOLDS] Error: {exc}")
         logger.exception("get_thresholds error")
         return server_error(str(exc))
 
@@ -113,15 +115,21 @@ async def get_thresholds():
 async def create_thresholds(request: ThresholdsRequest):
     """Create gap analysis thresholds configuration."""
     try:
-        logger.info(f"[CREATE-THRESHOLDS] Creating new threshold config | high={request.implemented_threshold} | medium={request.partially_implemented_threshold}")
+        logger.info(
+            f"[CREATE-THRESHOLDS] Creating new threshold config | high={request.implemented_threshold} | medium={request.partially_implemented_threshold}"
+        )
         async with session_scope() as session:
             # Deactivate any existing active config
             existing_active = (
-                await session.execute(select(GapThresholdConfig).where(GapThresholdConfig.is_active == True))
+                await session.execute(
+                    select(GapThresholdConfig).where(GapThresholdConfig.is_active == True)
+                )
             ).scalar_one_or_none()
 
             if existing_active:
-                logger.info(f"[CREATE-THRESHOLDS] Deactivating existing config: {existing_active.id}")
+                logger.info(
+                    f"[CREATE-THRESHOLDS] Deactivating existing config: {existing_active.id}"
+                )
                 existing_active.is_active = False
                 session.add(existing_active)
 
@@ -160,7 +168,7 @@ async def create_thresholds(request: ThresholdsRequest):
                 status_code=201,
             )
     except Exception as exc:
-        logger.error(f"[CREATE-THRESHOLDS] Error: {exc}")
+        logger.exception(f"[CREATE-THRESHOLDS] Error: {exc}")
         logger.exception("create_thresholds error")
         return server_error(str(exc))
 
@@ -217,7 +225,7 @@ async def update_thresholds(config_id: str, request: ThresholdsRequest):
                 },
             )
     except Exception as exc:
-        logger.error(f"[UPDATE-THRESHOLDS] Error updating config {config_id}: {exc}")
+        logger.exception(f"[UPDATE-THRESHOLDS] Error updating config {config_id}: {exc}")
         logger.exception("update_thresholds error")
         return server_error(str(exc))
 
@@ -246,7 +254,7 @@ async def delete_thresholds(config_id: str):
 
             return success(message="Thresholds configuration deleted successfully")
     except Exception as exc:
-        logger.error(f"[DELETE-THRESHOLDS] Error deleting config {config_id}: {exc}")
+        logger.exception(f"[DELETE-THRESHOLDS] Error deleting config {config_id}: {exc}")
         logger.exception("delete_thresholds error")
         return server_error(str(exc))
 
@@ -296,6 +304,6 @@ async def list_thresholds():
                 data=items,
             )
     except Exception as exc:
-        logger.error(f"[LIST-THRESHOLDS] Error: {exc}")
+        logger.exception(f"[LIST-THRESHOLDS] Error: {exc}")
         logger.exception("list_thresholds error")
         return server_error(str(exc))

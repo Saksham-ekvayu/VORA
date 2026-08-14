@@ -343,7 +343,7 @@ async def delete_comparison(comparison_id: str):
             await session.delete(comparison)
             await session.commit()
 
-            logger.info(f"[COMPARISON-DELETE]  Deleted successfully")
+            logger.info("  [COMPARISON-DELETE]  Deleted successfully")
             logger.info(f"  Deployment Framework ID: {df_id}")
             logger.info(f"  Package Version: {pkg_ver}")
 

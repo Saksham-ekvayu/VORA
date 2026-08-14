@@ -333,7 +333,7 @@ async def delete_gap_analysis(gap_id: str):
             await session.delete(gap_analysis)
             await session.commit()
 
-            logger.info(f"[GAP-DELETE]  Deleted successfully")
+            logger.info("  [GAP-DELETE]  Deleted successfully")
             logger.info(f"  Deployment Framework ID: {df_id}")
             logger.info(f"  Package Version: {pkg_ver}")
 
