@@ -1,8 +1,8 @@
+import logging
 import os
 import sys
-import logging
-from pathlib import Path
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 # ------------------------------------------------
 # Add backend/shared to PYTHONPATH FIRST
@@ -10,9 +10,8 @@ from contextlib import asynccontextmanager
 shared_path = Path(__file__).resolve().parents[3] / "shared"
 sys.path.insert(0, str(shared_path))
 
-from fastapi import FastAPI
-
 from app.mcp_server.router import router
+from fastapi import FastAPI
 from vora_shared.config import get_settings
 from vora_shared.database import connect_db, disconnect_db
 from vora_shared.server import create_vora_app
