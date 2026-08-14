@@ -40,9 +40,9 @@ class FrameworkPackageDocument(BaseModel):
 
 class PackageVersion(BaseModel):
     packageVersion: str
-    type: Literal["pre-release", "in-review", "deployed"]
+    type: Literal["pre-release", "in-review", "deployed", "archived"]
     trigger: str | None = None
-    status: Literal["pending", "returned", "live", "superseded"] = "pending"
+    status: Literal["pending", "returned", "live", "superseded", "revoked"] = "pending"
     documents: list[FrameworkPackageDocument] = Field(default_factory=list)
     mergeDocument: str | None = None
     comparison: str | None = None

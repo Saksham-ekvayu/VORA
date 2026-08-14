@@ -36,6 +36,7 @@ function normalizePoint(point) {
   return {
     ...point,
     path: point?.path ?? "",
+    source: point?.source ?? "",
   };
 }
 
@@ -92,25 +93,27 @@ function getPathKey(frameworkId, sectionKey, controlId, dpId) {
   return `${frameworkId}-${sectionKey}-${controlId}-${dpId}`;
 }
 
-function collectDpPaths(ctrl, acc, frameworkId, sectionKey) {
+function collectDpPaths(ctrl, accPaths, accSources, frameworkId, sectionKey) {
   for (const dp of ctrl?.dps ?? []) {
-    if (dp.path)
-      acc[getPathKey(frameworkId, sectionKey, ctrl.id, dp.id)] = dp.path;
+    const key = getPathKey(frameworkId, sectionKey, ctrl.id, dp.id);
+    if (dp.path) accPaths[key] = dp.path;
+    if (dp.source) accSources[key] = dp.source;
   }
 }
 
-function collectSectionPaths(section, acc, frameworkId) {
+function collectSectionPaths(section, accPaths, accSources, frameworkId) {
   for (const ctrl of section?.controls ?? [])
-    collectDpPaths(ctrl, acc, frameworkId, section._key);
+    collectDpPaths(ctrl, accPaths, accSources, frameworkId, section._key);
 }
 
 function buildSavedPaths(data) {
   const savedPaths = {};
+  const savedSources = {};
   for (const fw of data) {
     for (const section of fw?.sections ?? [])
-      collectSectionPaths(section, savedPaths, fw.id);
+      collectSectionPaths(section, savedPaths, savedSources, fw.id);
   }
-  return savedPaths;
+  return { savedPaths, savedSources };
 }
 
 // ─── Column Panel ─────────────────────────────────────────────────────────────
@@ -319,6 +322,8 @@ export default function MonitoringSetup() {
   const [dpFilter, setDpFilter] = useState(searchParams.get("filter") || "all");
   const [paths, setPaths] = useState({});
   const [savedPaths, setSavedPaths] = useState({});
+  const [sources, setSources] = useState({});
+  const [savedSources, setSavedSources] = useState({});
   const [savingDp, setSavingDp] = useState(null);
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
@@ -341,8 +346,12 @@ export default function MonitoringSetup() {
       setSelectedFw(firstFw);
       setSelectedSection(firstSection);
       setSelectedControl(firstControl);
-      setPaths(buildSavedPaths(frameworksData));
-      setSavedPaths(buildSavedPaths(frameworksData));
+      const { savedPaths: sp, savedSources: ss } =
+        buildSavedPaths(frameworksData);
+      setPaths(sp);
+      setSavedPaths(sp);
+      setSources(ss);
+      setSavedSources(ss);
     } catch (err) {
       toast.error(err.message || "Failed to load client controls");
     } finally {
@@ -418,6 +427,10 @@ export default function MonitoringSetup() {
   const setPath = (dpId, val) =>
     setPaths((prev) => ({ ...prev, [getCurrentPathKey(dpId)]: val }));
 
+  const getSource = (dpId) => sources[getCurrentPathKey(dpId)] ?? "";
+  const setSource = (dpId, val) =>
+    setSources((prev) => ({ ...prev, [getCurrentPathKey(dpId)]: val }));
+
   const pointMatches = (dp, sKey, c) => {
     const dpPath =
       savedPaths[getPathKey(selectedFw?.id, sKey, c.id, dp.id)] ?? "";
@@ -487,6 +500,7 @@ export default function MonitoringSetup() {
         dpId
       );
       const pathVal = (paths[pathKey] ?? "").trim();
+      const sourceVal = (sources[pathKey] ?? "").trim();
 
       if (!pathVal) {
         toast.error("Please enter a path before saving");
@@ -502,11 +516,13 @@ export default function MonitoringSetup() {
           controlId: selectedControl.id,
           pointId: dpId,
           path: pathVal,
+          source: sourceVal,
         });
 
         if (res.success) {
           toast.success(res.message);
           setSavedPaths((prev) => ({ ...prev, [pathKey]: pathVal }));
+          setSavedSources((prev) => ({ ...prev, [pathKey]: sourceVal }));
         }
       } catch (err) {
         console.error("Failed to save path:", err);
@@ -515,7 +531,7 @@ export default function MonitoringSetup() {
         setSavingDp(null);
       }
     },
-    [selectedFw, selectedSection, selectedControl, paths]
+    [selectedFw, selectedSection, selectedControl, paths, sources]
   );
 
   if (loading) {
@@ -708,7 +724,14 @@ export default function MonitoringSetup() {
                       placeholder="Enter path..."
                       value={getPath(dp.id)}
                       onChange={(e) => setPath(dp.id, e.target.value)}
-                      className="h-7 text-xs!"
+                      className="h-7 text-xs! flex-1"
+                    />
+                    <Input
+                      type="text"
+                      placeholder="Source..."
+                      value={getSource(dp.id)}
+                      onChange={(e) => setSource(dp.id, e.target.value)}
+                      className="h-7 text-xs! w-24 shrink-0"
                     />
                     <Button
                       size="xs"
@@ -716,8 +739,10 @@ export default function MonitoringSetup() {
                       disabled={
                         savingDp === getCurrentPathKey(dp.id) ||
                         !getPath(dp.id).trim() ||
-                        getPath(dp.id).trim() ===
-                          (savedPaths[getCurrentPathKey(dp.id)] ?? "")
+                        (getPath(dp.id).trim() ===
+                          (savedPaths[getCurrentPathKey(dp.id)] ?? "") &&
+                          getSource(dp.id).trim() ===
+                            (savedSources[getCurrentPathKey(dp.id)] ?? ""))
                       }
                       onClick={() => handleSavePath(dp.id)}
                     >

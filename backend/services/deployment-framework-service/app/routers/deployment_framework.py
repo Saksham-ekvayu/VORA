@@ -292,6 +292,7 @@ def _update_deployment_point_path(
     control_id: str,
     point_id: str,
     path_value: str,
+    source_value: str | None = None,
 ) -> bool:
     for section in controls_data:
         if section_id and section.get("id") != section_id:
@@ -306,6 +307,8 @@ def _update_deployment_point_path(
         if not dp:
             continue
         dp["path"] = path_value
+        if source_value is not None:
+            dp["source"] = source_value
         return True
     return False
 
@@ -320,6 +323,7 @@ async def update_deployment_package_point_path(
     control_id = body.get("controlId")
     point_id = body.get("pointId")
     path_value = body.get("path")
+    source_value = body.get("source")
     package_version = body.get("packageVersion")
     section_id = body.get("sectionId")
 
@@ -363,7 +367,7 @@ async def update_deployment_package_point_path(
         controls_data = list(merge_data.get("controls_data") or [])
 
         point_found = _update_deployment_point_path(
-            controls_data, section_id, control_id, point_id, path_value
+            controls_data, section_id, control_id, point_id, path_value, source_value
         )
 
         if not point_found:
@@ -381,6 +385,7 @@ async def update_deployment_package_point_path(
                 "controlId": control_id,
                 "pointId": point_id,
                 "path": path_value,
+                "source": source_value,
             },
             "Deployment point path updated successfully",
         )
@@ -1153,25 +1158,14 @@ async def request_expert_review(
 
 def _apply_review_action(
     action: str,
-    framework: Any,
-    packages: list[Any],
     found_package: Any,
-    package_version: str,
     comments: str | None,
 ) -> None:
     if action == "approve":
-        for pkg in packages:
-            if pkg.status == "live" and pkg.packageVersion != package_version:
-                pkg.status = "superseded"
-                pkg.updatedAt = _utcnow()
-
-        found_package.type = "deployed"
-        found_package.status = "live"
         found_package.expertReview.status = "approved"
         found_package.expertReview.reviewedAt = _utcnow()
         found_package.expertReview.comments = comments
         found_package.updatedAt = _utcnow()
-        framework.currentPackageVersion = package_version
     else:
         found_package.type = "pre-release"
         found_package.status = "returned"
@@ -1228,7 +1222,7 @@ async def review_deployment_package(
         if assigned_expert_id != str(user.id):
             return forbidden(FRAMEWORK_MESSAGES["ONLY_ASSIGNED_FRAMEWORKS"])
 
-        _apply_review_action(action, framework, packages, found_package, package_version, comments)
+        _apply_review_action(action, found_package, comments)
 
         framework.packages = dump_packages(packages)
         framework.updatedAt = _utcnow()
@@ -1251,6 +1245,98 @@ async def review_deployment_package(
                 },
             },
             message,
+        )
+
+
+# ─── PATCH /:id/packages/:packageVersion/deploy ─────────────────────────────
+
+async def _approve_deployment_points(session: Any, merge_document_id: str) -> None:
+    package_merge = (
+        await session.execute(
+            select(DeploymentPackageMerge).where(
+                DeploymentPackageMerge.id == str(merge_document_id)
+            )
+        )
+    ).scalar_one_or_none()
+    
+    if not package_merge:
+        return
+        
+    merge_data = dict(package_merge.controls or {})
+    controls_data = list(merge_data.get("controls_data") or [])
+    for section in controls_data:
+        for control in section.get("controls") or []:
+            for dp in control.get("deployment_points") or []:
+                dp["status"] = "approved"
+    
+    merge_data["controls_data"] = controls_data
+    package_merge.controls = merge_data
+    flag_modified(package_merge, "controls")
+
+
+@router.patch("/{id}/packages/{packageVersion}/deploy")
+async def deploy_deployment_package(
+    id: str,
+    package_version: Annotated[str, Path(alias="packageVersion")],
+    ctx: Annotated[RequestContext, Depends(get_context)],
+):
+    logger.info(f"[DEPLOY-PACKAGE] Deploy action | id={id} | package_version={package_version} | user_id={ctx.user.id}")
+    user = ctx.user
+    tenant_id = ctx.tenant_id
+
+    if user.role != "auditor":
+        logger.warning(f"[DEPLOY-PACKAGE] Unauthorized attempt | user_id={ctx.user.id} | role={user.role}")
+        return forbidden("Only auditors can deploy deployment packages")
+
+    async with session_scope() as session:
+        framework = (
+            await session.execute(
+                select(DeploymentFramework).where(
+                    DeploymentFramework.id == str(id),
+                    DeploymentFramework.tenantId == tenant_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not framework:
+            return not_found(_RESOURCE_DEPLOYMENT_FRAMEWORK)
+
+        packages = coerce_packages(framework.packages)
+        found_package = next((p for p in packages if p.packageVersion == package_version), None)
+        if not found_package:
+            return not_found(_RESOURCE_PACKAGE_VERSION)
+
+        if not found_package.expertReview or found_package.expertReview.status != "approved":
+            return error("Package must be approved by an expert before deployment", 400)
+            
+        if found_package.status == "live":
+            return error("Package is already live", 400)
+
+        # Supersede other live packages
+        for pkg in packages:
+            if pkg.status == "live" and pkg.packageVersion != package_version:
+                pkg.status = "superseded"
+                pkg.type = "archived"
+                pkg.updatedAt = _utcnow()
+
+        found_package.type = "deployed"
+        found_package.status = "live"
+        found_package.updatedAt = _utcnow()
+        framework.currentPackageVersion = package_version
+        
+        if found_package.mergeDocument:
+            await _approve_deployment_points(session, found_package.mergeDocument)
+
+        framework.packages = dump_packages(packages)
+        framework.updatedAt = _utcnow()
+
+        return success(
+            {
+                "frameworkId": (str(framework.id) if framework and getattr(framework, "id", None) else None),
+                "packageVersion": package_version,
+                "type": found_package.type,
+                "status": found_package.status,
+            },
+            "Package deployed successfully",
         )
 
 

@@ -230,6 +230,22 @@ async def download_framework_assignment_report(
 # ─── PATCH /assignments/:frameworkId/:customerId/revoke ─────────────────────
 
 
+def _revoke_live_deployment_packages(deployment_frameworks: list[Any]) -> None:
+    from app.helpers.deployment_framework_helpers import coerce_packages, dump_packages
+    for df in deployment_frameworks:
+        packages = coerce_packages(df.packages)
+        changed = False
+        for pkg in packages:
+            if getattr(pkg, "status", None) == "live":
+                pkg.status = "revoked"
+                pkg.type = "archived"
+                pkg.updatedAt = _utcnow()
+                changed = True
+        
+        if changed:
+            df.packages = dump_packages(packages)
+            df.updatedAt = _utcnow()
+
 @router.patch("/assignments/{frameworkId}/{customerId}/revoke")
 async def revoke_framework_assignment(
     framework_id: Annotated[str, Path(alias="frameworkId")],
@@ -261,22 +277,24 @@ async def revoke_framework_assignment(
             AssignmentFinalization(isFinalized=False, finalizedBy=None, finalizedAt=None)
         )
 
+        from vora_shared.models import DeploymentFramework
+
+        deployment_frameworks = (
+            await session.execute(
+                select(DeploymentFramework).where(
+                    DeploymentFramework.assignedFrameworkId == str(assignment.id)
+                )
+            )
+        ).scalars().all()
+
+        _revoke_live_deployment_packages(deployment_frameworks)
+
         return success(
             {
-                "id": str(assignment.id) if assignment and getattr(assignment, "id", None) else None,
-                "tenantId": (
-                    str(assignment.tenantId) if assignment and getattr(assignment, "tenantId", None) else None
-                ),
-                "customerId": (
-                    str(assignment.customerId)
-                    if assignment and getattr(assignment, "customerId", None)
-                    else None
-                ),
-                "frameworkId": (
-                    str(assignment.frameworkId)
-                    if assignment and getattr(assignment, "frameworkId", None)
-                    else None
-                ),
+                "id": str(assignment.id),
+                "tenantId": str(assignment.tenantId),
+                "customerId": str(assignment.customerId),
+                "frameworkId": str(assignment.frameworkId),
                 "status": assignment.status,
                 "revocation": assignment.revocation,
             },

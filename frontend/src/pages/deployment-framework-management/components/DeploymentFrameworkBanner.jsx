@@ -3,6 +3,7 @@
 import Icon from "@/components/custom/Icon";
 import { Badge } from "@/components/ui/badge";
 import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
+import { Link } from "react-router-dom";
 
 // ─── AssignedFrameworkCard ────────────────────────────────────────────────────
 /**
@@ -111,9 +112,12 @@ const DeploymentFrameworkBanner = ({ assignedFramework }) => {
               <p className="text-sm font-semibold text-red-700 dark:text-red-400">
                 This deployment framework was uploaded for the assigned
                 framework{" "}
-                <span className="underline underline-offset-2">
+                <Link
+                  to={`/assigned-frameworks/${assignedFramework?.assignedFrameworkId}`}
+                  className="underline underline-offset-2 hover:text-primary transition-colors"
+                >
                   {assignedFramework?.frameworkName}
-                </span>{" "}
+                </Link>{" "}
                 ({assignedFramework?.frameworkVersion}), which has now been
                 revoked.
               </p>
@@ -240,9 +244,12 @@ const DeploymentFrameworkBanner = ({ assignedFramework }) => {
           <div>
             <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
               The assigned framework{" "}
-              <span className="underline underline-offset-2">
+              <Link
+                to={`/assigned-frameworks/${assignedFramework?.assignedFrameworkId}`}
+                className="underline underline-offset-2 hover:text-primary transition-colors"
+              >
                 {assignedFramework?.frameworkName}
-              </span>{" "}
+              </Link>{" "}
               ({assignedFramework?.frameworkVersion}) has been assigned but is{" "}
               <strong>not yet finalized</strong> by the framework manager.
             </p>
