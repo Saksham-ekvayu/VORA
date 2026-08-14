@@ -6,13 +6,13 @@ from vora_shared.models.ai_tables import (
     UploadedFile,
 )
 from vora_shared.models.customer import AddressBlock, Customer, CustomerAddress, CustomerCreatedBy
+from vora_shared.models.deployment_document import DeploymentDocument
 from vora_shared.models.deployment_framework import (
     DeploymentFramework,
     ExpertReview,
     FrameworkPackageDocument,
     PackageVersion,
 )
-from vora_shared.models.deployment_document import DeploymentDocument
 from vora_shared.models.deployment_package_merge import DeploymentPackageMerge
 from vora_shared.models.document_extraction import (
     AiExtractionInfo,
@@ -82,11 +82,9 @@ __all__ = [
     "FrameworkCategory",
     "FrameworkMerge",
     "FrameworkPackageDocument",
-    "GapConfig",
     "GapThresholdConfig",
     "PackageComparison",
     "PackageGapAnalysis",
-    "PackageMergeTracking",
     "PackageVersion",
     "UploadedFile",
     "User",

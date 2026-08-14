@@ -171,9 +171,7 @@ class _FakePackage:
 def matches_update(doc: dict[str, Any], update: dict[str, Any]) -> bool:
     if update.get("fileId"):
         return str(doc.get("fileId")) == str(update["fileId"])
-    return bool(
-        update.get("originalFileName") and doc.get("originalFileName") == update["originalFileName"]
-    )
+    return bool(update.get("originalFileName") and doc.get("originalFileName") == update["originalFileName"])
 
 
 def create_document_from_update(update: dict[str, Any]) -> dict[str, Any]:
@@ -196,8 +194,7 @@ def apply_add_update(docs: list[dict], update: dict[str, Any]) -> list[dict]:
         (
             i
             for i, doc in enumerate(docs)
-            if update.get("originalFileName")
-            and doc.get("originalFileName") == update["originalFileName"]
+            if update.get("originalFileName") and doc.get("originalFileName") == update["originalFileName"]
         ),
         -1,
     )
@@ -259,25 +256,15 @@ def create_document_from_file(
 
 
 def get_current_package(framework: Any) -> Any | None:
-    if (
-        not framework
-        or not getattr(framework, "packages", None)
-        or not framework.currentPackageVersion
-    ):
+    if not framework or not getattr(framework, "packages", None) or not framework.currentPackageVersion:
         return None
     return next(
-        (
-            pkg
-            for pkg in framework.packages
-            if _g(pkg, "packageVersion") == framework.currentPackageVersion
-        ),
+        (pkg for pkg in framework.packages if _g(pkg, "packageVersion") == framework.currentPackageVersion),
         None,
     )
 
 
-def build_minor_patch(
-    framework: Any, new_files: list[dict], document_updates: list[dict]
-) -> dict[str, Any]:
+def build_minor_patch(framework: Any, new_files: list[dict], document_updates: list[dict]) -> dict[str, Any]:
     """new_files: list of {"filename": str, "content": bytes}."""
     current_package = get_current_package(framework)
     if not current_package:
@@ -285,9 +272,7 @@ def build_minor_patch(
 
     new_version = version_service.increment_minor_patch(framework.currentPackageVersion)
 
-    replicated_docs = replicate_documents(
-        _g(current_package, "documents") or [], document_updates, framework
-    )
+    replicated_docs = replicate_documents(_g(current_package, "documents") or [], document_updates, framework)
 
     handled_names = {
         u.get("originalFileName")
@@ -309,9 +294,7 @@ def build_minor_patch(
     return {"newPackage": new_package}
 
 
-def build_major_patch(
-    framework: Any, new_files: list[dict], document_updates: list[dict]
-) -> dict[str, Any]:
+def build_major_patch(framework: Any, new_files: list[dict], document_updates: list[dict]) -> dict[str, Any]:
     new_version = version_service.increment_major_patch(framework.currentPackageVersion)
 
     updated_docs = apply_document_updates([], document_updates)

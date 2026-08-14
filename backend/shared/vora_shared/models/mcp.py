@@ -7,7 +7,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
-
 from vora_shared.database import Base
 
 
@@ -78,6 +77,4 @@ class SourceCredential(Base):
         nullable=False,
     )
 
-    source_config: Mapped["SourceConfig"] = relationship(
-        back_populates="credentials"
-    )
+    source_config: Mapped["SourceConfig"] = relationship(back_populates="credentials")

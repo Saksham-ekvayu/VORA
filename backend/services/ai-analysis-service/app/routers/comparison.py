@@ -75,9 +75,7 @@ async def start_comparison(request: ComparisonRequest):
         async with session_scope() as session:
             df = await session.get(DeploymentFramework, deployment_framework_id)
             if not df:
-                logger.error(
-                    f"[COMPARISON] Deployment Framework not found: {deployment_framework_id}"
-                )
+                logger.error(f"[COMPARISON] Deployment Framework not found: {deployment_framework_id}")
                 return not_found(f"Deployment Framework not found: {deployment_framework_id}")
 
             framework_assignment_id = df.assignedFrameworkId
@@ -90,9 +88,7 @@ async def start_comparison(request: ComparisonRequest):
         async with session_scope() as session:
             fa = await session.get(FrameworkAssignment, framework_assignment_id)
             if not fa:
-                logger.error(
-                    f"[COMPARISON] Framework Assignment not found: {framework_assignment_id}"
-                )
+                logger.error(f"[COMPARISON] Framework Assignment not found: {framework_assignment_id}")
                 return not_found(f"Framework Assignment not found: {framework_assignment_id}")
 
             logger.info(f"[COMPARISON] Framework Assignment found: {fa.frameworkName}")
@@ -162,9 +158,7 @@ async def start_comparison(request: ComparisonRequest):
         # ===== Queue comparison as background task =====
         logger.info("[COMPARISON] Queueing background task...")
         task = asyncio.create_task(
-            run_comparison(
-                deployment_framework_id, package_version, framework_assignment_id, comparison_id
-            )
+            run_comparison(deployment_framework_id, package_version, framework_assignment_id, comparison_id)
         )
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)
@@ -263,9 +257,7 @@ async def list_comparisons(page: int = 1, page_size: int = 10):
 
         async with session_scope() as session:
             # Get fresh session without any cached objects
-            total = (
-                await session.execute(select(func.count()).select_from(PackageComparison))
-            ).scalar_one()
+            total = (await session.execute(select(func.count()).select_from(PackageComparison))).scalar_one()
 
             rows = (
                 (
@@ -343,7 +335,7 @@ async def delete_comparison(comparison_id: str):
             await session.delete(comparison)
             await session.commit()
 
-            logger.info(f"[COMPARISON-DELETE]  Deleted successfully")
+            logger.info("  [COMPARISON-DELETE]  Deleted successfully")
             logger.info(f"  Deployment Framework ID: {df_id}")
             logger.info(f"  Package Version: {pkg_ver}")
 

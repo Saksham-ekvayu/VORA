@@ -28,7 +28,7 @@ DEFAULT_AGENTS = [
     ("Logging & Monitoring Agent", "Validate logging and monitoring coverage."),
 ]
 
-ALLOWED_EXTENSIONS = (".pdf", ".png", ".jpg", ".jpeg", ".docx", ".doc")
+from vora_shared.file_storage import ALLOWED_EXTENSIONS
 
 
 def _utcnow_iso() -> str:
@@ -92,7 +92,7 @@ async def list_agents():
             data={"agents": agents, "total": len(agents)},
         )
     except Exception as exc:
-        logger.error(f"[LIST-AGENTS] Error: {exc}")
+        logger.exception(f"[LIST-AGENTS] Error: {exc}")
         logger.exception("GET /agents failed: %s", exc)
         return error(str(exc), 500)
 
@@ -114,7 +114,7 @@ async def list_uploads():
             data={"total": len(formatted), "uploads": formatted},
         )
     except Exception as exc:
-        logger.error(f"[LIST-UPLOADS] Error: {exc}")
+        logger.exception(f"[LIST-UPLOADS] Error: {exc}")
         logger.exception("GET /uploads failed: %s", exc)
         return error(str(exc), 500)
 
@@ -136,9 +136,20 @@ async def get_all_output():
             data={"total_files": len(data), "data": data},
         )
     except Exception as exc:
-        logger.error(f"[GET-OUTPUT] Error: {exc}")
+        logger.exception(f"[GET-OUTPUT] Error: {exc}")
         logger.exception("GET /output failed: %s", exc)
         return error(str(exc), 500)
+
+
+async def _find_evidence_by_control_in_jsonb(session, control_id: str):
+    all_rows = (await session.execute(select(EvidenceOutput))).scalars().all()
+    for candidate in all_rows:
+        output = candidate.output or {}
+        for fv in output.get("fileVersions") or []:
+            data = (fv or {}).get("data") or {}
+            if control_id in data:
+                return candidate
+    return None
 
 
 @router.get("/output/{control_id}")
@@ -152,17 +163,7 @@ async def get_output_by_control(control_id: str):
                 )
             ).scalar_one_or_none()
             if not row:
-                # Fallback: scan JSONB for nested control keys
-                all_rows = (await session.execute(select(EvidenceOutput))).scalars().all()
-                for candidate in all_rows:
-                    output = candidate.output or {}
-                    for fv in output.get("fileVersions") or []:
-                        data = (fv or {}).get("data") or {}
-                        if control_id in data:
-                            row = candidate
-                            break
-                    if row:
-                        break
+                row = await _find_evidence_by_control_in_jsonb(session, control_id)
             if not row:
                 logger.warning(f"[GET-OUTPUT-CONTROL] No evidence found | control_id={control_id}")
                 return error(f"No evidence found for control '{control_id}'", 404)
@@ -172,7 +173,7 @@ async def get_output_by_control(control_id: str):
                 data=_evidence_to_dict(row),
             )
     except Exception as exc:
-        logger.error(f"[GET-OUTPUT-CONTROL] Error for control {control_id}: {exc}")
+        logger.exception(f"[GET-OUTPUT-CONTROL] Error for control {control_id}: {exc}")
         logger.exception("GET /output/%s failed: %s", control_id, exc)
         return error(str(exc), 500)
 
@@ -184,7 +185,7 @@ async def status():
         agents = await _ensure_default_agents()
         logger.info(f"[STATUS] Agents initialized: {len(agents)}")
     except Exception as exc:
-        logger.error(f"[STATUS] Agents fetch failed: {exc}")
+        logger.exception(f"[STATUS] Agents fetch failed: {exc}")
         agents = []
 
     try:
@@ -192,7 +193,7 @@ async def status():
             count = (await session.execute(select(func.count()).select_from(EvidenceOutput))).scalar_one()
         logger.info(f"[STATUS] Evidence files count: {count}")
     except Exception as exc:
-        logger.error(f"[STATUS] Evidence count failed: {exc}")
+        logger.exception(f"[STATUS] Evidence count failed: {exc}")
         count = 0
 
     settings = get_settings()
@@ -208,6 +209,27 @@ async def status():
             "allowed_filetypes": list(ALLOWED_EXTENSIONS),
         },
     )
+
+
+def _build_ingest_meta(body: dict, meta_in: dict) -> dict[str, Any]:
+    return {
+        "status": "uploaded",
+        "resourceType": body.get("resourceType") or "deployment-document",
+        "file_hash": body.get("file_hash"),
+        "source": body.get("source") or meta_in.get("source") or "Load Service",
+        "agent_name": body.get("agent_name") or meta_in.get("agent_name"),
+        "user_id": body.get("user_id") or meta_in.get("user_id"),
+        "tenantId": body.get("tenantId") or meta_in.get("tenantId"),
+        "user_name": body.get("user_name") or meta_in.get("name") or meta_in.get("user_name"),
+        "user_email": body.get("user_email") or meta_in.get("email") or meta_in.get("user_email"),
+        "user_role": body.get("user_role") or meta_in.get("role") or meta_in.get("user_role"),
+        "frameworkCode": body.get("frameworkCode") or meta_in.get("frameworkCode"),
+        "frameworkName": body.get("frameworkName") or meta_in.get("frameworkName"),
+        "frameworkId": body.get("frameworkId") or meta_in.get("frameworkId"),
+        "frameworkVersion": body.get("frameworkVersion") or meta_in.get("frameworkVersion"),
+        "currentFileVersion": body.get("currentFileVersion") or meta_in.get("currentFileVersion"),
+        "received_at": _utcnow_iso(),
+    }
 
 
 @router.post("/ingest")
@@ -230,24 +252,7 @@ async def ingest(request: Request):
 
     logger.info(f"[INGEST] New file ingestion | filename={filename} | ref_id={ref_id}")
 
-    meta: dict[str, Any] = {
-        "status": "uploaded",
-        "resourceType": body.get("resourceType") or "deployment-document",
-        "file_hash": body.get("file_hash"),
-        "source": body.get("source") or meta_in.get("source") or "Load Service",
-        "agent_name": body.get("agent_name") or meta_in.get("agent_name"),
-        "user_id": body.get("user_id") or meta_in.get("user_id"),
-        "tenantId": body.get("tenantId") or meta_in.get("tenantId"),
-        "user_name": body.get("user_name") or meta_in.get("name") or meta_in.get("user_name"),
-        "user_email": body.get("user_email") or meta_in.get("email") or meta_in.get("user_email"),
-        "user_role": body.get("user_role") or meta_in.get("role") or meta_in.get("user_role"),
-        "frameworkCode": body.get("frameworkCode") or meta_in.get("frameworkCode"),
-        "frameworkName": body.get("frameworkName") or meta_in.get("frameworkName"),
-        "frameworkId": body.get("frameworkId") or meta_in.get("frameworkId"),
-        "frameworkVersion": body.get("frameworkVersion") or meta_in.get("frameworkVersion"),
-        "currentFileVersion": body.get("currentFileVersion") or meta_in.get("currentFileVersion"),
-        "received_at": _utcnow_iso(),
-    }
+    meta = _build_ingest_meta(body, meta_in)
 
     async with session_scope() as session:
         uploaded = UploadedFile(

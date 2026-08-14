@@ -528,10 +528,22 @@ export default function ControlsPanel({
         ) {
           naSet.add(ctrl._uiKey);
         }
-        // Extract weightage depending on schema
-        const cw =
+        let cw =
           ctrl.customization?.weightage?.customer_weightage ?? ctrl.weightage;
-        weightages[ctrl._uiKey] = cw ?? 0;
+
+        if (cw === undefined || cw === null) {
+          if (ctrl.deployment_points && ctrl.deployment_points.length > 0) {
+            const total = ctrl.deployment_points.reduce(
+              (sum, dp) => sum + (dp.weightage || 0),
+              0
+            );
+            cw = Math.round(total / ctrl.deployment_points.length);
+          } else {
+            cw = 0;
+          }
+        }
+
+        weightages[ctrl._uiKey] = cw;
       });
     });
     return { naSet, weightages };
