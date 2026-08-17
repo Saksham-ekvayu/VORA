@@ -25,6 +25,8 @@ import {
   ROLE_USER,
   ROLE_AUDITOR,
   ROLE_INTERNAL_EXPERT,
+  ROLE_EXPERT,
+  ROLE_LABELS,
 } from "@/utils/commonUtils";
 import CustomBadge from "@/components/custom/CustomBadge";
 import UserMiniCard from "@/components/custom/UserMiniCard";
@@ -258,7 +260,7 @@ function Profiles() {
       label: "Created By",
       sortable: false,
       render: (value, row) => {
-        if (row.createdBy === "self") {
+        if (row.createdBy.type === "self") {
           return <UserMiniCard isSelf />;
         }
 
@@ -366,12 +368,43 @@ function Profiles() {
         options: [
           { label: "All Roles", onClick: () => handleRoleFilter("") },
           {
-            label: "Internal Expert",
+            label: ROLE_LABELS[ROLE_INTERNAL_EXPERT],
             onClick: () => handleRoleFilter(ROLE_INTERNAL_EXPERT),
             separatorBefore: true,
           },
-          { label: "User", onClick: () => handleRoleFilter(ROLE_USER) },
-          { label: "Auditor", onClick: () => handleRoleFilter(ROLE_AUDITOR) },
+          {
+            label: ROLE_LABELS[ROLE_USER],
+            onClick: () => handleRoleFilter(ROLE_USER),
+          },
+          {
+            label: ROLE_LABELS[ROLE_AUDITOR],
+            onClick: () => handleRoleFilter(ROLE_AUDITOR),
+          },
+        ],
+      },
+      isAdmin(user.role) && {
+        type: "dropdown",
+        label: getRoleFilterLabel(roleFilter),
+        triggerClassName: "w-fit",
+        options: [
+          { label: "All Roles", onClick: () => handleRoleFilter("") },
+          {
+            label: ROLE_LABELS[ROLE_INTERNAL_EXPERT],
+            onClick: () => handleRoleFilter(ROLE_INTERNAL_EXPERT),
+            separatorBefore: true,
+          },
+          {
+            label: ROLE_LABELS[ROLE_USER],
+            onClick: () => handleRoleFilter(ROLE_USER),
+          },
+          {
+            label: ROLE_LABELS[ROLE_AUDITOR],
+            onClick: () => handleRoleFilter(ROLE_AUDITOR),
+          },
+          {
+            label: ROLE_LABELS[ROLE_EXPERT],
+            onClick: () => handleRoleFilter(ROLE_EXPERT),
+          },
         ],
       },
       {

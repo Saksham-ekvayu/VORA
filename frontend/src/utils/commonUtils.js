@@ -36,6 +36,15 @@ export const STATUS_IMPLEMENTED = "implemented";
 export const STATUS_PARTIAL = "partially implemented";
 export const STATUS_NOT_IMPLEMENTED = "not implemented";
 
+export const ROLE_LABELS = {
+  [ROLE_ADMIN]: "Admin",
+  [ROLE_EXPERT]: "Expert",
+  [ROLE_INTERNAL_EXPERT]: "Internal Expert",
+  [ROLE_CUSTOMER_ADMIN]: "Customer Admin",
+  [ROLE_AUDITOR]: "Auditor",
+  [ROLE_USER]: "User",
+};
+
 export const isAdmin = (role) => role === ROLE_ADMIN;
 export const isExpert = (role) => role === ROLE_EXPERT;
 export const isInternalExpert = (role) => role === ROLE_INTERNAL_EXPERT;
@@ -50,11 +59,12 @@ export const getRoleBadgeClass = (role) => {
 };
 
 export const getRoleFilterLabel = (role) => {
-  if (role === ROLE_ADMIN) return "Admin";
-  if (role === ROLE_EXPERT) return "Expert";
-  if (role === ROLE_CUSTOMER_ADMIN) return "Admin";
-  if (role === ROLE_AUDITOR) return "Auditor";
-  if (role === ROLE_USER) return "User";
+  if (role === ROLE_ADMIN) return ROLE_LABELS[ROLE_ADMIN];
+  if (role === ROLE_EXPERT) return ROLE_LABELS[ROLE_EXPERT];
+  if (role === ROLE_INTERNAL_EXPERT) return ROLE_LABELS[ROLE_INTERNAL_EXPERT];
+  if (role === ROLE_CUSTOMER_ADMIN) return ROLE_LABELS[ROLE_CUSTOMER_ADMIN];
+  if (role === ROLE_AUDITOR) return ROLE_LABELS[ROLE_AUDITOR];
+  if (role === ROLE_USER) return ROLE_LABELS[ROLE_USER];
   return "All Roles";
 };
 
@@ -65,12 +75,12 @@ export const getStatusFilterLabel = (status) => {
 };
 
 export const getRoleLabel = (role) => {
-  if (role === ROLE_EXPERT) return "Expert";
-  if (role === ROLE_INTERNAL_EXPERT) return "Internal Expert";
-  if (role === ROLE_CUSTOMER_ADMIN) return "Customer Admin";
-  if (role === ROLE_ADMIN) return "Admin";
-  if (role === ROLE_AUDITOR) return "Auditor";
-  return "User";
+  if (role === ROLE_EXPERT) return ROLE_LABELS[ROLE_EXPERT];
+  if (role === ROLE_INTERNAL_EXPERT) return ROLE_LABELS[ROLE_INTERNAL_EXPERT];
+  if (role === ROLE_CUSTOMER_ADMIN) return ROLE_LABELS[ROLE_CUSTOMER_ADMIN];
+  if (role === ROLE_ADMIN) return ROLE_LABELS[ROLE_ADMIN];
+  if (role === ROLE_AUDITOR) return ROLE_LABELS[ROLE_AUDITOR];
+  return ROLE_LABELS[ROLE_USER];
 };
 
 export const getAssignmentStatusFilterLabel = (status) => {
