@@ -16,6 +16,7 @@ import {
   OverallProtection,
   DeploymentPoints,
   Profiles,
+  MonitoringSetup,
 } from "../utils/routeImports";
 
 const auditorRoutes = createProtectedRoutes([
@@ -85,6 +86,11 @@ const auditorRoutes = createProtectedRoutes([
     key: "document-detail",
     path: "/deployment-documents/:id",
     component: DeploymentDocumentDetail,
+  },
+  {
+    key: "monitoring-setup",
+    path: "/monitoring-setup",
+    component: MonitoringSetup,
   },
 ]);
 

@@ -132,7 +132,7 @@ const ALL_NAV_ITEMS = [
     description: "Configure monitoring points",
     icon: "settings",
     path: "/monitoring-setup",
-    roles: [ROLE_CUSTOMER_ADMIN],
+    roles: [ROLE_CUSTOMER_ADMIN, ROLE_AUDITOR],
   },
   {
     id: "profile",

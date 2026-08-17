@@ -408,13 +408,14 @@ export default function MonitoringSetup() {
           all++;
           const pathKey = getPathKey(selectedFw?.id, s._key, c.id, dp.id);
           const dpPath = savedPaths[pathKey] ?? "";
-          if (dpPath.trim().length > 0) configured++;
+          const dpSource = savedSources[pathKey] ?? "";
+          if (dpPath.trim().length > 0 && dpSource.trim().length > 0) configured++;
           else unconfigured++;
         }
       }
     }
     return { all, configured, unconfigured };
-  }, [sections, savedPaths, selectedFw?.id]);
+  }, [sections, savedPaths, savedSources, selectedFw?.id]);
 
   const getCurrentPathKey = (dpId) =>
     getPathKey(
@@ -432,12 +433,13 @@ export default function MonitoringSetup() {
     setSources((prev) => ({ ...prev, [getCurrentPathKey(dpId)]: val }));
 
   const pointMatches = (dp, sKey, c) => {
-    const dpPath =
-      savedPaths[getPathKey(selectedFw?.id, sKey, c.id, dp.id)] ?? "";
-    const hasPath = dpPath.trim().length > 0;
+    const pathKey = getPathKey(selectedFw?.id, sKey, c.id, dp.id);
+    const dpPath = savedPaths[pathKey] ?? "";
+    const dpSource = savedSources[pathKey] ?? "";
+    const isConfigured = dpPath.trim().length > 0 && dpSource.trim().length > 0;
 
-    if (dpFilter === "configured" && !hasPath) return false;
-    if (dpFilter === "unconfigured" && hasPath) return false;
+    if (dpFilter === "configured" && !isConfigured) return false;
+    if (dpFilter === "unconfigured" && isConfigured) return false;
 
     return true;
   };
