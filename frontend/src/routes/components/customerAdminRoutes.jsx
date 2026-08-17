@@ -13,6 +13,7 @@ import {
   FrameworkWorkflowList,
   MonitoringSetup,
   Profiles,
+  McpMonitoring,
 } from "../utils/routeImports";
 
 const customerAdminRoutes = createProtectedRoutes([
@@ -54,8 +55,13 @@ const customerAdminRoutes = createProtectedRoutes([
     component: DeploymentDocumentDetail,
   },
   {
-    key: "monitoring-setup",
-    path: "/monitoring-setup",
+    key: "mcp-server-monitoring",
+    path: "/mcp-server/monitoring",
+    component: McpMonitoring,
+  },
+  {
+    key: "mcp-server-monitoring-setup",
+    path: "/mcp-server/monitoring-setup",
     component: MonitoringSetup,
   },
   {

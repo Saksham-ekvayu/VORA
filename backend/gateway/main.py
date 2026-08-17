@@ -68,7 +68,7 @@ ROUTES = {
     "/api/comparison": "http://localhost:7009/api/comparison",
     "/api/deployment-gap": "http://localhost:7009/api/deployment-gap",
     # mcp-boto3-server (7010)
-    "/api/scheduler": "http://localhost:7010/scheduler",
+    "/api/mcp": "http://localhost:7010/mcp",
 }
 
 # Sort by length descending to match most specific prefix first
