@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import CardWrapper from "../components/CardWrapper";
 import ProgressBar from "../components/ProgressBar";
 import Icon from "@/components/custom/Icon";
@@ -210,24 +211,32 @@ function getStreamTextColor(status) {
   return "text-red-500";
 }
 
-function TopStatCard({ icon, iconColor, title, children, badge }) {
+function TopStatCard({
+  icon,
+  iconColor = "text-primary",
+  iconBg = "bg-primary/10",
+  borderColor = "border-primary/40",
+  title,
+  children,
+}) {
   return (
-    <div className="rounded border border-border bg-linear-to-br from-background to-card p-3 flex flex-col gap-2 shadow-lg">
-      <div className="flex items-center justify-between">
+    <div className="rounded border border-border bg-linear-to-br from-background to-card p-2.5 flex justify-between shadow-lg hover:shadow-xl transition-shadow duration-300 hover:border-primary/50 cursor-pointer">
+      <div className="flex flex-col gap-2 w-full">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {title}
         </p>
-        {badge ? (
-          <span className={`rounded-full p-1 ${iconColor}`}>
-            <Icon name={icon} size="16px" />
-          </span>
-        ) : (
-          <span className={iconColor}>
-            <Icon name={icon} size="20px" />
-          </span>
-        )}
+        <div className="">{children}</div>
       </div>
-      {children}
+      <span
+        className={cn(
+          "w-12 h-12 rounded shrink-0 flex items-center justify-center transition-transform duration-300 group-hover:scale-105 border",
+          borderColor,
+          iconBg,
+          iconColor
+        )}
+      >
+        <Icon name={icon} size="24px" />
+      </span>
     </div>
   );
 }
@@ -325,9 +334,6 @@ export default function AuditorDashboard() {
               />
               {MOCK.overallProtection.trend}
             </p>
-            <p className="text-[10px] text-primary mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              View details →
-            </p>
           </button>
         </TopStatCard>
 
@@ -336,6 +342,8 @@ export default function AuditorDashboard() {
           title="Critical Gaps"
           icon="warning"
           iconColor="text-amber-500"
+          iconBg="bg-amber-500/10"
+          borderColor="border-amber-500/40"
         >
           <button
             onClick={() => navigate("/dashboard/critical-gaps")}
@@ -348,9 +356,6 @@ export default function AuditorDashboard() {
               <Icon name="trending-down" size="14px" />
               {MOCK.criticalGaps.trend}
             </p>
-            <p className="text-[10px] text-primary mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              View details →
-            </p>
           </button>
         </TopStatCard>
 
@@ -359,6 +364,8 @@ export default function AuditorDashboard() {
           title="Control Passing"
           icon="check-circle"
           iconColor="text-emerald-500"
+          iconBg="bg-emerald-500/10"
+          borderColor="border-emerald-500/40"
         >
           <button
             onClick={() => navigate("/dashboard/controls-passing")}
@@ -373,9 +380,6 @@ export default function AuditorDashboard() {
             <p className="text-xs text-muted-foreground">
               Updated {MOCK.controlPassing.updatedAgo}
             </p>
-            <p className="text-[10px] text-primary mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              View details →
-            </p>
           </button>
         </TopStatCard>
 
@@ -384,6 +388,8 @@ export default function AuditorDashboard() {
           title="Extra Controls"
           icon="star"
           iconColor="text-amber-400"
+          iconBg="bg-amber-400/10"
+          borderColor="border-amber-400/40"
         >
           <button
             onClick={() => navigate("/dashboard/extra-controls")}
@@ -394,9 +400,6 @@ export default function AuditorDashboard() {
             </p>
             <p className="text-xs text-muted-foreground">
               {MOCK.extraControls.label}
-            </p>
-            <p className="text-[10px] text-primary mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              View details →
             </p>
           </button>
         </TopStatCard>
@@ -426,7 +429,7 @@ export default function AuditorDashboard() {
               >
                 {/* Colored pill tag */}
                 <span
-                  className="text-[11px] font-semibold px-2 py-1 rounded text-white shrink-0 min-w-[90px] text-center group-hover:opacity-80 transition-opacity"
+                  className="text-[11px] font-semibold px-2 py-1 rounded text-white shrink-0 min-w-22.5 text-center group-hover:opacity-80 transition-opacity"
                   style={{ backgroundColor: fw.tagColor }}
                 >
                   {fw.name}
