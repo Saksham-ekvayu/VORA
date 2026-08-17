@@ -84,7 +84,7 @@ const PAGE_SIZE = 10;
 
 function MiniStatBox({ label, value, valueColor }) {
   return (
-    <div className="flex flex-col items-center justify-center px-4 py-2 rounded border border-border bg-accent min-w-[110px]">
+    <div className="flex flex-col items-center justify-center px-4 py-2 rounded border border-border bg-accent min-w-27.5">
       <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1 text-center">
         {label}
       </p>
@@ -174,6 +174,7 @@ export default function OverallProtectionPage() {
       sortable: false,
       render: (value, row) => (
         <button
+          type="button"
           onClick={() => navigate(`/dashboard/framework/${row.frameworkSlug}`)}
           className={`text-xs font-semibold hover:underline text-left whitespace-nowrap ${FRAMEWORK_COLORS[value] ?? "text-primary"}`}
         >
@@ -275,6 +276,7 @@ export default function OverallProtectionPage() {
           Overall Protection
         </h2>
         <button
+          type="button"
           onClick={() => navigate("/dashboard")}
           className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-primary border border-border bg-accent hover:border-primary rounded px-3 py-1.5 transition-colors"
         >

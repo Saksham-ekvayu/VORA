@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { useParams, useNavigate } from "react-router-dom";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
-import CardWrapper from "../components/CardWrapper";
+import { PieChart, Pie, ResponsiveContainer, Tooltip } from "recharts";
+import CardWrapper from "./CardWrapper";
 import Icon from "@/components/custom/Icon";
 import { usePageTitle } from "@/hooks/usePageTitle";
 // ─── Per-framework mock data ──────────────────────────────────────────────────
@@ -470,6 +470,14 @@ function getCertStatusColor(status) {
   return "bg-red-500";
 }
 
+// Custom Pie sector shape — replaces the deprecated <Cell> mapping.
+// Reads the slice color from `payload.color` and renders the SVG path
+// that recharts pre-computes for the active sector.
+function ColoredPieSlice(props) {
+  const { payload } = props;
+  return <path d={props.path} fill={payload?.color} />;
+}
+
 function DonutChart({ data, total, label }) {
   return (
     <div className="relative w-full h-40">
@@ -484,11 +492,8 @@ function DonutChart({ data, total, label }) {
             paddingAngle={2}
             dataKey="value"
             strokeWidth={0}
-          >
-            {data.map((entry) => (
-              <Cell key={entry.name} fill={entry.color} />
-            ))}
-          </Pie>
+            shape={ColoredPieSlice}
+          />
           <Tooltip
             contentStyle={{
               backgroundColor: "var(--card)",
@@ -563,6 +568,7 @@ export default function FrameworkDetailDashboard() {
           />
           <p className="text-muted-foreground">Framework not found</p>
           <button
+            type="button"
             onClick={() => navigate("/dashboard")}
             className="mt-3 text-sm text-primary hover:underline"
           >
@@ -601,6 +607,7 @@ export default function FrameworkDetailDashboard() {
         </div>
         {/* Right - Back button */}
         <button
+          type="button"
           onClick={() => navigate("/dashboard")}
           className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-primary border border-border bg-accent hover:border-primary rounded px-3 py-1.5 transition-colors"
         >
@@ -793,6 +800,7 @@ export default function FrameworkDetailDashboard() {
           }
           right={
             <button
+              type="button"
               onClick={() => navigate("/deployment-frameworks")}
               className="text-primary text-xs hover:underline flex items-center gap-1 cursor-pointer"
             >
@@ -857,7 +865,10 @@ export default function FrameworkDetailDashboard() {
             </span>
           }
           right={
-            <button className="text-primary text-xs hover:underline flex items-center gap-1 cursor-pointer">
+            <button
+              type="button"
+              className="text-primary text-xs hover:underline flex items-center gap-1 cursor-pointer"
+            >
               View All <Icon name="arrow-right" size="12px" />
             </button>
           }

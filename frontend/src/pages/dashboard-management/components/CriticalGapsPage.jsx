@@ -300,6 +300,7 @@ export default function CriticalGapsPage() {
       sortable: false,
       render: (value, row) => (
         <button
+          type="button"
           onClick={() => navigate(`/dashboard/framework/${row.frameworkSlug}`)}
           className={`text-xs font-semibold hover:underline text-left whitespace-nowrap ${FRAMEWORK_COLORS[value] ?? "text-primary"}`}
         >
@@ -392,6 +393,7 @@ export default function CriticalGapsPage() {
       <div className="flex items-center justify-between px-1">
         <h2 className="text-lg font-semibold text-foreground">Critical Gaps</h2>
         <button
+          type="button"
           onClick={() => navigate("/dashboard")}
           className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-primary border border-border bg-accent hover:border-primary rounded px-3 py-1.5 transition-colors"
         >
