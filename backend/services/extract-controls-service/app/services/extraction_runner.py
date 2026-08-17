@@ -1336,7 +1336,7 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
             )
             logger.info("[DD-EXTRACT]  Deployment document updated")
 
-            # Save to document_extraction table (by fileHash) - PRIMARY TABLE
+             # Save to document_extraction table (by fileHash) - PRIMARY TABLE
             if file_hash:
                 logger.info("[DD-EXTRACT] 5b: Saving to document_extraction table...")
                 doc_extraction = await _get_or_create_doc_extraction(session, file_hash, None)
@@ -1350,6 +1350,19 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
                 logger.info(f"  FileHash: {file_hash}")
                 logger.info("  Status: extracted")
                 logger.info(f"  Total Controls: {total_controls}")
+                
+                # Trigger compliance evaluation automatically in the background
+                try:
+                    import httpx
+                    logger.info(f"[DD-EXTRACT] Triggering compliance agent evaluation for dd_id: {dd_id}...")
+                    async with httpx.AsyncClient(timeout=10.0) as client:
+                        resp = await client.post(f"http://localhost:7008/api/compliance-agent/evaluate/{dd_id}")
+                        if resp.status_code in (200, 201, 202):
+                            logger.info(f"[DD-EXTRACT] Successfully triggered compliance agent for dd_id: {dd_id}")
+                        else:
+                            logger.warning(f"[DD-EXTRACT] Failed to trigger compliance agent, status: {resp.status_code}")
+                except Exception as e:
+                    logger.warning(f"[DD-EXTRACT] Could not reach compliance agent service: {e}")
             else:
                 logger.warning("[DD-EXTRACT]  No fileHash - skipping document_extraction save")
 
