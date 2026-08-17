@@ -12,7 +12,6 @@ dist
 dist-ssr
 
 # Editor directories and files
-.vscode
 .agents
 !.vscode/extensions.json
 .idea
@@ -29,7 +28,7 @@ __pycache__/
 *.egg-info/
 .venv/
 venv/
-.env
+backend/shared/.env
 .DS_Store
 *.log
 .pytest_cache/
@@ -39,6 +38,7 @@ venv/
 
 # Media
 uploads
+docs-md
 
 # Alembic Migrations
 backend/shared/alembic/versions/

@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import FileTypeCard from "@/components/custom/FileTypeCard";
 import Icon from "@/components/custom/Icon";
 import { Button } from "@/components/ui/button";
@@ -10,8 +10,13 @@ import {
 } from "@/services/deploymentFrameworkService";
 import { toast } from "sonner";
 import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
-import { aiExtractionConfig, STATUS_PENDING } from "@/utils/commonUtils";
+import {
+  aiExtractionConfig,
+  STATUS_EXTRACTED,
+  STATUS_PENDING,
+} from "@/utils/commonUtils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import DocumentControlsModal from "./DocumentControlsModal";
 
 export default function DeploymentFrameworkPackageTable({
   preReleasePackage,
@@ -19,10 +24,24 @@ export default function DeploymentFrameworkPackageTable({
   documentWidth = "max-w-62",
   showAllColumns = false,
   showActions = true,
+  showViewAction = true,
   onExtractionTriggered,
   onSuccess,
 }) {
   const [uploadingFileId, setUploadingFileId] = useState(null);
+  const [viewingDocument, setViewingDocument] = useState(null);
+  const hasActionsColumn = showActions || showViewAction;
+
+  useEffect(() => {
+    if (viewingDocument && preReleasePackage?.documents) {
+      const updatedDoc = preReleasePackage.documents.find(
+        (d) => d.fileId === viewingDocument.fileId
+      );
+      if (updatedDoc) {
+        setViewingDocument(updatedDoc);
+      }
+    }
+  }, [preReleasePackage, viewingDocument?.fileId, viewingDocument]);
 
   const handleDownload = async (fileId, fileName) => {
     try {
@@ -94,7 +113,7 @@ export default function DeploymentFrameworkPackageTable({
                 Ai Extraction
               </th>
 
-              {showActions && (
+              {hasActionsColumn && (
                 <th className="text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2.5 py-3 whitespace-nowrap">
                   Actions
                 </th>
@@ -193,21 +212,37 @@ export default function DeploymentFrameworkPackageTable({
                         : status.label}
                     </span>
                   </td>
-                  {showActions && (
+                  {hasActionsColumn && (
                     <td className="px-2.5 py-2 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        <Button
-                          size="xs"
-                          disabled={
-                            status.buttonDisabled ||
-                            uploadingFileId === doc.fileId
-                          }
-                          className={status.buttonClass}
-                          onClick={() => handleAiExtraction(doc.fileId)}
-                        >
-                          <Icon name={status.buttonIcon} size={11} />
-                          {status.buttonText}
-                        </Button>
+                        {showViewAction && (
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            disabled={
+                              doc.aiExtraction?.status !== STATUS_EXTRACTED
+                            }
+                            className="text-primary border-primary/30 hover:bg-primary/10 hover:text-primary/90"
+                            onClick={() => setViewingDocument(doc)}
+                          >
+                            <Icon name="eye" size={11} className="mr-1" />
+                            View
+                          </Button>
+                        )}
+                        {showActions && (
+                          <Button
+                            size="xs"
+                            disabled={
+                              status.buttonDisabled ||
+                              uploadingFileId === doc.fileId
+                            }
+                            className={status.buttonClass}
+                            onClick={() => handleAiExtraction(doc.fileId)}
+                          >
+                            <Icon name={status.buttonIcon} size={11} />
+                            {status.buttonText}
+                          </Button>
+                        )}
                       </div>
                     </td>
                   )}
@@ -217,6 +252,16 @@ export default function DeploymentFrameworkPackageTable({
           </tbody>
         </table>
       </ScrollArea>
+      {viewingDocument && (
+        <DocumentControlsModal
+          isOpen={!!viewingDocument}
+          onClose={() => setViewingDocument(null)}
+          document={viewingDocument}
+          frameworkId={frameworkId}
+          packageVersion={preReleasePackage?.packageVersion}
+          onSuccess={onSuccess}
+        />
+      )}
     </div>
   );
 }

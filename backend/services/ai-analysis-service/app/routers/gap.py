@@ -73,7 +73,7 @@ async def start_gap_analysis(request: GapAnalysisRequest):
         async with session_scope() as session:
             df = await session.get(DeploymentFramework, deployment_framework_id)
             if not df:
-                logger.error(f"[GAP] ❌ Deployment Framework not found: {deployment_framework_id}")
+                logger.error(f"[GAP] Deployment Framework not found: {deployment_framework_id}")
                 return not_found(f"Deployment Framework not found: {deployment_framework_id}")
 
             framework_assignment_id = df.assignedFrameworkId
@@ -82,7 +82,7 @@ async def start_gap_analysis(request: GapAnalysisRequest):
                 if pkg.get("packageVersion") == package_version:
                     gap_id = pkg.get("gapAnalysis")
                     break
-            logger.info(f"[GAP] ✅ Deployment Framework found: {df.frameworkName}")
+            logger.info(f"[GAP] Deployment Framework found: {df.frameworkName}")
             logger.info(f"    Current Package Version: {df.currentPackageVersion}")
             logger.info(f"    Resolved Framework Assignment ID: {framework_assignment_id}")
 
@@ -91,19 +91,19 @@ async def start_gap_analysis(request: GapAnalysisRequest):
         async with session_scope() as session:
             fa = await session.get(FrameworkAssignment, framework_assignment_id)
             if not fa:
-                logger.error(f"[GAP] ❌ Framework Assignment not found: {framework_assignment_id}")
+                logger.error(f"[GAP] Framework Assignment not found: {framework_assignment_id}")
                 return not_found(f"Framework Assignment not found: {framework_assignment_id}")
 
-            logger.info(f"[GAP] ✅ Framework Assignment found: {fa.frameworkName}")
+            logger.info(f"[GAP] Framework Assignment found: {fa.frameworkName}")
             logger.info(f"    Framework ID: {fa.frameworkId}")
             logger.info(f"    Framework Version: {fa.frameworkVersion}")
 
         # ===== VALIDATION 3: Check Package version exists =====
         logger.info("[GAP] Validation 3: Checking Package version...")
         if not package_version or package_version.strip() == "":
-            logger.error("[GAP] ❌ Invalid package version")
+            logger.error("[GAP] Invalid package version")
             return error("Package version cannot be empty")
-        logger.info(f"[GAP] ✅ Package version valid: {package_version}")
+        logger.info(f"[GAP] Package version valid: {package_version}")
 
         # ===== Create or update gap analysis record in database =====
         logger.info("[GAP] Creating or updating gap analysis record...")
@@ -145,7 +145,7 @@ async def start_gap_analysis(request: GapAnalysisRequest):
             await session.flush()
             await session.commit()
             gap_id = gap_analysis.id
-            logger.info(f"[GAP] ✅ Created gap analysis record | id={gap_id}")
+            logger.info(f"[GAP] Created gap analysis record | id={gap_id}")
 
         # ===== Queue gap analysis as background task =====
         logger.info("[GAP] Queueing background task...")
@@ -154,7 +154,7 @@ async def start_gap_analysis(request: GapAnalysisRequest):
         )
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)
-        logger.info("[GAP] ✅ Gap analysis task queued")
+        logger.info("[GAP] Gap analysis task queued")
 
         return success(
             message="Gap analysis started successfully",
@@ -169,7 +169,7 @@ async def start_gap_analysis(request: GapAnalysisRequest):
         )
 
     except Exception as exc:
-        logger.exception(f"[GAP-START] ❌ Error: {exc}")
+        logger.exception(f"[GAP-START] Error: {exc}")
         return server_error(str(exc))
 
 
@@ -217,8 +217,8 @@ async def get_gap_analysis(gap_id: str):
                     "timestamp": gap_data.get("timestamp"),
                     "deployment_gap_results": gap_data.get("deployment_gap_results", []),
                     "gap_time_seconds": gap_data.get("gap_time_seconds"),
-                    "createdAt": gap_analysis.createdAt.isoformat() if gap_analysis.createdAt else None,
-                    "updatedAt": gap_analysis.updatedAt.isoformat() if gap_analysis.updatedAt else None,
+                    "createdAt": (gap_analysis.createdAt.isoformat() if gap_analysis.createdAt else None),
+                    "updatedAt": (gap_analysis.updatedAt.isoformat() if gap_analysis.updatedAt else None),
                 },
             )
     except Exception as exc:
@@ -288,4 +288,57 @@ async def list_gap_analyses(page: int = 1, page_size: int = 10):
             )
     except Exception as exc:
         logger.exception("list_gap_analyses error")
+        return server_error(str(exc))
+
+
+# ---------------------------------------------------------------------------
+# DELETE /deployment-gap/{gap_id} — Delete gap analysis
+# ---------------------------------------------------------------------------
+
+
+@router.delete("/{gap_id}")
+async def delete_gap_analysis(gap_id: str):
+    """
+    Delete a gap analysis record by ID.
+
+    Args:
+        gap_id: ID of the gap analysis to delete
+
+    Returns:
+        Success message
+    """
+    try:
+        gap_id = str(gap_id).strip()
+        if not gap_id:
+            return error("Invalid gap_id")
+
+        logger.info(f"[GAP-DELETE] Deleting gap analysis | id={gap_id}")
+
+        async with session_scope() as session:
+            gap_analysis = await session.get(PackageGapAnalysis, gap_id)
+            if not gap_analysis:
+                logger.warning(f"[GAP-DELETE] Gap analysis not found: {gap_id}")
+                return not_found(f"Gap analysis not found: {gap_id}")
+
+            gap_data = gap_analysis.gapAnalysis or {}
+            df_id = gap_data.get("deployment_framework_id")
+            pkg_ver = gap_data.get("package_version")
+
+            await session.delete(gap_analysis)
+            await session.commit()
+
+            logger.info("  [GAP-DELETE]  Deleted successfully")
+            logger.info(f"  Deployment Framework ID: {df_id}")
+            logger.info(f"  Package Version: {pkg_ver}")
+
+            return success(
+                message="Gap analysis deleted successfully",
+                data={
+                    "id": gap_id,
+                    "deployment_framework_id": df_id,
+                    "package_version": pkg_ver,
+                },
+            )
+    except Exception as exc:
+        logger.exception(f"delete_gap_analysis error: {exc}")
         return server_error(str(exc))

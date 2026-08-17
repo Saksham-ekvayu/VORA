@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 
 import { RecordTimelineViewModal } from "@/components/custom/modal";
+import { ROLE_EXPERT, ROLE_LABELS } from "@/utils/commonUtils";
 
 export default function AccessViewModal({ accessRecord, onClose }) {
   if (!accessRecord) return null;
@@ -68,7 +69,7 @@ export default function AccessViewModal({ accessRecord, onClose }) {
   }
 
   const leftEntity = {
-    title: "Expert",
+    title: ROLE_LABELS[ROLE_EXPERT],
     name: accessRecord.expert?.name,
     email: accessRecord.expert?.email,
     role: accessRecord.expert?.role,

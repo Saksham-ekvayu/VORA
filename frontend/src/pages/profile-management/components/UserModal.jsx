@@ -32,12 +32,13 @@ import {
   ROLE_USER,
   ROLE_AUDITOR,
   ROLE_INTERNAL_EXPERT,
+  ROLE_LABELS,
 } from "@/utils/commonUtils";
 
 const getRoleDisplayLabel = (role) => {
-  if (isUser(role)) return "User";
-  if (isInternalExpert(role)) return "Internal Expert";
-  if (isAuditor(role)) return "Auditor";
+  if (isUser(role)) return ROLE_LABELS[ROLE_USER];
+  if (isInternalExpert(role)) return ROLE_LABELS[ROLE_INTERNAL_EXPERT];
+  if (isAuditor(role)) return ROLE_LABELS[ROLE_AUDITOR];
   if (role === "other") return "Other";
   return "Select a role";
 };

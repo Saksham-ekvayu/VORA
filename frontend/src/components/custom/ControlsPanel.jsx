@@ -101,7 +101,7 @@ const LeftPanelSections = ({
       <ScrollArea className="flex-1 w-full">
         {filteredSections.length > 0 && (
           <div className="sticky top-0 bg-muted/80 backdrop-blur z-10 px-3 py-1.5 border-b border-border flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
-            <div className="w-15 shrink-0">ID</div>
+            <div className="w-10 shrink-0">ID</div>
             <div className="flex-1">Section Name</div>
             <div className="w-6 shrink-0"></div>
           </div>
@@ -114,15 +114,16 @@ const LeftPanelSections = ({
           ) : (
             filteredSections.map((section) => (
               <button
+                type="button"
                 key={section._uiKey}
                 onClick={() => setActiveSectionId(section._uiKey)}
-                className={`w-full text-left p-2 rounded border transition-all duration-200 group flex items-start gap-2 cursor-pointer ${
+                className={`w-full text-left p-2 rounded border transition-all duration-200 group flex items-start gap-3 cursor-pointer ${
                   resolvedSectionId === section._uiKey
                     ? "bg-primary/10 border-primary"
                     : "bg-muted/80 border-transparent hover:border-border"
                 }`}
               >
-                <div className="w-15 shrink-0">
+                <div className="w-fit shrink-0">
                   <span
                     className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded inline-block whitespace-nowrap ${
                       resolvedSectionId === section._uiKey
@@ -296,6 +297,7 @@ const ControlDetailsPanel = ({
                             {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                               <button
                                 key={num}
+                                type="button"
                                 onClick={() =>
                                   handleWeightageChange(activeControl, num)
                                 }
@@ -528,10 +530,22 @@ export default function ControlsPanel({
         ) {
           naSet.add(ctrl._uiKey);
         }
-        // Extract weightage depending on schema
-        const cw =
+        let cw =
           ctrl.customization?.weightage?.customer_weightage ?? ctrl.weightage;
-        weightages[ctrl._uiKey] = cw ?? 0;
+
+        if (cw === undefined || cw === null) {
+          if (ctrl.deployment_points && ctrl.deployment_points.length > 0) {
+            const total = ctrl.deployment_points.reduce(
+              (sum, dp) => sum + (dp.weightage || 0),
+              0
+            );
+            cw = Math.round(total / ctrl.deployment_points.length);
+          } else {
+            cw = 0;
+          }
+        }
+
+        weightages[ctrl._uiKey] = cw;
       });
     });
     return { naSet, weightages };
@@ -920,6 +934,7 @@ export default function ControlsPanel({
                   return (
                     <button
                       key={control._uiKey}
+                      type="button"
                       onClick={() => setActiveControlId(control._uiKey)}
                       className={`w-full text-left px-3 py-2 grid grid-cols-12 gap-2 items-center transition-colors cursor-pointer ${rowBg}`}
                     >

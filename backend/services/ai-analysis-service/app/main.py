@@ -31,11 +31,6 @@ logger = logging.getLogger(__name__)
 async def lifespan(_: FastAPI):
     settings = get_settings()
     connect_db(settings.resolved_database_url())
-    logger.info("AI Analysis Service started")
-    logger.info(f"Using model: {settings.sentence_transformer_model}")
-    logger.info(
-        f"Thresholds - High: {settings.similarity_threshold_high}, Medium: {settings.similarity_threshold_medium}"
-    )
     yield
     await disconnect_db()
     logger.info("AI Analysis Service stopped")

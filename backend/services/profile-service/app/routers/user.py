@@ -1,6 +1,6 @@
+﻿import logging
 from datetime import datetime, timezone
 from typing import Annotated
-import logging
 
 from app.schemas.user import ProfileUpdateRequest
 from app.utils.formatting import (
@@ -85,7 +85,9 @@ async def get_profile(ctx: Annotated[AuthenticatedUser, Depends(authenticate)]):
 async def edit_profile(
     body: Annotated[ProfileUpdateRequest, Depends()], ctx: Annotated[AuthenticatedUser, Depends(authenticate)]
 ):
-    logger.info(f"[PATCH-PROFILE] Update profile request | user_id: {ctx.user.id} | fields: name={body.name} | phone={body.phone}")
+    logger.info(
+        f"[PATCH-PROFILE] Update profile request | user_id: {ctx.user.id} | fields: name={body.name} | phone={body.phone}"
+    )
     # Validate name
     if body.name is not None and body.name.strip() == "":
         logger.warning(f"[PATCH-PROFILE] Validation failed | user_id: {ctx.user.id} | reason: name_is_empty")
@@ -116,7 +118,7 @@ async def edit_profile(
         tenant = str(db_user.tenantId) if db_user.tenantId else None
         user_id = str(db_user.id)
 
-    logger.info(f"[PATCH-PROFILE] ✅ Profile updated | user_id: {ctx.user.id} | tenant: {tenant}")
+    logger.info(f"[PATCH-PROFILE] Profile updated | user_id: {ctx.user.id} | tenant: {tenant}")
     return success({"id": user_id, "tenantId": tenant}, msg.PROFILE_UPDATED)
 
 
@@ -165,7 +167,9 @@ async def update_avatar(
     ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
     avatar: Annotated[UploadFile | None, File()] = None,
 ):
-    logger.info(f"[POST-AVATAR] Avatar upload request | user_id: {ctx.user.id} | filename: {avatar.filename if avatar else 'None'}")
+    logger.info(
+        f"[POST-AVATAR] Avatar upload request | user_id: {ctx.user.id} | filename: {avatar.filename if avatar else 'None'}"
+    )
     if avatar is None:
         logger.warning(f"[POST-AVATAR] Validation failed | user_id: {ctx.user.id} | reason: avatar_required")
         return error(msg.AVATAR_REQUIRED, 400, field="avatar")
@@ -176,7 +180,7 @@ async def update_avatar(
         avatar_url = await save_avatar(avatar, str(user.id))
         logger.info(f"[POST-AVATAR] Avatar saved | user_id: {ctx.user.id} | url: {avatar_url}")
     except AvatarUploadError as exc:
-        logger.error(f"[POST-AVATAR] Error | user_id: {ctx.user.id} | error: {exc.message}")
+        logger.exception(f"[POST-AVATAR] Error | user_id: {ctx.user.id} | error: {exc.message}")
         return error(exc.message, 400, field="avatar")
 
     async with session_scope() as session:
@@ -190,7 +194,7 @@ async def update_avatar(
 
     delete_avatar_file(old_avatar)
 
-    logger.info(f"[POST-AVATAR] ✅ Avatar updated | user_id: {ctx.user.id} | avatar_url: {avatar_url}")
+    logger.info(f"[POST-AVATAR] Avatar updated | user_id: {ctx.user.id} | avatar_url: {avatar_url}")
     return success({"id": user_id, "avatar": avatar_url}, msg.AVATAR_UPDATED)
 
 
@@ -199,9 +203,13 @@ async def update_customer_avatar(
     ctx: Annotated[AuthenticatedUser, Depends(require_customer_admin)],
     avatar: Annotated[UploadFile | None, File()] = None,
 ):
-    logger.info(f"[POST-CUSTOMER-AVATAR] Avatar upload request | user_id: {ctx.user.id} | tenant: {ctx.tenant_id} | filename: {avatar.filename if avatar else 'None'}")
+    logger.info(
+        f"[POST-CUSTOMER-AVATAR] Avatar upload request | user_id: {ctx.user.id} | tenant: {ctx.tenant_id} | filename: {avatar.filename if avatar else 'None'}"
+    )
     if avatar is None:
-        logger.warning(f"[POST-CUSTOMER-AVATAR] Validation failed | user_id: {ctx.user.id} | reason: avatar_required")
+        logger.warning(
+            f"[POST-CUSTOMER-AVATAR] Validation failed | user_id: {ctx.user.id} | reason: avatar_required"
+        )
         return error(msg.AVATAR_REQUIRED, 400, field="avatar")
 
     tenant_id = ctx.tenant_id
@@ -210,7 +218,7 @@ async def update_customer_avatar(
         avatar_url = await save_avatar(avatar, f"customer-{tenant_id}")
         logger.info(f"[POST-CUSTOMER-AVATAR] Avatar saved | tenant_id: {tenant_id} | url: {avatar_url}")
     except AvatarUploadError as exc:
-        logger.error(f"[POST-CUSTOMER-AVATAR] Error | tenant_id: {tenant_id} | error: {exc.message}")
+        logger.exception(f"[POST-CUSTOMER-AVATAR] Error | tenant_id: {tenant_id} | error: {exc.message}")
         return error(exc.message, 400, field="avatar")
 
     async with session_scope() as session:
@@ -227,7 +235,9 @@ async def update_customer_avatar(
 
     delete_avatar_file(old_avatar)
 
-    logger.info(f"[POST-CUSTOMER-AVATAR] ✅ Customer avatar updated | tenant_id: {ctx.tenant_id} | customer_id: {customer_id}")
+    logger.info(
+        f"[POST-CUSTOMER-AVATAR] Customer avatar updated | tenant_id: {ctx.tenant_id} | customer_id: {customer_id}"
+    )
     return success(
         {"id": customer_id, "avatar": avatar_url},
         msg.AVATAR_UPDATED,

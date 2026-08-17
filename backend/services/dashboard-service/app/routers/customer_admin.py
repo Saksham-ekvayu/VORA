@@ -215,7 +215,7 @@ def _process_assignments_and_progress(
         finalization = assignment.finalization or {}
         assigned_frameworks_list.append(
             {
-                "id": str(assignment.id) if assignment and getattr(assignment, "id", None) else None,
+                "id": (str(assignment.id) if assignment and getattr(assignment, "id", None) else None),
                 "code": assignment.frameworkCode,
                 "name": assignment.frameworkName,
                 "version": assignment.frameworkVersion,
@@ -772,7 +772,9 @@ async def get_customer_admin_dashboard(
     ctx: Annotated[RequestContext, Depends(get_context)],
 ):
     try:
-        logger.info(f"[CUSTOMER-ANALYTICS] Dashboard request | tenant_id={ctx.tenant_id} | user_id={ctx.user.id}")
+        logger.info(
+            f"[CUSTOMER-ANALYTICS] Dashboard request | tenant_id={ctx.tenant_id} | user_id={ctx.user.id}"
+        )
         tenant_id = ctx.tenant_id
         user = ctx.user
 
@@ -814,7 +816,6 @@ async def get_customer_admin_dashboard(
                 .all()
             )
 
-            framework_ids = [df.id for df in deployment_frameworks]
             file_hashes = {
                 _get(doc, "fileHash")
                 for df in deployment_frameworks
@@ -906,9 +907,11 @@ async def get_customer_admin_dashboard(
                 "recentActivity": recent_activity,
             }
 
-        logger.info(f"[CUSTOMER-ANALYTICS] ✅ Dashboard loaded | users={len(users)} | dfs={len(deployment_frameworks)} | assignments={len(active_assignments)} | controls={controls_configured}/{controls_total}")
+        logger.info(
+            f"[CUSTOMER-ANALYTICS] Dashboard loaded | users={len(users)} | dfs={len(deployment_frameworks)} | assignments={len(active_assignments)} | controls={controls_configured}/{controls_total}"
+        )
         return success(response_data, "Customer dashboard analytics retrieved successfully")
     except Exception as exc:
-        logger.error(f"[CUSTOMER-ANALYTICS] Error: {exc}")
+        logger.exception(f"[CUSTOMER-ANALYTICS] Error: {exc}")
         logger.exception("Error fetching customer admin dashboard data")
         return server_error("Failed to retrieve customer dashboard analytics")

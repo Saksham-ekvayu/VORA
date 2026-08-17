@@ -25,10 +25,80 @@ export const STATUS_DONE = "done";
 export const STATUS_LOCKED = "locked";
 export const STATUS_MERGED = "merged";
 export const STATUS_LIVE = "live";
-
+export const STATUS_SKIPPED = "skipped";
+export const STATUS_RETURNED = "returned";
+export const STATUS_SUPERSEDED = "superseded";
+export const STATUS_IN_REVIEW = "in-review";
+export const STATUS_DEPLOYED = "deployed";
+export const STATUS_ARCHIVED = "archived";
+export const STATUS_NOT_FINALIZED = "not finalized";
+export const STATUS_ACTIVE = "active";
+export const STATUS_INACTIVE = "inactive";
 export const STATUS_IMPLEMENTED = "implemented";
 export const STATUS_PARTIAL = "partially implemented";
 export const STATUS_NOT_IMPLEMENTED = "not implemented";
+
+export const COLOR_DEFAULT = "default";
+export const COLOR_AMBER = "amber";
+export const COLOR_BLUE = "blue";
+export const COLOR_GREEN = "green";
+export const COLOR_RED = "red";
+export const COLOR_DESTRUCTIVE = "destructive";
+export const COLOR_VIOLET = "violet";
+export const COLOR_INDIGO = "indigo";
+export const COLOR_GRAY = "gray";
+
+export const ROLE_LABELS = {
+  [ROLE_ADMIN]: "Admin",
+  [ROLE_EXPERT]: "Expert",
+  [ROLE_INTERNAL_EXPERT]: "Internal Expert",
+  [ROLE_CUSTOMER_ADMIN]: "Customer Admin",
+  [ROLE_AUDITOR]: "Auditor",
+  [ROLE_USER]: "User",
+};
+
+export const ROLE_BADGE_CLASSES = {
+  [ROLE_ADMIN]: "bg-red-100 text-red-800",
+  [ROLE_EXPERT]: "bg-blue-100 text-blue-800",
+  [ROLE_INTERNAL_EXPERT]: "bg-indigo-100 text-indigo-800",
+  [ROLE_CUSTOMER_ADMIN]: "bg-amber-100 text-amber-800",
+  [ROLE_AUDITOR]: "bg-violet-100 text-violet-800",
+  [ROLE_USER]: "bg-green-100 text-green-800",
+};
+
+export const STATUS_LABELS = {
+  [STATUS_PENDING]: "Pending",
+  [STATUS_APPROVED]: "Approved",
+  [STATUS_REJECTED]: "Rejected",
+  [STATUS_UPLOADED]: "Uploaded",
+  [STATUS_FAILED]: "Failed",
+  [STATUS_PROCESSING]: "Processing",
+  [STATUS_EXTRACTED]: "Extracted",
+  [STATUS_ASSIGNED]: "Assigned",
+  [STATUS_REVOKED]: "Revoked",
+  [STATUS_FINALIZED]: "Finalized",
+  [STATUS_REQUESTED]: "Requested",
+  [STATUS_COMPLETED]: "Completed",
+  [STATUS_CONNECTED]: "Connected",
+  [STATUS_STARTED]: "Started",
+  [STATUS_RUNNING]: "Running",
+  [STATUS_DONE]: "Done",
+  [STATUS_LOCKED]: "Locked",
+  [STATUS_MERGED]: "Merged",
+  [STATUS_LIVE]: "Live",
+  [STATUS_SKIPPED]: "Skipped",
+  [STATUS_RETURNED]: "Returned",
+  [STATUS_SUPERSEDED]: "Superseded",
+  [STATUS_IN_REVIEW]: "In Review",
+  [STATUS_DEPLOYED]: "Deployed",
+  [STATUS_ARCHIVED]: "Archived",
+  [STATUS_IMPLEMENTED]: "Implemented",
+  [STATUS_PARTIAL]: "Partially Implemented",
+  [STATUS_NOT_IMPLEMENTED]: "Not Implemented",
+  [STATUS_NOT_FINALIZED]: "Not Finalized",
+  [STATUS_ACTIVE]: "Active",
+  [STATUS_INACTIVE]: "Inactive",
+};
 
 export const isAdmin = (role) => role === ROLE_ADMIN;
 export const isExpert = (role) => role === ROLE_EXPERT;
@@ -38,106 +108,107 @@ export const isAuditor = (role) => role === ROLE_AUDITOR;
 export const isUser = (role) => role === ROLE_USER;
 
 export const getRoleBadgeClass = (role) => {
-  if (isAdmin(role)) return "bg-red-100 text-red-800";
-  if (isExpert(role)) return "bg-blue-100 text-blue-800";
-  return "bg-green-100 text-green-800";
+  return ROLE_BADGE_CLASSES[role] || ROLE_BADGE_CLASSES[ROLE_USER];
 };
 
 export const getRoleFilterLabel = (role) => {
-  if (role === ROLE_ADMIN) return "Admin";
-  if (role === ROLE_EXPERT) return "Expert";
-  if (role === ROLE_CUSTOMER_ADMIN) return "Admin";
-  if (role === ROLE_AUDITOR) return "Auditor";
-  if (role === ROLE_USER) return "User";
+  if (role === ROLE_ADMIN) return ROLE_LABELS[ROLE_ADMIN];
+  if (role === ROLE_EXPERT) return ROLE_LABELS[ROLE_EXPERT];
+  if (role === ROLE_INTERNAL_EXPERT) return ROLE_LABELS[ROLE_INTERNAL_EXPERT];
+  if (role === ROLE_CUSTOMER_ADMIN) return ROLE_LABELS[ROLE_CUSTOMER_ADMIN];
+  if (role === ROLE_AUDITOR) return ROLE_LABELS[ROLE_AUDITOR];
+  if (role === ROLE_USER) return ROLE_LABELS[ROLE_USER];
   return "All Roles";
 };
 
 export const getStatusFilterLabel = (status) => {
-  if (status === "true") return "Active";
-  if (status === "false") return "Inactive";
-  return "Status";
+  if (status === "true") return STATUS_LABELS[STATUS_ACTIVE];
+  if (status === "false") return STATUS_LABELS[STATUS_INACTIVE];
+  return "All Status";
 };
 
 export const getRoleLabel = (role) => {
-  if (role === ROLE_EXPERT) return "Expert";
-  if (role === ROLE_INTERNAL_EXPERT) return "Internal Expert";
-  if (role === ROLE_CUSTOMER_ADMIN) return "Customer Admin";
-  if (role === ROLE_ADMIN) return "Admin";
-  if (role === ROLE_AUDITOR) return "Auditor";
-  return "User";
+  if (role === ROLE_EXPERT) return ROLE_LABELS[ROLE_EXPERT];
+  if (role === ROLE_INTERNAL_EXPERT) return ROLE_LABELS[ROLE_INTERNAL_EXPERT];
+  if (role === ROLE_CUSTOMER_ADMIN) return ROLE_LABELS[ROLE_CUSTOMER_ADMIN];
+  if (role === ROLE_ADMIN) return ROLE_LABELS[ROLE_ADMIN];
+  if (role === ROLE_AUDITOR) return ROLE_LABELS[ROLE_AUDITOR];
+  return ROLE_LABELS[ROLE_USER];
 };
 
 export const getAssignmentStatusFilterLabel = (status) => {
-  if (status === STATUS_ASSIGNED) return "Assigned";
-  if (status === STATUS_REVOKED) return "Revoked";
-  return "Assignment Status";
+  if (status === STATUS_ASSIGNED) return STATUS_LABELS[STATUS_ASSIGNED];
+  if (status === STATUS_REVOKED) return STATUS_LABELS[STATUS_REVOKED];
+  return STATUS_LABELS[STATUS_PENDING];
 };
 
 export const getAssignedFrameworkApprovalStatusLabel = (status) => {
-  if (status === "assigned") return "Assigned";
-  if (status === "revoked") return "Revoked";
-  return "Pending";
+  if (status === STATUS_ASSIGNED) return STATUS_LABELS[STATUS_ASSIGNED];
+  if (status === STATUS_REVOKED) return STATUS_LABELS[STATUS_REVOKED];
+  return STATUS_LABELS[STATUS_PENDING];
 };
 
 export const getFinalizationStatusFilterLabel = (finalizationStatus) => {
-  if (finalizationStatus === STATUS_FINALIZED) return "Finalized";
-  if (finalizationStatus === STATUS_PENDING) return "Not Finalize";
-  return "Finalization Status";
+  if (finalizationStatus === STATUS_FINALIZED)
+    return STATUS_LABELS[STATUS_FINALIZED];
+  if (finalizationStatus === STATUS_PENDING)
+    return STATUS_LABELS[STATUS_NOT_FINALIZED];
+  return STATUS_LABELS[STATUS_PENDING];
 };
 
 export const getAccessStatusFilterLabel = (status) => {
-  if (status === STATUS_PENDING) return "Pending";
-  if (status === STATUS_APPROVED) return "Approved";
-  if (status === STATUS_REJECTED) return "Rejected";
-  if (status === "revoked") return "Revoked";
+  if (status === STATUS_PENDING) return STATUS_LABELS[STATUS_PENDING];
+  if (status === STATUS_APPROVED) return STATUS_LABELS[STATUS_APPROVED];
+  if (status === STATUS_REJECTED) return STATUS_LABELS[STATUS_REJECTED];
+  if (status === STATUS_REVOKED) return STATUS_LABELS[STATUS_REVOKED];
   return "Access Status";
 };
 
 export const getAiStatusFilterLabel = (status) => {
-  if (status === STATUS_UPLOADED) return "Uploaded";
-  if (status === STATUS_FAILED) return "Failed";
-  if (status === STATUS_PENDING) return "Pending";
-  if (status === STATUS_PROCESSING) return "Processing";
-  if (status === STATUS_EXTRACTED) return "Extracted";
+  if (status === STATUS_UPLOADED) return STATUS_LABELS[STATUS_UPLOADED];
+  if (status === STATUS_FAILED) return STATUS_LABELS[STATUS_FAILED];
+  if (status === STATUS_PENDING) return STATUS_LABELS[STATUS_PENDING];
+  if (status === STATUS_PROCESSING) return STATUS_LABELS[STATUS_PROCESSING];
+  if (status === STATUS_EXTRACTED) return STATUS_LABELS[STATUS_EXTRACTED];
   return "Ai Extraction";
 };
 
 export const getApprovalFilterLabel = (status) => {
-  if (status === STATUS_APPROVED) return "Approved";
-  if (status === STATUS_REJECTED) return "Rejected";
-  if (status === STATUS_PENDING) return "Pending";
+  if (status === STATUS_APPROVED) return STATUS_LABELS[STATUS_APPROVED];
+  if (status === STATUS_REJECTED) return STATUS_LABELS[STATUS_REJECTED];
+  if (status === STATUS_PENDING) return STATUS_LABELS[STATUS_PENDING];
   return "Approval";
 };
 
 export const getReviewStatusFilterLabel = (status) => {
-  if (status === STATUS_PENDING) return "Pending";
-  if (status === STATUS_REQUESTED) return "Requested";
-  if (status === STATUS_APPROVED) return "Approved";
-  if (status === STATUS_REJECTED) return "Rejected";
+  if (status === STATUS_PENDING) return STATUS_LABELS[STATUS_PENDING];
+  if (status === STATUS_REQUESTED) return STATUS_LABELS[STATUS_REQUESTED];
+  if (status === STATUS_APPROVED) return STATUS_LABELS[STATUS_APPROVED];
+  if (status === STATUS_REJECTED) return STATUS_LABELS[STATUS_REJECTED];
   return "Review Status";
 };
 
 export const getAiExtractionStatusFilterLabel = (status) => {
-  if (status === STATUS_PENDING) return "Pending";
-  if (status === STATUS_UPLOADED) return "Uploaded";
-  if (status === STATUS_FAILED) return "Failed";
-  if (status === STATUS_PROCESSING) return "Processing";
-  if (status === STATUS_EXTRACTED) return "Extracted";
+  if (status === STATUS_PENDING) return STATUS_LABELS[STATUS_PENDING];
+  if (status === STATUS_UPLOADED) return STATUS_LABELS[STATUS_UPLOADED];
+  if (status === STATUS_FAILED) return STATUS_LABELS[STATUS_FAILED];
+  if (status === STATUS_PROCESSING) return STATUS_LABELS[STATUS_PROCESSING];
+  if (status === STATUS_EXTRACTED) return STATUS_LABELS[STATUS_EXTRACTED];
   return "AI Extraction";
 };
 
 export const getAiExtractionStatusLabel = (status) => {
-  if (status === STATUS_UPLOADED) return "Uploaded";
-  if (status === STATUS_PROCESSING) return "Processing";
-  if (status === STATUS_EXTRACTED) return "Extracted";
-  if (status === STATUS_FAILED) return "Failed";
-  return "Pending";
+  if (status === STATUS_UPLOADED) return STATUS_LABELS[STATUS_UPLOADED];
+  if (status === STATUS_PROCESSING) return STATUS_LABELS[STATUS_PROCESSING];
+  if (status === STATUS_EXTRACTED) return STATUS_LABELS[STATUS_EXTRACTED];
+  if (status === STATUS_FAILED) return STATUS_LABELS[STATUS_FAILED];
+  return STATUS_LABELS[STATUS_PENDING];
 };
 
 export const getApprovalStatusLabel = (status) => {
-  if (status === STATUS_APPROVED) return "Approved";
-  if (status === STATUS_REJECTED) return "Rejected";
-  return "Pending";
+  if (status === STATUS_APPROVED) return STATUS_LABELS[STATUS_APPROVED];
+  if (status === STATUS_REJECTED) return STATUS_LABELS[STATUS_REJECTED];
+  return STATUS_LABELS[STATUS_PENDING];
 };
 
 export const getReviewIcon = (role, hasComment) => {
@@ -146,25 +217,31 @@ export const getReviewIcon = (role, hasComment) => {
 };
 
 export const statusVariantMap = {
-  pending: "amber",
-  returned: "destructive",
-  live: "green",
-  superseded: "blue",
+  pending: COLOR_AMBER,
+  returned: COLOR_DESTRUCTIVE,
+  live: COLOR_GREEN,
+  superseded: COLOR_BLUE,
 };
 
 export const typeVariantMap = {
-  "pre-release": "amber",
-  "in-review": "amber",
-  deployed: "blue",
+  "pre-release": COLOR_AMBER,
+  "in-review": COLOR_AMBER,
+  deployed: COLOR_BLUE,
+};
+
+export const packageTypeColorMap = {
+  blue: { border: "border-t-blue-500", bg: "bg-blue-500" },
+  green: { border: "border-t-green-500", bg: "bg-green-500" },
+  default: { border: "border-t-amber-400", bg: "bg-amber-400" },
 };
 
 export const getExpertReviewBadgeVariant = (status) => {
   const map = {
-    approved: "default",
-    requested: "amber",
-    rejected: "destructive",
+    approved: COLOR_DEFAULT,
+    requested: COLOR_AMBER,
+    rejected: COLOR_DESTRUCTIVE,
   };
-  return map[status] || "amber";
+  return map[status] || COLOR_AMBER;
 };
 
 export const getExpertReviewBadgeIcon = (status) => {
@@ -177,9 +254,10 @@ export const getExpertReviewBadgeIcon = (status) => {
 };
 
 export const getAssignedFrameworkApprovalStatusClass = (status) => {
-  if (status === "assigned") return "bg-primary/10 text-primary";
-  if (status === "revoked") return "bg-red-50 text-red-700";
-  return "bg-yellow-50 text-yellow-700";
+  if (status === "assigned")
+    return "bg-primary/10 border-primary/30 text-primary";
+  if (status === "revoked") return "bg-red-50 border-red-300 text-red-700";
+  return "bg-yellow-50 border-yellow-300 text-yellow-700";
 };
 
 export const getApprovalStatusClass = (status) => {
@@ -196,35 +274,40 @@ export const getAiExtractionStatusClass = (status) => {
   return "bg-yellow-50 text-yellow-700";
 };
 
+export const STATUS_BADGE_COLORS = {
+  [STATUS_APPROVED]:
+    "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+  [STATUS_COMPLETED]:
+    "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+  [STATUS_REJECTED]:
+    "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+  [STATUS_FAILED]:
+    "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+  [STATUS_REQUESTED]:
+    "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+  [STATUS_PENDING]:
+    "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+  [STATUS_PROCESSING]:
+    "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+  default: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
+};
+
+export const APPROVAL_STATUS_COLORS = {
+  [STATUS_APPROVED]:
+    "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
+  [STATUS_PENDING]:
+    "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
+  [STATUS_REJECTED]: "bg-destructive/10 text-destructive",
+  default: "bg-muted text-muted-foreground",
+};
+
 export const getStatusBadgeColor = (status) => {
-  switch (status?.toLowerCase()) {
-    case STATUS_APPROVED:
-    case STATUS_COMPLETED:
-      return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
-    case STATUS_REJECTED:
-    case STATUS_FAILED:
-      return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
-    case STATUS_REQUESTED:
-      return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
-    case STATUS_PENDING:
-    case STATUS_PROCESSING:
-      return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
-    default:
-      return "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400";
-  }
+  const key = String(status || "").toLowerCase();
+  return STATUS_BADGE_COLORS[key] || STATUS_BADGE_COLORS.default;
 };
 
 export const getApprovalStatusColor = (status) => {
-  switch (status) {
-    case STATUS_APPROVED:
-      return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400";
-    case STATUS_PENDING:
-      return "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400";
-    case STATUS_REJECTED:
-      return "bg-destructive/10 text-destructive";
-    default:
-      return "bg-muted text-muted-foreground";
-  }
+  return APPROVAL_STATUS_COLORS[status] || APPROVAL_STATUS_COLORS.default;
 };
 
 export const aiExtractionConfig = {
@@ -358,7 +441,7 @@ export const STATUS_VISUALS = {
     labelColor: "text-red-800 dark:text-red-300",
     label: "Rejected",
   },
-  skipped: {
+  [STATUS_SKIPPED]: {
     icon: "warning",
     bgColor: "bg-yellow-50 dark:bg-yellow-500/10",
     borderColor: "border-yellow-200 dark:border-yellow-500/20",
@@ -366,7 +449,7 @@ export const STATUS_VISUALS = {
     labelColor: "text-yellow-800 dark:text-yellow-300",
     label: "Skipped",
   },
-  live: {
+  [STATUS_LIVE]: {
     icon: "check-circle",
     bgColor: "bg-green-50 dark:bg-green-500/10",
     borderColor: "border-green-200 dark:border-green-500/20",
@@ -374,7 +457,7 @@ export const STATUS_VISUALS = {
     labelColor: "text-green-800 dark:text-green-300",
     label: "Live",
   },
-  returned: {
+  [STATUS_RETURNED]: {
     icon: "refresh",
     bgColor: "bg-red-50 dark:bg-red-500/10",
     borderColor: "border-red-200 dark:border-red-500/20",
@@ -382,7 +465,7 @@ export const STATUS_VISUALS = {
     labelColor: "text-red-800 dark:text-red-300",
     label: "Returned",
   },
-  superseded: {
+  [STATUS_SUPERSEDED]: {
     icon: "arrow-up",
     bgColor: "bg-blue-50 dark:bg-blue-500/10",
     borderColor: "border-blue-200 dark:border-blue-500/20",
@@ -390,7 +473,7 @@ export const STATUS_VISUALS = {
     labelColor: "text-blue-800 dark:text-blue-300",
     label: "Superseded",
   },
-  "in-review": {
+  [STATUS_IN_REVIEW]: {
     icon: "hourglass",
     bgColor: "bg-amber-50 dark:bg-amber-500/10",
     borderColor: "border-amber-200 dark:border-amber-500/20",
@@ -398,13 +481,29 @@ export const STATUS_VISUALS = {
     labelColor: "text-amber-800 dark:text-amber-300",
     label: "In Review",
   },
-  deployed: {
+  [STATUS_DEPLOYED]: {
     icon: "check-circle",
     bgColor: "bg-primary/5 dark:bg-primary/10",
     borderColor: "border-primary/20",
     iconColor: "text-primary",
     labelColor: "text-primary",
     label: "Deployed",
+  },
+  [STATUS_REVOKED]: {
+    icon: "x-circle",
+    bgColor: "bg-red-50 dark:bg-red-500/10",
+    borderColor: "border-red-200 dark:border-red-500/20",
+    iconColor: "text-red-800 dark:text-red-300",
+    labelColor: "text-red-800 dark:text-red-300",
+    label: "Revoked",
+  },
+  [STATUS_ARCHIVED]: {
+    icon: "archive",
+    bgColor: "bg-gray-50 dark:bg-gray-500/10",
+    borderColor: "border-gray-200 dark:border-gray-500/20",
+    iconColor: "text-gray-800 dark:text-gray-300",
+    labelColor: "text-gray-800 dark:text-gray-300",
+    label: "Archived",
   },
   default: {
     icon: "warning",

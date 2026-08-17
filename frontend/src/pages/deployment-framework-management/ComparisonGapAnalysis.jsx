@@ -3,13 +3,13 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import Icon from "@/components/custom/Icon";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Link,
   useNavigate,
   useParams,
   useSearchParams,
 } from "react-router-dom";
+import { useAuth } from "@/context/authContext/useAuth";
 import {
   getDeploymentFrameworkPackageByVersion,
   downloadDeploymentFrameworkReport,
@@ -20,10 +20,26 @@ import DeploymentFrameworkPackageTable from "./components/custom/DeploymentFrame
 import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
 import GapsTable from "./components/custom/GapTable";
 import ComparisonsTable from "./components/custom/ComparisionTable";
-import { getStatusBadgeProps } from "./components/helper/deploymentFrameworkHelpers";
-import { statusVariantMap, typeVariantMap } from "@/utils/commonUtils";
+import {
+  getStatusBadgeProps,
+  transformAssignedFrameworks,
+} from "./components/helper/deploymentFrameworkHelpers";
+import {
+  isAuditor,
+  STATUS_EXTRACTED,
+  STATUS_FAILED,
+  STATUS_REVOKED,
+  statusVariantMap,
+  typeVariantMap,
+  STATUS_UPLOADED,
+  STATUS_PROCESSING,
+} from "@/utils/commonUtils";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ControlsPanel from "@/components/custom/ControlsPanel";
+import AnalysisActions from "./components/AnalysisActions";
+import { useAssignedFrameworks } from "@/hooks/useAssignedFrameworks";
+import { useStatusPolling } from "@/hooks/useStatusPolling";
 
 const StatusPlaceholder = ({ status, message, type }) => {
   const getStatusConfig = (status) => {
@@ -105,6 +121,20 @@ export default function ComparisonGapAnalysis() {
   const packageVersion = searchParams.get("package-version");
   const activeTab = searchParams.get("tab") || "package";
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const showAuditorActions = isAuditor(user?.role);
+
+  const [activelyExtractingFileIds, setActivelyExtractingFileIds] = useState(
+    new Map()
+  );
+
+  const handleExtractionTriggered = useCallback((fileId) => {
+    setActivelyExtractingFileIds((prev) => {
+      const next = new Map(prev);
+      next.set(fileId, Date.now());
+      return next;
+    });
+  }, []);
 
   const handleTabChange = (value) => {
     setSearchParams(
@@ -116,6 +146,8 @@ export default function ComparisonGapAnalysis() {
       { replace: true }
     );
   };
+
+  const { assignedFrameworks } = useAssignedFrameworks();
 
   const [framework, setFramework] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -149,6 +181,35 @@ export default function ComparisonGapAnalysis() {
     fetchDetails(true);
   }, [fetchDetails]);
 
+  useEffect(() => {
+    if (!framework) return;
+    const docs =
+      framework.packages?.find((pkg) => pkg.packageVersion === packageVersion)
+        ?.documents || [];
+    setActivelyExtractingFileIds((prev) => {
+      let changed = false;
+      const next = new Map(prev);
+      const now = Date.now();
+
+      for (const [fileId, timestamp] of prev.entries()) {
+        const doc = docs.find((d) => d.fileId === fileId);
+        if (doc) {
+          if (
+            doc.aiExtraction?.status === STATUS_PROCESSING ||
+            doc.aiExtraction?.status === STATUS_UPLOADED ||
+            ((doc.aiExtraction?.status === STATUS_EXTRACTED ||
+              doc.aiExtraction?.status === STATUS_FAILED) &&
+              now - timestamp > 15000)
+          ) {
+            next.delete(fileId);
+            changed = true;
+          }
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [framework, packageVersion]);
+
   // Resolve the package matching the query param version, fallback to first package
   const activePackage = useMemo(() => {
     if (!framework?.packages?.length) return null;
@@ -165,6 +226,44 @@ export default function ComparisonGapAnalysis() {
   const isGapAnalysisCompleted =
     gapAnalysisData?.status?.toLowerCase() === "completed";
   const isReportReady = isComparisonCompleted && isGapAnalysisCompleted;
+
+  const hasDocumentsProcessing = useMemo(() => {
+    const docs = activePackage?.documents || [];
+    return docs.some(
+      (doc) =>
+        [STATUS_UPLOADED, STATUS_PROCESSING].includes(
+          doc.aiExtraction?.status
+        ) || activelyExtractingFileIds.has(doc.fileId)
+    );
+  }, [activePackage, activelyExtractingFileIds]);
+
+  const isMergeProcessing =
+    activePackage?.mergeDocument?.status === STATUS_PROCESSING;
+  const isComparisonProcessing = comparisonData?.status === STATUS_PROCESSING;
+  const isGapAnalysisProcessing = gapAnalysisData?.status === STATUS_PROCESSING;
+
+  const shouldPoll =
+    hasDocumentsProcessing ||
+    isMergeProcessing ||
+    isComparisonProcessing ||
+    isGapAnalysisProcessing;
+
+  useStatusPolling({
+    id,
+    pathPattern: "/deployment-frameworks/",
+    shouldPoll,
+    onPoll: () => fetchDetails(false),
+    refreshTrigger: null,
+  });
+
+  const assignedFramework = useMemo(() => {
+    return transformAssignedFrameworks(assignedFrameworks, framework);
+  }, [assignedFrameworks, framework]);
+
+  const isAssignedFrameworkRevoked =
+    assignedFramework?.status === STATUS_REVOKED;
+  const isAssignedFrameworkFinalized =
+    assignedFramework?.finalization?.isFinalized === true;
 
   const comparisonBadge = getStatusBadgeProps(
     comparisonData?.status,
@@ -323,7 +422,9 @@ export default function ComparisonGapAnalysis() {
               frameworkId={framework?.id}
               documentWidth="max-w-full"
               showAllColumns={true}
-              showActions={false}
+              showActions={showAuditorActions}
+              onExtractionTriggered={handleExtractionTriggered}
+              onSuccess={() => fetchDetails(false)}
             />
           </div>
         </TabsContent>
@@ -336,6 +437,14 @@ export default function ComparisonGapAnalysis() {
                 <span className="text-base font-semibold">Merged Controls</span>
               </div>
               <div className="flex items-center gap-2">
+                <AnalysisActions
+                  frameworkId={id}
+                  currentPackage={activePackage}
+                  isAssignedFrameworkRevoked={isAssignedFrameworkRevoked}
+                  isAssignedFrameworkFinalized={isAssignedFrameworkFinalized}
+                  viewContext="controls-tab"
+                  onRefresh={() => fetchDetails(false)}
+                />
                 <span className={mergeBadge.className}>{mergeBadge.label}</span>
               </div>
             </div>
@@ -379,6 +488,14 @@ export default function ComparisonGapAnalysis() {
                 </span>
               </div>
               <div className="flex items-center gap-2">
+                <AnalysisActions
+                  frameworkId={id}
+                  currentPackage={activePackage}
+                  isAssignedFrameworkRevoked={isAssignedFrameworkRevoked}
+                  isAssignedFrameworkFinalized={isAssignedFrameworkFinalized}
+                  viewContext="comparison-tab"
+                  onRefresh={() => fetchDetails(false)}
+                />
                 <span className={comparisonBadge.className}>
                   {comparisonBadge.label}
                 </span>
@@ -410,6 +527,14 @@ export default function ComparisonGapAnalysis() {
                 <span className="text-base font-semibold">Gap Analysis</span>
               </div>
               <div className="flex items-center gap-2">
+                <AnalysisActions
+                  frameworkId={id}
+                  currentPackage={activePackage}
+                  isAssignedFrameworkRevoked={isAssignedFrameworkRevoked}
+                  isAssignedFrameworkFinalized={isAssignedFrameworkFinalized}
+                  viewContext="gap-tab"
+                  onRefresh={() => fetchDetails(false)}
+                />
                 <span className={gapBadge.className}>{gapBadge.label}</span>
               </div>
             </div>

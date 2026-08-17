@@ -54,18 +54,24 @@ def _log_llm_call(tag: str, response: Any, elapsed: float):
         finish_reason = response.choices[0].finish_reason
         usage = getattr(response, "usage", None)
         usage_str = (
-            f" | tokens(prompt={usage.prompt_tokens},completion={usage.completion_tokens})" if usage else ""
+            f" | tokens(prompt={usage.prompt_tokens},completion={usage.completion_tokens})"
+            if usage
+            else ""
         )
-        logger.info(f"[{tag}] LLM call done in {elapsed:.1f}s | finish_reason={finish_reason}{usage_str}")
+        logger.info(
+            f"[{tag}] LLM call done in {elapsed:.1f}s | finish_reason={finish_reason}{usage_str}"
+        )
         if finish_reason == "length":
-            logger.warning(f"[{tag}] ⚠️ Response truncated — hit max_tokens limit")
+            logger.warning(f"[{tag}] Response truncated — hit max_tokens limit")
         return finish_reason
     except Exception:
         logger.info(f"[{tag}] LLM call done in {elapsed:.1f}s")
         return None
 
 
-def extract_framework_controls(chunks: list, framework_id: str, is_deployment: bool = False) -> list:
+def extract_framework_controls(
+    chunks: list, framework_id: str, is_deployment: bool = False
+) -> list:
     """
     Extract controls from framework document using AI.
     Two-stage extraction:
@@ -130,11 +136,13 @@ Return ONLY JSON. No markdown. No text outside JSON."""
 
     t_start = datetime.now()
     try:
+        logger.info("[OPENAI] Client initialized")
         response = get_openai_client().chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt_stage1}],
             temperature=0,
             max_tokens=CONTROL_EXTRACTION_MAX_TOKENS,
+            timeout=3600,  # 1 hour timeout
         )
         elapsed = (datetime.now() - t_start).total_seconds()
         _log_llm_call("EXTRACT-STAGE1", response, elapsed)
@@ -150,10 +158,14 @@ Return ONLY JSON. No markdown. No text outside JSON."""
         return []
 
     # Stage 2: Generate deployment points (batched)
-    logger.info(f"[EXTRACT] Stage 2: Generating deployment points in batches of {DEPLOYMENT_BATCH_SIZE}")
+    logger.info(
+        f"[EXTRACT] Stage 2: Generating deployment points in batches of {DEPLOYMENT_BATCH_SIZE}"
+    )
 
     final_controls = []
-    total_batches = (len(controls) + DEPLOYMENT_BATCH_SIZE - 1) // DEPLOYMENT_BATCH_SIZE if controls else 0
+    total_batches = (
+        (len(controls) + DEPLOYMENT_BATCH_SIZE - 1) // DEPLOYMENT_BATCH_SIZE if controls else 0
+    )
 
     for batch_idx in range(0, len(controls), DEPLOYMENT_BATCH_SIZE):
         batch = controls[batch_idx : batch_idx + DEPLOYMENT_BATCH_SIZE]
@@ -191,6 +203,7 @@ Return ONLY JSON. No markdown."""
                 messages=[{"role": "user", "content": prompt_stage2}],
                 temperature=0,
                 max_tokens=DEPLOYMENT_MAX_TOKENS,
+                timeout=3600,  # 1 hour timeout
             )
             elapsed = (datetime.now() - t_start).total_seconds()
             finish_reason = _log_llm_call(f"EXTRACT-STAGE2-batch{batch_num}", response, elapsed)
@@ -208,11 +221,13 @@ Return ONLY JSON. No markdown."""
             merged_batch = []
             for orig_ctrl in batch:
                 c_id = str(orig_ctrl.get("Control_id", "")).strip()
-                orig_ctrl["Deployment_points"] = dp_map.get(c_id, orig_ctrl.get("Deployment_points", ""))
+                orig_ctrl["Deployment_points"] = dp_map.get(
+                    c_id, orig_ctrl.get("Deployment_points", "")
+                )
                 merged_batch.append(orig_ctrl)
 
             final_controls.extend(merged_batch)
-            logger.info(f"[EXTRACT] Batch {batch_num}/{total_batches} ✅ OK")
+            logger.info(f"[EXTRACT] Batch {batch_num}/{total_batches} OK")
 
         except json.JSONDecodeError as e:
             logger.exception(f"[EXTRACT] Batch {batch_num} JSON parse failed: {e}")
@@ -227,29 +242,33 @@ Return ONLY JSON. No markdown."""
             logger.exception(f"[EXTRACT] Batch {batch_num} API error: {e}")
             final_controls.extend(batch)
 
-    logger.info(f"[EXTRACT] ✅ Complete: {len(final_controls)} controls extracted")
+    logger.info(f"[EXTRACT] Complete: {len(final_controls)} controls extracted")
     return final_controls
 
 
 def convert_to_section_structure(controls: list, resource_type: str = "framework") -> list:
     """
-    Convert flat control list to section-wise nested structure.
-    Sections are determined by:
-    1. Section_name from control (if provided)
-    2. Control ID prefix (e.g., "A.6" from "A.6.1")
-    3. Default "No Section"
+    Convert flat control list to section-wise nested structure with hierarchical support.
+
+    Hierarchy auto-detection from control ID:
+    - A.5 = Section + Control (2 parts)
+    - A.5.1 = Control (3 parts, belongs to section A)
+    - A.5.1.1 = Sub-control of A.5.1 (4+ parts)
+
+    NO HARDCODING - purely dynamic based on ID structure.
     """
     if not controls:
         logger.warning("[STRUCTURE] Empty controls list")
         return []
 
-    sections_map = {}
-    section_order = []
+    def _parse_id(ctrl_id: str):
+        """Split ID by . or - into parts"""
+        return re.split(r"[.\-]", str(ctrl_id).strip())
 
-    def _title_case(text):
-        if text is None:
-            return ""
-        return str(text).strip().title()
+    # Step 1: Extract and normalize all controls
+    sections = {}
+    control_by_id = {}
+    section_for_control = {}  # Track which section each control belongs to
 
     for idx, ctrl in enumerate(controls):
         # Extract fields based on resource type
@@ -261,70 +280,152 @@ def convert_to_section_structure(controls: list, resource_type: str = "framework
             section_name = str(ctrl.get("Section_name") or "").strip()
         else:
             ctrl_id = str(ctrl.get("Control_id") or f"CTR-{idx+1:03d}").strip()
-            ctrl_name = str(ctrl.get("Client_control_name") or ctrl.get("Control_name") or "").strip()
+            ctrl_name = str(
+                ctrl.get("Client_control_name") or ctrl.get("Control_name") or ""
+            ).strip()
             ctrl_desc = str(
                 ctrl.get("Client_control_description") or ctrl.get("Control_description") or ""
             ).strip()
             raw_dp = ctrl.get("Client_deployment_points") or ctrl.get("Deployment_points") or ""
             section_name = str(ctrl.get("Section_name") or "").strip()
 
-        # Extract ID prefix for section grouping
-        parts = re.split(r"[.\-]", ctrl_id)
-        if len(parts) >= 2 and parts[0] not in ("CTR",):
-            two_part_prefix = f"{parts[0]}.{parts[1]}"
-            one_part_prefix = parts[0]
-            id_prefix = two_part_prefix if len(parts) > 2 else one_part_prefix
-        else:
-            id_prefix = None
-
-        # Determine section name with priority
-        if id_prefix:
-            sec_key = id_prefix.upper()
-            sec_id = id_prefix.upper()
-            sec_display_name = (
-                _title_case(clean_section_name(section_name))
-                if section_name
-                else _title_case(clean_section_name(id_prefix))
-            )
-        elif section_name:
-            sec_key = section_name.upper().strip()
-            sec_display_name = _title_case(clean_section_name(section_name))
-            sec_id = None
-        else:
-            sec_key = "NO_SECTION"
-            sec_display_name = "No Section"
-            sec_id = None
-
-        # Create section if new
-        if sec_key not in sections_map:
-            sec_idx = len(section_order) + 1
-            sections_map[sec_key] = {
-                "id": sec_id if sec_id else f"SEC-{sec_idx:02d}",
-                "name": sec_display_name,
-                "controls": [],
-            }
-            section_order.append(sec_key)
-
         # Parse deployment points
-        dp_list = _parse_deployment_points(raw_dp, ctrl_id)
+        dp_list = _parse_deployment_points(raw_dp)
 
-        # Create control object
-        control_obj = {
+        # Determine section from ID (first TWO parts for A.5, A.6, etc.)
+        parts = _parse_id(ctrl_id)
+        # For ID like "A.5.1", we want section "A.5" (first 2 parts)
+        # For ID like "A.5.1.1", we also want section "A.5"
+        if len(parts) >= 2 and parts[0] and parts[0].isalpha():
+            sec_key = f"{parts[0]}.{parts[1]}".upper()  # e.g., "A.5"
+        elif parts and parts[0] and parts[0] not in ("CTR",):
+            sec_key = parts[0].upper()
+        else:
+            sec_key = "NOSEC"
+        sec_display = section_name if section_name else sec_key
+
+        # Store control
+        ctrl_obj = {
             "id": ctrl_id,
-            "name": ctrl_name.strip().lower() if ctrl_name.strip() else ctrl_id,
+            "name": ctrl_name.strip().lower() if ctrl_name else ctrl_id,
             "description": ctrl_desc,
             "deployment_points": dp_list,
         }
+        control_by_id[ctrl_id] = ctrl_obj
+        section_for_control[ctrl_id] = {"key": sec_key, "name": sec_display}
 
-        sections_map[sec_key]["controls"].append(control_obj)
+        # Create section if needed
+        if sec_key not in sections:
+            sections[sec_key] = {
+                "id": sec_key,
+                "name": clean_section_name(sec_display).title() if sec_display else "No Section",
+                "controls": [],
+            }
 
-    result = [sections_map[k] for k in section_order]
-    total_ctrls = sum(len(s["controls"]) for s in result)
-    logger.info(f"[STRUCTURE] Built {len(result)} sections with {total_ctrls} controls")
+    logger.info(f"[STRUCTURE] Collected {len(control_by_id)} controls in {len(sections)} sections")
+
+    # Step 2: Organize controls into sections with hierarchy
+    added_as_root = 0
+    added_as_sub = 0
+
+    for ctrl_id, ctrl_obj in control_by_id.items():
+        parts = _parse_id(ctrl_id)
+
+        # Determine hierarchy based on number of parts:
+        # A.5 (2 parts) → Section
+        # A.5.1 (3 parts) → Control (root in its section)
+        # A.5.1.1 (4 parts) → Sub-control of A.5.1
+
+        parent_id = None
+        sec_key = None
+
+        if len(parts) >= 4:
+            # This is a sub-control (4+ parts like A.5.1.1)
+            parent_id = ".".join(parts[:-1])  # Parent = A.5.1
+            if parent_id in control_by_id:
+                # Parent exists, treat as sub-control
+                added_as_sub += 1
+                logger.info(f"[STRUCTURE] {ctrl_id} → sub-control of {parent_id}")
+                continue
+            else:
+                # No parent, treat as root - belongs to section A.5
+                sec_key = ".".join(parts[:2]).upper()  # Section = A.5
+
+        elif len(parts) == 3:
+            # This is a control (3 parts like A.5.1)
+            # Belongs to section A.5
+            sec_key = ".".join(parts[:2]).upper()  # Section = A.5
+
+        elif len(parts) == 2:
+            # This is a section header itself (2 parts like A.5)
+            sec_key = ".".join(parts).upper()
+
+        else:
+            # Fallback
+            sec_key = (
+                parts[0].upper() if parts and parts[0] and parts[0] not in ("CTR",) else "NOSEC"
+            )
+
+        # Get section name from stored mapping
+        sec_display = section_for_control.get(ctrl_id, {}).get("name", sec_key)
+
+        # Create section if needed
+        if sec_key and sec_key not in sections:
+            sections[sec_key] = {
+                "id": sec_key,
+                "name": (
+                    clean_section_name(sec_display).title() if sec_display else f"Section {sec_key}"
+                ),
+                "controls": [],
+            }
+
+        if not sec_key:
+            continue
+
+        # This is a root control - add it to the section
+        ctrl_entry = {
+            "id": ctrl_obj["id"],
+            "name": ctrl_obj["name"],
+            "description": ctrl_obj["description"],
+            "deployment_points": ctrl_obj["deployment_points"],
+        }
+
+        # Check if this control has sub-controls
+        sub_controls = []
+        for other_id in control_by_id:
+            other_parts = _parse_id(other_id)
+            # If other_id is 4+ parts and its parent is this control
+            if len(other_parts) >= 4:
+                parent_id = ".".join(other_parts[:-1])
+                if parent_id == ctrl_id:
+                    sub_obj = control_by_id[other_id]
+                    sub_controls.append(
+                        {
+                            "id": sub_obj["id"],
+                            "name": sub_obj["name"],
+                            "description": sub_obj["description"],
+                            "deployment_points": sub_obj["deployment_points"],
+                        }
+                    )
+                    logger.debug(f"[STRUCTURE] {other_id} → sub-control of {ctrl_id}")
+
+        if sub_controls:
+            ctrl_entry["controls"] = sub_controls
+
+        sections[sec_key]["controls"].append(ctrl_entry)
+        added_as_root += 1
+        logger.info(f"[STRUCTURE] {ctrl_id} → root control in section {sec_key}")
+
+    result = list(sections.values())
+    root_cnt = sum(len(s["controls"]) for s in result)
+    sub_cnt = sum(sum(len(c.get("controls", [])) for c in s["controls"]) for s in result)
+    logger.info(
+        f"[STRUCTURE]  {len(result)} sections | {root_cnt} root | {sub_cnt} sub-controls | (added: {added_as_root} root, {added_as_sub} sub)"
+    )
     return result
 
 
-def _parse_deployment_points(raw: Any, ctrl_id: str) -> list:
+def _parse_deployment_points(raw: Any) -> list:
     """
     Parse deployment points string into structured list of dicts.
     Handles numbered format: "1. Do X\n2. Do Y"
