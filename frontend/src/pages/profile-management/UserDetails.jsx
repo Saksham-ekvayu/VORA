@@ -28,6 +28,7 @@ import {
   STATUS_PENDING,
   STATUS_REJECTED,
   STATUS_REVOKED,
+  STATUS_LABELS,
 } from "@/utils/commonUtils";
 import UserAvatar from "@/components/custom/UserAvatar";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -179,20 +180,20 @@ export default function UserDetails() {
         options: [
           { label: "All Status", onClick: () => handleStatusFilter("") },
           {
-            label: "Pending",
+            label: STATUS_LABELS[STATUS_PENDING],
             onClick: () => handleStatusFilter(STATUS_PENDING),
             separatorBefore: true,
           },
           {
-            label: "Approved",
+            label: STATUS_LABELS[STATUS_APPROVED],
             onClick: () => handleStatusFilter(STATUS_APPROVED),
           },
           {
-            label: "Rejected",
+            label: STATUS_LABELS[STATUS_REJECTED],
             onClick: () => handleStatusFilter(STATUS_REJECTED),
           },
           {
-            label: "Revoked",
+            label: STATUS_LABELS[STATUS_REVOKED],
             onClick: () => handleStatusFilter(STATUS_REVOKED),
           },
         ],
