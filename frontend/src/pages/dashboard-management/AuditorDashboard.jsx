@@ -35,8 +35,6 @@ const getHashIndex = (str, max) => {
 
 const DASHBOARD_CONFIG = {
   getFrameworkConfig: (name) => COLORS[getHashIndex(name, COLORS.length)],
-  getEventStatusColor: (status) =>
-    COLORS[getHashIndex(status, COLORS.length)].barColor,
 };
 
 // ─── Static Mock Data ────────────────────────────────────────────────────────
@@ -49,26 +47,26 @@ const MOCK = {
 
   frameworkHealth: [
     {
-      name: "ISO 27001",
+      name: "ISO-27001:2022",
       readiness: 91,
     },
     {
-      name: "ISO 9001",
+      name: "ISO-9001:2008",
       readiness: 89,
     },
     {
-      name: "NIST CSF",
+      name: "NIST-CSF:2021",
       readiness: 58,
     },
     {
-      name: "21 CFR Part II",
+      name: "CFR-Part-II:2023",
       readiness: 67,
     },
   ],
 
   activeGaps: [
     {
-      framework: "ISO 27001",
+      framework: "ISO-27001:2022",
       ctrlId: "BC-12.4",
       description: "Cryptographic Key Establishment",
       instances: 5,
@@ -77,7 +75,7 @@ const MOCK = {
       trend: "down",
     },
     {
-      framework: "ISO 9001",
+      framework: "ISO-9001:2008",
       ctrlId: "QM-4.2",
       description: "Document Control Procedures",
       instances: 6,
@@ -86,7 +84,7 @@ const MOCK = {
       trend: "down",
     },
     {
-      framework: "ISO 27001",
+      framework: "ISO-27001:2022",
       ctrlId: "AC-2.1",
       description: "Access Control Policy",
       instances: 14,
@@ -95,7 +93,7 @@ const MOCK = {
       trend: "down",
     },
     {
-      framework: "NIST CSF",
+      framework: "NIST-CSF:2021",
       ctrlId: "PR.AC-4",
       description: "Access Permissions Management",
       instances: 11,
@@ -106,10 +104,10 @@ const MOCK = {
   ],
 
   deploymentPoints: [
-    { name: "AWS Infrastructure", count: 234 },
-    { name: "IAM / Okta", count: 189 },
-    { name: "Application Logs", count: 100 },
-    { name: "HR / Admin", count: 58 },
+    { name: "ISO-27001:2022", count: 234 },
+    { name: "ISO-9001:2008", count: 189 },
+    { name: "NIST-CSF:2021", count: 100 },
+    { name: "CFR-Part-II:2023", count: 58 },
   ],
 
   riskByStatus: [
@@ -183,30 +181,6 @@ const MOCK = {
       status: "Pass",
       label: "Password Complexity Check • AWS IAM",
       ago: "3s ago",
-    },
-  ],
-
-  upcomingEvents: [
-    {
-      title: "ISO 27001 Internal Audit",
-      date: "Jun 10, 2024",
-      daysLeft: 10,
-      status: "Overdue Risk",
-      openItems: 8,
-    },
-    {
-      title: "Management Review Meeting",
-      date: "Jul 28, 2024",
-      daysLeft: 58,
-      status: "Upcoming",
-      actions: 5,
-    },
-    {
-      title: "ISO 27001 Surveillance Audit",
-      date: "Aug 25, 2024",
-      daysLeft: 86,
-      status: "Upcoming",
-      tasks: 7,
     },
   ],
 };
@@ -289,7 +263,7 @@ export default function AuditorDashboard() {
   }, []);
 
   return (
-    <div className="space-y-3 my-2">
+    <div className="space-y-3 mt-2">
       {/* ── Header bar ────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between flex-wrap gap-2 px-1">
         <h2 className="text-lg font-semibold text-foreground">
@@ -430,7 +404,7 @@ export default function AuditorDashboard() {
               >
                 {/* Colored pill tag */}
                 <span
-                  className="text-[11px] font-semibold px-1 py-0.3 rounded text-white shrink-0 min-w-20 text-center group-hover:opacity-80 transition-opacity"
+                  className="text-[11px] font-semibold px-1 py-0.3 rounded text-white shrink-0 min-w-24 text-center group-hover:opacity-80 transition-opacity"
                   style={{
                     backgroundColor: DASHBOARD_CONFIG.getFrameworkConfig(
                       fw.name
@@ -579,23 +553,34 @@ export default function AuditorDashboard() {
             style={{ maxHeight: "220px" }}
           >
             {MOCK.deploymentPoints.map((dp) => (
-              <div key={dp.name}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-foreground">{dp.name}</span>
-                  </div>
-                  <span className="text-sm font-bold text-foreground">
-                    {dp.count}
-                  </span>
-                </div>
-                <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-primary transition-all duration-500"
-                    style={{
-                      width: `${Math.min((dp.count / 250) * 100, 100)}%`,
-                    }}
+              <div
+                key={dp.name}
+                className="flex items-center gap-3 w-full group"
+              >
+                {/* Colored pill tag */}
+                <span
+                  className="text-[11px] font-semibold px-1 py-0.3 rounded text-white shrink-0 min-w-24 text-center group-hover:opacity-80 transition-opacity"
+                  style={{
+                    backgroundColor: DASHBOARD_CONFIG.getFrameworkConfig(
+                      dp.name
+                    ).tagColor,
+                  }}
+                >
+                  {dp.name}
+                </span>
+                {/* Progress bar */}
+                <div className="flex-1">
+                  <ProgressBar
+                    value={Math.min((dp.count / 250) * 100, 100)}
+                    color={
+                      DASHBOARD_CONFIG.getFrameworkConfig(dp.name).barColor
+                    }
                   />
                 </div>
+                {/* Count */}
+                <span className="text-xs font-bold text-foreground w-9 text-right shrink-0 group-hover:text-primary transition-colors">
+                  {dp.count}
+                </span>
               </div>
             ))}
           </div>
@@ -623,17 +608,17 @@ export default function AuditorDashboard() {
                   <span className="text-xs text-foreground">{r.label}</span>
                 </div>
                 <div className="flex justify-center">
-                  <span className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center text-[11px] font-bold text-white">
+                  <span className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center text-[10px] font-bold text-white">
                     {r.high}
                   </span>
                 </div>
                 <div className="flex justify-center">
-                  <span className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center text-[11px] font-bold text-white">
+                  <span className="w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center text-[10px] font-bold text-white">
                     {r.medium}
                   </span>
                 </div>
                 <div className="flex justify-center">
-                  <span className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-[11px] font-bold text-white">
+                  <span className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] font-bold text-white">
                     {r.low}
                   </span>
                 </div>
@@ -679,51 +664,6 @@ export default function AuditorDashboard() {
           </div>
         </CardWrapper>
       </div>
-
-      {/* ── Row 4: Upcoming Events ─────────────────────────────────────────── */}
-      <CardWrapper title="Upcoming Events" className="flex flex-col">
-        <div
-          className="overflow-y-auto flex-1 space-y-2 pr-0.5"
-          style={{ maxHeight: "160px" }}
-        >
-          {MOCK.upcomingEvents.map((ev) => (
-            <div
-              key={ev.title}
-              className="flex items-center gap-3 p-2 bg-accent rounded border border-border hover:border-primary/50 transition-colors"
-            >
-              <div
-                className={`w-1 self-stretch rounded-full shrink-0 ${DASHBOARD_CONFIG.getEventStatusColor(ev.status)}`}
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground">
-                  {ev.title}
-                </p>
-              </div>
-              <div className="flex items-center gap-3 shrink-0 text-xs text-muted-foreground flex-wrap justify-end">
-                <span className="flex items-center gap-1">
-                  <Icon name="calendar" size="12px" />
-                  {ev.date}
-                </span>
-                <span>{ev.daysLeft} days remaining</span>
-                <span
-                  className={`px-2 py-0.5 rounded-full font-semibold text-white text-[11px] ${DASHBOARD_CONFIG.getEventStatusColor(ev.status)}`}
-                >
-                  {ev.status}
-                </span>
-                {Boolean(ev.openItems) && (
-                  <span className="text-destructive">
-                    {ev.openItems} open items ↑
-                  </span>
-                )}
-                {Boolean(ev.actions) && (
-                  <span>{ev.actions} actions pending →</span>
-                )}
-                {Boolean(ev.tasks) && <span>{ev.tasks} tasks →</span>}
-              </div>
-            </div>
-          ))}
-        </div>
-      </CardWrapper>
     </div>
   );
 }
