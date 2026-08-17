@@ -1180,31 +1180,53 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
 
             logger.info(f"[DD-EXTRACT]  Deployment Document found: {dd.frameworkName}")
 
-            # Find package and file
-            packages = dd.packages or []
-            pkg_ver = dd.currentPackageVersion
+            # Find package and file. DeploymentDocument doesn't store packages;
+            # load parent DeploymentFramework and look up the package by version.
             pkg_info = None
-            for pkg in packages:
-                if isinstance(pkg, dict) and pkg.get("packageVersion") == pkg_ver:
-                    pkg_info = pkg
-                    break
+            try:
+                from vora_shared.models import DeploymentFramework
 
-            if not pkg_info:
-                logger.error(f"[DD-EXTRACT]  Package not found: {pkg_ver}")
+                df = await session.get(DeploymentFramework, dd.deploymentFrameworkId)
+                if not df:
+                    logger.error(f"[DD-EXTRACT]  DeploymentFramework not found: {dd.deploymentFrameworkId}")
+                    return
+
+                packages = list(df.packages or [])
+                # package version may be stored on the deployment document or on the framework
+                pkg_ver = getattr(dd, "frameworkVersion", None) or getattr(df, "currentPackageVersion", None)
+
+                for pkg in packages:
+                    if isinstance(pkg, dict) and pkg.get("packageVersion") == pkg_ver:
+                        pkg_info = pkg
+                        break
+
+                if not pkg_info:
+                    logger.error(f"[DD-EXTRACT]  Package not found: {pkg_ver}")
+                    return
+
+                documents = pkg_info.get("documents") or []
+                file_info = None
+                for doc in documents:
+                    if isinstance(doc, dict) and str(doc.get("fileId")) == file_id:
+                        file_info = doc
+                        break
+
+                # If file not present in framework packages (e.g. reprocessed uploads
+                # or documents saved without updating the parent framework), fall
+                # back to using the file info stored directly on the
+                # DeploymentDocument.
+                if not file_info:
+                    doc_data = dd.document or {}
+                    if isinstance(doc_data, dict) and str(doc_data.get("fileId")) == file_id:
+                        file_info = dict(doc_data)
+                    else:
+                        logger.error(f"[DD-EXTRACT]  File not found in deployment package: {file_id}")
+                        return
+
+                file_path = file_info.get("fileUrl")
+            except Exception as e:
+                logger.error(f"[DD-EXTRACT] Error locating package/file: {e}")
                 return
-
-            documents = pkg_info.get("documents") or []
-            file_info = None
-            for doc in documents:
-                if isinstance(doc, dict) and str(doc.get("fileId")) == file_id:
-                    file_info = doc
-                    break
-
-            if not file_info:
-                logger.error(f"[DD-EXTRACT]  File not found in deployment document: {file_id}")
-                return
-
-            file_path = file_info.get("fileUrl")
             if file_path and file_path.startswith("/uploads/"):
                 from pathlib import Path
 
@@ -1286,6 +1308,21 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
             "controls": controls_payload,
         }
 
+        # Attach document/file metadata so document_extraction rows include source info
+        try:
+            meta = {
+                "fileId": file_id,
+                "fileHash": file_hash,
+                "fileUrl": file_path,
+                "fileSize": file_info.get("fileSize") if isinstance(file_info, dict) else None,
+                "fileType": file_info.get("fileType") if isinstance(file_info, dict) else None,
+                "originalFileName": file_info.get("originalFileName") if isinstance(file_info, dict) else None,
+                "uploadedAt": file_info.get("uploadedAt") if isinstance(file_info, dict) else None,
+            }
+            extraction_data["document"] = meta
+        except Exception:
+            pass
+
         # Update deployment document with extracted data
         logger.info("[DD-EXTRACT] Step 5: Saving to database...")
         async with session_scope() as session:
@@ -1357,48 +1394,55 @@ async def _update_deployment_document_ai_status(
     session: Any, dd_id: str, file_id: str, status_data: dict[str, Any], replace: bool = False
 ) -> None:
     """Update deployment document's aiExtraction field in the packages structure"""
+    # DeploymentDocument does not store package lists; update the parent
+    # DeploymentFramework package entry instead.
     from vora_shared.models import DeploymentDocument
-    from sqlalchemy.orm.attributes import flag_modified
 
     dd = await session.get(DeploymentDocument, dd_id)
     if not dd:
         return
 
-    packages = list(dd.packages or [])
-    updated = False
-
-    for p_idx, pkg in enumerate(packages):
-        if not isinstance(pkg, dict):
-            continue
-        docs = list(pkg.get("documents") or [])
-        for d_idx, doc in enumerate(docs):
-            if isinstance(doc, dict) and str(doc.get("fileId")) == file_id:
-                file_hash = str(doc.get("fileHash") or "")
-                existing_ai = doc.get("aiExtraction")
-                existing_id = existing_ai if isinstance(existing_ai, str) else None
-
-                extraction = await _get_or_create_doc_extraction(session, file_hash, existing_id)
-
+    pkg_ver = getattr(dd, "frameworkVersion", None)
+    df_id = getattr(dd, "deploymentFrameworkId", None)
+    if not df_id or not pkg_ver:
+        # Nothing to update on framework side; try to update the DeploymentDocument's
+        # own `document.aiExtraction` field and return.
+        try:
+            doc_data = dd.document or {}
+            if isinstance(doc_data, dict):
                 if replace:
-                    extraction.aiExtraction = status_data
+                    doc_data["aiExtraction"] = status_data
                 else:
-                    ai = dict(extraction.aiExtraction or {})
+                    ai = dict(doc_data.get("aiExtraction") or {})
                     ai.update(status_data)
-                    extraction.aiExtraction = ai
+                    doc_data["aiExtraction"] = ai
+                dd.document = doc_data
+                flag_modified(dd, "document")
+                session.add(dd)
+                return
+        except Exception:
+            return
 
-                doc["aiExtraction"] = extraction.id
-                docs[d_idx] = doc
-                updated = True
-                break
-        if updated:
-            pkg["documents"] = docs
-            packages[p_idx] = pkg
-            break
-
-    if updated:
-        dd.packages = packages
-        flag_modified(dd, "packages")
-        session.add(dd)
+    # Attempt to update the parent framework package entry. If that does not
+    # find the package/document, fall back to updating the DeploymentDocument row.
+    try:
+        await _update_deployment_framework_ai_status(session, df_id, pkg_ver, file_id, status_data, replace=replace)
+    except Exception:
+        try:
+            # Fallback to updating DeploymentDocument.document.aiExtraction
+            doc_data = dd.document or {}
+            if isinstance(doc_data, dict):
+                if replace:
+                    doc_data["aiExtraction"] = status_data
+                else:
+                    ai = dict(doc_data.get("aiExtraction") or {})
+                    ai.update(status_data)
+                    doc_data["aiExtraction"] = ai
+                dd.document = doc_data
+                flag_modified(dd, "document")
+                session.add(dd)
+        except Exception:
+            return
 
 
 async def _get_or_create_doc_extraction(

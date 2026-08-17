@@ -538,6 +538,7 @@ async def get_document_extraction(file_hash: str):
                 data={
                     "id": doc_extraction.id,
                     "fileHash": doc_extraction.fileHash,
+                    "document": ai_data.get("document"),
                     "status": status,
                     "message": ai_data.get("message"),
                     "timestamp": ai_data.get("timestamp"),

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Literal, Any
 
 from pydantic import BaseModel, Field
 from sqlalchemy import DateTime, Index, String
@@ -44,6 +44,6 @@ class DeploymentDocument(Base):
     frameworkCode: Mapped[str | None] = mapped_column(String, nullable=True)
     frameworkVersion: Mapped[str | None] = mapped_column(String, nullable=True)
     uploadedBy: Mapped[str] = mapped_column(String(24), nullable=False)
-    document: Mapped[DeploymentFrameworkDocument] = mapped_column(JSONB, nullable=False)
+    document: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     createdAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updatedAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
