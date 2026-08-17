@@ -27,6 +27,9 @@ import {
   ROLE_INTERNAL_EXPERT,
   ROLE_EXPERT,
   ROLE_LABELS,
+  STATUS_LABELS,
+  STATUS_ACTIVE,
+  STATUS_INACTIVE,
 } from "@/utils/commonUtils";
 import CustomBadge from "@/components/custom/CustomBadge";
 import UserMiniCard from "@/components/custom/UserMiniCard";
@@ -414,11 +417,14 @@ function Profiles() {
         options: [
           { label: "All Status", onClick: () => handleStatusFilter("") },
           {
-            label: "Active",
+            label: STATUS_LABELS[STATUS_ACTIVE],
             onClick: () => handleStatusFilter("true"),
             separatorBefore: true,
           },
-          { label: "Inactive", onClick: () => handleStatusFilter("false") },
+          {
+            label: STATUS_LABELS[STATUS_INACTIVE],
+            onClick: () => handleStatusFilter("false"),
+          },
         ],
       },
       isAdmin(user.role) && [

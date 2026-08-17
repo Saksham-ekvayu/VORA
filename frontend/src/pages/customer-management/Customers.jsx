@@ -14,7 +14,13 @@ import {
   deleteCustomer,
 } from "@/services/customerService";
 import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
-import { getStatusFilterLabel, isAdmin } from "@/utils/commonUtils";
+import {
+  getStatusFilterLabel,
+  isAdmin,
+  STATUS_LABELS,
+  STATUS_ACTIVE,
+  STATUS_INACTIVE,
+} from "@/utils/commonUtils";
 import CustomBadge from "@/components/custom/CustomBadge";
 import UserMiniCard from "@/components/custom/UserMiniCard";
 import ActionDropdown from "@/components/custom/ActionDropdown";
@@ -257,11 +263,14 @@ export default function Customers() {
         options: [
           { label: "All Status", onClick: () => handleStatusFilter("") },
           {
-            label: "Active",
+            label: STATUS_LABELS[STATUS_ACTIVE],
             onClick: () => handleStatusFilter("true"),
             separatorBefore: true,
           },
-          { label: "Inactive", onClick: () => handleStatusFilter("false") },
+          {
+            label: STATUS_LABELS[STATUS_INACTIVE],
+            onClick: () => handleStatusFilter("false"),
+          },
         ],
       },
       isAdmin(user?.role) && {

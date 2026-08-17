@@ -14,7 +14,12 @@ import ActionDropdown from "@/components/custom/ActionDropdown";
 import { useTableData } from "@/components/data-table/hooks/useTableData";
 import GridCardView from "@/components/grid-card/GridCardView";
 import FrameworkCategoryCard from "./components/custom/FrameworkCategoryCard";
-import { getStatusFilterLabel } from "@/utils/commonUtils";
+import {
+  getStatusFilterLabel,
+  STATUS_LABELS,
+  STATUS_ACTIVE,
+  STATUS_INACTIVE,
+} from "@/utils/commonUtils";
 
 function Category() {
   const [modalState, setModalState] = useState({
@@ -137,11 +142,14 @@ function Category() {
         options: [
           { label: "All Status", onClick: () => handleStatusFilter("") },
           {
-            label: "Active",
+            label: STATUS_LABELS[STATUS_ACTIVE],
             onClick: () => handleStatusFilter("true"),
             separatorBefore: true,
           },
-          { label: "Inactive", onClick: () => handleStatusFilter("false") },
+          {
+            label: STATUS_LABELS[STATUS_INACTIVE],
+            onClick: () => handleStatusFilter("false"),
+          },
         ],
       },
       {
