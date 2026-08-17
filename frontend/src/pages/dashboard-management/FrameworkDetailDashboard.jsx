@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { useParams, useNavigate } from "react-router-dom";
 import { PieChart, Pie, ResponsiveContainer, Tooltip } from "recharts";
-import CardWrapper from "./CardWrapper";
+import CardWrapper from "./components/CardWrapper";
 import Icon from "@/components/custom/Icon";
 import { usePageTitle } from "@/hooks/usePageTitle";
 // ─── Per-framework mock data ──────────────────────────────────────────────────

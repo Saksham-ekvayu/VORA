@@ -26,23 +26,22 @@ export const AuditorDashboard = lazy(
   () => import("@/pages/dashboard-management/AuditorDashboard")
 );
 export const FrameworkDetailDashboard = lazy(
-  () =>
-    import("@/pages/dashboard-management/components/FrameworkDetailDashboard")
+  () => import("@/pages/dashboard-management/FrameworkDetailDashboard")
 );
 export const ControlsPassingPage = lazy(
-  () => import("@/pages/dashboard-management/components/ControlsPassingPage")
+  () => import("@/pages/dashboard-management/ControlsPassingPage")
 );
 export const ExtraControlsPage = lazy(
-  () => import("@/pages/dashboard-management/components/ExtraControlsPage")
+  () => import("@/pages/dashboard-management/ExtraControlsPage")
 );
 export const CriticalGapsPage = lazy(
-  () => import("@/pages/dashboard-management/components/CriticalGapsPage")
+  () => import("@/pages/dashboard-management/CriticalGapsPage")
 );
 export const OverallProtectionPage = lazy(
-  () => import("@/pages/dashboard-management/components/OverallProtectionPage")
+  () => import("@/pages/dashboard-management/OverallProtectionPage")
 );
 export const DeploymentPointsPage = lazy(
-  () => import("@/pages/dashboard-management/components/DeploymentPointsPage")
+  () => import("@/pages/dashboard-management/DeploymentPointsPage")
 );
 export const MonitoringSetup = lazy(
   () => import("@/pages/monitoring-setup/MonitoringSetup")

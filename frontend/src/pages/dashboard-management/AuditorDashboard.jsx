@@ -12,6 +12,33 @@ import { getRoleLabel } from "@/utils/commonUtils";
 import { frameworkToSlug } from "@/utils/frameworkUtils";
 import DateFilter from "./components/DateFilter";
 
+// ─── Dynamic Frontend Configuration ──────────────────────────────────────────
+const COLORS = [
+  { tagColor: "#3b82f6", barColor: "bg-blue-500" },
+  { tagColor: "#22c55e", barColor: "bg-green-500" },
+  { tagColor: "#8b5cf6", barColor: "bg-violet-500" },
+  { tagColor: "#ef4444", barColor: "bg-red-500" },
+  { tagColor: "#f59e0b", barColor: "bg-amber-500" },
+  { tagColor: "#06b6d4", barColor: "bg-cyan-500" },
+  { tagColor: "#ec4899", barColor: "bg-pink-500" },
+  { tagColor: "#14b8a6", barColor: "bg-teal-500" },
+];
+
+const getHashIndex = (str, max) => {
+  if (!str) return 0;
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.codePointAt(i) + ((hash << 5) - hash);
+  }
+  return Math.abs(hash) % max;
+};
+
+const DASHBOARD_CONFIG = {
+  getFrameworkConfig: (name) => COLORS[getHashIndex(name, COLORS.length)],
+  getEventStatusColor: (status) =>
+    COLORS[getHashIndex(status, COLORS.length)].barColor,
+};
+
 // ─── Static Mock Data ────────────────────────────────────────────────────────
 
 const MOCK = {
@@ -24,33 +51,25 @@ const MOCK = {
     {
       name: "ISO 27001",
       readiness: 91,
-      tagColor: "#3b82f6",
-      barColor: "bg-blue-500",
     },
     {
       name: "ISO 9001",
       readiness: 89,
-      tagColor: "#22c55e",
-      barColor: "bg-green-500",
     },
     {
       name: "NIST CSF",
       readiness: 58,
-      tagColor: "#8b5cf6",
-      barColor: "bg-violet-500",
     },
     {
       name: "21 CFR Part II",
       readiness: 67,
-      tagColor: "#ef4444",
-      barColor: "bg-red-500",
     },
   ],
 
   activeGaps: [
     {
       framework: "ISO 27001",
-      ctrlNo: "BC-12.4",
+      ctrlId: "BC-12.4",
       description: "Cryptographic Key Establishment",
       instances: 5,
       failing: "9%",
@@ -59,7 +78,7 @@ const MOCK = {
     },
     {
       framework: "ISO 9001",
-      ctrlNo: "QM-4.2",
+      ctrlId: "QM-4.2",
       description: "Document Control Procedures",
       instances: 6,
       failing: "14%",
@@ -68,7 +87,7 @@ const MOCK = {
     },
     {
       framework: "ISO 27001",
-      ctrlNo: "AC-2.1",
+      ctrlId: "AC-2.1",
       description: "Access Control Policy",
       instances: 14,
       failing: "22%",
@@ -77,7 +96,7 @@ const MOCK = {
     },
     {
       framework: "NIST CSF",
-      ctrlNo: "PR.AC-4",
+      ctrlId: "PR.AC-4",
       description: "Access Permissions Management",
       instances: 11,
       failing: "31%",
@@ -87,30 +106,28 @@ const MOCK = {
   ],
 
   deploymentPoints: [
-    { name: "AWS Infrastructure", count: 234, icon: "cloud" },
-    { name: "IAM / Okta", count: 189, icon: "key" },
-    { name: "Application Logs", count: 100, icon: "document" },
-    { name: "HR / Admin", count: 58, icon: "users" },
+    { name: "AWS Infrastructure", count: 234 },
+    { name: "IAM / Okta", count: 189 },
+    { name: "Application Logs", count: 100 },
+    { name: "HR / Admin", count: 58 },
   ],
 
   riskByStatus: [
     {
       label: "Accepted Risk",
-      icon: "check-circle",
       high: 2,
       medium: 4,
       low: 7,
     },
-    { label: "Reduced Risk", icon: "check-circle", high: 3, medium: 6, low: 5 },
+    { label: "Reduced Risk", high: 3, medium: 6, low: 5 },
     {
       label: "Transferred Risk",
-      icon: "arrow-right",
       high: 1,
       medium: 2,
       low: 3,
     },
-    { label: "Mitigated Risk", icon: "shield", high: 2, medium: 7, low: 9 },
-    { label: "Un-Mitigated Risk", icon: "warning", high: 4, medium: 5, low: 2 },
+    { label: "Mitigated Risk", high: 2, medium: 7, low: 9 },
+    { label: "Un-Mitigated Risk", high: 4, medium: 5, low: 2 },
   ],
 
   aiInsights: [
@@ -176,7 +193,6 @@ const MOCK = {
       daysLeft: 10,
       status: "Overdue Risk",
       openItems: 8,
-      statusColor: "bg-red-500",
     },
     {
       title: "Management Review Meeting",
@@ -184,7 +200,6 @@ const MOCK = {
       daysLeft: 58,
       status: "Upcoming",
       actions: 5,
-      statusColor: "bg-amber-500",
     },
     {
       title: "ISO 27001 Surveillance Audit",
@@ -192,7 +207,6 @@ const MOCK = {
       daysLeft: 86,
       status: "Upcoming",
       tasks: 7,
-      statusColor: "bg-amber-500",
     },
   ],
 };
@@ -328,7 +342,7 @@ export default function AuditorDashboard() {
             className={`text-xs flex items-center gap-1 ${MOCK.overallProtection.up ? "text-emerald-500" : "text-red-500"}`}
           >
             <Icon
-              name={MOCK.overallProtection.up ? "trending-up" : "trending-down"}
+              name={MOCK.overallProtection.up ? "arrow-up" : "arrow-down"}
               size="14px"
             />
             {MOCK.overallProtection.trend}
@@ -348,7 +362,7 @@ export default function AuditorDashboard() {
             {MOCK.criticalGaps.value}
           </p>
           <p className="text-xs flex items-center gap-1 text-red-500">
-            <Icon name="trending-down" size="14px" />
+            <Icon name="arrow-down" size="14px" />
             {MOCK.criticalGaps.trend}
           </p>
         </TopStatCard>
@@ -416,14 +430,23 @@ export default function AuditorDashboard() {
               >
                 {/* Colored pill tag */}
                 <span
-                  className="text-[11px] font-semibold px-2 py-1 rounded text-white shrink-0 min-w-22.5 text-center group-hover:opacity-80 transition-opacity"
-                  style={{ backgroundColor: fw.tagColor }}
+                  className="text-[11px] font-semibold px-1 py-0.3 rounded text-white shrink-0 min-w-20 text-center group-hover:opacity-80 transition-opacity"
+                  style={{
+                    backgroundColor: DASHBOARD_CONFIG.getFrameworkConfig(
+                      fw.name
+                    ).tagColor,
+                  }}
                 >
                   {fw.name}
                 </span>
                 {/* Progress bar */}
                 <div className="flex-1">
-                  <ProgressBar value={fw.readiness} color={fw.barColor} />
+                  <ProgressBar
+                    value={fw.readiness}
+                    color={
+                      DASHBOARD_CONFIG.getFrameworkConfig(fw.name).barColor
+                    }
+                  />
                 </div>
                 {/* Percentage */}
                 <span className="text-xs font-bold text-foreground w-9 text-right shrink-0 group-hover:text-primary transition-colors">
@@ -460,7 +483,7 @@ export default function AuditorDashboard() {
           <div className="flex-1 mt-1">
             {MOCK.activeGaps.map((gap, idx) => (
               <div
-                key={gap.ctrlNo}
+                key={gap.ctrlId}
                 className="grid grid-cols-[0.3fr_1.2fr_0.8fr_0.5fr_0.7fr_1fr] gap-1 items-center py-2 border-b border-border last:border-0 hover:bg-accent/50 rounded transition-colors px-0.5"
               >
                 <span className="text-xs text-muted-foreground">{idx + 1}</span>
@@ -468,14 +491,14 @@ export default function AuditorDashboard() {
                   {gap.framework}
                 </span>
                 <span className="text-xs text-secondary font-semibold">
-                  {gap.ctrlNo}
+                  {gap.ctrlId}
                 </span>
                 <span className="text-xs text-center text-foreground font-medium">
                   {gap.instances}
                 </span>
                 <div className="flex items-center justify-center gap-1">
                   <Icon
-                    name={gap.trend === "up" ? "trending-up" : "trending-down"}
+                    name={gap.trend === "up" ? "arrow-up" : "arrow-down"}
                     size="12px"
                     className={
                       gap.trend === "up" ? "text-emerald-500" : "text-red-500"
@@ -559,11 +582,6 @@ export default function AuditorDashboard() {
               <div key={dp.name}>
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-2">
-                    <Icon
-                      name={dp.icon}
-                      size="15px"
-                      className="text-muted-foreground"
-                    />
                     <span className="text-sm text-foreground">{dp.name}</span>
                   </div>
                   <span className="text-sm font-bold text-foreground">
@@ -602,11 +620,6 @@ export default function AuditorDashboard() {
                 className="grid grid-cols-[2.5fr_0.6fr_0.7fr_0.6fr] items-center gap-2 py-2 border-b border-border last:border-0 hover:bg-accent/50 rounded px-0.5 transition-colors"
               >
                 <div className="flex items-center gap-2">
-                  <Icon
-                    name={r.icon}
-                    size="14px"
-                    className="text-muted-foreground shrink-0"
-                  />
                   <span className="text-xs text-foreground">{r.label}</span>
                 </div>
                 <div className="flex justify-center">
@@ -679,7 +692,7 @@ export default function AuditorDashboard() {
               className="flex items-center gap-3 p-2 bg-accent rounded border border-border hover:border-primary/50 transition-colors"
             >
               <div
-                className={`w-1 self-stretch rounded-full shrink-0 ${ev.statusColor}`}
+                className={`w-1 self-stretch rounded-full shrink-0 ${DASHBOARD_CONFIG.getEventStatusColor(ev.status)}`}
               />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground">
@@ -693,7 +706,7 @@ export default function AuditorDashboard() {
                 </span>
                 <span>{ev.daysLeft} days remaining</span>
                 <span
-                  className={`px-2 py-0.5 rounded-full font-semibold text-white text-[11px] ${ev.statusColor}`}
+                  className={`px-2 py-0.5 rounded-full font-semibold text-white text-[11px] ${DASHBOARD_CONFIG.getEventStatusColor(ev.status)}`}
                 >
                   {ev.status}
                 </span>
