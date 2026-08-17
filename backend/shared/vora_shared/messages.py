@@ -310,4 +310,11 @@ FRAMEWORK_SERVICE_MESSAGES = {
     "GAP_ANALYSIS_NOT_COMPLETED_FOR_PACKAGE": "Gap analysis not completed or not found for this package version",
     "PACKAGE_GAP_ANALYSIS_DATA_NOT_FOUND": "Package gap analysis data not found",
     "POINT_ALIGNMENT_NOT_FOUND_GAP_ANALYSIS": "Point alignment not found in gap analysis results",
+    # Document Control CRUD Messages
+    "DOCUMENT_EXTRACTION_ID_NOT_FOUND": "Document extraction ID not found",
+    "DOCUMENT_EXTRACTION_DATA_NOT_FOUND": "Document extraction data not found",
+    "DOCUMENT_CONTROL_NOT_FOUND": "Control not found",
+    "DOCUMENT_CONTROL_ADDED_SUCCESS": "Control added successfully",
+    "DOCUMENT_CONTROL_UPDATED_SUCCESS": "Control updated successfully",
+    "DOCUMENT_CONTROL_DELETED_SUCCESS": "Control deleted successfully",
 }

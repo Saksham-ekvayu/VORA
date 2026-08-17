@@ -410,7 +410,7 @@ export default function ComparisonsTable({
         </div>
 
         <ScrollArea className="flex-1">
-          <div className="w-full min-w-[800px]">
+          <div className="w-full min-w-200">
             {/* Table header */}
             <div
               className="grid gap-0 border-b border-border shrink-0 bg-muted items-center px-1 py-1.5"

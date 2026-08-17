@@ -21,6 +21,8 @@ import ActionDropdown from "@/components/custom/ActionDropdown";
 import { useTableData } from "@/components/data-table/hooks/useTableData";
 import {
   getAccessStatusFilterLabel,
+  ROLE_EXPERT,
+  ROLE_LABELS,
   STATUS_APPROVED,
   STATUS_PENDING,
   STATUS_REJECTED,
@@ -186,7 +188,7 @@ function FrameworkAccess() {
   const columns = [
     {
       key: "expert.name",
-      label: "Expert",
+      label: ROLE_LABELS[ROLE_EXPERT],
       sortable: false,
       render: (value, row) => (
         <UserMiniCard

@@ -11,7 +11,13 @@ import UserAvatar from "@/components/custom/UserAvatar";
 import CustomBadge from "@/components/custom/CustomBadge";
 import { cn } from "@/lib/utils";
 import LoadingSpinner from "@/components/custom/Loader/LoadingSpinner";
-import { isAdmin, isCustomerAdmin } from "@/utils/commonUtils";
+import {
+  isAdmin,
+  isCustomerAdmin,
+  ROLE_ADMIN,
+  ROLE_EXPERT,
+  ROLE_LABELS,
+} from "@/utils/commonUtils";
 import { uploadCustomerAvatarOwn } from "@/services/userService";
 import CustomerManageModal from "@/pages/customer-management/components/CustomerManageModal";
 import { toast } from "sonner";
@@ -211,7 +217,10 @@ function MyProfile() {
     );
   }
 
-  const displayAddress = ["expert", "admin"].includes(profileData.role)
+  const displayAddress = [
+    ROLE_LABELS[ROLE_EXPERT],
+    ROLE_LABELS[ROLE_ADMIN],
+  ].includes(profileData.role)
     ? profileData.address
     : profileData.customer?.address;
 
