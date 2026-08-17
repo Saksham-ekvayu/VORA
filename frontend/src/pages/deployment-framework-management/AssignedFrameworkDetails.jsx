@@ -11,7 +11,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { useAuth } from "@/context/authContext/useAuth";
 import {
   getAssignedFrameworkApprovalStatusClass,
-  getAssignedFrameworkApprovalStatusLabel,
+  getAssignmentStatusFilterLabel,
   ROLE_AUDITOR,
 } from "@/utils/commonUtils";
 
@@ -52,7 +52,7 @@ const OverviewActions = ({
       variant="outline"
       className={`${getAssignedFrameworkApprovalStatusClass(framework?.status)}`}
     >
-      {getAssignedFrameworkApprovalStatusLabel(framework?.status)}
+      {getAssignmentStatusFilterLabel(framework?.status)}
     </Button>
 
     {canFinalize && (

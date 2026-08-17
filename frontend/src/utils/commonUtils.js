@@ -142,12 +142,6 @@ export const getAssignmentStatusFilterLabel = (status) => {
   return STATUS_LABELS[STATUS_PENDING];
 };
 
-export const getAssignedFrameworkApprovalStatusLabel = (status) => {
-  if (status === STATUS_ASSIGNED) return STATUS_LABELS[STATUS_ASSIGNED];
-  if (status === STATUS_REVOKED) return STATUS_LABELS[STATUS_REVOKED];
-  return STATUS_LABELS[STATUS_PENDING];
-};
-
 export const getFinalizationStatusFilterLabel = (finalizationStatus) => {
   if (finalizationStatus === STATUS_FINALIZED)
     return STATUS_LABELS[STATUS_FINALIZED];
