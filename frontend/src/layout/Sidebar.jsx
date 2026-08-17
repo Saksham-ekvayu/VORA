@@ -135,7 +135,7 @@ const ALL_NAV_ITEMS = [
     children: [
       {
         id: "mcp-server-monitoring",
-        title: "Monitoring",
+        title: "MCP Monitoring",
         description: "View monitoring points",
         icon: "activity",
         path: "/mcp-server/monitoring",
@@ -143,7 +143,7 @@ const ALL_NAV_ITEMS = [
       },
       {
         id: "mcp-server-monitoring-setup",
-        title: "Monitoring Setup",
+        title: "MCP Monitoring Setup",
         description: "Configure monitoring points",
         icon: "settings",
         path: "/mcp-server/monitoring-setup",
