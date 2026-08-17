@@ -124,7 +124,7 @@ export const getRoleFilterLabel = (role) => {
 export const getStatusFilterLabel = (status) => {
   if (status === "true") return STATUS_LABELS[STATUS_ACTIVE];
   if (status === "false") return STATUS_LABELS[STATUS_INACTIVE];
-  return "All Status";
+  return "Activity Status";
 };
 
 export const getRoleLabel = (role) => {
