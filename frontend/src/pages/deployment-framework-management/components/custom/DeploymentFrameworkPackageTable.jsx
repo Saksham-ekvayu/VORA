@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import FileTypeCard from "@/components/custom/FileTypeCard";
 import Icon from "@/components/custom/Icon";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,17 @@ export default function DeploymentFrameworkPackageTable({
   const [uploadingFileId, setUploadingFileId] = useState(null);
   const [viewingDocument, setViewingDocument] = useState(null);
   const hasActionsColumn = showActions || showViewAction;
+
+  useEffect(() => {
+    if (viewingDocument && preReleasePackage?.documents) {
+      const updatedDoc = preReleasePackage.documents.find(
+        (d) => d.fileId === viewingDocument.fileId
+      );
+      if (updatedDoc) {
+        setViewingDocument(updatedDoc);
+      }
+    }
+  }, [preReleasePackage, viewingDocument?.fileId, viewingDocument]);
 
   const handleDownload = async (fileId, fileName) => {
     try {
@@ -246,6 +257,9 @@ export default function DeploymentFrameworkPackageTable({
           isOpen={!!viewingDocument}
           onClose={() => setViewingDocument(null)}
           document={viewingDocument}
+          frameworkId={frameworkId}
+          packageVersion={preReleasePackage?.packageVersion}
+          onSuccess={onSuccess}
         />
       )}
     </div>

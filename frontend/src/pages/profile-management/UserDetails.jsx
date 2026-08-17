@@ -21,6 +21,9 @@ import FrameworkMiniCard from "@/components/custom/FrameworkMiniCard";
 import {
   getAccessStatusFilterLabel,
   isExpert,
+  ROLE_ADMIN,
+  ROLE_EXPERT,
+  ROLE_LABELS,
   STATUS_APPROVED,
   STATUS_PENDING,
   STATUS_REJECTED,
@@ -233,7 +236,10 @@ export default function UserDetails() {
     );
   }
 
-  const displayAddress = ["expert", "admin"].includes(user.role)
+  const displayAddress = [
+    ROLE_LABELS[ROLE_EXPERT],
+    ROLE_LABELS[ROLE_ADMIN],
+  ].includes(user.role)
     ? user.address
     : user.customer?.address;
 

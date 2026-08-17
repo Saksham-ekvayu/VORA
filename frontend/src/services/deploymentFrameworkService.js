@@ -531,6 +531,59 @@ export function deployDeploymentPackage(frameworkId, packageVersion) {
     `${FRAMEWORK_BASE}/${frameworkId}/packages/${packageVersion}/deploy`,
     {
       method: "PATCH",
+    }
+  );
+}
+
+/**
+ * Add document control
+ */
+export function addDocumentControl(frameworkId, packageVersion, fileId, data) {
+  return apiRequest(
+    `${FRAMEWORK_BASE}/${frameworkId}/packages/${packageVersion}/files/${fileId}/controls`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    },
+    true
+  );
+}
+
+/**
+ * Update document control
+ */
+export function updateDocumentControl(
+  frameworkId,
+  packageVersion,
+  fileId,
+  controlId,
+  data
+) {
+  return apiRequest(
+    `${FRAMEWORK_BASE}/${frameworkId}/packages/${packageVersion}/files/${fileId}/controls/${controlId}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    },
+    true
+  );
+}
+
+/**
+ * Delete document control
+ */
+export function deleteDocumentControl(
+  frameworkId,
+  packageVersion,
+  fileId,
+  controlId
+) {
+  return apiRequest(
+    `${FRAMEWORK_BASE}/${frameworkId}/packages/${packageVersion}/files/${fileId}/controls/${controlId}`,
+    {
+      method: "DELETE",
     },
     true
   );
@@ -569,4 +622,7 @@ export default {
   addGapReviewRemark,
   reviewDeploymentPackage,
   deployDeploymentPackage,
+  addDocumentControl,
+  updateDocumentControl,
+  deleteDocumentControl,
 };

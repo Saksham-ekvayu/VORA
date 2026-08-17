@@ -3,8 +3,9 @@ import { createProtectedRoutes } from "../utils/routeFactory";
 import {
   AssignedFrameworkDetails,
   AssignedFrameworks,
+  AuditorDashboard,
   ComparisonGapAnalysis,
-  CustomerExpertDashboard,
+  // CustomerExpertDashboard,
   DeploymentDocument,
   DeploymentDocumentDetail,
   DeploymentFramework,
@@ -13,7 +14,8 @@ import {
 } from "../utils/routeImports";
 
 const internalExpertRoutes = createProtectedRoutes([
-  { key: "dashboard", path: "/dashboard", component: CustomerExpertDashboard },
+  // { key: "dashboard", path: "/dashboard", component: CustomerExpertDashboard },
+  { key: "dashboard", path: "/dashboard", component: AuditorDashboard },
   { key: "profiles", path: "/profiles", component: Profiles },
   {
     key: "deployment-frameworks",

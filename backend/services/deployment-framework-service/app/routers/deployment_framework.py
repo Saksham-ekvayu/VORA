@@ -29,6 +29,7 @@ from vora_shared.models import (
     PackageComparison,
     PackageGapAnalysis,
     User,
+    DocumentExtraction,
 )
 from vora_shared.responses import error, forbidden, paginated, success
 from vora_shared.security import RequestContext, get_context
@@ -180,7 +181,8 @@ async def get_deployment_frameworks(
             all_docs = [
                 d
                 for d in all_docs
-                if term in (d.frameworkName or "").lower() or term in (d.frameworkVersion or "").lower()
+                if term in (d.frameworkName or "").lower()
+                or term in (d.frameworkVersion or "").lower()
             ]
 
         sort_field = sort_by if sort_by in allowed_sort_fields else "createdAt"
@@ -188,15 +190,21 @@ async def get_deployment_frameworks(
         all_docs.sort(key=lambda d: getattr(d, sort_field, None) or d.createdAt, reverse=reverse)
 
         maps = await data_formatter.hydrate_maps(session, all_docs)
-        formatted = [data_formatter.format_deployment_framework_list_item(doc, maps) for doc in all_docs]
+        formatted = [
+            data_formatter.format_deployment_framework_list_item(doc, maps) for doc in all_docs
+        ]
 
         if ai_extraction_status:
             formatted = [
-                d for d in formatted if (d.get("aiExtraction") or {}).get("status") == ai_extraction_status
+                d
+                for d in formatted
+                if (d.get("aiExtraction") or {}).get("status") == ai_extraction_status
             ]
         if request_review_status:
             formatted = [
-                d for d in formatted if (d.get("requestReview") or {}).get("status") == request_review_status
+                d
+                for d in formatted
+                if (d.get("requestReview") or {}).get("status") == request_review_status
             ]
 
         page_num = query_builder.clamp_page(page)
@@ -267,7 +275,9 @@ async def get_deployment_framework_package_client_controls(
             merges_list = (
                 (
                     await session.execute(
-                        select(DeploymentPackageMerge).where(DeploymentPackageMerge.id.in_(merge_ids))
+                        select(DeploymentPackageMerge).where(
+                            DeploymentPackageMerge.id.in_(merge_ids)
+                        )
                     )
                 )
                 .scalars()
@@ -277,7 +287,9 @@ async def get_deployment_framework_package_client_controls(
 
         client_controls = []
         for fw, live_package in live_by_fw:
-            merge = merges.get(str(live_package.mergeDocument)) if live_package.mergeDocument else None
+            merge = (
+                merges.get(str(live_package.mergeDocument)) if live_package.mergeDocument else None
+            )
             client_controls.append(_format_client_control(fw, live_package, merge))
 
         return success(client_controls, "Client controls retrieved successfully")
@@ -297,7 +309,9 @@ def _update_deployment_point_path(
     for section in controls_data:
         if section_id and section.get("id") != section_id:
             continue
-        control = next((c for c in (section.get("controls") or []) if c.get("id") == control_id), None)
+        control = next(
+            (c for c in (section.get("controls") or []) if c.get("id") == control_id), None
+        )
         if not control:
             continue
         dp = next(
@@ -379,7 +393,9 @@ async def update_deployment_package_point_path(
 
         return success(
             {
-                "frameworkId": (str(framework.id) if framework and getattr(framework, "id", None) else None),
+                "frameworkId": (
+                    str(framework.id) if framework and getattr(framework, "id", None) else None
+                ),
                 "packageVersion": package_version,
                 "sectionId": section_id,
                 "controlId": control_id,
@@ -395,7 +411,9 @@ async def update_deployment_package_point_path(
 
 
 @router.get("/{id}")
-async def get_deployment_framework_by_id(id: str, ctx: Annotated[RequestContext, Depends(get_context)]):
+async def get_deployment_framework_by_id(
+    id: str, ctx: Annotated[RequestContext, Depends(get_context)]
+):
     user = ctx.user
     async with session_scope() as session:
         framework = await session.get(DeploymentFramework, str(id))
@@ -444,7 +462,9 @@ async def get_deployment_framework_by_id(id: str, ctx: Annotated[RequestContext,
 # ─── GET /:id/packages/:packageVersion ──────────────────────────────────────
 
 
-def _validate_package_access(user_role: str, user_id: str, found_package: Any) -> JSONResponse | None:
+def _validate_package_access(
+    user_role: str, user_id: str, found_package: Any
+) -> JSONResponse | None:
     if user_role == "internal-expert":
         assigned_expert_id = (
             str(found_package.expertReview.assignedExpert)
@@ -544,7 +564,11 @@ async def _get_framework_for_update(session: Any, id: str, tenant_id: str) -> An
         ).scalar_one_or_none()
 
     candidates = list(
-        (await session.execute(select(DeploymentFramework).where(DeploymentFramework.tenantId == tenant_id)))
+        (
+            await session.execute(
+                select(DeploymentFramework).where(DeploymentFramework.tenantId == tenant_id)
+            )
+        )
         .scalars()
         .all()
     )
@@ -579,7 +603,9 @@ def _parse_metadata(metadata: str | None) -> dict[str, Any]:
 def _format_patch_response(framework: Any, new_package: Any, patch_type: str) -> dict[str, Any]:
     return {
         "id": (str(framework.id) if getattr(framework, "id", None) else None),
-        "frameworkId": (str(framework.frameworkId) if getattr(framework, "frameworkId", None) else None),
+        "frameworkId": (
+            str(framework.frameworkId) if getattr(framework, "frameworkId", None) else None
+        ),
         "frameworkName": framework.frameworkName,
         "frameworkCode": framework.frameworkCode,
         "frameworkVersion": framework.frameworkVersion,
@@ -626,9 +652,13 @@ async def update_deployment_framework(
                 return file_entries
 
             if patch_type == "minor":
-                result = package_builder.build_minor_patch(framework, file_entries, document_updates)
+                result = package_builder.build_minor_patch(
+                    framework, file_entries, document_updates
+                )
             else:
-                result = package_builder.build_major_patch(framework, file_entries, document_updates)
+                result = package_builder.build_major_patch(
+                    framework, file_entries, document_updates
+                )
 
             uploaded_files_map = {f["filename"]: f["content"] for f in file_entries}
             save_result = helpers.save_uploaded_files_for_package(
@@ -642,7 +672,9 @@ async def update_deployment_framework(
 
             missing_files_error = _check_missing_files(result["newPackage"]["documents"])
             if missing_files_error:
-                logger.warning(f"[UPDATE-DEPLOYMENT-FRAMEWORK] Missing files check failed | id={id}")
+                logger.warning(
+                    f"[UPDATE-DEPLOYMENT-FRAMEWORK] Missing files check failed | id={id}"
+                )
                 return missing_files_error
 
             validation = package_builder.validate_package(result["newPackage"])
@@ -657,7 +689,9 @@ async def update_deployment_framework(
                 PackageVersion,
             )
 
-            new_documents = [FrameworkPackageDocument(**d) for d in result["newPackage"]["documents"]]
+            new_documents = [
+                FrameworkPackageDocument(**d) for d in result["newPackage"]["documents"]
+            ]
             await helpers.ensure_document_extraction_refs(session, new_documents)
             result["newPackage"]["documents"] = [d.model_dump(mode="json") for d in new_documents]
 
@@ -694,7 +728,9 @@ async def update_deployment_framework(
 
 
 @router.delete("/{id}")
-async def delete_deployment_framework(id: str, ctx: Annotated[RequestContext, Depends(get_context)]):
+async def delete_deployment_framework(
+    id: str, ctx: Annotated[RequestContext, Depends(get_context)]
+):
     tenant_id = ctx.tenant_id
     user = ctx.user
 
@@ -720,7 +756,9 @@ async def delete_deployment_framework(id: str, ctx: Annotated[RequestContext, De
             return forbidden("You don't have permission to delete this framework")
 
         packages = coerce_packages(framework.packages)
-        file_urls = {doc.fileUrl for pkg in packages for doc in (pkg.documents or []) if doc.fileUrl}
+        file_urls = {
+            doc.fileUrl for pkg in packages for doc in (pkg.documents or []) if doc.fileUrl
+        }
         for file_url in file_urls:
             try:
                 file_path = helpers.get_upload_file_path(file_url)
@@ -778,7 +816,9 @@ async def upload_deployment_framework(
 
     version = meta.get("fileVersion") or "1.0.0"
 
-    process_result = await helpers.process_uploaded_files(all_files, str(user_id), framework_version, version)
+    process_result = await helpers.process_uploaded_files(
+        all_files, str(user_id), framework_version, version
+    )
     if process_result.get("error"):
         return error(process_result["error"]["message"], process_result["error"]["status"])
 
@@ -822,7 +862,9 @@ async def upload_deployment_framework(
             tenantId=tenant_id,
             frameworkName=framework_name,
             frameworkId=framework_id,
-            assignedFrameworkId=(str(assigned_framework_id) if assigned_framework_id else new_framework_id),
+            assignedFrameworkId=(
+                str(assigned_framework_id) if assigned_framework_id else new_framework_id
+            ),
             frameworkCategoryId=framework_category_id,
             frameworkCode=framework_code,
             frameworkVersion=framework_version,
@@ -877,7 +919,9 @@ async def preview_framework_file(
         if not actual_file_path or not os.path.exists(actual_file_path):
             return not_found(FRAMEWORK_SERVICE_MESSAGES["FILE_ON_DISK_NOT_FOUND"])
 
-        mime = file_storage.PREVIEW_MIME_TYPES.get(str(document.fileType).lower(), "application/octet-stream")
+        mime = file_storage.PREVIEW_MIME_TYPES.get(
+            str(document.fileType).lower(), "application/octet-stream"
+        )
         return FileResponse(
             actual_file_path,
             media_type=mime,
@@ -895,7 +939,9 @@ async def download_framework_file(
     file_id: Annotated[str, Path(alias="fileId")],
     ctx: Annotated[RequestContext, Depends(get_context)],
 ):
-    logger.info(f"[DOWNLOAD-FILE] Download request | framework_id={framework_id} | file_id={file_id}")
+    logger.info(
+        f"[DOWNLOAD-FILE] Download request | framework_id={framework_id} | file_id={file_id}"
+    )
     async with session_scope() as session:
         framework = await session.get(DeploymentFramework, str(framework_id))
         if not framework or not helpers.find_framework_document(framework, file_id):
@@ -909,7 +955,9 @@ async def download_framework_file(
         if not actual_file_path or not os.path.exists(actual_file_path):
             return not_found(FRAMEWORK_SERVICE_MESSAGES["FILE_ON_DISK_NOT_FOUND"])
 
-        mime = file_storage.PREVIEW_MIME_TYPES.get(str(document.fileType).lower(), "application/octet-stream")
+        mime = file_storage.PREVIEW_MIME_TYPES.get(
+            str(document.fileType).lower(), "application/octet-stream"
+        )
         return FileResponse(
             actual_file_path,
             media_type=mime,
@@ -945,14 +993,18 @@ async def delete_deployment_framework_package(
             return not_found(_RESOURCE_DEPLOYMENT_FRAMEWORK)
 
         packages = coerce_packages(framework.packages)
-        package_index = next((i for i, p in enumerate(packages) if p.packageVersion == package_version), -1)
+        package_index = next(
+            (i for i, p in enumerate(packages) if p.packageVersion == package_version), -1
+        )
         if package_index == -1:
             return not_found(FRAMEWORK_SERVICE_MESSAGES["PACKAGE_NOT_FOUND"])
 
         package_to_delete = packages[package_index]
 
         if len(packages) == 1:
-            return error("Cannot delete the only package. Delete the entire framework instead.", 400)
+            return error(
+                "Cannot delete the only package. Delete the entire framework instead.", 400
+            )
 
         is_deleting_current = package_to_delete.packageVersion == framework.currentPackageVersion
 
@@ -998,12 +1050,20 @@ async def delete_deployment_framework_package(
 
 
 def _validate_report_statuses(found_package: Any, maps: dict[str, Any]) -> JSONResponse | None:
-    merge = maps["merges"].get(str(found_package.mergeDocument)) if found_package.mergeDocument else None
-    comparison = maps["comparisons"].get(str(found_package.comparison)) if found_package.comparison else None
+    merge = (
+        maps["merges"].get(str(found_package.mergeDocument))
+        if found_package.mergeDocument
+        else None
+    )
+    comparison = (
+        maps["comparisons"].get(str(found_package.comparison)) if found_package.comparison else None
+    )
     gap = maps["gaps"].get(str(found_package.gapAnalysis)) if found_package.gapAnalysis else None
 
     merge_status = getattr(merge, "status", "pending") if merge else "pending"
-    comparison_status = _blob_get(comparison.comparison if comparison else None, "status") or "pending"
+    comparison_status = (
+        _blob_get(comparison.comparison if comparison else None, "status") or "pending"
+    )
     gap_status = _blob_get(gap.gapAnalysis if gap else None, "status") or "pending"
 
     if merge_status != "merged":
@@ -1078,7 +1138,9 @@ async def request_expert_review(
     expert_id = body.get("expertId")
 
     if user.role != "auditor":
-        logger.warning(f"[REQUEST-REVIEW] Unauthorized attempt | user_id={ctx.user.id} | role={user.role}")
+        logger.warning(
+            f"[REQUEST-REVIEW] Unauthorized attempt | user_id={ctx.user.id} | role={user.role}"
+        )
         return forbidden("Only auditors can request expert reviews")
 
     if not package_version:
@@ -1107,7 +1169,9 @@ async def request_expert_review(
             return error(FRAMEWORK_MESSAGES["REVIEW_ALREADY_REQUESTED"], 400)
 
         expert_user = (
-            await session.execute(select(User).where(User.id == str(expert_id), User.isActive.is_(True)))
+            await session.execute(
+                select(User).where(User.id == str(expert_id), User.isActive.is_(True))
+            )
         ).scalar_one_or_none()
         if not expert_user:
             return not_found(FRAMEWORK_MESSAGES["EXPERT_NOT_FOUND"])
@@ -1133,13 +1197,17 @@ async def request_expert_review(
 
         return success(
             {
-                "frameworkId": (str(framework.id) if framework and getattr(framework, "id", None) else None),
+                "frameworkId": (
+                    str(framework.id) if framework and getattr(framework, "id", None) else None
+                ),
                 "packageVersion": package_version,
                 "expertReview": {
                     "status": found_package.expertReview.status,
                     "assignedExpert": {
                         "id": (
-                            str(expert_user.id) if expert_user and getattr(expert_user, "id", None) else None
+                            str(expert_user.id)
+                            if expert_user and getattr(expert_user, "id", None)
+                            else None
                         ),
                         "name": expert_user.name,
                         "email": expert_user.email,
@@ -1191,7 +1259,9 @@ async def review_deployment_package(
     comments = body.get("comments")
 
     if user.role != "internal-expert":
-        logger.warning(f"[REVIEW-PACKAGE] Unauthorized attempt | user_id={ctx.user.id} | role={user.role}")
+        logger.warning(
+            f"[REVIEW-PACKAGE] Unauthorized attempt | user_id={ctx.user.id} | role={user.role}"
+        )
         return forbidden("Only internal experts can review deployment packages")
 
     async with session_scope() as session:
@@ -1234,7 +1304,9 @@ async def review_deployment_package(
         )
         return success(
             {
-                "frameworkId": (str(framework.id) if framework and getattr(framework, "id", None) else None),
+                "frameworkId": (
+                    str(framework.id) if framework and getattr(framework, "id", None) else None
+                ),
                 "packageVersion": package_version,
                 "type": found_package.type,
                 "status": found_package.status,
@@ -1250,6 +1322,7 @@ async def review_deployment_package(
 
 # ─── PATCH /:id/packages/:packageVersion/deploy ─────────────────────────────
 
+
 async def _approve_deployment_points(session: Any, merge_document_id: str) -> None:
     package_merge = (
         await session.execute(
@@ -1258,17 +1331,17 @@ async def _approve_deployment_points(session: Any, merge_document_id: str) -> No
             )
         )
     ).scalar_one_or_none()
-    
+
     if not package_merge:
         return
-        
+
     merge_data = dict(package_merge.controls or {})
     controls_data = list(merge_data.get("controls_data") or [])
     for section in controls_data:
         for control in section.get("controls") or []:
             for dp in control.get("deployment_points") or []:
                 dp["status"] = "approved"
-    
+
     merge_data["controls_data"] = controls_data
     package_merge.controls = merge_data
     flag_modified(package_merge, "controls")
@@ -1280,12 +1353,16 @@ async def deploy_deployment_package(
     package_version: Annotated[str, Path(alias="packageVersion")],
     ctx: Annotated[RequestContext, Depends(get_context)],
 ):
-    logger.info(f"[DEPLOY-PACKAGE] Deploy action | id={id} | package_version={package_version} | user_id={ctx.user.id}")
+    logger.info(
+        f"[DEPLOY-PACKAGE] Deploy action | id={id} | package_version={package_version} | user_id={ctx.user.id}"
+    )
     user = ctx.user
     tenant_id = ctx.tenant_id
 
     if user.role != "auditor":
-        logger.warning(f"[DEPLOY-PACKAGE] Unauthorized attempt | user_id={ctx.user.id} | role={user.role}")
+        logger.warning(
+            f"[DEPLOY-PACKAGE] Unauthorized attempt | user_id={ctx.user.id} | role={user.role}"
+        )
         return forbidden("Only auditors can deploy deployment packages")
 
     async with session_scope() as session:
@@ -1307,7 +1384,7 @@ async def deploy_deployment_package(
 
         if not found_package.expertReview or found_package.expertReview.status != "approved":
             return error("Package must be approved by an expert before deployment", 400)
-            
+
         if found_package.status == "live":
             return error("Package is already live", 400)
 
@@ -1322,7 +1399,7 @@ async def deploy_deployment_package(
         found_package.status = "live"
         found_package.updatedAt = _utcnow()
         framework.currentPackageVersion = package_version
-        
+
         if found_package.mergeDocument:
             await _approve_deployment_points(session, found_package.mergeDocument)
 
@@ -1331,7 +1408,9 @@ async def deploy_deployment_package(
 
         return success(
             {
-                "frameworkId": (str(framework.id) if framework and getattr(framework, "id", None) else None),
+                "frameworkId": (
+                    str(framework.id) if framework and getattr(framework, "id", None) else None
+                ),
                 "packageVersion": package_version,
                 "type": found_package.type,
                 "status": found_package.status,
@@ -1448,7 +1527,9 @@ async def add_gap_review_remark(
     comment = body.get("comment")
 
     if user.role != "internal-expert":
-        logger.warning(f"[ADD-GAP-REMARK] Unauthorized attempt | user_id={ctx.user.id} | role={user.role}")
+        logger.warning(
+            f"[ADD-GAP-REMARK] Unauthorized attempt | user_id={ctx.user.id} | role={user.role}"
+        )
         return forbidden("Only internal experts can add review remarks")
 
     async with session_scope() as session:
@@ -1494,3 +1575,339 @@ async def add_gap_review_remark(
         flag_modified(package_gap_analysis, "gapAnalysis")
 
         return success({"reviewComment": comment}, "Gap review remark added successfully")
+
+
+# ─── Document Controls CRUD ──────────────────────────────────────────────────
+
+
+def _format_deployment_points(
+    raw_points: list[dict[str, Any]], max_dp_offset: int = 0
+) -> list[dict[str, Any]]:
+    """Format and standardize deployment points with IDs and defaults."""
+    formatted_points = []
+    max_dp = max_dp_offset
+
+    for p in raw_points:
+        dp_id = p.get("id")
+        if not dp_id:
+            max_dp += 1
+            dp_id = f"DP-{str(max_dp).zfill(3)}"
+
+        formatted_points.append(
+            {
+                "id": dp_id,
+                "name": p.get("name", ""),
+                "path": p.get("path", ""),
+                "remark": p.get("remark", ""),
+                "source": p.get("source", ""),
+                "status": p.get("status", "pending"),
+                "weightage": (
+                    float(p.get("weightage", 10.0)) if p.get("weightage") is not None else 10.0
+                ),
+            }
+        )
+
+    return formatted_points
+
+
+def _get_max_dp_number(points: list[dict[str, Any]]) -> int:
+    """Extract maximum DP number from existing deployment points."""
+    max_dp = 0
+    for p in points:
+        dp_id = p.get("id", "")
+        if dp_id and str(dp_id).startswith("DP-"):
+            try:
+                num = int(str(dp_id).split("-")[1])
+                max_dp = max(max_dp, num)
+            except (ValueError, IndexError):
+                pass
+    return max_dp
+
+
+async def _get_document_and_extraction(
+    session: Any, file_id: str, found_package: Any
+) -> tuple[Any, Any] | None:
+    """Retrieve extraction data with validation. Returns (extraction, ai_data) or None."""
+    docs = found_package.documents or []
+    doc = next((d for d in docs if str(d.fileId) == str(file_id)), None)
+
+    if not doc:
+        return None
+
+    if not doc.aiExtraction:
+        return (None, None)
+
+    extraction = await session.get(DocumentExtraction, str(doc.aiExtraction))
+    if not extraction or not extraction.aiExtraction:
+        return (None, None)
+
+    return (extraction, extraction.aiExtraction)
+
+
+def _find_control_in_sections(
+    sections: list[dict[str, Any]], control_id: str
+) -> dict[str, Any] | None:
+    """Find control in nested sections structure. Returns the control or None."""
+    for section in sections:
+        controls = section.get("controls", [])
+        for ctrl in controls:
+            if ctrl.get("id") == control_id or ctrl.get("_uiKey") == control_id:
+                return ctrl
+    return None
+
+
+def _find_and_remove_control(
+    sections: list[dict[str, Any]], control_id: str
+) -> bool:
+    """Find and remove control from sections. Returns True if removed."""
+    for section in sections:
+        controls = section.get("controls", [])
+        for idx, ctrl in enumerate(controls):
+            if ctrl.get("id") == control_id or ctrl.get("_uiKey") == control_id:
+                controls.pop(idx)
+                return True
+    return False
+
+
+def _generate_control_id(section_id: str, existing_controls: list[dict[str, Any]]) -> str:
+    """Generate a new control ID based on section and existing controls."""
+    max_num = 0
+    for ctrl in existing_controls:
+        ctrl_id = ctrl.get("id", "")
+        if ctrl_id and ctrl_id.startswith(f"{section_id}."):
+            try:
+                num = int(ctrl_id.replace(f"{section_id}.", ""))
+                max_num = max(max_num, num)
+            except ValueError:
+                pass
+    return f"{section_id}.{max_num + 1}"
+
+
+def _get_or_create_section(
+    controls_data: list[dict[str, Any]], section_id: str | None
+) -> tuple[dict[str, Any], str]:
+    """Get or create target section. Returns (section, section_id)."""
+    if section_id:
+        target_section = next((s for s in controls_data if s.get("id") == section_id), None)
+        if target_section:
+            return (target_section, section_id)
+
+    if len(controls_data) > 0:
+        return (controls_data[0], controls_data[0].get("id"))
+
+    # Create default section if none exists
+    new_section = {"id": "S.1", "name": "Custom Controls", "controls": []}
+    controls_data.append(new_section)
+    return (new_section, "S.1")
+
+
+@router.post("/{id}/packages/{packageVersion}/files/{fileId}/controls")
+async def add_document_control(
+    id: Annotated[str, Path(alias="id")],
+    package_version: Annotated[str, Path(alias="packageVersion")],
+    file_id: Annotated[str, Path(alias="fileId")],
+    control_data: dict[str, Any],
+    ctx: Annotated[RequestContext, Depends(get_context)],
+):
+    tenant_id = ctx.tenant_id
+
+    async with session_scope() as session:
+        framework = (
+            await session.execute(
+                select(DeploymentFramework).where(
+                    DeploymentFramework.id == str(id),
+                    DeploymentFramework.tenantId == tenant_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not framework:
+            return not_found(_RESOURCE_DEPLOYMENT_FRAMEWORK)
+
+        packages = coerce_packages(framework.packages)
+        found_package = next((p for p in packages if p.packageVersion == package_version), None)
+        if not found_package:
+            return not_found(_RESOURCE_PACKAGE_VERSION)
+
+        # Retrieve document and extraction data
+        result = await _get_document_and_extraction(session, file_id, found_package)
+        if result is None:
+            return error(FRAMEWORK_SERVICE_MESSAGES["DOCUMENT_NOT_FOUND"], 404)
+
+        extraction, ai_data = result
+        if extraction is None or ai_data is None:
+            if extraction is None:
+                return error(FRAMEWORK_SERVICE_MESSAGES["DOCUMENT_EXTRACTION_ID_NOT_FOUND"], 404)
+            return error(FRAMEWORK_SERVICE_MESSAGES["DOCUMENT_EXTRACTION_DATA_NOT_FOUND"], 404)
+
+        # Get or create section
+        controls_dict = ai_data.get("controls") or {}
+        controls_data = controls_dict.get("controls_data") or []
+        target_section, section_id = _get_or_create_section(
+            controls_data, control_data.get("sectionId")
+        )
+
+        if "controls" not in target_section:
+            target_section["controls"] = []
+
+        # Format deployment points
+        raw_points = control_data.get("deployment_points", [])
+        formatted_points = _format_deployment_points(raw_points)
+
+        # Generate control ID
+        new_control_id = control_data.get("id")
+        if not new_control_id:
+            new_control_id = _generate_control_id(section_id, target_section.get("controls", []))
+
+        # Create new control
+        new_control = {
+            "id": new_control_id,
+            "name": control_data.get("name", "New Control"),
+            "description": control_data.get("description", ""),
+            "deployment_points": formatted_points,
+        }
+
+        target_section["controls"].append(new_control)
+
+        # Update and save
+        controls_dict["total_sections"] = len(controls_data)
+        controls_dict["total_controls"] = sum(len(s.get("controls", [])) for s in controls_data)
+        controls_dict["controls_data"] = controls_data
+        ai_data["controls"] = controls_dict
+
+        extraction.aiExtraction = ai_data
+        flag_modified(extraction, "aiExtraction")
+
+        return success(
+            {"sectionId": section_id, "control": new_control},
+            FRAMEWORK_SERVICE_MESSAGES["DOCUMENT_CONTROL_ADDED_SUCCESS"],
+        )
+
+
+@router.put("/{id}/packages/{packageVersion}/files/{fileId}/controls/{controlId}")
+async def update_document_control(
+    id: Annotated[str, Path(alias="id")],
+    package_version: Annotated[str, Path(alias="packageVersion")],
+    file_id: Annotated[str, Path(alias="fileId")],
+    control_id: Annotated[str, Path(alias="controlId")],
+    control_data: dict[str, Any],
+    ctx: Annotated[RequestContext, Depends(get_context)],
+):
+    tenant_id = ctx.tenant_id
+
+    async with session_scope() as session:
+        framework = (
+            await session.execute(
+                select(DeploymentFramework).where(
+                    DeploymentFramework.id == str(id),
+                    DeploymentFramework.tenantId == tenant_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not framework:
+            return not_found(_RESOURCE_DEPLOYMENT_FRAMEWORK)
+
+        packages = coerce_packages(framework.packages)
+        found_package = next((p for p in packages if p.packageVersion == package_version), None)
+        if not found_package:
+            return not_found(_RESOURCE_PACKAGE_VERSION)
+
+        # Retrieve document and extraction data
+        result = await _get_document_and_extraction(session, file_id, found_package)
+        if result is None:
+            return error(FRAMEWORK_SERVICE_MESSAGES["DOCUMENT_NOT_FOUND"], 404)
+
+        extraction, ai_data = result
+        if extraction is None or ai_data is None:
+            if extraction is None:
+                return error(FRAMEWORK_SERVICE_MESSAGES["DOCUMENT_EXTRACTION_ID_NOT_FOUND"], 404)
+            return error(FRAMEWORK_SERVICE_MESSAGES["DOCUMENT_EXTRACTION_DATA_NOT_FOUND"], 404)
+
+        controls_dict = ai_data.get("controls") or {}
+        controls_data = controls_dict.get("controls_data") or []
+
+        # Find control
+        found_control = _find_control_in_sections(controls_data, control_id)
+        if found_control is None:
+            return error(FRAMEWORK_SERVICE_MESSAGES["DOCUMENT_CONTROL_NOT_FOUND"], 404)
+
+        # Update control properties
+        found_control["name"] = control_data.get("name", found_control.get("name"))
+        found_control["description"] = control_data.get(
+            "description", found_control.get("description")
+        )
+
+        # Update deployment points
+        raw_points = control_data.get(
+            "deployment_points", found_control.get("deployment_points", [])
+        )
+        max_dp = _get_max_dp_number(raw_points)
+        formatted_points = _format_deployment_points(raw_points, max_dp)
+        found_control["deployment_points"] = formatted_points
+
+        # Save changes
+        controls_dict["controls_data"] = controls_data
+        ai_data["controls"] = controls_dict
+
+        extraction.aiExtraction = ai_data
+        flag_modified(extraction, "aiExtraction")
+
+        return success(
+            {"control": found_control},
+            FRAMEWORK_SERVICE_MESSAGES["DOCUMENT_CONTROL_UPDATED_SUCCESS"],
+        )
+
+
+@router.delete("/{id}/packages/{packageVersion}/files/{fileId}/controls/{controlId}")
+async def delete_document_control(
+    id: Annotated[str, Path(alias="id")],
+    package_version: Annotated[str, Path(alias="packageVersion")],
+    file_id: Annotated[str, Path(alias="fileId")],
+    control_id: Annotated[str, Path(alias="controlId")],
+    ctx: Annotated[RequestContext, Depends(get_context)],
+):
+    tenant_id = ctx.tenant_id
+
+    async with session_scope() as session:
+        framework = (
+            await session.execute(
+                select(DeploymentFramework).where(
+                    DeploymentFramework.id == str(id),
+                    DeploymentFramework.tenantId == tenant_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not framework:
+            return not_found(_RESOURCE_DEPLOYMENT_FRAMEWORK)
+
+        packages = coerce_packages(framework.packages)
+        found_package = next((p for p in packages if p.packageVersion == package_version), None)
+        if not found_package:
+            return not_found(_RESOURCE_PACKAGE_VERSION)
+
+        # Retrieve document and extraction data
+        result = await _get_document_and_extraction(session, file_id, found_package)
+        if result is None:
+            return error(FRAMEWORK_SERVICE_MESSAGES["DOCUMENT_NOT_FOUND"], 404)
+
+        extraction, ai_data = result
+        if extraction is None or ai_data is None:
+            if extraction is None:
+                return error(FRAMEWORK_SERVICE_MESSAGES["DOCUMENT_EXTRACTION_ID_NOT_FOUND"], 404)
+            return error(FRAMEWORK_SERVICE_MESSAGES["DOCUMENT_EXTRACTION_DATA_NOT_FOUND"], 404)
+
+        controls_dict = ai_data.get("controls") or {}
+        controls_data = controls_dict.get("controls_data") or []
+
+        # Find and delete control
+        if not _find_and_remove_control(controls_data, control_id):
+            return error(FRAMEWORK_SERVICE_MESSAGES["DOCUMENT_CONTROL_NOT_FOUND"], 404)
+
+        # Update and save
+        controls_dict["total_controls"] = sum(len(s.get("controls", [])) for s in controls_data)
+        controls_dict["controls_data"] = controls_data
+        ai_data["controls"] = controls_dict
+
+        extraction.aiExtraction = ai_data
+        flag_modified(extraction, "aiExtraction")
+
+        return success(None, FRAMEWORK_SERVICE_MESSAGES["DOCUMENT_CONTROL_DELETED_SUCCESS"])
