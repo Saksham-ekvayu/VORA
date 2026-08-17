@@ -5,6 +5,7 @@ import DataTable from "@/components/data-table/DataTable";
 import CustomBadge from "@/components/custom/CustomBadge";
 import Icon from "@/components/custom/Icon";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { Button } from "@/components/ui/button";
 
 // ─── Static mock data ─────────────────────────────────────────────────────────
 
@@ -212,9 +213,8 @@ export default function OverallProtection() {
       sortable: false,
       render: (value, row) => (
         <span
-          className={`text-xs font-semibold flex items-center gap-1 ${
-            row.trendUp ? "text-emerald-400" : "text-red-400"
-          }`}
+          className={`text-xs font-semibold flex items-center gap-1 ${row.trendUp ? "text-emerald-400" : "text-red-400"
+            }`}
         >
           <Icon
             name={row.trendUp ? "trending-up" : "trending-down"}
@@ -270,22 +270,8 @@ export default function OverallProtection() {
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-3 my-2">
-      {/* Page header */}
-      <div className="flex items-center justify-between px-1">
-        <h2 className="text-lg font-semibold text-foreground">
-          Overall Protection
-        </h2>
-        <button
-          type="button"
-          onClick={() => navigate("/dashboard")}
-          className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-primary border border-border bg-accent hover:border-primary rounded px-3 py-1.5 transition-colors"
-        >
-          <Icon name="arrow-left" size="13px" /> Back to Dashboard
-        </button>
-      </div>
-
       {/* ── Hero banner ───────────────────────────────────────────────────── */}
-      <div className="rounded border border-border bg-linear-to-br from-background to-card p-3 flex flex-col sm:flex-row sm:items-center gap-4">
+      <div className="rounded border border-border bg-linear-to-br from-background to-card p-3 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         {/* Left — score + description + pills */}
         <div className="flex-1 min-w-0">
           <p className="text-2xl font-extrabold text-foreground leading-tight">
@@ -300,11 +286,10 @@ export default function OverallProtection() {
           {/* Trend + period pills */}
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             <span
-              className={`px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 ${
-                STATS.trendUp
-                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                  : "bg-red-500/20 text-red-400 border border-red-500/30"
-              }`}
+              className={`px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 ${STATS.trendUp
+                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                : "bg-red-500/20 text-red-400 border border-red-500/30"
+                }`}
             >
               <Icon
                 name={STATS.trendUp ? "trending-up" : "trending-down"}
@@ -318,23 +303,32 @@ export default function OverallProtection() {
           </div>
         </div>
 
-        {/* Right — 4 stat boxes */}
-        <div className="flex items-center gap-2 flex-wrap shrink-0">
-          <MiniStatBox
-            label="Frameworks Active"
-            value={STATS.frameworksActive}
-            valueColor="text-primary"
-          />
-          <MiniStatBox
-            label="Controls Evaluated"
-            value={STATS.controlsEvaluated}
-            valueColor="text-foreground"
-          />
-          <MiniStatBox
-            label="Deployment Points"
-            value={STATS.deploymentPoints}
-            valueColor="text-primary"
-          />
+        {/* Right — Button & 4 stat boxes */}
+        <div className="flex flex-col items-end gap-3 shrink-0">
+          <Button
+            size="xs"
+            variant="outline"
+            onClick={() => navigate("/dashboard")}
+          >
+            <Icon name="arrow-left" size="13px" /> Back to Dashboard
+          </Button>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <MiniStatBox
+              label="Frameworks Active"
+              value={STATS.frameworksActive}
+              valueColor="text-primary"
+            />
+            <MiniStatBox
+              label="Controls Evaluated"
+              value={STATS.controlsEvaluated}
+              valueColor="text-foreground"
+            />
+            <MiniStatBox
+              label="Deployment Points"
+              value={STATS.deploymentPoints}
+              valueColor="text-primary"
+            />
+          </div>
         </div>
       </div>
 

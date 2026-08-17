@@ -4,11 +4,12 @@ import { PieChart, Pie, ResponsiveContainer, Tooltip } from "recharts";
 import CardWrapper from "./components/CardWrapper";
 import Icon from "@/components/custom/Icon";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { Button } from "@/components/ui/button";
 // ─── Per-framework mock data ──────────────────────────────────────────────────
 
 const FRAMEWORK_DATA = {
-  "iso-27001": {
-    name: "ISO 27001",
+  "iso-27001-2022": {
+    name: "ISO-27001:2022",
     version: "ISO 27001:2022",
     tagColor: "#3b82f6",
     controls: {
@@ -140,8 +141,8 @@ const FRAMEWORK_DATA = {
       },
     ],
   },
-  "iso-9001": {
-    name: "ISO 9001",
+  "iso-9001-2008": {
+    name: "ISO-9001:2008",
     version: "ISO 9001:2015",
     tagColor: "#22c55e",
     controls: {
@@ -258,8 +259,8 @@ const FRAMEWORK_DATA = {
       },
     ],
   },
-  "nist-csf": {
-    name: "NIST CSF",
+  "nist-csf-2021": {
+    name: "NIST-CSF:2021",
     version: "NIST CSF v1.1",
     tagColor: "#8b5cf6",
     controls: {
@@ -371,8 +372,8 @@ const FRAMEWORK_DATA = {
       },
     ],
   },
-  "21-cfr-part-ii": {
-    name: "21 CFR Part II",
+  "cfr-part-ii-2023": {
+    name: "CFR-Part-II:2023",
     version: "21 CFR Part 11:2023",
     tagColor: "#ef4444",
     controls: {
@@ -592,27 +593,29 @@ export default function FrameworkDetailDashboard() {
   return (
     <div className="space-y-3 my-2">
       {/* ── Header: Framework name + version (left) | Back (right) ──── */}
-      <div className="flex items-center justify-between px-1">
+      <div className="rounded border border-border bg-linear-to-br from-background to-card p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         {/* Left - Framework name & version */}
-        <div className="flex items-center gap-2">
+        <div className="flex-1 min-w-0 flex items-center gap-3">
           <span
-            className="text-xs font-semibold px-2.5 py-1 rounded text-white shrink-0"
+            className="text-sm font-bold px-2.5 py-1 rounded text-white shadow-sm"
             style={{ backgroundColor: data.tagColor }}
           >
             {data.name}
           </span>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground font-medium">
             version: {data.version}
           </span>
         </div>
         {/* Right - Back button */}
-        <button
-          type="button"
-          onClick={() => navigate("/dashboard")}
-          className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-primary border border-border bg-accent hover:border-primary rounded px-3 py-1.5 transition-colors"
-        >
-          <Icon name="arrow-left" size="13px" /> Back
-        </button>
+        <div className="shrink-0">
+          <Button
+            size="xs"
+            variant="outline"
+            onClick={() => navigate("/dashboard")}
+          >
+            <Icon name="arrow-left" size="13px" /> Back to Dashboard
+          </Button>
+        </div>
       </div>
 
       {/* ── Row 1: 4 stat cards ───────────────────────────────────────── */}

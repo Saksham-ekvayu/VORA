@@ -5,6 +5,7 @@ import DataTable from "@/components/data-table/DataTable";
 import CustomBadge from "@/components/custom/CustomBadge";
 import Icon from "@/components/custom/Icon";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { Button } from "@/components/ui/button";
 
 // ─── Static mock data ─────────────────────────────────────────────────────────
 
@@ -392,22 +393,8 @@ export default function ControlsPassing() {
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-3 my-2">
-      {/* Page header */}
-      <div className="flex items-center justify-between px-1">
-        <h2 className="text-lg font-semibold text-foreground">
-          Controls Passing
-        </h2>
-        <button
-          type="button"
-          onClick={() => navigate("/dashboard")}
-          className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-primary border border-border bg-accent hover:border-primary rounded px-3 py-1.5 transition-colors"
-        >
-          <Icon name="arrow-left" size="13px" /> Back to Dashboard
-        </button>
-      </div>
-
       {/* Hero summary banner */}
-      <div className="rounded border border-border bg-linear-to-br from-background to-card shadow-lg p-3 flex flex-col sm:flex-row sm:items-center gap-4">
+      <div className="rounded border border-border bg-linear-to-br from-background to-card shadow-lg p-3 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <p className="text-2xl font-extrabold text-foreground leading-tight">
             <span className="text-primary">{STATS.passing}</span>
@@ -423,27 +410,38 @@ export default function ControlsPassing() {
             evidence. Updated {STATS.updatedAgo}.
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap shrink-0">
-          <StatBox
-            label="Passing"
-            value={STATS.passing}
-            valueColor="text-emerald-500"
-          />
-          <StatBox
-            label="Failing"
-            value={STATS.failing}
-            valueColor="text-red-500"
-          />
-          <StatBox
-            label="Warning"
-            value={STATS.warning}
-            valueColor="text-amber-500"
-          />
-          <StatBox
-            label="Not Evaluated"
-            value={STATS.notEvaluated}
-            valueColor="text-muted-foreground"
-          />
+
+        {/* Right — Button & 4 stat boxes */}
+        <div className="flex flex-col items-end gap-3 shrink-0">
+          <Button
+            size="xs"
+            variant="outline"
+            onClick={() => navigate("/dashboard")}
+          >
+            <Icon name="arrow-left" size="13px" /> Back to Dashboard
+          </Button>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <StatBox
+              label="Passing"
+              value={STATS.passing}
+              valueColor="text-emerald-500"
+            />
+            <StatBox
+              label="Failing"
+              value={STATS.failing}
+              valueColor="text-red-500"
+            />
+            <StatBox
+              label="Warning"
+              value={STATS.warning}
+              valueColor="text-amber-500"
+            />
+            <StatBox
+              label="Not Evaluated"
+              value={STATS.notEvaluated}
+              valueColor="text-muted-foreground"
+            />
+          </div>
         </div>
       </div>
 
