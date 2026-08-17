@@ -165,7 +165,7 @@ function DeploymentCard({ point }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function DeploymentPointsPage() {
+export default function DeploymentPoints() {
   usePageTitle("deployment-points", "Deployment Points");
 
   const navigate = useNavigate();

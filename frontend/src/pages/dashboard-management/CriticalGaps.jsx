@@ -201,7 +201,7 @@ const getColorByDaysOpen = (value) => {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function CriticalGapsPage() {
+export default function CriticalGaps() {
   usePageTitle("critical-gaps", "Critical Gaps");
 
   const navigate = useNavigate();

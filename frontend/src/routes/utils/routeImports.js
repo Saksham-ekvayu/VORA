@@ -28,20 +28,20 @@ export const AuditorDashboard = lazy(
 export const FrameworkDetailDashboard = lazy(
   () => import("@/pages/dashboard-management/FrameworkDetailDashboard")
 );
-export const ControlsPassingPage = lazy(
-  () => import("@/pages/dashboard-management/ControlsPassingPage")
+export const ControlsPassing = lazy(
+  () => import("@/pages/dashboard-management/ControlsPassing")
 );
-export const ExtraControlsPage = lazy(
-  () => import("@/pages/dashboard-management/ExtraControlsPage")
+export const ExtraControls = lazy(
+  () => import("@/pages/dashboard-management/ExtraControls")
 );
-export const CriticalGapsPage = lazy(
-  () => import("@/pages/dashboard-management/CriticalGapsPage")
+export const CriticalGaps = lazy(
+  () => import("@/pages/dashboard-management/CriticalGaps")
 );
-export const OverallProtectionPage = lazy(
-  () => import("@/pages/dashboard-management/OverallProtectionPage")
+export const OverallProtection = lazy(
+  () => import("@/pages/dashboard-management/OverallProtection")
 );
-export const DeploymentPointsPage = lazy(
-  () => import("@/pages/dashboard-management/DeploymentPointsPage")
+export const DeploymentPoints = lazy(
+  () => import("@/pages/dashboard-management/DeploymentPoints")
 );
 export const MonitoringSetup = lazy(
   () => import("@/pages/monitoring-setup/MonitoringSetup")

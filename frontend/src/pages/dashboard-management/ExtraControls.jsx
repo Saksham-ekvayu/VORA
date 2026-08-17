@@ -165,7 +165,7 @@ const PAGE_SIZE = 10;
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function ExtraControlsPage() {
+export default function ExtraControls() {
   usePageTitle("extra-controls", "Extra Controls");
 
   const navigate = useNavigate();

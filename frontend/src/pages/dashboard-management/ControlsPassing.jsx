@@ -196,7 +196,7 @@ function StatBox({ label, value, valueColor }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function ControlsPassingPage() {
+export default function ControlsPassing() {
   usePageTitle("controls-passing", "Controls Passing");
 
   const navigate = useNavigate();
