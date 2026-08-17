@@ -17,6 +17,7 @@ import {
   DeploymentPoints,
   Profiles,
   MonitoringSetup,
+  McpMonitoring,
 } from "../utils/routeImports";
 
 const auditorRoutes = createProtectedRoutes([
@@ -88,8 +89,13 @@ const auditorRoutes = createProtectedRoutes([
     component: DeploymentDocumentDetail,
   },
   {
-    key: "monitoring-setup",
-    path: "/monitoring-setup",
+    key: "mcp-server-monitoring",
+    path: "/mcp-server/monitoring",
+    component: McpMonitoring,
+  },
+  {
+    key: "mcp-server-monitoring-setup",
+    path: "/mcp-server/monitoring-setup",
     component: MonitoringSetup,
   },
 ]);

@@ -213,8 +213,9 @@ export default function OverallProtection() {
       sortable: false,
       render: (value, row) => (
         <span
-          className={`text-xs font-semibold flex items-center gap-1 ${row.trendUp ? "text-emerald-400" : "text-red-400"
-            }`}
+          className={`text-xs font-semibold flex items-center gap-1 ${
+            row.trendUp ? "text-emerald-400" : "text-red-400"
+          }`}
         >
           <Icon
             name={row.trendUp ? "trending-up" : "trending-down"}
@@ -286,10 +287,11 @@ export default function OverallProtection() {
           {/* Trend + period pills */}
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             <span
-              className={`px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 ${STATS.trendUp
-                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                : "bg-red-500/20 text-red-400 border border-red-500/30"
-                }`}
+              className={`px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 ${
+                STATS.trendUp
+                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                  : "bg-red-500/20 text-red-400 border border-red-500/30"
+              }`}
             >
               <Icon
                 name={STATS.trendUp ? "trending-up" : "trending-down"}

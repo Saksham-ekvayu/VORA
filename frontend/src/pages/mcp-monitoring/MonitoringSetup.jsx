@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Icon from "@/components/custom/Icon";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Input } from "@/components/ui/input";
@@ -307,7 +307,8 @@ function FrameworkDropdown({ frameworks = [], selectedFw, onSelect }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function MonitoringSetup() {
-  usePageTitle("monitoring-setup", "Monitoring Setup");
+  usePageTitle("monitoring-setup", "MCP Monitoring Setup");
+  const navigate = useNavigate();
 
   const [frameworks, setFrameworks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -409,7 +410,8 @@ export default function MonitoringSetup() {
           const pathKey = getPathKey(selectedFw?.id, s._key, c.id, dp.id);
           const dpPath = savedPaths[pathKey] ?? "";
           const dpSource = savedSources[pathKey] ?? "";
-          if (dpPath.trim().length > 0 && dpSource.trim().length > 0) configured++;
+          if (dpPath.trim().length > 0 && dpSource.trim().length > 0)
+            configured++;
           else unconfigured++;
         }
       }
@@ -582,6 +584,14 @@ export default function MonitoringSetup() {
               setSelectedControl(nextSection?.controls?.[0] ?? null);
             }}
           />
+
+          <Button
+            variant="outline"
+            onClick={() => navigate("/mcp-server/monitoring")}
+            className="text-xs font-medium border-border bg-accent hover:border-primary hover:bg-primary/10"
+          >
+            <Icon name="arrow-left" size="14px" className="mr-1" /> Back
+          </Button>
         </div>
       </div>
 
