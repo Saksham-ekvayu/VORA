@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import CardWrapper from "../components/CardWrapper";
 import ProgressBar from "../components/ProgressBar";
@@ -217,10 +217,14 @@ function TopStatCard({
   iconBg = "bg-primary/10",
   borderColor = "border-primary/40",
   title,
+  navigation,
   children,
 }) {
   return (
-    <div className="rounded border border-border bg-linear-to-br from-background to-card p-2.5 flex justify-between shadow-lg hover:shadow-xl transition-shadow duration-300 hover:border-primary/50 cursor-pointer">
+    <Link
+      to={navigation}
+      className="rounded border border-border bg-linear-to-br from-background to-card p-2.5 flex justify-between shadow-lg hover:shadow-xl transition-shadow duration-300 hover:border-primary/50 cursor-pointer"
+    >
       <div className="flex flex-col gap-2 w-full">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {title}
@@ -237,7 +241,7 @@ function TopStatCard({
       >
         <Icon name={icon} size="24px" />
       </span>
-    </div>
+    </Link>
   );
 }
 
@@ -315,26 +319,20 @@ export default function AuditorDashboard() {
           title="Overall Protection"
           icon="shield"
           iconColor="text-primary"
+          navigation="/dashboard/overall-protection"
         >
-          <button
-            onClick={() => navigate("/dashboard/overall-protection")}
-            className="text-left group cursor-pointer"
+          <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
+            {MOCK.overallProtection.value}%
+          </p>
+          <p
+            className={`text-xs flex items-center gap-1 ${MOCK.overallProtection.up ? "text-emerald-500" : "text-red-500"}`}
           >
-            <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
-              {MOCK.overallProtection.value}%
-            </p>
-            <p
-              className={`text-xs flex items-center gap-1 ${MOCK.overallProtection.up ? "text-emerald-500" : "text-red-500"}`}
-            >
-              <Icon
-                name={
-                  MOCK.overallProtection.up ? "trending-up" : "trending-down"
-                }
-                size="14px"
-              />
-              {MOCK.overallProtection.trend}
-            </p>
-          </button>
+            <Icon
+              name={MOCK.overallProtection.up ? "trending-up" : "trending-down"}
+              size="14px"
+            />
+            {MOCK.overallProtection.trend}
+          </p>
         </TopStatCard>
 
         {/* Critical Gaps */}
@@ -344,19 +342,15 @@ export default function AuditorDashboard() {
           iconColor="text-amber-500"
           iconBg="bg-amber-500/10"
           borderColor="border-amber-500/40"
+          navigation="/dashboard/critical-gaps"
         >
-          <button
-            onClick={() => navigate("/dashboard/critical-gaps")}
-            className="text-left group cursor-pointer"
-          >
-            <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
-              {MOCK.criticalGaps.value}
-            </p>
-            <p className="text-xs flex items-center gap-1 text-red-500">
-              <Icon name="trending-down" size="14px" />
-              {MOCK.criticalGaps.trend}
-            </p>
-          </button>
+          <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
+            {MOCK.criticalGaps.value}
+          </p>
+          <p className="text-xs flex items-center gap-1 text-red-500">
+            <Icon name="trending-down" size="14px" />
+            {MOCK.criticalGaps.trend}
+          </p>
         </TopStatCard>
 
         {/* Control Passing */}
@@ -366,21 +360,17 @@ export default function AuditorDashboard() {
           iconColor="text-emerald-500"
           iconBg="bg-emerald-500/10"
           borderColor="border-emerald-500/40"
+          navigation="/dashboard/controls-passing"
         >
-          <button
-            onClick={() => navigate("/dashboard/controls-passing")}
-            className="text-left group cursor-pointer"
-          >
-            <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
-              <span className="text-primary">{MOCK.controlPassing.value}</span>
-              <span className="text-xl text-muted-foreground">
-                /{MOCK.controlPassing.total}
-              </span>
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Updated {MOCK.controlPassing.updatedAgo}
-            </p>
-          </button>
+          <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
+            <span className="text-primary">{MOCK.controlPassing.value}</span>
+            <span className="text-xl text-muted-foreground">
+              /{MOCK.controlPassing.total}
+            </span>
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Updated {MOCK.controlPassing.updatedAgo}
+          </p>
         </TopStatCard>
 
         {/* Extra Controls */}
@@ -390,18 +380,14 @@ export default function AuditorDashboard() {
           iconColor="text-amber-400"
           iconBg="bg-amber-400/10"
           borderColor="border-amber-400/40"
+          navigation="/dashboard/extra-controls"
         >
-          <button
-            onClick={() => navigate("/dashboard/extra-controls")}
-            className="text-left group cursor-pointer"
-          >
-            <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
-              {MOCK.extraControls.value}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {MOCK.extraControls.label}
-            </p>
-          </button>
+          <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
+            {MOCK.extraControls.value}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {MOCK.extraControls.label}
+          </p>
         </TopStatCard>
       </div>
 
@@ -422,6 +408,7 @@ export default function AuditorDashboard() {
             {MOCK.frameworkHealth.map((fw) => (
               <button
                 key={fw.name}
+                type="button"
                 onClick={() =>
                   navigate(`/dashboard/framework/${frameworkToSlug(fw.name)}`)
                 }
@@ -452,6 +439,7 @@ export default function AuditorDashboard() {
           title="Active Gaps"
           right={
             <button
+              type="button"
               onClick={() => navigate("/deployment-frameworks")}
               className="text-primary flex items-center gap-1 text-xs hover:underline cursor-pointer"
             >
@@ -554,6 +542,7 @@ export default function AuditorDashboard() {
           title="Deployment Points"
           right={
             <button
+              type="button"
               onClick={() => navigate("/dashboard/deployment-points")}
               className="text-primary flex items-center gap-1 text-xs hover:underline cursor-pointer"
             >
@@ -665,6 +654,7 @@ export default function AuditorDashboard() {
                 <div className="flex items-center gap-2 shrink-0 mt-0.5">
                   <PriorityBadge priority={insight.priority} />
                   <button
+                    type="button"
                     title="View Control"
                     className="text-xs text-primary font-medium flex items-center gap-0.5 group hover:gap-1.5 transition-all duration-200 whitespace-nowrap"
                   >
