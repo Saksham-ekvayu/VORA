@@ -10,11 +10,11 @@ import {
   DeploymentFramework,
   DeploymentFrameworkDetail,
   FrameworkDetailDashboard,
-  ControlsPassingPage,
-  ExtraControlsPage,
-  CriticalGapsPage,
-  OverallProtectionPage,
-  DeploymentPointsPage,
+  ControlsPassing,
+  ExtraControls,
+  CriticalGaps,
+  OverallProtection,
+  DeploymentPoints,
   Profiles,
 } from "../utils/routeImports";
 
@@ -28,27 +28,27 @@ const auditorRoutes = createProtectedRoutes([
   {
     key: "controls-passing",
     path: "/dashboard/controls-passing",
-    component: ControlsPassingPage,
+    component: ControlsPassing,
   },
   {
     key: "extra-controls",
     path: "/dashboard/extra-controls",
-    component: ExtraControlsPage,
+    component: ExtraControls,
   },
   {
     key: "critical-gaps",
     path: "/dashboard/critical-gaps",
-    component: CriticalGapsPage,
+    component: CriticalGaps,
   },
   {
     key: "overall-protection",
     path: "/dashboard/overall-protection",
-    component: OverallProtectionPage,
+    component: OverallProtection,
   },
   {
     key: "deployment-points",
     path: "/dashboard/deployment-points",
-    component: DeploymentPointsPage,
+    component: DeploymentPoints,
   },
   { key: "profiles", path: "/profiles", component: Profiles },
   {

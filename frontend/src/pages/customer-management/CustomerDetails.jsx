@@ -540,6 +540,7 @@ export default function CustomerDetails() {
                     {customer.tenantId}
                   </code>
                   <button
+                    type="button"
                     onClick={() => handleCopyTenantId(customer.tenantId)}
                     className="p-1 rounded text-muted-foreground hover:text-primary hover:bg-muted transition cursor-pointer"
                     title="Copy Tenant ID"

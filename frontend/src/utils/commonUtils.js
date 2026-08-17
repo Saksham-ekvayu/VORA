@@ -124,7 +124,7 @@ export const getRoleFilterLabel = (role) => {
 export const getStatusFilterLabel = (status) => {
   if (status === "true") return STATUS_LABELS[STATUS_ACTIVE];
   if (status === "false") return STATUS_LABELS[STATUS_INACTIVE];
-  return "All Status";
+  return "Activity Status";
 };
 
 export const getRoleLabel = (role) => {
@@ -137,12 +137,6 @@ export const getRoleLabel = (role) => {
 };
 
 export const getAssignmentStatusFilterLabel = (status) => {
-  if (status === STATUS_ASSIGNED) return STATUS_LABELS[STATUS_ASSIGNED];
-  if (status === STATUS_REVOKED) return STATUS_LABELS[STATUS_REVOKED];
-  return STATUS_LABELS[STATUS_PENDING];
-};
-
-export const getAssignedFrameworkApprovalStatusLabel = (status) => {
   if (status === STATUS_ASSIGNED) return STATUS_LABELS[STATUS_ASSIGNED];
   if (status === STATUS_REVOKED) return STATUS_LABELS[STATUS_REVOKED];
   return STATUS_LABELS[STATUS_PENDING];

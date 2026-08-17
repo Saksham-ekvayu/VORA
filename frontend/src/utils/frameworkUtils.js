@@ -150,10 +150,10 @@ export const validateDeploymentFrameworkFile = (file, toast) => {
 
 /**
  * Convert a framework name to a URL-safe slug.
- * e.g. "ISO 27001" → "iso-27001"
+ * e.g. "ISO-27001:2022" → "iso-27001-2022"
  */
 export const frameworkToSlug = (name) =>
   name
     .toLowerCase()
-    .replaceAll(/\s+/g, "-")
+    .replaceAll(/[\s:]+/g, "-")
     .replaceAll(/[^a-z0-9-]/g, "");

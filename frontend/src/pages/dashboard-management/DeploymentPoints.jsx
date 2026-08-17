@@ -97,7 +97,7 @@ const STATUS_NAMES = Array.from(
 
 function MiniStatBox({ label, value, valueColor }) {
   return (
-    <div className="flex flex-col items-center justify-center px-4 py-2 rounded border border-border bg-accent min-w-[100px]">
+    <div className="flex flex-col items-center justify-center px-4 py-2 rounded border border-border bg-accent min-w-25">
       <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1 text-center">
         {label}
       </p>
@@ -165,7 +165,7 @@ function DeploymentCard({ point }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function DeploymentPointsPage() {
+export default function DeploymentPoints() {
   usePageTitle("deployment-points", "Deployment Points");
 
   const navigate = useNavigate();
@@ -230,6 +230,7 @@ export default function DeploymentPointsPage() {
           Deployment Points
         </h2>
         <button
+          type="button"
           onClick={() => navigate("/dashboard")}
           className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-primary border border-border bg-accent hover:border-primary rounded px-3 py-1.5 transition-colors"
         >

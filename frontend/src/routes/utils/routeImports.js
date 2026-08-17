@@ -23,25 +23,25 @@ export const UserDashboard = lazy(
   () => import("@/pages/dashboard-management/UserDashboard")
 );
 export const AuditorDashboard = lazy(
-  () => import("@/pages/dashboard-management/auditor/AuditorDashboard")
+  () => import("@/pages/dashboard-management/AuditorDashboard")
 );
 export const FrameworkDetailDashboard = lazy(
-  () => import("@/pages/dashboard-management/auditor/FrameworkDetailDashboard")
+  () => import("@/pages/dashboard-management/FrameworkDetailDashboard")
 );
-export const ControlsPassingPage = lazy(
-  () => import("@/pages/dashboard-management/auditor/ControlsPassingPage")
+export const ControlsPassing = lazy(
+  () => import("@/pages/dashboard-management/ControlsPassing")
 );
-export const ExtraControlsPage = lazy(
-  () => import("@/pages/dashboard-management/auditor/ExtraControlsPage")
+export const ExtraControls = lazy(
+  () => import("@/pages/dashboard-management/ExtraControls")
 );
-export const CriticalGapsPage = lazy(
-  () => import("@/pages/dashboard-management/auditor/CriticalGapsPage")
+export const CriticalGaps = lazy(
+  () => import("@/pages/dashboard-management/CriticalGaps")
 );
-export const OverallProtectionPage = lazy(
-  () => import("@/pages/dashboard-management/auditor/OverallProtectionPage")
+export const OverallProtection = lazy(
+  () => import("@/pages/dashboard-management/OverallProtection")
 );
-export const DeploymentPointsPage = lazy(
-  () => import("@/pages/dashboard-management/auditor/DeploymentPointsPage")
+export const DeploymentPoints = lazy(
+  () => import("@/pages/dashboard-management/DeploymentPoints")
 );
 export const MonitoringSetup = lazy(
   () => import("@/pages/monitoring-setup/MonitoringSetup")

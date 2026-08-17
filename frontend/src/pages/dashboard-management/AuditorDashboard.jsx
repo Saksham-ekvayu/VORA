@@ -1,15 +1,41 @@
 /* eslint-disable react/prop-types */
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import CardWrapper from "../components/CardWrapper";
-import ProgressBar from "../components/ProgressBar";
+import { Link, useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
+import CardWrapper from "./components/CardWrapper";
+import ProgressBar from "./components/ProgressBar";
 import Icon from "@/components/custom/Icon";
-import DateFilter from "../components/DateFilter";
-import { useDateFilter } from "../hooks/useDateFilter";
+import { useDateFilter } from "./hooks/useDateFilter";
 import { useAuth } from "@/context/authContext/useAuth";
 import { getRoleLabel } from "@/utils/commonUtils";
 import { frameworkToSlug } from "@/utils/frameworkUtils";
+import DateFilter from "./components/DateFilter";
+
+// ─── Dynamic Frontend Configuration ──────────────────────────────────────────
+const COLORS = [
+  { tagColor: "#3b82f6", barColor: "bg-blue-500" },
+  { tagColor: "#22c55e", barColor: "bg-green-500" },
+  { tagColor: "#8b5cf6", barColor: "bg-violet-500" },
+  { tagColor: "#ef4444", barColor: "bg-red-500" },
+  { tagColor: "#f59e0b", barColor: "bg-amber-500" },
+  { tagColor: "#06b6d4", barColor: "bg-cyan-500" },
+  { tagColor: "#ec4899", barColor: "bg-pink-500" },
+  { tagColor: "#14b8a6", barColor: "bg-teal-500" },
+];
+
+const getHashIndex = (str, max) => {
+  if (!str) return 0;
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.codePointAt(i) + ((hash << 5) - hash);
+  }
+  return Math.abs(hash) % max;
+};
+
+const DASHBOARD_CONFIG = {
+  getFrameworkConfig: (name) => COLORS[getHashIndex(name, COLORS.length)],
+};
 
 // ─── Static Mock Data ────────────────────────────────────────────────────────
 
@@ -21,35 +47,27 @@ const MOCK = {
 
   frameworkHealth: [
     {
-      name: "ISO 27001",
+      name: "ISO-27001:2022",
       readiness: 91,
-      tagColor: "#3b82f6",
-      barColor: "bg-blue-500",
     },
     {
-      name: "ISO 9001",
+      name: "ISO-9001:2008",
       readiness: 89,
-      tagColor: "#22c55e",
-      barColor: "bg-green-500",
     },
     {
-      name: "NIST CSF",
+      name: "NIST-CSF:2021",
       readiness: 58,
-      tagColor: "#8b5cf6",
-      barColor: "bg-violet-500",
     },
     {
-      name: "21 CFR Part II",
+      name: "CFR-Part-II:2023",
       readiness: 67,
-      tagColor: "#ef4444",
-      barColor: "bg-red-500",
     },
   ],
 
   activeGaps: [
     {
-      framework: "ISO 27001",
-      ctrlNo: "BC-12.4",
+      framework: "ISO-27001:2022",
+      ctrlId: "BC-12.4",
       description: "Cryptographic Key Establishment",
       instances: 5,
       failing: "9%",
@@ -57,8 +75,8 @@ const MOCK = {
       trend: "down",
     },
     {
-      framework: "ISO 9001",
-      ctrlNo: "QM-4.2",
+      framework: "ISO-9001:2008",
+      ctrlId: "QM-4.2",
       description: "Document Control Procedures",
       instances: 6,
       failing: "14%",
@@ -66,8 +84,8 @@ const MOCK = {
       trend: "down",
     },
     {
-      framework: "ISO 27001",
-      ctrlNo: "AC-2.1",
+      framework: "ISO-27001:2022",
+      ctrlId: "AC-2.1",
       description: "Access Control Policy",
       instances: 14,
       failing: "22%",
@@ -75,8 +93,8 @@ const MOCK = {
       trend: "down",
     },
     {
-      framework: "NIST CSF",
-      ctrlNo: "PR.AC-4",
+      framework: "NIST-CSF:2021",
+      ctrlId: "PR.AC-4",
       description: "Access Permissions Management",
       instances: 11,
       failing: "31%",
@@ -86,30 +104,28 @@ const MOCK = {
   ],
 
   deploymentPoints: [
-    { name: "AWS Infrastructure", count: 234, icon: "cloud" },
-    { name: "IAM / Okta", count: 189, icon: "key" },
-    { name: "Application Logs", count: 100, icon: "document" },
-    { name: "HR / Admin", count: 58, icon: "users" },
+    { name: "ISO-27001:2022", count: 234 },
+    { name: "ISO-9001:2008", count: 189 },
+    { name: "NIST-CSF:2021", count: 100 },
+    { name: "CFR-Part-II:2023", count: 58 },
   ],
 
   riskByStatus: [
     {
       label: "Accepted Risk",
-      icon: "check-circle",
       high: 2,
       medium: 4,
       low: 7,
     },
-    { label: "Reduced Risk", icon: "check-circle", high: 3, medium: 6, low: 5 },
+    { label: "Reduced Risk", high: 3, medium: 6, low: 5 },
     {
       label: "Transferred Risk",
-      icon: "arrow-right",
       high: 1,
       medium: 2,
       low: 3,
     },
-    { label: "Mitigated Risk", icon: "shield", high: 2, medium: 7, low: 9 },
-    { label: "Un-Mitigated Risk", icon: "warning", high: 4, medium: 5, low: 2 },
+    { label: "Mitigated Risk", high: 2, medium: 7, low: 9 },
+    { label: "Un-Mitigated Risk", high: 4, medium: 5, low: 2 },
   ],
 
   aiInsights: [
@@ -167,33 +183,6 @@ const MOCK = {
       ago: "3s ago",
     },
   ],
-
-  upcomingEvents: [
-    {
-      title: "ISO 27001 Internal Audit",
-      date: "Jun 10, 2024",
-      daysLeft: 10,
-      status: "Overdue Risk",
-      openItems: 8,
-      statusColor: "bg-red-500",
-    },
-    {
-      title: "Management Review Meeting",
-      date: "Jul 28, 2024",
-      daysLeft: 58,
-      status: "Upcoming",
-      actions: 5,
-      statusColor: "bg-amber-500",
-    },
-    {
-      title: "ISO 27001 Surveillance Audit",
-      date: "Aug 25, 2024",
-      daysLeft: 86,
-      status: "Upcoming",
-      tasks: 7,
-      statusColor: "bg-amber-500",
-    },
-  ],
 };
 
 // ─── Small reusable pieces ───────────────────────────────────────────────────
@@ -210,25 +199,37 @@ function getStreamTextColor(status) {
   return "text-red-500";
 }
 
-function TopStatCard({ icon, iconColor, title, children, badge }) {
+function TopStatCard({
+  icon,
+  iconColor = "text-primary",
+  iconBg = "bg-primary/10",
+  borderColor = "border-primary/40",
+  title,
+  navigation,
+  children,
+}) {
   return (
-    <div className="rounded border border-border bg-linear-to-br from-background to-card p-3 flex flex-col gap-2 shadow-lg">
-      <div className="flex items-center justify-between">
+    <Link
+      to={navigation}
+      className="rounded border border-border bg-linear-to-br from-background to-card p-2.5 flex justify-between shadow-lg hover:shadow-xl transition-shadow duration-300 hover:border-primary/50 cursor-pointer"
+    >
+      <div className="flex flex-col gap-2 w-full">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {title}
         </p>
-        {badge ? (
-          <span className={`rounded-full p-1 ${iconColor}`}>
-            <Icon name={icon} size="16px" />
-          </span>
-        ) : (
-          <span className={iconColor}>
-            <Icon name={icon} size="20px" />
-          </span>
-        )}
+        <div className="">{children}</div>
       </div>
-      {children}
-    </div>
+      <span
+        className={cn(
+          "w-12 h-12 rounded shrink-0 flex items-center justify-center transition-transform duration-300 group-hover:scale-105 border",
+          borderColor,
+          iconBg,
+          iconColor
+        )}
+      >
+        <Icon name={icon} size="24px" />
+      </span>
+    </Link>
   );
 }
 
@@ -262,7 +263,7 @@ export default function AuditorDashboard() {
   }, []);
 
   return (
-    <div className="space-y-3 my-2">
+    <div className="space-y-3 mt-2">
       {/* ── Header bar ────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between flex-wrap gap-2 px-1">
         <h2 className="text-lg font-semibold text-foreground">
@@ -306,29 +307,20 @@ export default function AuditorDashboard() {
           title="Overall Protection"
           icon="shield"
           iconColor="text-primary"
+          navigation="/dashboard/overall-protection"
         >
-          <button
-            onClick={() => navigate("/dashboard/overall-protection")}
-            className="text-left group cursor-pointer"
+          <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
+            {MOCK.overallProtection.value}%
+          </p>
+          <p
+            className={`text-xs flex items-center gap-1 ${MOCK.overallProtection.up ? "text-emerald-500" : "text-red-500"}`}
           >
-            <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
-              {MOCK.overallProtection.value}%
-            </p>
-            <p
-              className={`text-xs flex items-center gap-1 ${MOCK.overallProtection.up ? "text-emerald-500" : "text-red-500"}`}
-            >
-              <Icon
-                name={
-                  MOCK.overallProtection.up ? "trending-up" : "trending-down"
-                }
-                size="14px"
-              />
-              {MOCK.overallProtection.trend}
-            </p>
-            <p className="text-[10px] text-primary mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              View details →
-            </p>
-          </button>
+            <Icon
+              name={MOCK.overallProtection.up ? "arrow-up" : "arrow-down"}
+              size="14px"
+            />
+            {MOCK.overallProtection.trend}
+          </p>
         </TopStatCard>
 
         {/* Critical Gaps */}
@@ -336,22 +328,17 @@ export default function AuditorDashboard() {
           title="Critical Gaps"
           icon="warning"
           iconColor="text-amber-500"
+          iconBg="bg-amber-500/10"
+          borderColor="border-amber-500/40"
+          navigation="/dashboard/critical-gaps"
         >
-          <button
-            onClick={() => navigate("/dashboard/critical-gaps")}
-            className="text-left group cursor-pointer"
-          >
-            <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
-              {MOCK.criticalGaps.value}
-            </p>
-            <p className="text-xs flex items-center gap-1 text-red-500">
-              <Icon name="trending-down" size="14px" />
-              {MOCK.criticalGaps.trend}
-            </p>
-            <p className="text-[10px] text-primary mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              View details →
-            </p>
-          </button>
+          <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
+            {MOCK.criticalGaps.value}
+          </p>
+          <p className="text-xs flex items-center gap-1 text-red-500">
+            <Icon name="arrow-down" size="14px" />
+            {MOCK.criticalGaps.trend}
+          </p>
         </TopStatCard>
 
         {/* Control Passing */}
@@ -359,24 +346,19 @@ export default function AuditorDashboard() {
           title="Control Passing"
           icon="check-circle"
           iconColor="text-emerald-500"
+          iconBg="bg-emerald-500/10"
+          borderColor="border-emerald-500/40"
+          navigation="/dashboard/controls-passing"
         >
-          <button
-            onClick={() => navigate("/dashboard/controls-passing")}
-            className="text-left group cursor-pointer"
-          >
-            <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
-              <span className="text-primary">{MOCK.controlPassing.value}</span>
-              <span className="text-xl text-muted-foreground">
-                /{MOCK.controlPassing.total}
-              </span>
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Updated {MOCK.controlPassing.updatedAgo}
-            </p>
-            <p className="text-[10px] text-primary mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              View details →
-            </p>
-          </button>
+          <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
+            <span className="text-primary">{MOCK.controlPassing.value}</span>
+            <span className="text-xl text-muted-foreground">
+              /{MOCK.controlPassing.total}
+            </span>
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Updated {MOCK.controlPassing.updatedAgo}
+          </p>
         </TopStatCard>
 
         {/* Extra Controls */}
@@ -384,21 +366,16 @@ export default function AuditorDashboard() {
           title="Extra Controls"
           icon="star"
           iconColor="text-amber-400"
+          iconBg="bg-amber-400/10"
+          borderColor="border-amber-400/40"
+          navigation="/dashboard/extra-controls"
         >
-          <button
-            onClick={() => navigate("/dashboard/extra-controls")}
-            className="text-left group cursor-pointer"
-          >
-            <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
-              {MOCK.extraControls.value}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {MOCK.extraControls.label}
-            </p>
-            <p className="text-[10px] text-primary mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              View details →
-            </p>
-          </button>
+          <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
+            {MOCK.extraControls.value}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {MOCK.extraControls.label}
+          </p>
         </TopStatCard>
       </div>
 
@@ -419,6 +396,7 @@ export default function AuditorDashboard() {
             {MOCK.frameworkHealth.map((fw) => (
               <button
                 key={fw.name}
+                type="button"
                 onClick={() =>
                   navigate(`/dashboard/framework/${frameworkToSlug(fw.name)}`)
                 }
@@ -426,14 +404,23 @@ export default function AuditorDashboard() {
               >
                 {/* Colored pill tag */}
                 <span
-                  className="text-[11px] font-semibold px-2 py-1 rounded text-white shrink-0 min-w-[90px] text-center group-hover:opacity-80 transition-opacity"
-                  style={{ backgroundColor: fw.tagColor }}
+                  className="text-[11px] font-semibold px-1 py-0.3 rounded text-white shrink-0 min-w-24 text-center group-hover:opacity-80 transition-opacity"
+                  style={{
+                    backgroundColor: DASHBOARD_CONFIG.getFrameworkConfig(
+                      fw.name
+                    ).tagColor,
+                  }}
                 >
                   {fw.name}
                 </span>
                 {/* Progress bar */}
                 <div className="flex-1">
-                  <ProgressBar value={fw.readiness} color={fw.barColor} />
+                  <ProgressBar
+                    value={fw.readiness}
+                    color={
+                      DASHBOARD_CONFIG.getFrameworkConfig(fw.name).barColor
+                    }
+                  />
                 </div>
                 {/* Percentage */}
                 <span className="text-xs font-bold text-foreground w-9 text-right shrink-0 group-hover:text-primary transition-colors">
@@ -449,6 +436,7 @@ export default function AuditorDashboard() {
           title="Active Gaps"
           right={
             <button
+              type="button"
               onClick={() => navigate("/deployment-frameworks")}
               className="text-primary flex items-center gap-1 text-xs hover:underline cursor-pointer"
             >
@@ -469,7 +457,7 @@ export default function AuditorDashboard() {
           <div className="flex-1 mt-1">
             {MOCK.activeGaps.map((gap, idx) => (
               <div
-                key={gap.ctrlNo}
+                key={gap.ctrlId}
                 className="grid grid-cols-[0.3fr_1.2fr_0.8fr_0.5fr_0.7fr_1fr] gap-1 items-center py-2 border-b border-border last:border-0 hover:bg-accent/50 rounded transition-colors px-0.5"
               >
                 <span className="text-xs text-muted-foreground">{idx + 1}</span>
@@ -477,14 +465,14 @@ export default function AuditorDashboard() {
                   {gap.framework}
                 </span>
                 <span className="text-xs text-secondary font-semibold">
-                  {gap.ctrlNo}
+                  {gap.ctrlId}
                 </span>
                 <span className="text-xs text-center text-foreground font-medium">
                   {gap.instances}
                 </span>
                 <div className="flex items-center justify-center gap-1">
                   <Icon
-                    name={gap.trend === "up" ? "trending-up" : "trending-down"}
+                    name={gap.trend === "up" ? "arrow-up" : "arrow-down"}
                     size="12px"
                     className={
                       gap.trend === "up" ? "text-emerald-500" : "text-red-500"
@@ -551,6 +539,7 @@ export default function AuditorDashboard() {
           title="Deployment Points"
           right={
             <button
+              type="button"
               onClick={() => navigate("/dashboard/deployment-points")}
               className="text-primary flex items-center gap-1 text-xs hover:underline cursor-pointer"
             >
@@ -564,28 +553,34 @@ export default function AuditorDashboard() {
             style={{ maxHeight: "220px" }}
           >
             {MOCK.deploymentPoints.map((dp) => (
-              <div key={dp.name}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-2">
-                    <Icon
-                      name={dp.icon}
-                      size="15px"
-                      className="text-muted-foreground"
-                    />
-                    <span className="text-sm text-foreground">{dp.name}</span>
-                  </div>
-                  <span className="text-sm font-bold text-foreground">
-                    {dp.count}
-                  </span>
-                </div>
-                <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-primary transition-all duration-500"
-                    style={{
-                      width: `${Math.min((dp.count / 250) * 100, 100)}%`,
-                    }}
+              <div
+                key={dp.name}
+                className="flex items-center gap-3 w-full group"
+              >
+                {/* Colored pill tag */}
+                <span
+                  className="text-[11px] font-semibold px-1 py-0.3 rounded text-white shrink-0 min-w-24 text-center group-hover:opacity-80 transition-opacity"
+                  style={{
+                    backgroundColor: DASHBOARD_CONFIG.getFrameworkConfig(
+                      dp.name
+                    ).tagColor,
+                  }}
+                >
+                  {dp.name}
+                </span>
+                {/* Progress bar */}
+                <div className="flex-1">
+                  <ProgressBar
+                    value={Math.min((dp.count / 250) * 100, 100)}
+                    color={
+                      DASHBOARD_CONFIG.getFrameworkConfig(dp.name).barColor
+                    }
                   />
                 </div>
+                {/* Count */}
+                <span className="text-xs font-bold text-foreground w-9 text-right shrink-0 group-hover:text-primary transition-colors">
+                  {dp.count}
+                </span>
               </div>
             ))}
           </div>
@@ -610,25 +605,20 @@ export default function AuditorDashboard() {
                 className="grid grid-cols-[2.5fr_0.6fr_0.7fr_0.6fr] items-center gap-2 py-2 border-b border-border last:border-0 hover:bg-accent/50 rounded px-0.5 transition-colors"
               >
                 <div className="flex items-center gap-2">
-                  <Icon
-                    name={r.icon}
-                    size="14px"
-                    className="text-muted-foreground shrink-0"
-                  />
                   <span className="text-xs text-foreground">{r.label}</span>
                 </div>
                 <div className="flex justify-center">
-                  <span className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center text-[11px] font-bold text-white">
+                  <span className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center text-[10px] font-bold text-white">
                     {r.high}
                   </span>
                 </div>
                 <div className="flex justify-center">
-                  <span className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center text-[11px] font-bold text-white">
+                  <span className="w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center text-[10px] font-bold text-white">
                     {r.medium}
                   </span>
                 </div>
                 <div className="flex justify-center">
-                  <span className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-[11px] font-bold text-white">
+                  <span className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] font-bold text-white">
                     {r.low}
                   </span>
                 </div>
@@ -662,6 +652,7 @@ export default function AuditorDashboard() {
                 <div className="flex items-center gap-2 shrink-0 mt-0.5">
                   <PriorityBadge priority={insight.priority} />
                   <button
+                    type="button"
                     title="View Control"
                     className="text-xs text-primary font-medium flex items-center gap-0.5 group hover:gap-1.5 transition-all duration-200 whitespace-nowrap"
                   >
@@ -673,51 +664,6 @@ export default function AuditorDashboard() {
           </div>
         </CardWrapper>
       </div>
-
-      {/* ── Row 4: Upcoming Events ─────────────────────────────────────────── */}
-      <CardWrapper title="Upcoming Events" className="flex flex-col">
-        <div
-          className="overflow-y-auto flex-1 space-y-2 pr-0.5"
-          style={{ maxHeight: "160px" }}
-        >
-          {MOCK.upcomingEvents.map((ev) => (
-            <div
-              key={ev.title}
-              className="flex items-center gap-3 p-2 bg-accent rounded border border-border hover:border-primary/50 transition-colors"
-            >
-              <div
-                className={`w-1 self-stretch rounded-full shrink-0 ${ev.statusColor}`}
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground">
-                  {ev.title}
-                </p>
-              </div>
-              <div className="flex items-center gap-3 shrink-0 text-xs text-muted-foreground flex-wrap justify-end">
-                <span className="flex items-center gap-1">
-                  <Icon name="calendar" size="12px" />
-                  {ev.date}
-                </span>
-                <span>{ev.daysLeft} days remaining</span>
-                <span
-                  className={`px-2 py-0.5 rounded-full font-semibold text-white text-[11px] ${ev.statusColor}`}
-                >
-                  {ev.status}
-                </span>
-                {Boolean(ev.openItems) && (
-                  <span className="text-destructive">
-                    {ev.openItems} open items ↑
-                  </span>
-                )}
-                {Boolean(ev.actions) && (
-                  <span>{ev.actions} actions pending →</span>
-                )}
-                {Boolean(ev.tasks) && <span>{ev.tasks} tasks →</span>}
-              </div>
-            </div>
-          ))}
-        </div>
-      </CardWrapper>
     </div>
   );
 }
