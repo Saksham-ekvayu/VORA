@@ -131,6 +131,15 @@ function PriorityBadge({ priority }) {
   );
 }
 
+function EmptyState({ message = "No data available", icon = "inbox" }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-8 gap-2 text-center">
+      <Icon name={icon} size="24px" className="opacity-50" />
+      <span className="text-xs">{message}</span>
+    </div>
+  );
+}
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function AuditorDashboard() {
@@ -293,8 +302,8 @@ export default function AuditorDashboard() {
                   <Skeleton className="h-4 w-8 shrink-0" />
                 </div>
               ))
-            ) : (
-              dashboardData?.frameworkHealth?.map((fw) => (
+            ) : dashboardData?.frameworkHealth?.length > 0 ? (
+              dashboardData.frameworkHealth.map((fw) => (
                 <button
                   key={`${fw.name}-${fw.version}`}
                   type="button"
@@ -329,6 +338,8 @@ export default function AuditorDashboard() {
                   </span>
                 </button>
               ))
+            ) : (
+              <EmptyState message="No framework data available" />
             )}
           </div>
         </CardWrapper>
@@ -364,8 +375,8 @@ export default function AuditorDashboard() {
                   <Skeleton className="h-4 w-8 shrink-0" />
                 </div>
               ))
-            ) : (
-              dashboardData?.deploymentPoints?.map((dp) => (
+            ) : dashboardData?.deploymentPoints?.length > 0 ? (
+              dashboardData.deploymentPoints.map((dp) => (
                 <div
                   key={`${dp.name}-${dp.version}`}
                   className="flex items-center gap-3 w-full group"
@@ -394,6 +405,8 @@ export default function AuditorDashboard() {
                   </span>
                 </div>
               ))
+            ) : (
+              <EmptyState message="No deployment points found" />
             )}
           </div>
         </CardWrapper>
@@ -433,8 +446,8 @@ export default function AuditorDashboard() {
                   <Skeleton className="h-4 w-20 shrink-0 ml-2" />
                 </div>
               ))
-            ) : (
-              dashboardData?.activeGaps?.map((gap, idx) => (
+            ) : dashboardData?.activeGaps?.length > 0 ? (
+              dashboardData.activeGaps.map((gap, idx) => (
                 <div
                   key={`${gap.id}-${idx}`}
                   className="grid grid-cols-[0.3fr_1.2fr_0.8fr_0.5fr_0.7fr_1fr] gap-1 items-center py-2 border-b border-border last:border-0 hover:bg-accent/50 rounded transition-colors px-0.5"
@@ -468,6 +481,8 @@ export default function AuditorDashboard() {
                   </span>
                 </div>
               ))
+            ) : (
+              <EmptyState message="No active gaps reported" />
             )}
           </div>
         </CardWrapper>
@@ -500,8 +515,8 @@ export default function AuditorDashboard() {
                   <Skeleton className="h-4 w-16 shrink-0" />
                 </div>
               ))
-            ) : (
-              dashboardData?.liveAuditStreams?.map((stream, index) => (
+            ) : dashboardData?.liveAuditStreams?.length > 0 ? (
+              dashboardData.liveAuditStreams.map((stream, index) => (
                 <div
                   key={`${stream.id}-${index}`}
                   className="flex items-center gap-3 py-1 border-b border-border last:border-0"
@@ -530,6 +545,8 @@ export default function AuditorDashboard() {
                   </span>
                 </div>
               ))
+            ) : (
+              <EmptyState message="No live audit streams active" />
             )}
           </div>
         </CardWrapper>
@@ -548,26 +565,30 @@ export default function AuditorDashboard() {
             className="overflow-y-auto flex-1 pr-0.5"
             style={{ maxHeight: "300px" }}
           >
-            {MOCK.aiInsights.map((insight) => (
-              <div
-                key={insight.text.slice(0, 30)}
-                className="flex items-start gap-3 py-1.5 border-b border-border last:border-0"
-              >
-                <p className="text-xs text-foreground flex-1 leading-relaxed">
-                  {insight.text}
-                </p>
-                <div className="flex items-center gap-2 shrink-0 mt-0.5">
-                  <PriorityBadge priority={insight.priority} />
-                  <button
-                    type="button"
-                    title="View Control"
-                    className="text-xs text-primary font-medium flex items-center gap-0.5 group hover:gap-1.5 transition-all duration-200 whitespace-nowrap"
-                  >
-                    →
-                  </button>
+            {MOCK.aiInsights?.length > 0 ? (
+              MOCK.aiInsights.map((insight) => (
+                <div
+                  key={insight.text.slice(0, 30)}
+                  className="flex items-start gap-3 py-1.5 border-b border-border last:border-0"
+                >
+                  <p className="text-xs text-foreground flex-1 leading-relaxed">
+                    {insight.text}
+                  </p>
+                  <div className="flex items-center gap-2 shrink-0 mt-0.5">
+                    <PriorityBadge priority={insight.priority} />
+                    <button
+                      type="button"
+                      title="View Control"
+                      className="text-xs text-primary font-medium flex items-center gap-0.5 group hover:gap-1.5 transition-all duration-200 whitespace-nowrap"
+                    >
+                      →
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <EmptyState message="No AI insights generated yet" />
+            )}
           </div>
         </CardWrapper>
       </div>
