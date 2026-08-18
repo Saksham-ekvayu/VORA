@@ -255,3 +255,180 @@ def build_admin_user_filter(
         "start_date": start_date,
         "end_date": end_date,
     }
+
+
+def _get(obj: Any, key: str, default: Any = None) -> Any:
+    """Helper to safely get attributes or dictionary keys."""
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default) if hasattr(obj, key) else default
+
+
+def extract_custom_controls(fw_assignment_id: str | None, assignments: list[FrameworkAssignment]) -> dict[str, bool]:
+    """Parse custom controls map from FrameworkAssignment."""
+    custom_controls = {}
+    if not fw_assignment_id:
+        return custom_controls
+
+    assignment = next((a for a in assignments if str(a.id) == fw_assignment_id), None)
+    if not assignment or not assignment.fileVersions:
+        return custom_controls
+
+    latest_fv = assignment.fileVersions[-1]
+    ai_extraction = _get(latest_fv, "aiExtraction") or []
+    for sec in ai_extraction:
+        for ctrl in _get(sec, "controls") or []:
+            ctrl_id = _get(ctrl, "id")
+            if ctrl_id:
+                is_custom = _get(_get(ctrl, "customization") or {}, "source") == "custom"
+                custom_controls[ctrl_id] = is_custom
+    
+    return custom_controls
+
+
+def extract_expected_controls(merge_doc: Any, custom_controls: dict[str, bool]) -> dict[str, Any]:
+    """Parse expected controls and DPs from mergeDocument."""
+    expected_controls = {}
+    controls_data = _get(merge_doc.controls or {}, "controls_data") or []
+    for sec in controls_data:
+        for ctrl in _get(sec, "controls") or []:
+            ctrl_id = _get(ctrl, "id")
+            if ctrl_id:
+                expected_controls[ctrl_id] = {
+                    "name": _get(ctrl, "name") or ctrl_id,
+                    "description": _get(ctrl, "description", ""),
+                    "required_dps": len(_get(ctrl, "deployment_points") or []),
+                    "is_extra": custom_controls.get(ctrl_id, False)
+                }
+    return expected_controls
+
+
+def extract_actual_implemented(gap_results: list[Any]) -> dict[str, int]:
+    """Extract actual implemented counts from current gapAnalysis."""
+    actual_implemented = {}
+    for result in gap_results:
+        ctrl_id = _get(result, "assigned_framework_control_id")
+        if not ctrl_id:
+            continue
+        if ctrl_id not in actual_implemented:
+            actual_implemented[ctrl_id] = 0
+        
+        status = str(_get(result, "implementation_status") or "").lower()
+        if status in ["implemented", "compliant", "passed", "fully implemented"]:
+            actual_implemented[ctrl_id] += 1
+            
+    return actual_implemented
+
+
+def extract_historical_implemented(
+    df_id: str,
+    current_created_at: datetime | None,
+    historical_gap_analyses: list[Any]
+) -> dict[str, int]:
+    """Extract implemented counts from historical gapAnalysis for trend calculation."""
+    prev_actual_implemented = {}
+    if not df_id or not current_created_at:
+        return prev_actual_implemented
+
+    for hga in historical_gap_analyses:
+        hga_df_id = _get(hga.gapAnalysis or {}, "deployment_framework_id")
+        if hga_df_id == df_id and hga.createdAt and hga.createdAt < current_created_at:
+            hga_results = _get(hga.gapAnalysis or {}, "deployment_gap_results") or []
+            return extract_actual_implemented(hga_results)
+            
+    return prev_actual_implemented
+
+
+def _evaluate_trend(ctrl_id: str, req_dps: int, failing_percentage: int, prev_actual_implemented: dict[str, int]) -> str:
+    if ctrl_id not in prev_actual_implemented:
+        return "flat"
+        
+    prev_impl = prev_actual_implemented[ctrl_id]
+    prev_failing_pct = 100
+    if req_dps > 0:
+        prev_failing_pct = round(((req_dps - prev_impl) / req_dps) * 100)
+    
+    if failing_percentage > prev_failing_pct:
+        return "down"
+    if failing_percentage < prev_failing_pct:
+        return "up"
+    return "flat"
+
+
+def _create_active_gap(
+    ctrl_id: str,
+    expected: dict,
+    req_dps: int,
+    impl_dps: int,
+    prev_actual_implemented: dict[str, int],
+    ga: Any,
+    fw_name: str,
+    fw_version: str
+) -> dict:
+    failing_percentage = 100
+    if req_dps > 0:
+        failing_percentage = round(((req_dps - impl_dps) / req_dps) * 100)
+    
+    trend = _evaluate_trend(ctrl_id, req_dps, failing_percentage, prev_actual_implemented)
+        
+    return {
+        "id": ctrl_id,
+        "framework": fw_name,
+        "version": fw_version,
+        "control": expected["name"],
+        "description": expected["description"],
+        "instances": req_dps,
+        "failing": failing_percentage, 
+        "lastNC": ga.createdAt.isoformat() if ga and ga.createdAt else None,
+        "trend": trend
+    }
+
+
+def evaluate_controls(
+    expected_controls: dict[str, Any],
+    actual_implemented: dict[str, int],
+    prev_actual_implemented: dict[str, int],
+    ga: Any,
+    fw_name: str,
+    fw_version: str
+) -> tuple[int, int, int, int, int, int, int, list[dict]]:
+    """Evaluate controls against implemented DPs and return aggregated metrics."""
+    fw_total_controls = 0
+    fw_passing_controls = 0
+    fw_total_dps = 0
+    fw_implemented_dps = 0
+    fw_extra_controls = 0
+    fw_critical_gaps = 0
+    fw_active_gaps = []
+
+    for ctrl_id, expected in expected_controls.items():
+        fw_total_controls += 1
+        if expected["is_extra"]:
+            fw_extra_controls += 1
+        
+        req_dps = expected["required_dps"]
+        impl_dps = actual_implemented.get(ctrl_id, 0)
+        
+        fw_total_dps += req_dps
+        fw_implemented_dps += min(impl_dps, req_dps)
+        
+        if req_dps > 0 and impl_dps >= req_dps:
+            fw_passing_controls += 1
+        else:
+            fw_critical_gaps += 1
+            fw_active_gaps.append(
+                _create_active_gap(
+                    ctrl_id, expected, req_dps, impl_dps, 
+                    prev_actual_implemented, ga, fw_name, fw_version
+                )
+            )
+
+    return (
+        fw_total_controls,
+        fw_passing_controls,
+        fw_total_dps,
+        fw_implemented_dps,
+        fw_extra_controls,
+        fw_critical_gaps,
+        fw_active_gaps
+    )

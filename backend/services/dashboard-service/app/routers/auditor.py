@@ -13,6 +13,13 @@ from vora_shared.models import (
 )
 from vora_shared.responses import server_error, success
 from vora_shared.security import RequestContext, get_context
+from app.helpers import (
+    extract_actual_implemented,
+    extract_custom_controls,
+    extract_expected_controls,
+    extract_historical_implemented,
+    evaluate_controls,
+)
 
 
 router = APIRouter(tags=["auditor-dashboard"])
@@ -35,14 +42,18 @@ def _get_live_packages(dfs: list[DeploymentFramework]) -> tuple[list[dict], list
 
     for df in dfs:
         for pkg in df.packages or []:
-            if _get(pkg, "status") == "live" and _get(pkg, "type") == "deployed":
-                live_packages.append({"df": df, "pkg": pkg})
-                gap_analysis = _get(pkg, "gapAnalysis")
-                merge_doc = _get(pkg, "mergeDocument")
-                if gap_analysis:
-                    gap_analysis_ids.append(str(gap_analysis))
-                if merge_doc:
-                    merge_doc_ids.append(str(merge_doc))
+            if _get(pkg, "status") != "live" or _get(pkg, "type") != "deployed":
+                continue
+            
+            live_packages.append({"df": df, "pkg": pkg})
+            
+            gap_analysis = _get(pkg, "gapAnalysis")
+            if gap_analysis:
+                gap_analysis_ids.append(str(gap_analysis))
+                
+            merge_doc = _get(pkg, "mergeDocument")
+            if merge_doc:
+                merge_doc_ids.append(str(merge_doc))
                     
     return live_packages, gap_analysis_ids, merge_doc_ids
 
@@ -75,120 +86,43 @@ def _process_gap_analyses(gap_analyses: list[PackageGapAnalysis], live_packages:
         fw_name = lp["df"].frameworkName or "Unknown Framework"
         fw_version = lp["df"].frameworkVersion or ""
         
-        fw_total_controls = 0
-        fw_passing_controls = 0
-        fw_total_dps = 0
-        fw_implemented_dps = 0
-        fw_active_gaps = []
+        custom_controls = extract_custom_controls(fw_assignment_id, assignments)
+        expected_controls = extract_expected_controls(merge_doc, custom_controls)
         
-        # 1. Parse customization map from FrameworkAssignment
-        custom_controls = {}
-        if fw_assignment_id:
-            assignment = next((a for a in assignments if str(a.id) == fw_assignment_id), None)
-            if assignment and assignment.fileVersions and len(assignment.fileVersions) > 0:
-                latest_fv = assignment.fileVersions[-1]
-                ai_extraction = _get(latest_fv, "aiExtraction") or []
-                for sec in ai_extraction:
-                    for ctrl in _get(sec, "controls") or []:
-                        ctrl_id = _get(ctrl, "id")
-                        if ctrl_id:
-                            is_custom = _get(_get(ctrl, "customization") or {}, "source") == "custom"
-                            custom_controls[ctrl_id] = is_custom
-        
-        # 2. Parse expected controls and DPs from mergeDocument
-        expected_controls = {}
-        controls_data = _get(merge_doc.controls or {}, "controls_data") or []
-        for sec in controls_data:
-            for ctrl in _get(sec, "controls") or []:
-                ctrl_id = _get(ctrl, "id")
-                if ctrl_id:
-                    expected_controls[ctrl_id] = {
-                        "name": _get(ctrl, "name") or ctrl_id,
-                        "description": _get(ctrl, "description", ""),
-                        "required_dps": len(_get(ctrl, "deployment_points") or []),
-                        "is_extra": custom_controls.get(ctrl_id, False)
-                    }
-
         # 2. Extract actual implemented counts from current gapAnalysis
         gap_results = _get(gap_data, "deployment_gap_results") or []
-        actual_implemented = {}
-        for result in gap_results:
-            ctrl_id = _get(result, "assigned_framework_control_id")
-            if not ctrl_id: continue
-            if ctrl_id not in actual_implemented:
-                actual_implemented[ctrl_id] = 0
-            
-            status = str(_get(result, "implementation_status") or "").lower()
-            if status in ["implemented", "compliant", "passed", "fully implemented"]:
-                actual_implemented[ctrl_id] += 1
-
+        actual_implemented = extract_actual_implemented(gap_results)
+        
         # 3. Extract implemented counts from historical gapAnalysis for trend
-        prev_actual_implemented = {}
-        if df_id and ga.createdAt:
-            for hga in historical_gap_analyses:
-                hga_df_id = _get(hga.gapAnalysis or {}, "deployment_framework_id")
-                if hga_df_id == df_id and hga.createdAt and hga.createdAt < ga.createdAt:
-                    hga_results = _get(hga.gapAnalysis or {}, "deployment_gap_results") or []
-                    for result in hga_results:
-                        ctrl_id = _get(result, "assigned_framework_control_id")
-                        if not ctrl_id: continue
-                        if ctrl_id not in prev_actual_implemented:
-                            prev_actual_implemented[ctrl_id] = 0
-                        status = str(_get(result, "implementation_status") or "").lower()
-                        if status in ["implemented", "compliant", "passed", "fully implemented"]:
-                            prev_actual_implemented[ctrl_id] += 1
-                    break
-
+        prev_actual_implemented = extract_historical_implemented(
+            df_id, ga.createdAt, historical_gap_analyses
+        )
+        
         # 4. Evaluate each expected control
-        for ctrl_id, expected in expected_controls.items():
-            fw_total_controls += 1
-            total_controls_overall += 1
-            if expected["is_extra"]:
-                extra_controls_overall += 1
-            
-            req_dps = expected["required_dps"]
-            impl_dps = actual_implemented.get(ctrl_id, 0)
-            
-            fw_total_dps += req_dps
-            fw_implemented_dps += min(impl_dps, req_dps)
-            
-            total_dps_overall += req_dps
-            implemented_dps_overall += min(impl_dps, req_dps)
-            
-            if req_dps > 0 and impl_dps >= req_dps:
-                fw_passing_controls += 1
-                passing_controls_overall += 1
-            else:
-                critical_gaps += 1
-                
-                failing_percentage = 100
-                if req_dps > 0:
-                    failing_percentage = round(((req_dps - impl_dps) / req_dps) * 100)
-                
-                trend = "flat"
-                if ctrl_id in prev_actual_implemented:
-                    prev_impl = prev_actual_implemented[ctrl_id]
-                    prev_failing_pct = 100
-                    if req_dps > 0:
-                        prev_failing_pct = round(((req_dps - prev_impl) / req_dps) * 100)
-                    
-                    if failing_percentage > prev_failing_pct:
-                        trend = "down"
-                    elif failing_percentage < prev_failing_pct:
-                        trend = "up"
-                        
-                fw_active_gaps.append({
-                    "id": ctrl_id,
-                    "framework": fw_name,
-                    "version": fw_version,
-                    "control": expected["name"],
-                    "description": expected["description"],
-                    "instances": req_dps,
-                    "failing": failing_percentage, 
-                    "lastNC": ga.createdAt.isoformat() if ga.createdAt else None,
-                    "trend": trend
-                })
-
+        (
+            fw_total_controls,
+            fw_passing_controls,
+            fw_total_dps,
+            fw_implemented_dps,
+            fw_extra_controls,
+            fw_critical_gaps,
+            fw_active_gaps
+        ) = evaluate_controls(
+            expected_controls,
+            actual_implemented,
+            prev_actual_implemented,
+            ga,
+            fw_name,
+            fw_version
+        )
+        
+        # Accumulate global metrics
+        total_controls_overall += fw_total_controls
+        passing_controls_overall += fw_passing_controls
+        extra_controls_overall += fw_extra_controls
+        total_dps_overall += fw_total_dps
+        implemented_dps_overall += fw_implemented_dps
+        critical_gaps += fw_critical_gaps
         active_gaps.extend(fw_active_gaps)
         
         fw_health = 0
@@ -204,49 +138,61 @@ def _process_gap_analyses(gap_analyses: list[PackageGapAnalysis], live_packages:
     return total_controls_overall, passing_controls_overall, extra_controls_overall, critical_gaps, active_gaps, framework_health, total_dps_overall, implemented_dps_overall
 
 
+def _iter_evidence_records(ev: EvidenceOutput):
+    """Yield records from an evidence output."""
+    out = ev.output or {}
+    fw_name = _get(out, "frameworkName")
+    fw_version = _get(out, "frameworkVersion") or _get(out, "currentFileVersion") or ""
+    
+    for fv in _get(out, "fileVersions") or []:
+        for cdata in (_get(fv, "data") or {}).values():
+            for rec in _get(cdata, "records") or []:
+                yield fw_name, fw_version, rec
+
+
+def _format_stream_record(ev: EvidenceOutput, fw_name: str, fw_version: str, rec: dict) -> dict:
+    """Format a single audit stream record."""
+    status_str = _get(rec, "compliance_status", "").lower()
+    
+    status = "warn"
+    if "not compliant" in status_str:
+        status = "fail"
+    elif "compliant" in status_str:
+        status = "pass"
+        
+    desc = _get(rec, "deployment_point", "")
+    if len(desc) > 50:
+        desc = desc[:47] + "..."
+        
+    return {
+        "id": _get(rec, "file_id", str(ev.id)),
+        "status": status,
+        "framework": fw_name,
+        "version": fw_version,
+        "description": f"{desc} • {fw_name}",
+        "timestamp": ev.createdAt.isoformat() if ev.createdAt else None
+    }
+
+
 def _process_live_streams(evidence_outputs: list[EvidenceOutput]) -> list[dict]:
     """Extract and format recent live audit streams."""
     live_streams = []
     for ev in evidence_outputs:
-        out = ev.output or {}
-        fw_name = _get(out, "frameworkName")
-        fw_version = _get(out, "frameworkVersion") or _get(out, "currentFileVersion") or ""
-        file_versions = _get(out, "fileVersions") or []
-        
-        for fv in file_versions:
-            data = _get(fv, "data") or {}
-            for cid, cdata in data.items():
-                records = _get(cdata, "records") or []
-                for rec in records:
-                    status_str = _get(rec, "compliance_status", "").lower()
-                    
-                    status = "warn"
-                    if "not compliant" in status_str:
-                        status = "fail"
-                    elif "compliant" in status_str:
-                        status = "pass"
-                        
-                    desc = _get(rec, "deployment_point", "")
-                    if len(desc) > 50:
-                        desc = desc[:47] + "..."
-                        
-                    live_streams.append({
-                        "id": _get(rec, "file_id", str(ev.id)),
-                        "status": status,
-                        "framework": fw_name,
-                        "version": fw_version,
-                        "description": f"{desc} • {fw_name}",
-                        "timestamp": ev.createdAt.isoformat() if ev.createdAt else None
-                    })
-                    if len(live_streams) >= 20:
-                        break
+        for fw_name, fw_version, rec in _iter_evidence_records(ev):
+            live_streams.append(_format_stream_record(ev, fw_name, fw_version, rec))
             if len(live_streams) >= 20:
-                break
-        if len(live_streams) >= 20:
-            break
-            
+                return live_streams
     return live_streams
 
+
+def _get_dp_count_for_merge(pm: DeploymentPackageMerge) -> int:
+    controls = pm.controls or {}
+    controls_data = _get(controls, "controls_data") or []
+    dp_count = 0
+    for section in controls_data:
+        for control in _get(section, "controls") or []:
+            dp_count += len(_get(control, "deployment_points") or [])
+    return dp_count
 
 def _process_deployment_points(
     merges: list[DeploymentPackageMerge], 
@@ -255,12 +201,7 @@ def _process_deployment_points(
     """Aggregate configured deployment points per framework."""
     deployment_points = []
     for pm in merges:
-        controls = pm.controls or {}
-        controls_data = _get(controls, "controls_data") or []
-        dp_count = 0
-        for section in controls_data:
-            for control in _get(section, "controls") or []:
-                dp_count += len(_get(control, "deployment_points") or [])
+        dp_count = _get_dp_count_for_merge(pm)
         
         fw_name = "Unknown Framework"
         fw_version = ""
@@ -296,70 +237,38 @@ async def get_auditor_dashboard_analytics(
 
             live_packages, gap_analysis_ids, merge_doc_ids = _get_live_packages(dfs)
 
-            gap_analyses = []
-            if gap_analysis_ids:
-                gap_analyses = list(
-                    (
-                        await session.execute(
-                            select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_analysis_ids))
-                        )
-                    ).scalars().all()
-                )
+            gap_analyses = list((await session.execute(
+                select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_analysis_ids))
+            )).scalars().all()) if gap_analysis_ids else []
 
-            merges = []
-            if merge_doc_ids:
-                merges = list(
-                    (
-                        await session.execute(
-                            select(DeploymentPackageMerge).where(DeploymentPackageMerge.id.in_(merge_doc_ids))
-                        )
-                    ).scalars().all()
-                )
+            merges = list((await session.execute(
+                select(DeploymentPackageMerge).where(DeploymentPackageMerge.id.in_(merge_doc_ids))
+            )).scalars().all()) if merge_doc_ids else []
             
-            assignment_ids = []
-            for ga in gap_analyses:
-                fw_assignment_id = _get(ga.gapAnalysis or {}, "framework_assignment_id")
-                if fw_assignment_id:
-                    assignment_ids.append(fw_assignment_id)
+            assignment_ids = [
+                _get(ga.gapAnalysis or {}, "framework_assignment_id")
+                for ga in gap_analyses if _get(ga.gapAnalysis or {}, "framework_assignment_id")
+            ]
             
-            assignments = []
-            if assignment_ids:
-                assignments = list(
-                    (
-                        await session.execute(
-                            select(FrameworkAssignment).where(FrameworkAssignment.id.in_(assignment_ids))
-                        )
-                    ).scalars().all()
-                )
+            assignments = list((await session.execute(
+                select(FrameworkAssignment).where(FrameworkAssignment.id.in_(assignment_ids))
+            )).scalars().all()) if assignment_ids else []
             
-            evidence_outputs = list(
-                (
-                    await session.execute(
-                        select(EvidenceOutput)
-                        .order_by(desc(EvidenceOutput.createdAt))
-                        .limit(50)
-                    )
-                ).scalars().all()
-            )
+            evidence_outputs = list((await session.execute(
+                select(EvidenceOutput).order_by(desc(EvidenceOutput.createdAt)).limit(50)
+            )).scalars().all())
             
-            historical_gap_analysis_ids = []
-            for df in dfs:
-                for pkg in (df.packages or []):
-                    gid = _get(pkg, "gapAnalysis")
-                    if gid:
-                        historical_gap_analysis_ids.append(gid)
+            historical_gap_analysis_ids = [
+                _get(pkg, "gapAnalysis")
+                for df in dfs for pkg in (df.packages or [])
+                if _get(pkg, "gapAnalysis")
+            ]
             
-            historical_gap_analyses = []
-            if historical_gap_analysis_ids:
-                historical_gap_analyses = list(
-                    (
-                        await session.execute(
-                            select(PackageGapAnalysis)
-                            .where(PackageGapAnalysis.id.in_(historical_gap_analysis_ids))
-                            .order_by(desc(PackageGapAnalysis.createdAt))
-                        )
-                    ).scalars().all()
-                )
+            historical_gap_analyses = list((await session.execute(
+                select(PackageGapAnalysis)
+                .where(PackageGapAnalysis.id.in_(historical_gap_analysis_ids))
+                .order_by(desc(PackageGapAnalysis.createdAt))
+            )).scalars().all()) if historical_gap_analysis_ids else []
 
             total_controls_overall, passing_controls_overall, extra_controls_overall, critical_gaps, active_gaps, framework_health, total_dps_overall, implemented_dps_overall = _process_gap_analyses(gap_analyses, live_packages, historical_gap_analyses, merges, assignments)
             overall_protection = round((implemented_dps_overall / total_dps_overall) * 100) if total_dps_overall > 0 else 0
