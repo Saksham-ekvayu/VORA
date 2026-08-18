@@ -1,0 +1,298 @@
+{
+  "success": true,
+  "message": "Auditor dashboard analytics retrieved successfully",
+  "data": {
+    "overallProtection": 22,
+    "criticalGaps": 66,
+    "controlPassing": "0/66",
+    "extraControls": 1,
+    "frameworkHealth": [
+      {
+        "name": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "readiness": 22
+      }
+    ],
+    "activeGaps": [
+      {
+        "id": "A.5.1",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "control": "information security roles and responsibilities",
+        "description": "All information security roles and responsibilities should be defined and communicated to ensure that all personnel understand their responsibilities regarding information security.",
+        "instances": 5,
+        "failing": 80,
+        "lastNC": "2026-08-13T12:12:21.723107+00:00",
+        "trend": "flat"
+      },
+      {
+        "id": "A.5.2",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "control": "segregation of duties",
+        "description": "Responsibilities and duties should be segregated to reduce the risk of accidental or deliberate misuse of resources.",
+        "instances": 5,
+        "failing": 80,
+        "lastNC": "2026-08-13T12:12:21.723107+00:00",
+        "trend": "flat"
+      },
+      {
+        "id": "A.5.3",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "control": "contact with authorities",
+        "description": "Appropriate contacts with relevant authorities should be established to ensure that the organization can respond effectively to incidents and comply with legal requirements.",
+        "instances": 5,
+        "failing": 60,
+        "lastNC": "2026-08-13T12:12:21.723107+00:00",
+        "trend": "flat"
+      },
+      {
+        "id": "A.5.4",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "control": "contact with special interest groups",
+        "description": "The organization should maintain contact with special interest groups to stay informed about information security threats and best practices.",
+        "instances": 5,
+        "failing": 100,
+        "lastNC": "2026-08-13T12:12:21.723107+00:00",
+        "trend": "flat"
+      },
+      {
+        "id": "A.5.5",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "control": "information security in project management",
+        "description": "Information security should be integrated into project management processes to ensure that security considerations are addressed throughout the project lifecycle.",
+        "instances": 5,
+        "failing": 40,
+        "lastNC": "2026-08-13T12:12:21.723107+00:00",
+        "trend": "flat"
+      },
+      {
+        "id": "A.5.6",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "control": "security in supplier relationships",
+        "description": "The organization should ensure that security requirements are established and communicated to suppliers to protect the organization's information assets.",
+        "instances": 5,
+        "failing": 80,
+        "lastNC": "2026-08-13T12:12:21.723107+00:00",
+        "trend": "flat"
+      },
+      {
+        "id": "A.5.7",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "control": "information security in the supply chain",
+        "description": "The organization should manage information security risks associated with the supply chain to ensure the protection of information assets.",
+        "instances": 5,
+        "failing": 100,
+        "lastNC": "2026-08-13T12:12:21.723107+00:00",
+        "trend": "flat"
+      },
+      {
+        "id": "A.5.8",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "control": "information security awareness, education, and training",
+        "description": "The organization should ensure that all personnel receive appropriate information security awareness, education, and training to understand their responsibilities and the importance of information security.",
+        "instances": 5,
+        "failing": 40,
+        "lastNC": "2026-08-13T12:12:21.723107+00:00",
+        "trend": "flat"
+      },
+      {
+        "id": "A.5.9",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "control": "disciplinary process",
+        "description": "The organization should establish a disciplinary process for personnel who fail to comply with information security policies and procedures.",
+        "instances": 5,
+        "failing": 100,
+        "lastNC": "2026-08-13T12:12:21.723107+00:00",
+        "trend": "flat"
+      },
+      {
+        "id": "A.5.10",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "control": "compliance with legal and contractual requirements",
+        "description": "The organization should ensure compliance with applicable legal, regulatory, and contractual requirements related to information security.",
+        "instances": 5,
+        "failing": 100,
+        "lastNC": "2026-08-13T12:12:21.723107+00:00",
+        "trend": "flat"
+      }
+    ],
+    "liveAuditStreams": [
+      {
+        "id": "6a83e5b0d51f04d917babb5b",
+        "status": "pass",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "description": "Implement monitoring tools that provide real-ti... • Information Security Management System",
+        "timestamp": "2026-08-18T09:54:17.823932+00:00"
+      },
+      {
+        "id": "6a83e5b0d51f04d917babb5b",
+        "status": "pass",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "description": "Define baseline behavior for systems and applic... • Information Security Management System",
+        "timestamp": "2026-08-18T09:54:17.823932+00:00"
+      },
+      {
+        "id": "6a83e5b0d51f04d917babb5b",
+        "status": "pass",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "description": "Establish incident response procedures to addre... • Information Security Management System",
+        "timestamp": "2026-08-18T09:54:17.823932+00:00"
+      },
+      {
+        "id": "6a83e5b0d51f04d917babb5b",
+        "status": "pass",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "description": "Regularly review monitoring configurations to a... • Information Security Management System",
+        "timestamp": "2026-08-18T09:54:17.823932+00:00"
+      },
+      {
+        "id": "6a83e5b0d51f04d917babb5b",
+        "status": "pass",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "description": "Train staff on how to interpret monitoring data... • Information Security Management System",
+        "timestamp": "2026-08-18T09:54:17.823932+00:00"
+      },
+      {
+        "id": "6a83e5c346af006cbb8bb65e",
+        "status": "fail",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "description": "Develop a software installation policy that out... • Information Security Management System",
+        "timestamp": "2026-08-18T09:54:17.821799+00:00"
+      },
+      {
+        "id": "6a83e5c346af006cbb8bb65e",
+        "status": "fail",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "description": "Implement a change management process to review... • Information Security Management System",
+        "timestamp": "2026-08-18T09:54:17.821799+00:00"
+      },
+      {
+        "id": "6a83e5c346af006cbb8bb65e",
+        "status": "pass",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "description": "Use automated tools to manage software installa... • Information Security Management System",
+        "timestamp": "2026-08-18T09:54:17.821799+00:00"
+      },
+      {
+        "id": "6a83e5c346af006cbb8bb65e",
+        "status": "fail",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "description": "Regularly review installed software to identify... • Information Security Management System",
+        "timestamp": "2026-08-18T09:54:17.821799+00:00"
+      },
+      {
+        "id": "6a83e5c346af006cbb8bb65e",
+        "status": "fail",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "description": "Train staff on secure software installation pra... • Information Security Management System",
+        "timestamp": "2026-08-18T09:54:17.821799+00:00"
+      },
+      {
+        "id": "6a83e5b0d51f04d917babb5b",
+        "status": "pass",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "description": "Identify approved time sources (e.g., NTP serve... • Information Security Management System",
+        "timestamp": "2026-08-18T09:54:17.815387+00:00"
+      },
+      {
+        "id": "6a83e5b0d51f04d917babb5b",
+        "status": "pass",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "description": "Configure all information processing systems to... • Information Security Management System",
+        "timestamp": "2026-08-18T09:54:17.815387+00:00"
+      },
+      {
+        "id": "6a83e5b0d51f04d917babb5b",
+        "status": "pass",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "description": "Regularly verify the accuracy of system clocks ... • Information Security Management System",
+        "timestamp": "2026-08-18T09:54:17.815387+00:00"
+      },
+      {
+        "id": "6a83e5b0d51f04d917babb5b",
+        "status": "pass",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "description": "Document the synchronization process and any de... • Information Security Management System",
+        "timestamp": "2026-08-18T09:54:17.815387+00:00"
+      },
+      {
+        "id": "6a83e5b0d51f04d917babb5b",
+        "status": "pass",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "description": "Monitor for synchronization failures and addres... • Information Security Management System",
+        "timestamp": "2026-08-18T09:54:17.815387+00:00"
+      },
+      {
+        "id": "6a83e5c346af006cbb8bb65e",
+        "status": "fail",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "description": "Identify all network services in use and assess... • Information Security Management System",
+        "timestamp": "2026-08-18T09:54:17.805004+00:00"
+      },
+      {
+        "id": "6a83e5c346af006cbb8bb65e",
+        "status": "fail",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "description": "Implement security mechanisms such as encryptio... • Information Security Management System",
+        "timestamp": "2026-08-18T09:54:17.805004+00:00"
+      },
+      {
+        "id": "6a83e5c346af006cbb8bb65e",
+        "status": "fail",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "description": "Define service level agreements (SLAs) that inc... • Information Security Management System",
+        "timestamp": "2026-08-18T09:54:17.805004+00:00"
+      },
+      {
+        "id": "6a83e5c346af006cbb8bb65e",
+        "status": "pass",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "description": "Regularly monitor network services for complian... • Information Security Management System",
+        "timestamp": "2026-08-18T09:54:17.805004+00:00"
+      },
+      {
+        "id": "6a83e5c346af006cbb8bb65e",
+        "status": "fail",
+        "framework": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "description": "Review and update security measures for network... • Information Security Management System",
+        "timestamp": "2026-08-18T09:54:17.805004+00:00"
+      }
+    ],
+    "deploymentPoints": [
+      {
+        "name": "Information Security Management System",
+        "version": "ISO27001:2022",
+        "count": 330
+      }
+    ]
+  }
+}

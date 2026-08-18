@@ -79,7 +79,7 @@ The API fetches the 50 most recent `EvidenceOutput` rows and parses their highly
   - If the string contains `"not compliant"`, status = `"fail"`.
   - If the string contains `"compliant"`, status = `"pass"`.
   - Otherwise, status defaults to `"warn"`.
-- **`description`**: It extracts the `"deployment_point"` string from the record and appends the `frameworkName` to the end (e.g., `"Create distinct environments... • Information Security Management System"`).
+- **`description`**: It extracts the `"deployment_point"` string from the record.
 - **`timestamp`**: The `createdAt` timestamp of the `EvidenceOutput` record.
 
 ---

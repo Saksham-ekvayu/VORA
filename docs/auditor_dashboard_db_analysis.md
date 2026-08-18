@@ -7,56 +7,57 @@ The VORA database architecture heavily utilizes PostgreSQL `JSONB` columns, mean
 
 ---
 
-## 🟢 Fully Supported (Data is available to aggregate)
+## 🟢 Fully Implemented [DONE]
 
-### 1. Control Passing & Overall Protection
+### 1. Control Passing & Overall Protection [DONE]
 - **Required Data:** Overall compliance health percentage and the ratio of passing controls vs total controls.
-- **Relevant Tables:** `deployment_frameworks`, `package_gap_analyses`, `deployment_package_merges`, `evidence_output`.
-- **Extraction Method:** You must filter the `deployment_frameworks` table for packages where `status` is `"live"` and `type` is `"deploy"`. From those specific live deployment packages, you can calculate the total vs passing controls by aggregating their associated `gapAnalysis` data or cross-referencing `evidence_output`.
+- **Relevant Tables:** `deployment_frameworks`, `package_gap_analyses`, `deployment_package_merges`
+- **Implementation:** The API dynamically filters `deployment_frameworks` for `"live"` / `"deployed"` packages. It calculates `overallProtection` by measuring total implemented deployment points vs total required deployment points globally. `controlPassing` is calculated using strict logic where every single required deployment point for a control must be fully implemented for the control to pass.
 
-### 2. Framework Health
-- **Required Data:** A list of compliance frameworks (like ISO-27001, NIST-CSF) paired with a percentage progress bar showing their "readiness" score.
-- **Relevant Tables:** `deployment_frameworks`, `package_gap_analyses`.
-- **Extraction Method**: This evaluates the gap analysis of the specific framework. Instead of a strict control-level pass/fail, it calculates the health at a Deployment Point (DP) level by dividing the total number of implemented DPs by the total number of required DPs for that framework.
+### 2. Framework Health [DONE]
+- **Required Data:** A list of compliance frameworks paired with a percentage progress bar showing their "readiness" score.
+- **Relevant Tables:** `deployment_frameworks`, `package_gap_analyses`, `deployment_package_merges`
+- **Implementation**: The API calculates this by aggregating the exact count of implemented deployment points out of all required deployment points for each specific framework. This gives a granular health score (`readiness`) for every active framework.
 
-### 3. Live Audit Streams
-- **Required Data:** A scrolling feed of real-time audit checks (e.g., "Password Complexity Check • AWS IAM") showing if they Passed, Warned, or Failed.
-- **Relevant Tables:** `evidence_output`.
-- **Extraction Method:** You can simply query the `evidence_output` table, ordered by `createdAt` descending, to get a live feed of the most recent automated checks from the various deployment points.
+### 3. Live Audit Streams [DONE]
+- **Required Data:** A feed of real-time audit checks showing if they Passed, Warned, or Failed, along with reason, confidence, and `dp_id`.
+- **Relevant Tables:** `evidence_output`
+- **Implementation:** The API queries the 50 most recent `evidence_output` records, drills down into their `fileVersions` -> `data` -> `records` JSON structure using a Python generator, and extracts the deployment point descriptions, status (pass/fail), LLM analysis reasons, confidence scores, and specific `dp_id`s.
 
-### 4. Active Gaps
-- **Required Data:** A table of currently failing controls, including the framework, control ID, description, number of failing instances, percentage failing, and the date of the last Non-Compliance (NC).
-- **Relevant Tables:** `deployment_frameworks`, `package_gap_analyses`, `deployment_package_merges`.
-- **Extraction Method:** You must first filter the `deployment_frameworks` table for packages where `status` is `"live"` and `type` is `"deploy"`. Then, the `gapAnalysis` JSON from those specific packages will contain the failing controls, which can be aggregated to count instances, calculate failing percentages, and find the last NC date.
+### 4. Active Gaps [DONE]
+- **Required Data:** A table of currently failing controls, including the framework, control ID, description, number of failing instances, percentage failing, and the trend.
+- **Relevant Tables:** `package_gap_analyses`, `deployment_package_merges`
+- **Implementation:** The API isolates any control that fails to have 100% of its required deployment points implemented. It dynamically compares the current gap analysis with historical gap analyses to calculate the failure `trend` (up/down/flat) and returns the percentage of failing instances per control.
 
-### 5. Deployment Points
+### 5. Deployment Points [DONE]
 - **Required Data:** A list showing how many deployment/monitoring points are configured per framework.
-- **Relevant Tables:** `deployment_frameworks`, `deployment_package_merges`.
-- **Extraction Method:** You can join `deployment_frameworks` (filtered for live/deploy packages) with `deployment_package_merges` to count the deployment points associated with the live framework configurations.
+- **Relevant Tables:** `deployment_package_merges`
+- **Implementation:** The API iterates deeply into the `controls_data` structure of each active `mergeDocument` (sections -> controls -> deployment_points) and aggregates the total count of required deployment points configured for the framework.
+
+### 6. Extra Controls (Above Standards) [DONE]
+- **Required Data:** The number of controls implemented that go "Above Standards".
+- **Relevant Tables:** `framework_assignments`
+- **Implementation:** The API specifically queries the `framework_assignments` table associated with the live packages. It traverses into `fileVersions[-1]["aiExtraction"]` to identify controls where `customization.source == "custom"`, counting them towards the `extraControls` metric.
 
 ---
 
-## 🟡 Supported, but depends on JSON Structure
+## 🟡 Pending / Needs Implementation [PENDING]
 
-### 1. AI Insights
+### 1. AI Insights [PENDING]
 - **Required Data:** A list of actionable text recommendations tagged with a Priority level (High, Medium, Low) to help bridge gaps.
 - **Relevant Tables:** `document_extractions` (`aiExtraction` JSON), `package_gap_analyses`, and `agent_prompts`.
-- **Extraction Method:** As long as the AI generation backend saves its recommendations into the `gapAnalysis` JSON or `aiExtraction`, you can surface these insights.
-
-### 2. Extra Controls (Above Standards)
-- **Required Data:** The number of controls implemented that go "Above Standards".
-- **Extraction Method:** Can be calculated if the JSON schema inside `package_gap_analyses` clearly flags custom/additional controls versus baseline controls.
+- **Current Status:** Not yet included in the dashboard API payload. The implementation will require extracting these recommendations from the AI generation backend's saved outputs in the `gapAnalysis` JSON.
 
 ---
 
-## 🔴 Missing / Needs Verification
+## 🔴 Missing / Needs Database Changes [MISSING]
 
-### 1. Risk by Status (Accepted, Reduced, Transferred, Mitigated)
+### 1. Risk by Status (Accepted, Reduced, Transferred, Mitigated) [MISSING]
 - **Required Data:** A table that categorizes risks and breaks down exactly how many High, Medium, and Low risks fall into each bucket.
-- **Current Status:** **Missing.** There is no dedicated `risks` or `risk_exceptions` table in the SQL schema.
-- **Workaround:** Unless these risk decisions (e.g., "We accept the risk for control AC-2.1") are specifically stored inside the `assignment` JSONB field of the `framework_assignments` table, you might need to create a new table or standardize the JSON structure to track user-defined risk decisions.
+- **Current Status:** There is no dedicated `risks` or `risk_exceptions` table in the SQL schema.
+- **Workaround:** Unless these risk decisions (e.g., "We accept the risk for control AC-2.1") are specifically stored inside the `assignment` JSONB field of the `framework_assignments` table, a new table or standardized JSON structure is needed to track user-defined risk decisions.
 
 ---
 
 ## Conclusion
-You are in a great position. You won't need major database overhauls to build this dashboard; you will mostly just need to write the backend API queries to aggregate the data out of the `JSONB` columns!
+The core metrics of the Auditor Dashboard have been successfully implemented! All primary metrics (Overall Protection, Active Gaps, Framework Health, Extra Controls, and Live Audit Streams) are fully driven by live database data using the strict deployment point calculations.

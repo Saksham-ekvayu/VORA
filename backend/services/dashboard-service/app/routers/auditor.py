@@ -161,15 +161,20 @@ def _format_stream_record(ev: EvidenceOutput, fw_name: str, fw_version: str, rec
         status = "pass"
         
     desc = _get(rec, "deployment_point", "")
-    if len(desc) > 50:
-        desc = desc[:47] + "..."
+    
+    llm_analysis = _get(rec, "llm_analysis") or {}
+    reason = _get(llm_analysis, "reason", "")
+    confidence = _get(llm_analysis, "confidence", "")
         
     return {
         "id": _get(rec, "file_id", str(ev.id)),
+        "dp_id": _get(rec, "dp_id", ""),
         "status": status,
         "framework": fw_name,
         "version": fw_version,
-        "description": f"{desc} • {fw_name}",
+        "description": desc,
+        "reason": reason,
+        "confidence": confidence,
         "timestamp": ev.createdAt.isoformat() if ev.createdAt else None
     }
 
