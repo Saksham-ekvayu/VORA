@@ -11,6 +11,9 @@ import { useAuth } from "@/context/authContext/useAuth";
 import { getRoleLabel } from "@/utils/commonUtils";
 import { frameworkToSlug } from "@/utils/frameworkUtils";
 import DateFilter from "./components/DateFilter";
+import { getAuditorDashboardAnalytics } from "@/services/dashboardService";
+import { formatDateOnly } from "@/utils/dateFormatter";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // ─── Dynamic Frontend Configuration ──────────────────────────────────────────
 const COLORS = [
@@ -40,76 +43,6 @@ const DASHBOARD_CONFIG = {
 // ─── Static Mock Data ────────────────────────────────────────────────────────
 
 const MOCK = {
-  overallProtection: { value: 84, trend: "+2% vs last month", up: true },
-  criticalGaps: { value: 16, trend: "-2 since last month", up: false },
-  controlPassing: { value: 711, total: 847, updatedAgo: "4 hours ago" },
-  extraControls: { value: 43, label: "Above Standards" },
-
-  frameworkHealth: [
-    {
-      name: "ISO-27001:2022",
-      readiness: 91,
-    },
-    {
-      name: "ISO-9001:2008",
-      readiness: 89,
-    },
-    {
-      name: "NIST-CSF:2021",
-      readiness: 58,
-    },
-    {
-      name: "CFR-Part-II:2023",
-      readiness: 67,
-    },
-  ],
-
-  activeGaps: [
-    {
-      framework: "ISO-27001:2022",
-      ctrlId: "BC-12.4",
-      description: "Cryptographic Key Establishment",
-      instances: 5,
-      failing: "9%",
-      lastNcDate: "2024-02-28",
-      trend: "down",
-    },
-    {
-      framework: "ISO-9001:2008",
-      ctrlId: "QM-4.2",
-      description: "Document Control Procedures",
-      instances: 6,
-      failing: "14%",
-      lastNcDate: "2024-02-18",
-      trend: "down",
-    },
-    {
-      framework: "ISO-27001:2022",
-      ctrlId: "AC-2.1",
-      description: "Access Control Policy",
-      instances: 14,
-      failing: "22%",
-      lastNcDate: "2024-03-01",
-      trend: "down",
-    },
-    {
-      framework: "NIST-CSF:2021",
-      ctrlId: "PR.AC-4",
-      description: "Access Permissions Management",
-      instances: 11,
-      failing: "31%",
-      lastNcDate: "2024-03-05",
-      trend: "down",
-    },
-  ],
-
-  deploymentPoints: [
-    { name: "ISO-27001:2022", count: 234 },
-    { name: "ISO-9001:2008", count: 189 },
-    { name: "NIST-CSF:2021", count: 100 },
-    { name: "CFR-Part-II:2023", count: 58 },
-  ],
-
   aiInsights: [
     {
       text: "Update Access Control Policy (AC-2.1) to enforce least privilege and role-based access.",
@@ -132,52 +65,19 @@ const MOCK = {
       priority: "Low",
     },
   ],
-
-  liveAuditStreams: [
-    {
-      status: "Pass",
-      label: "Password Complexity Check • AWS IAM",
-      ago: "3s ago",
-    },
-    {
-      status: "Pass",
-      label: "Password Complexity Check • AWS IAM",
-      ago: "3s ago",
-    },
-    {
-      status: "Pass",
-      label: "Password Complexity Check • AWS IAM",
-      ago: "3s ago",
-    },
-    {
-      status: "Pass",
-      label: "Password Complexity Check • AWS IAM",
-      ago: "3s ago",
-    },
-    {
-      status: "Warn",
-      label: "Password Complexity Check • AWS IAM",
-      ago: "3s ago",
-    },
-    {
-      status: "Pass",
-      label: "Password Complexity Check • AWS IAM",
-      ago: "3s ago",
-    },
-  ],
 };
 
 // ─── Small reusable pieces ───────────────────────────────────────────────────
 
 function getStreamDotColor(status) {
-  if (status === "Pass") return "bg-emerald-500";
-  if (status === "Warn") return "bg-amber-500";
+  if (status === "pass") return "bg-emerald-500";
+  if (status === "warn") return "bg-amber-500";
   return "bg-red-500";
 }
 
 function getStreamTextColor(status) {
-  if (status === "Pass") return "text-emerald-500";
-  if (status === "Warn") return "text-amber-500";
+  if (status === "pass") return "text-emerald-500";
+  if (status === "warn") return "text-amber-500";
   return "text-red-500";
 }
 
@@ -238,12 +138,28 @@ export default function AuditorDashboard() {
   const navigate = useNavigate();
   const [currentTime, setCurrentTime] = useState(new Date());
   const { datePreset, startDate, endDate, handleDateChange } = useDateFilter();
+  const [dashboardData, setDashboardData] = useState();
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const res = await getAuditorDashboardAnalytics({ startDate, endDate });
+        setDashboardData(res.data);
+      } catch (err) {
+        console.error("Failed to fetch auditor analytics", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, [startDate, endDate]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
-
   return (
     <div className="space-y-3 mt-2">
       {/* ── Header bar ────────────────────────────────────────────────────── */}
@@ -291,18 +207,13 @@ export default function AuditorDashboard() {
           iconColor="text-primary"
           navigation="/dashboard/overall-protection"
         >
-          <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
-            {MOCK.overallProtection.value}%
-          </p>
-          <p
-            className={`text-xs flex items-center gap-1 ${MOCK.overallProtection.up ? "text-emerald-500" : "text-red-500"}`}
-          >
-            <Icon
-              name={MOCK.overallProtection.up ? "arrow-up" : "arrow-down"}
-              size="14px"
-            />
-            {MOCK.overallProtection.trend}
-          </p>
+          {isLoading || !dashboardData ? (
+            <Skeleton className="h-10 w-24 mt-1" />
+          ) : (
+            <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
+              {dashboardData?.overallProtection || 0}%
+            </p>
+          )}
         </TopStatCard>
 
         {/* Critical Gaps */}
@@ -314,13 +225,13 @@ export default function AuditorDashboard() {
           borderColor="border-amber-500/40"
           navigation="/dashboard/critical-gaps"
         >
-          <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
-            {MOCK.criticalGaps.value}
-          </p>
-          <p className="text-xs flex items-center gap-1 text-red-500">
-            <Icon name="arrow-down" size="14px" />
-            {MOCK.criticalGaps.trend}
-          </p>
+          {isLoading || !dashboardData ? (
+            <Skeleton className="h-10 w-24 mt-1" />
+          ) : (
+            <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
+              {dashboardData?.criticalGaps || 0}
+            </p>
+          )}
         </TopStatCard>
 
         {/* Control Passing */}
@@ -332,15 +243,13 @@ export default function AuditorDashboard() {
           borderColor="border-emerald-500/40"
           navigation="/dashboard/controls-passing"
         >
-          <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
-            <span className="text-primary">{MOCK.controlPassing.value}</span>
-            <span className="text-xl text-muted-foreground">
-              /{MOCK.controlPassing.total}
-            </span>
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Updated {MOCK.controlPassing.updatedAgo}
-          </p>
+          {isLoading || !dashboardData ? (
+            <Skeleton className="h-10 w-24 mt-1" />
+          ) : (
+            <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
+              {dashboardData?.controlPassing || 0}
+            </p>
+          )}
         </TopStatCard>
 
         {/* Extra Controls */}
@@ -352,12 +261,13 @@ export default function AuditorDashboard() {
           borderColor="border-amber-400/40"
           navigation="/dashboard/extra-controls"
         >
-          <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
-            {MOCK.extraControls.value}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {MOCK.extraControls.label}
-          </p>
+          {isLoading || !dashboardData ? (
+            <Skeleton className="h-10 w-24 mt-1" />
+          ) : (
+            <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
+              {dashboardData?.extraControls || 0}
+            </p>
+          )}
         </TopStatCard>
       </div>
 
@@ -368,48 +278,58 @@ export default function AuditorDashboard() {
           {/* Column headers */}
           <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border pb-1.5 mb-2 shrink-0">
             <span>Framework</span>
-            <span>Pass/Warn-Readiness</span>
+            <span>IMPLEMENTED / TOTAL POINTS</span>
           </div>
 
           <div
             className="overflow-y-auto space-y-2.5 flex-1 pr-0.5"
             style={{ maxHeight: "220px" }}
           >
-            {MOCK.frameworkHealth.map((fw) => (
-              <button
-                key={fw.name}
-                type="button"
-                onClick={() =>
-                  navigate(`/dashboard/framework/${frameworkToSlug(fw.name)}`)
-                }
-                className="flex items-center gap-3 w-full group cursor-pointer"
-              >
-                {/* Colored pill tag */}
-                <span
-                  className="text-[11px] font-semibold px-1 py-0.3 rounded text-white shrink-0 min-w-24 text-center group-hover:opacity-80 transition-opacity"
-                  style={{
-                    backgroundColor: DASHBOARD_CONFIG.getFrameworkConfig(
-                      fw.name
-                    ).tagColor,
-                  }}
-                >
-                  {fw.name}
-                </span>
-                {/* Progress bar */}
-                <div className="flex-1">
-                  <ProgressBar
-                    value={fw.readiness}
-                    color={
-                      DASHBOARD_CONFIG.getFrameworkConfig(fw.name).barColor
-                    }
-                  />
+            {isLoading || !dashboardData ? (
+              [...Array(4)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3 w-full py-1">
+                  <Skeleton className="h-5 w-24 shrink-0" />
+                  <Skeleton className="h-4 flex-1 rounded-full" />
+                  <Skeleton className="h-4 w-8 shrink-0" />
                 </div>
-                {/* Percentage */}
-                <span className="text-xs font-bold text-foreground w-9 text-right shrink-0 group-hover:text-primary transition-colors">
-                  {fw.readiness}%
-                </span>
-              </button>
-            ))}
+              ))
+            ) : (
+              dashboardData?.frameworkHealth?.map((fw) => (
+                <button
+                  key={`${fw.name}-${fw.version}`}
+                  type="button"
+                  onClick={() =>
+                    navigate(`/dashboard/framework/${frameworkToSlug(fw.name)}`)
+                  }
+                  className="flex items-center gap-3 w-full group cursor-pointer"
+                >
+                  {/* Colored pill tag */}
+                  <span
+                    className="text-[11px] font-semibold px-1 py-0.3 rounded text-white shrink-0 min-w-24 text-center group-hover:opacity-80 transition-opacity"
+                    style={{
+                      backgroundColor: DASHBOARD_CONFIG.getFrameworkConfig(
+                        fw.version
+                      ).tagColor,
+                    }}
+                  >
+                    {fw.version || fw.name}
+                  </span>
+                  {/* Progress bar */}
+                  <div className="flex-1">
+                    <ProgressBar
+                      value={fw.readiness}
+                      color={
+                        DASHBOARD_CONFIG.getFrameworkConfig(fw.version).barColor
+                      }
+                    />
+                  </div>
+                  {/* Percentage */}
+                  <span className="text-xs font-bold text-foreground w-9 text-right shrink-0 group-hover:text-primary transition-colors">
+                    {fw.readiness}%
+                  </span>
+                </button>
+              ))
+            )}
           </div>
         </CardWrapper>
 
@@ -427,41 +347,54 @@ export default function AuditorDashboard() {
           }
           className="flex flex-col"
         >
+          {/* Column headers */}
+          <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border pb-1.5 mb-2 shrink-0">
+            <span>Framework</span>
+            <span>TOTAL POINTS</span>
+          </div>
           <div
             className="overflow-y-auto flex-1 space-y-4 pr-0.5"
             style={{ maxHeight: "220px" }}
           >
-            {MOCK.deploymentPoints.map((dp) => (
-              <div
-                key={dp.name}
-                className="flex items-center gap-3 w-full group"
-              >
-                {/* Colored pill tag */}
-                <span
-                  className="text-[11px] font-semibold px-1 py-0.3 rounded text-white shrink-0 min-w-24 text-center group-hover:opacity-80 transition-opacity"
-                  style={{
-                    backgroundColor: DASHBOARD_CONFIG.getFrameworkConfig(
-                      dp.name
-                    ).tagColor,
-                  }}
-                >
-                  {dp.name}
-                </span>
-                {/* Progress bar */}
-                <div className="flex-1">
-                  <ProgressBar
-                    value={Math.min((dp.count / 250) * 100, 100)}
-                    color={
-                      DASHBOARD_CONFIG.getFrameworkConfig(dp.name).barColor
-                    }
-                  />
+            {isLoading || !dashboardData ? (
+              [...Array(4)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3 w-full py-1">
+                  <Skeleton className="h-5 w-24 shrink-0" />
+                  <Skeleton className="h-4 flex-1 rounded-full" />
+                  <Skeleton className="h-4 w-8 shrink-0" />
                 </div>
-                {/* Count */}
-                <span className="text-xs font-bold text-foreground w-9 text-right shrink-0 group-hover:text-primary transition-colors">
-                  {dp.count}
-                </span>
-              </div>
-            ))}
+              ))
+            ) : (
+              dashboardData?.deploymentPoints?.map((dp) => (
+                <div
+                  key={`${dp.name}-${dp.version}`}
+                  className="flex items-center gap-3 w-full group"
+                >
+                  {/* Colored pill tag */}
+                  <span
+                    className="text-[11px] font-semibold px-1 py-0.3 rounded text-white shrink-0 min-w-24 text-center group-hover:opacity-80 transition-opacity"
+                    style={{
+                      backgroundColor: DASHBOARD_CONFIG.getFrameworkConfig(
+                        dp.version
+                      ).tagColor,
+                    }}
+                  >
+                    {dp.version || dp.name}
+                  </span>
+                  {/* Bar chart */}
+                  <div className="flex-1 h-4">
+                    <div
+                      className={`h-full rounded-full ${DASHBOARD_CONFIG.getFrameworkConfig(dp.version).barColor}`}
+                      style={{ width: `${Math.max((dp.count / Math.max(...(dashboardData?.deploymentPoints?.map(d => d.count) || [1]))) * 100, 5)}%` }}
+                    />
+                  </div>
+                  {/* Count */}
+                  <span className="text-xs font-bold text-foreground w-9 text-right shrink-0 group-hover:text-primary transition-colors">
+                    {dp.count}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </CardWrapper>
 
@@ -488,41 +421,54 @@ export default function AuditorDashboard() {
             <span className="text-center">% Failing</span>
             <span className="text-right">Last NC Date</span>
           </div>
-          <div className="flex-1 mt-1">
-            {MOCK.activeGaps.map((gap, idx) => (
-              <div
-                key={gap.ctrlId}
-                className="grid grid-cols-[0.3fr_1.2fr_0.8fr_0.5fr_0.7fr_1fr] gap-1 items-center py-2 border-b border-border last:border-0 hover:bg-accent/50 rounded transition-colors px-0.5"
-              >
-                <span className="text-xs text-muted-foreground">{idx + 1}</span>
-                <span className="text-xs font-semibold text-primary truncate">
-                  {gap.framework}
-                </span>
-                <span className="text-xs text-secondary font-semibold">
-                  {gap.ctrlId}
-                </span>
-                <span className="text-xs text-center text-foreground font-medium">
-                  {gap.instances}
-                </span>
-                <div className="flex items-center justify-center gap-1">
-                  <Icon
-                    name={gap.trend === "up" ? "arrow-up" : "arrow-down"}
-                    size="12px"
-                    className={
-                      gap.trend === "up" ? "text-emerald-500" : "text-red-500"
-                    }
-                  />
-                  <span
-                    className={`text-xs font-bold ${gap.trend === "up" ? "text-emerald-500" : "text-red-500"}`}
-                  >
-                    {gap.failing}
+          <div className="flex-1 mt-1 overflow-y-auto" style={{ maxHeight: "220px" }}>
+            {isLoading || !dashboardData ? (
+              [...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center justify-between py-2.5 border-b border-border">
+                  <Skeleton className="h-4 w-4 shrink-0" />
+                  <Skeleton className="h-4 w-24 shrink-0 ml-2" />
+                  <Skeleton className="h-4 w-16 shrink-0 ml-2" />
+                  <Skeleton className="h-4 w-12 shrink-0 ml-2" />
+                  <Skeleton className="h-4 w-16 shrink-0 ml-2" />
+                  <Skeleton className="h-4 w-20 shrink-0 ml-2" />
+                </div>
+              ))
+            ) : (
+              dashboardData?.activeGaps?.map((gap, idx) => (
+                <div
+                  key={`${gap.id}-${idx}`}
+                  className="grid grid-cols-[0.3fr_1.2fr_0.8fr_0.5fr_0.7fr_1fr] gap-1 items-center py-2 border-b border-border last:border-0 hover:bg-accent/50 rounded transition-colors px-0.5"
+                >
+                  <span className="text-xs text-muted-foreground">{idx + 1}</span>
+                  <span className="text-xs font-semibold text-primary truncate">
+                    {gap.version || gap.framework}
+                  </span>
+                  <span className="text-xs text-secondary font-semibold">
+                    {gap.id}
+                  </span>
+                  <span className="text-xs text-center text-foreground font-medium">
+                    {gap.instances}
+                  </span>
+                  <div className="flex items-center justify-center gap-1">
+                    <Icon
+                      name={gap.trend === "up" ? "arrow-up" : "arrow-down"}
+                      size="12px"
+                      className={
+                        gap.trend === "up" ? "text-emerald-500" : "text-red-500"
+                      }
+                    />
+                    <span
+                      className={`text-xs font-bold ${gap.trend === "up" ? "text-emerald-500" : "text-red-500"}`}
+                    >
+                      {gap.failing}
+                    </span>
+                  </div>
+                  <span className="text-xs text-right text-muted-foreground">
+                    {formatDateOnly(gap.lastNC)}
                   </span>
                 </div>
-                <span className="text-xs text-right text-muted-foreground">
-                  {gap.lastNcDate}
-                </span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </CardWrapper>
 
@@ -539,29 +485,52 @@ export default function AuditorDashboard() {
         >
           <div
             className="overflow-y-auto flex-1 pr-0.5"
-            style={{ maxHeight: "220px" }}
+            style={{ maxHeight: "300px" }}
           >
-            {MOCK.liveAuditStreams.map((stream, index) => (
-              <div
-                key={`${stream.status}-${stream.label}-${stream.ago}-${index}`}
-                className="flex items-center gap-3 py-2.5 border-b border-border last:border-0"
-              >
-                <span
-                  className={`w-2.5 h-2.5 rounded-full shrink-0 ${getStreamDotColor(stream.status)}`}
-                />
-                <span
-                  className={`text-[13px] font-semibold shrink-0 w-9 ${getStreamTextColor(stream.status)}`}
+            {isLoading || !dashboardData ? (
+              [...Array(6)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3 py-2.5 border-b border-border last:border-0">
+                  <Skeleton className="w-2.5 h-2.5 rounded-full shrink-0" />
+                  <Skeleton className="h-4 w-8 shrink-0" />
+                  <Skeleton className="h-4 w-12 shrink-0" />
+                  <div className="flex flex-col flex-1 gap-1.5">
+                    <Skeleton className="h-3 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                  <Skeleton className="h-4 w-16 shrink-0" />
+                </div>
+              ))
+            ) : (
+              dashboardData?.liveAuditStreams?.map((stream, index) => (
+                <div
+                  key={`${stream.id}-${index}`}
+                  className="flex items-center gap-3 py-1 border-b border-border last:border-0"
                 >
-                  {stream.status}
-                </span>
-                <span className="text-[13px] text-foreground flex-1 truncate">
-                  {stream.label}
-                </span>
-                <span className="text-xs text-muted-foreground shrink-0">
-                  {stream.ago}
-                </span>
-              </div>
-            ))}
+                  <span
+                    className={`w-2.5 h-2.5 rounded-full shrink-0 ${getStreamDotColor(stream.status)}`}
+                  />
+                  <span
+                    className={`text-[13px] font-semibold shrink-0 w-9 capitalize ${getStreamTextColor(stream.status)}`}
+                  >
+                    {stream.status}
+                  </span>
+                  <span className="text-[11px] text-primary font-semibold">
+                    {stream.version}
+                  </span>
+                  <div className="flex flex-col flex-1">
+                    <span className="text-[13px] text-foreground flex-1">
+                      DP: {stream.description}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground flex-1">
+                      Reason: {stream.reason}
+                    </span>
+                  </div>
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {formatDateOnly(stream.timestamp)}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </CardWrapper>
 
@@ -577,7 +546,7 @@ export default function AuditorDashboard() {
         >
           <div
             className="overflow-y-auto flex-1 pr-0.5"
-            style={{ maxHeight: "220px" }}
+            style={{ maxHeight: "300px" }}
           >
             {MOCK.aiInsights.map((insight) => (
               <div
