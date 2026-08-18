@@ -93,3 +93,17 @@ The API extracts the `controls_data` array from the `controls` JSON column of th
 - It iterates deeply into the JSON structure: `sections -> controls -> deployment_points`.
 - **`count`** (e.g., `330`): It calculates the exact length (`len()`) of the `"deployment_points"` array attached to every control inside the merge document, and sums them all together.
 - **`name` & `version`**: Extracted directly from the parent `DeploymentFramework` linked to this merge document.
+
+---
+
+## 6. AI Insights
+**Source File:** `auditor.py` -> `_process_ai_insights()`
+**Database Table:** `EvidenceOutput` (Top 50 most recent records)
+
+### Calculation:
+The API fetches the 50 most recent `EvidenceOutput` rows and parses their highly nested `output` JSON block: `fileVersions[] -> data -> records[]`.
+- It loops through the `records` array and looks at the `"llm_analysis"` block inside each record.
+- If `"recommendation"` exists inside `"llm_analysis"`, it is extracted as an insight.
+- **`text`**: The extracted string from `llm_analysis.recommendation`.
+- **`priority`**: Based on the `llm_analysis.confidence` value (e.g., `"High"`, `"Medium"`, `"Low"`), defaulting to `"Low"` if invalid.
+- The API returns up to 20 recent AI insights to be displayed dynamically on the dashboard.

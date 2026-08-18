@@ -40,33 +40,6 @@ const DASHBOARD_CONFIG = {
   getFrameworkConfig: (name) => COLORS[getHashIndex(name, COLORS.length)],
 };
 
-// ─── Static Mock Data ────────────────────────────────────────────────────────
-
-const MOCK = {
-  aiInsights: [
-    {
-      text: "Update Access Control Policy (AC-2.1) to enforce least privilege and role-based access.",
-      priority: "High",
-    },
-    {
-      text: "Enable logging for all administrative activities (AU-2.1) across AWS IAM.",
-      priority: "High",
-    },
-    {
-      text: "Enforce multi-factor authentication for all users (IA-2.1).",
-      priority: "Medium",
-    },
-    {
-      text: "Review and update configuration settings (CM-6.3) to align with baseline standards.",
-      priority: "Medium",
-    },
-    {
-      text: "Implement key rotation policy for cryptographic keys (SC-12.4) at defined intervals.",
-      priority: "Low",
-    },
-  ],
-};
-
 // ─── Small reusable pieces ───────────────────────────────────────────────────
 
 function getStreamDotColor(status) {
@@ -396,7 +369,9 @@ export default function AuditorDashboard() {
                   <div className="flex-1 h-4">
                     <div
                       className={`h-full rounded-full ${DASHBOARD_CONFIG.getFrameworkConfig(dp.version).barColor}`}
-                      style={{ width: `${Math.max((dp.count / Math.max(...(dashboardData?.deploymentPoints?.map(d => d.count) || [1]))) * 100, 5)}%` }}
+                      style={{
+                        width: `${Math.max((dp.count / Math.max(...(dashboardData?.deploymentPoints?.map((d) => d.count) || [1]))) * 100, 5)}%`,
+                      }}
                     />
                   </div>
                   {/* Count */}
@@ -434,10 +409,16 @@ export default function AuditorDashboard() {
             <span className="text-center">% Failing</span>
             <span className="text-right">Last NC Date</span>
           </div>
-          <div className="flex-1 mt-1 overflow-y-auto" style={{ maxHeight: "220px" }}>
+          <div
+            className="flex-1 mt-1 overflow-y-auto"
+            style={{ maxHeight: "220px" }}
+          >
             {isLoading || !dashboardData ? (
               [...Array(5)].map((_, i) => (
-                <div key={i} className="flex items-center justify-between py-2.5 border-b border-border">
+                <div
+                  key={i}
+                  className="flex items-center justify-between py-2.5 border-b border-border"
+                >
                   <Skeleton className="h-4 w-4 shrink-0" />
                   <Skeleton className="h-4 w-24 shrink-0 ml-2" />
                   <Skeleton className="h-4 w-16 shrink-0 ml-2" />
@@ -452,7 +433,9 @@ export default function AuditorDashboard() {
                   key={`${gap.id}-${idx}`}
                   className="grid grid-cols-[0.3fr_1.2fr_0.8fr_0.5fr_0.7fr_1fr] gap-1 items-center py-2 border-b border-border last:border-0 hover:bg-accent/50 rounded transition-colors px-0.5"
                 >
-                  <span className="text-xs text-muted-foreground">{idx + 1}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {idx + 1}
+                  </span>
                   <span className="text-xs font-semibold text-primary truncate">
                     {gap.version || gap.framework}
                   </span>
@@ -504,7 +487,10 @@ export default function AuditorDashboard() {
           >
             {isLoading || !dashboardData ? (
               [...Array(6)].map((_, i) => (
-                <div key={i} className="flex items-center gap-3 py-2.5 border-b border-border last:border-0">
+                <div
+                  key={i}
+                  className="flex items-center gap-3 py-2.5 border-b border-border last:border-0"
+                >
                   <Skeleton className="w-2.5 h-2.5 rounded-full shrink-0" />
                   <Skeleton className="h-4 w-8 shrink-0" />
                   <Skeleton className="h-4 w-12 shrink-0" />
@@ -565,8 +551,21 @@ export default function AuditorDashboard() {
             className="overflow-y-auto flex-1 pr-0.5"
             style={{ maxHeight: "300px" }}
           >
-            {MOCK.aiInsights?.length > 0 ? (
-              MOCK.aiInsights.map((insight) => (
+            {isLoading || !dashboardData ? (
+              [...Array(4)].map((_, i) => (
+                <div
+                  key={i}
+                  className="flex items-start gap-3 py-1.5 border-b border-border last:border-0"
+                >
+                  <div className="flex-1 space-y-1.5">
+                    <Skeleton className="h-3.5 w-full" />
+                    <Skeleton className="h-3.5 w-4/5" />
+                  </div>
+                  <Skeleton className="h-5 w-16 shrink-0 mt-0.5 rounded-full" />
+                </div>
+              ))
+            ) : dashboardData?.aiInsights?.length > 0 ? (
+              dashboardData.aiInsights.map((insight) => (
                 <div
                   key={insight.text.slice(0, 30)}
                   className="flex items-start gap-3 py-1.5 border-b border-border last:border-0"
@@ -576,13 +575,6 @@ export default function AuditorDashboard() {
                   </p>
                   <div className="flex items-center gap-2 shrink-0 mt-0.5">
                     <PriorityBadge priority={insight.priority} />
-                    <button
-                      type="button"
-                      title="View Control"
-                      className="text-xs text-primary font-medium flex items-center gap-0.5 group hover:gap-1.5 transition-all duration-200 whitespace-nowrap"
-                    >
-                      →
-                    </button>
                   </div>
                 </div>
               ))

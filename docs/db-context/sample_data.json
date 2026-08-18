@@ -6298,373 +6298,361 @@
   ],
   "public.evidence_output": [
     {
-      "id": "6a8429f151951b3cb1e425df",
+      "id": "6a844fd8c375eab2b0e51b6a",
       "output": {
-        "source": "Compliance Agent Service",
-        "file_id": "6a83e5ac59b34a8626ad497b",
-        "user_id": "system-pipeline",
-        "filename": "IEC-62443-2-1-2010.pdf",
-        "tenantId": "default-tenant",
-        "user_name": "System",
-        "user_role": "auditor",
-        "user_email": "",
-        "frameworkId": "6a7db4a5c67d80bce718867c",
+        "filename": "HIPAA Omnibus Rule 2013.pdf",
         "fileVersions": [
           {
             "data": {
-              "A.5.9": {
+              "A.5.1": {
                 "records": [
                   {
-                    "file": "IEC-62443-2-1-2010.pdf",
+                    "file": "HIPAA Omnibus Rule 2013.pdf",
                     "dp_id": "DP-001",
-                    "file_id": "6a83e5ac59b34a8626ad497b",
-                    "timestamp": "2026-08-18 09:44:18 UTC",
+                    "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                    "timestamp": "2026-08-18 12:28:08 UTC",
                     "agent_name": "Organizational Controls Agent",
                     "llm_analysis": {
-                      "reason": "This deployment point was not found/extracted in the uploaded deployment document.",
-                      "relevant": false,
+                      "reason": "Regulatory compliance",
+                      "relevant": true,
                       "agent_name": "Organizational Controls Agent",
-                      "confidence": "high"
+                      "confidence": "high",
+                      "recommendation": "APPROVED FOR IMPLEMENTATION: Regulatory compliance. Proceed with immediate deployment of: Define the information security policy by gathering input from stakeholders and aligning it with organizational goals."
                     },
-                    "deployment_point": "Identify all information and associated assets within the organization, including hardware, software, and data.",
-                    "match_percentage": "0.0%",
-                    "similarity_score": 0.0,
-                    "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
+                    "deployment_point": "Define the information security policy by gathering input from stakeholders and aligning it with organizational goals.",
+                    "match_percentage": "31.72%",
+                    "similarity_score": 31.72,
+                    "compliance_status": "Non-Compliant"
                   },
                   {
-                    "file": "IEC-62443-2-1-2010.pdf",
+                    "file": "HIPAA Omnibus Rule 2013.pdf",
                     "dp_id": "DP-002",
-                    "file_id": "6a83e5ac59b34a8626ad497b",
-                    "timestamp": "2026-08-18 09:44:18 UTC",
+                    "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                    "timestamp": "2026-08-18 12:28:08 UTC",
                     "agent_name": "Organizational Controls Agent",
                     "llm_analysis": {
-                      "reason": "This deployment point was not found/extracted in the uploaded deployment document.",
-                      "relevant": false,
+                      "reason": "Management approval documented in Federal Register",
+                      "relevant": true,
                       "agent_name": "Organizational Controls Agent",
-                      "confidence": "high"
+                      "confidence": "high",
+                      "recommendation": "APPROVED FOR IMPLEMENTATION: Management approval documented in Federal Register. Proceed with immediate deployment of: Obtain management approval for the policy through formal meetings and documentation."
                     },
-                    "deployment_point": "Create a centralized inventory database that includes details such as asset type, owner, and location.",
-                    "match_percentage": "0.0%",
-                    "similarity_score": 0.0,
-                    "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
+                    "deployment_point": "Obtain management approval for the policy through formal meetings and documentation.",
+                    "match_percentage": "18.37%",
+                    "similarity_score": 18.37,
+                    "compliance_status": "Non-Compliant"
                   },
                   {
-                    "file": "IEC-62443-2-1-2010.pdf",
+                    "file": "HIPAA Omnibus Rule 2013.pdf",
                     "dp_id": "DP-003",
-                    "file_id": "6a83e5ac59b34a8626ad497b",
-                    "timestamp": "2026-08-18 09:46:06 UTC",
+                    "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                    "timestamp": "2026-08-18 12:28:08 UTC",
                     "agent_name": "Organizational Controls Agent",
                     "llm_analysis": {
-                      "reason": "Evidence directly assigns roles, aligning with the rule.",
+                      "reason": "Evidence references a published policy in the Federal Register",
                       "relevant": true,
                       "agent_name": "Organizational Controls Agent",
-                      "confidence": "high"
+                      "confidence": "high",
+                      "recommendation": "APPROVED FOR IMPLEMENTATION: Evidence references a published policy in the Federal Register. Proceed with immediate deployment of: Publish the policy on the organization\u0027s intranet and ensure it is accessible to all employees."
                     },
-                    "deployment_point": "Assign responsibility for maintaining the inventory to specific personnel or teams.",
-                    "match_percentage": "60.21%",
-                    "similarity_score": 60.21,
-                    "compliance_status": "Controls and Deployment extraction for agent is Compliant"
+                    "deployment_point": "Publish the policy on the organization\u0027s intranet and ensure it is accessible to all employees.",
+                    "match_percentage": "31.97%",
+                    "similarity_score": 31.97,
+                    "compliance_status": "Non-Compliant"
                   },
                   {
-                    "file": "IEC-62443-2-1-2010.pdf",
+                    "file": "HIPAA Omnibus Rule 2013.pdf",
                     "dp_id": "DP-004",
-                    "file_id": "6a83e5ac59b34a8626ad497b",
-                    "timestamp": "2026-08-18 09:46:24 UTC",
+                    "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                    "timestamp": "2026-08-18 12:28:07 UTC",
                     "agent_name": "Organizational Controls Agent",
                     "llm_analysis": {
-                      "reason": "Evidence directly supports the implementation of regular audits.",
+                      "reason": "Policy communication through training and awareness is mentioned",
                       "relevant": true,
                       "agent_name": "Organizational Controls Agent",
-                      "confidence": "high"
+                      "confidence": "high",
+                      "recommendation": "APPROVED FOR IMPLEMENTATION: Policy communication through training and awareness is mentioned. Proceed with immediate deployment of: Communicate the policy through training sessions and awareness programs, ensuring all personnel acknowledge their understanding."
                     },
-                    "deployment_point": "Implement regular audits to ensure the accuracy and completeness of the inventory.",
-                    "match_percentage": "54.66%",
-                    "similarity_score": 54.66,
-                    "compliance_status": "Controls and Deployment extraction for agent is Compliant"
+                    "deployment_point": "Communicate the policy through training sessions and awareness programs, ensuring all personnel acknowledge their understanding.",
+                    "match_percentage": "17.64%",
+                    "similarity_score": 17.64,
+                    "compliance_status": "Non-Compliant"
                   },
                   {
-                    "file": "IEC-62443-2-1-2010.pdf",
+                    "file": "HIPAA Omnibus Rule 2013.pdf",
                     "dp_id": "DP-005",
-                    "file_id": "6a83e5ac59b34a8626ad497b",
-                    "timestamp": "2026-08-18 09:44:20 UTC",
+                    "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                    "timestamp": "2026-08-18 12:28:08 UTC",
                     "agent_name": "Organizational Controls Agent",
                     "llm_analysis": {
-                      "reason": "This deployment point was not found/extracted in the uploaded deployment document.",
-                      "relevant": false,
+                      "reason": "Evidence mentions policy reviews",
+                      "relevant": true,
                       "agent_name": "Organizational Controls Agent",
-                      "confidence": "high"
+                      "confidence": "high",
+                      "recommendation": "APPROVED FOR IMPLEMENTATION: Evidence mentions policy reviews. Proceed with immediate deployment of: Schedule regular reviews of the policy, at least annually, and after significant changes in the organization or its environment."
                     },
-                    "deployment_point": "Update the inventory promptly when new assets are acquired or existing assets are disposed of.",
-                    "match_percentage": "0.0%",
-                    "similarity_score": 0.0,
-                    "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
+                    "deployment_point": "Schedule regular reviews of the policy, at least annually, and after significant changes in the organization or its environment.",
+                    "match_percentage": "12.9%",
+                    "similarity_score": 12.9,
+                    "compliance_status": "Non-Compliant"
                   }
                 ],
-                "file_hash": "3fbf094e2ef62627435dec4b445580cb34b1dc8174091d3832538945833bf35b",
-                "control_id": "A.5.9",
-                "document_source": "IEC-62443-2-1-2010.pdf"
+                "file_hash": "001b4d09a013ed6c7dcc44861af6739986ed44fe2244df9da56f7edcf7eb95c7",
+                "control_id": "A.5.1",
+                "document_source": "HIPAA Omnibus Rule 2013.pdf"
               }
             },
             "status": "processed",
             "fileVersion": "ISO27001:2022",
-            "processed_at": "2026-08-18T09:46:25.009236+00:00"
+            "processed_at": "2026-08-18T12:28:08.921041+00:00"
           }
         ],
-        "document_uuid": "6a83e5ace6aa863c27d8dac4",
+        "document_uuid": "6a83e5a089644b82dd93d2d2",
         "frameworkCode": "iso27001",
         "frameworkName": "Information Security Management System",
-        "frameworkVersion": "ISO27001:2022",
-        "currentFileVersion": "ISO27001:2022"
+        "frameworkVersion": "ISO27001:2022"
       },
-      "createdAt": "2026-08-18T15:16:25.19915+05:30",
-      "updatedAt": "2026-08-18T15:16:25.199152+05:30",
-      "control_id": "A.5.9#6a83e5ace6aa863c27d8dac4"
+      "createdAt": "2026-08-18T17:58:08.998133+05:30",
+      "updatedAt": "2026-08-18T17:58:08.998138+05:30",
+      "control_id": "A.5.1#6a83e5a089644b82dd93d2d2"
     },
     {
-      "id": "6a8429f5cf7a0ebeb891f840",
+      "id": "6a844fd9e731c83208c808c8",
       "output": {
-        "source": "Compliance Agent Service",
-        "file_id": "6a83e5963a67ff5f54dd96d1",
-        "user_id": "system-pipeline",
-        "filename": "pe-009-17-gmp-guide-xannexes 25-08-2023.pdf",
-        "tenantId": "default-tenant",
-        "user_name": "System",
-        "user_role": "auditor",
-        "user_email": "",
-        "frameworkId": "6a7db4a5c67d80bce718867c",
+        "filename": "HIPAA Omnibus Rule 2013.pdf",
         "fileVersions": [
           {
             "data": {
-              "A.5.3": {
+              "A.5.2": {
                 "records": [
                   {
-                    "file": "pe-009-17-gmp-guide-xannexes 25-08-2023.pdf",
+                    "file": "HIPAA Omnibus Rule 2013.pdf",
                     "dp_id": "DP-001",
-                    "file_id": "6a83e5963a67ff5f54dd96d1",
-                    "timestamp": "2026-08-18 09:46:24 UTC",
+                    "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                    "timestamp": "2026-08-18 12:28:07 UTC",
                     "agent_name": "Organizational Controls Agent",
                     "llm_analysis": {
-                      "reason": "Evidence supports identifying critical processes requiring segregation of duties.",
+                      "reason": "Risk assessment is mentioned",
                       "relevant": true,
                       "agent_name": "Organizational Controls Agent",
-                      "confidence": "high"
+                      "confidence": "high",
+                      "recommendation": "APPROVED FOR IMPLEMENTATION: Risk assessment is mentioned. Proceed with immediate deployment of: Conduct a risk assessment to identify key information security roles needed within the organization."
                     },
-                    "deployment_point": "Identify critical processes within the organization that require segregation of duties to mitigate risks.",
-                    "match_percentage": "26.35%",
-                    "similarity_score": 26.35,
-                    "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
+                    "deployment_point": "Conduct a risk assessment to identify key information security roles needed within the organization.",
+                    "match_percentage": "27.75%",
+                    "similarity_score": 27.75,
+                    "compliance_status": "Non-Compliant"
                   },
                   {
-                    "file": "pe-009-17-gmp-guide-xannexes 25-08-2023.pdf",
+                    "file": "HIPAA Omnibus Rule 2013.pdf",
                     "dp_id": "DP-002",
-                    "file_id": "6a83e5963a67ff5f54dd96d1",
-                    "timestamp": "2026-08-18 09:46:24 UTC",
+                    "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                    "timestamp": "2026-08-18 12:28:07 UTC",
                     "agent_name": "Organizational Controls Agent",
                     "llm_analysis": {
-                      "reason": "Evidence provides guidelines for mapping roles and responsibilities.",
+                      "reason": "Regulates role definitions",
                       "relevant": true,
                       "agent_name": "Organizational Controls Agent",
-                      "confidence": "high"
+                      "confidence": "high",
+                      "recommendation": "APPROVED FOR IMPLEMENTATION: Regulates role definitions. Proceed with immediate deployment of: Define specific roles and responsibilities, ensuring clarity in job descriptions and expectations."
                     },
-                    "deployment_point": "Map out existing roles and responsibilities to identify potential conflicts.",
-                    "match_percentage": "12.71%",
-                    "similarity_score": 12.71,
-                    "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
+                    "deployment_point": "Define specific roles and responsibilities, ensuring clarity in job descriptions and expectations.",
+                    "match_percentage": "18.25%",
+                    "similarity_score": 18.25,
+                    "compliance_status": "Non-Compliant"
                   },
                   {
-                    "file": "pe-009-17-gmp-guide-xannexes 25-08-2023.pdf",
+                    "file": "HIPAA Omnibus Rule 2013.pdf",
                     "dp_id": "DP-003",
-                    "file_id": "6a83e5963a67ff5f54dd96d1",
-                    "timestamp": "2026-08-18 09:46:24 UTC",
+                    "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                    "timestamp": "2026-08-18 12:28:09 UTC",
                     "agent_name": "Organizational Controls Agent",
                     "llm_analysis": {
-                      "reason": "Evidence supports separation of duties to prevent fraud.",
+                      "reason": "Regulates role allocation process",
                       "relevant": true,
                       "agent_name": "Organizational Controls Agent",
-                      "confidence": "high"
+                      "confidence": "high",
+                      "recommendation": "APPROVED FOR IMPLEMENTATION: Regulates role allocation process. Proceed with immediate deployment of: Allocate roles to personnel based on their skills and organizational needs, ensuring no overlap in conflicting responsibilities."
                     },
-                    "deployment_point": "Redesign processes to ensure that no single individual has control over conflicting duties, implementing checks and balances.",
-                    "match_percentage": "30.19%",
-                    "similarity_score": 30.19,
-                    "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
+                    "deployment_point": "Allocate roles to personnel based on their skills and organizational needs, ensuring no overlap in conflicting responsibilities.",
+                    "match_percentage": "17.02%",
+                    "similarity_score": 17.02,
+                    "compliance_status": "Non-Compliant"
                   },
                   {
-                    "file": "pe-009-17-gmp-guide-xannexes 25-08-2023.pdf",
+                    "file": "HIPAA Omnibus Rule 2013.pdf",
                     "dp_id": "DP-004",
-                    "file_id": "6a83e5963a67ff5f54dd96d1",
-                    "timestamp": "2026-08-18 09:46:24 UTC",
+                    "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                    "timestamp": "2026-08-18 12:28:07 UTC",
                     "agent_name": "Organizational Controls Agent",
                     "llm_analysis": {
-                      "reason": "Evidence directly addresses the need for documenting and communicating segregation of duties.",
+                      "reason": "Regulatory compliance",
                       "relevant": true,
                       "agent_name": "Organizational Controls Agent",
-                      "confidence": "high"
+                      "confidence": "high",
+                      "recommendation": "APPROVED FOR IMPLEMENTATION: Regulatory compliance. Proceed with immediate deployment of: Communicate these roles and responsibilities to all relevant personnel through training and documentation."
                     },
-                    "deployment_point": "Document the segregation of duties policy and communicate it to all employees involved in critical processes.",
-                    "match_percentage": "22.56%",
-                    "similarity_score": 22.56,
-                    "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
+                    "deployment_point": "Communicate these roles and responsibilities to all relevant personnel through training and documentation.",
+                    "match_percentage": "17.27%",
+                    "similarity_score": 17.27,
+                    "compliance_status": "Non-Compliant"
                   },
                   {
-                    "file": "pe-009-17-gmp-guide-xannexes 25-08-2023.pdf",
+                    "file": "HIPAA Omnibus Rule 2013.pdf",
                     "dp_id": "DP-005",
-                    "file_id": "6a83e5963a67ff5f54dd96d1",
-                    "timestamp": "2026-08-18 09:46:25 UTC",
+                    "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                    "timestamp": "2026-08-18 12:28:08 UTC",
                     "agent_name": "Organizational Controls Agent",
                     "llm_analysis": {
-                      "reason": "Evidence supports monitoring compliance with segregation of duties through audits.",
+                      "reason": "Regulates role management",
                       "relevant": true,
                       "agent_name": "Organizational Controls Agent",
-                      "confidence": "high"
+                      "confidence": "high",
+                      "recommendation": "APPROVED FOR IMPLEMENTATION: Regulates role management. Proceed with immediate deployment of: Regularly review and update roles as the organization evolves or as new threats emerge."
                     },
-                    "deployment_point": "Monitor compliance with the segregation of duties policy through regular audits and reviews.",
-                    "match_percentage": "24.65%",
-                    "similarity_score": 24.65,
-                    "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
+                    "deployment_point": "Regularly review and update roles as the organization evolves or as new threats emerge.",
+                    "match_percentage": "16.44%",
+                    "similarity_score": 16.44,
+                    "compliance_status": "Non-Compliant"
                   }
                 ],
-                "file_hash": "06d9ed3eed8197a10738457ad2f6aecaa9357c3c9b0c19b3f2d323b2e1c64ef3",
-                "control_id": "A.5.3",
-                "document_source": "pe-009-17-gmp-guide-xannexes 25-08-2023.pdf"
+                "file_hash": "001b4d09a013ed6c7dcc44861af6739986ed44fe2244df9da56f7edcf7eb95c7",
+                "control_id": "A.5.2",
+                "document_source": "HIPAA Omnibus Rule 2013.pdf"
               }
             },
             "status": "processed",
             "fileVersion": "ISO27001:2022",
-            "processed_at": "2026-08-18T09:46:25.107639+00:00"
+            "processed_at": "2026-08-18T12:28:09.360954+00:00"
           }
         ],
-        "document_uuid": "6a83e5962d5317b48442dd3d",
+        "document_uuid": "6a83e5a089644b82dd93d2d2",
         "frameworkCode": "iso27001",
         "frameworkName": "Information Security Management System",
-        "frameworkVersion": "ISO27001:2022",
-        "currentFileVersion": "ISO27001:2022"
+        "frameworkVersion": "ISO27001:2022"
       },
-      "createdAt": "2026-08-18T15:16:29.427377+05:30",
-      "updatedAt": "2026-08-18T15:16:29.427381+05:30",
-      "control_id": "A.5.3#6a83e5962d5317b48442dd3d"
+      "createdAt": "2026-08-18T17:58:09.365975+05:30",
+      "updatedAt": "2026-08-18T17:58:09.365982+05:30",
+      "control_id": "A.5.2#6a83e5a089644b82dd93d2d2"
     },
     {
-      "id": "6a8429f7d7b3ebe2b227495b",
+      "id": "6a844fdd5b2d9939e5863951",
       "output": {
-        "source": "Compliance Agent Service",
-        "file_id": "6a83e5ac59b34a8626ad497b",
-        "user_id": "system-pipeline",
-        "filename": "IEC-62443-2-1-2010.pdf",
-        "tenantId": "default-tenant",
-        "user_name": "System",
-        "user_role": "auditor",
-        "user_email": "",
-        "frameworkId": "6a7db4a5c67d80bce718867c",
+        "filename": "HIPAA Omnibus Rule 2013.pdf",
         "fileVersions": [
           {
             "data": {
-              "A.5.6": {
+              "A.5.5": {
                 "records": [
                   {
-                    "file": "IEC-62443-2-1-2010.pdf",
+                    "file": "HIPAA Omnibus Rule 2013.pdf",
                     "dp_id": "DP-001",
-                    "file_id": "6a83e5ac59b34a8626ad497b",
-                    "timestamp": "2026-08-18 09:44:11 UTC",
+                    "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                    "timestamp": "2026-08-18 12:28:09 UTC",
                     "agent_name": "Organizational Controls Agent",
                     "llm_analysis": {
-                      "reason": "This deployment point was not found/extracted in the uploaded deployment document.",
-                      "relevant": false,
-                      "agent_name": "Organizational Controls Agent",
-                      "confidence": "high"
-                    },
-                    "deployment_point": "Research and identify relevant special interest groups and professional associations in the field of information security.",
-                    "match_percentage": "0.0%",
-                    "similarity_score": 0.0,
-                    "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
-                  },
-                  {
-                    "file": "IEC-62443-2-1-2010.pdf",
-                    "dp_id": "DP-002",
-                    "file_id": "6a83e5ac59b34a8626ad497b",
-                    "timestamp": "2026-08-18 09:44:13 UTC",
-                    "agent_name": "Organizational Controls Agent",
-                    "llm_analysis": {
-                      "reason": "This deployment point was not found/extracted in the uploaded deployment document.",
-                      "relevant": false,
-                      "agent_name": "Organizational Controls Agent",
-                      "confidence": "high"
-                    },
-                    "deployment_point": "Join these groups and participate in their activities, such as forums, webinars, and conferences.",
-                    "match_percentage": "0.0%",
-                    "similarity_score": 0.0,
-                    "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
-                  },
-                  {
-                    "file": "IEC-62443-2-1-2010.pdf",
-                    "dp_id": "DP-003",
-                    "file_id": "6a83e5ac59b34a8626ad497b",
-                    "timestamp": "2026-08-18 09:46:29 UTC",
-                    "agent_name": "Organizational Controls Agent",
-                    "llm_analysis": {
-                      "reason": "Assigning roles aligns with designating personnel for representation.",
+                      "reason": "Identifies federal regulations",
                       "relevant": true,
                       "agent_name": "Organizational Controls Agent",
-                      "confidence": "high"
+                      "confidence": "high",
+                      "recommendation": "APPROVED FOR IMPLEMENTATION: Identifies federal regulations. Proceed with immediate deployment of: Identify relevant authorities, such as law enforcement and regulatory bodies, that pertain to the organization\u0027s industry."
                     },
-                    "deployment_point": "Designate personnel to represent the organization in these groups and ensure they share insights with the broader team.",
-                    "match_percentage": "57.66%",
-                    "similarity_score": 57.66,
-                    "compliance_status": "Controls and Deployment extraction for agent is Compliant"
+                    "deployment_point": "Identify relevant authorities, such as law enforcement and regulatory bodies, that pertain to the organization\u0027s industry.",
+                    "match_percentage": "26.6%",
+                    "similarity_score": 26.6,
+                    "compliance_status": "Non-Compliant"
                   },
                   {
-                    "file": "IEC-62443-2-1-2010.pdf",
+                    "file": "HIPAA Omnibus Rule 2013.pdf",
+                    "dp_id": "DP-002",
+                    "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                    "timestamp": "2026-08-18 12:28:13 UTC",
+                    "agent_name": "Organizational Controls Agent",
+                    "llm_analysis": {
+                      "reason": "Evidence points to a government publication related to establishing formal communication channels.",
+                      "relevant": true,
+                      "agent_name": "Organizational Controls Agent",
+                      "confidence": "high",
+                      "recommendation": "APPROVED FOR IMPLEMENTATION: Evidence points to a government publication related to establishing formal communication channels.. Proceed with immediate deployment of: Establish formal communication channels with these authorities, including contact lists and protocols for engagement."
+                    },
+                    "deployment_point": "Establish formal communication channels with these authorities, including contact lists and protocols for engagement.",
+                    "match_percentage": "17.43%",
+                    "similarity_score": 17.43,
+                    "compliance_status": "Non-Compliant"
+                  },
+                  {
+                    "file": "HIPAA Omnibus Rule 2013.pdf",
+                    "dp_id": "DP-003",
+                    "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                    "timestamp": "2026-08-18 12:28:13 UTC",
+                    "agent_name": "Organizational Controls Agent",
+                    "llm_analysis": {
+                      "reason": "Meets the criteria for staying informed through official communications",
+                      "relevant": true,
+                      "agent_name": "Organizational Controls Agent",
+                      "confidence": "high",
+                      "recommendation": "APPROVED FOR IMPLEMENTATION: Meets the criteria for staying informed through official communications. Proceed with immediate deployment of: Schedule regular meetings or updates with authorities to stay informed about changes in regulations and security threats."
+                    },
+                    "deployment_point": "Schedule regular meetings or updates with authorities to stay informed about changes in regulations and security threats.",
+                    "match_percentage": "31.78%",
+                    "similarity_score": 31.78,
+                    "compliance_status": "Non-Compliant"
+                  },
+                  {
+                    "file": "HIPAA Omnibus Rule 2013.pdf",
                     "dp_id": "DP-004",
-                    "file_id": "6a83e5ac59b34a8626ad497b",
-                    "timestamp": "2026-08-18 09:44:13 UTC",
+                    "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                    "timestamp": "2026-08-18 12:28:11 UTC",
                     "agent_name": "Organizational Controls Agent",
                     "llm_analysis": {
-                      "reason": "This deployment point was not found/extracted in the uploaded deployment document.",
-                      "relevant": false,
+                      "reason": "Evidence matches rule on documenting interactions with authorities",
+                      "relevant": true,
                       "agent_name": "Organizational Controls Agent",
-                      "confidence": "high"
+                      "confidence": "high",
+                      "recommendation": "APPROVED FOR IMPLEMENTATION: Evidence matches rule on documenting interactions with authorities. Proceed with immediate deployment of: Document all interactions with authorities and maintain records for compliance purposes."
                     },
-                    "deployment_point": "Document key takeaways from group interactions and disseminate this information within the organization.",
-                    "match_percentage": "0.0%",
-                    "similarity_score": 0.0,
-                    "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
+                    "deployment_point": "Document all interactions with authorities and maintain records for compliance purposes.",
+                    "match_percentage": "32.64%",
+                    "similarity_score": 32.64,
+                    "compliance_status": "Non-Compliant"
                   },
                   {
-                    "file": "IEC-62443-2-1-2010.pdf",
+                    "file": "HIPAA Omnibus Rule 2013.pdf",
                     "dp_id": "DP-005",
-                    "file_id": "6a83e5ac59b34a8626ad497b",
-                    "timestamp": "2026-08-18 09:44:13 UTC",
+                    "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                    "timestamp": "2026-08-18 12:28:12 UTC",
                     "agent_name": "Organizational Controls Agent",
                     "llm_analysis": {
-                      "reason": "This deployment point was not found/extracted in the uploaded deployment document.",
-                      "relevant": false,
+                      "reason": "Regulatory compliance",
+                      "relevant": true,
                       "agent_name": "Organizational Controls Agent",
-                      "confidence": "high"
+                      "confidence": "high",
+                      "recommendation": "APPROVED FOR IMPLEMENTATION: Regulatory compliance. Proceed with immediate deployment of: Train personnel on the importance of these contacts and how to engage with authorities in case of incidents."
                     },
-                    "deployment_point": "Regularly evaluate the benefits of these contacts and adjust participation as necessary.",
-                    "match_percentage": "0.0%",
-                    "similarity_score": 0.0,
-                    "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
+                    "deployment_point": "Train personnel on the importance of these contacts and how to engage with authorities in case of incidents.",
+                    "match_percentage": "11.9%",
+                    "similarity_score": 11.9,
+                    "compliance_status": "Non-Compliant"
                   }
                 ],
-                "file_hash": "3fbf094e2ef62627435dec4b445580cb34b1dc8174091d3832538945833bf35b",
-                "control_id": "A.5.6",
-                "document_source": "IEC-62443-2-1-2010.pdf"
+                "file_hash": "001b4d09a013ed6c7dcc44861af6739986ed44fe2244df9da56f7edcf7eb95c7",
+                "control_id": "A.5.5",
+                "document_source": "HIPAA Omnibus Rule 2013.pdf"
               }
             },
             "status": "processed",
             "fileVersion": "ISO27001:2022",
-            "processed_at": "2026-08-18T09:46:29.914780+00:00"
+            "processed_at": "2026-08-18T12:28:13.672448+00:00"
           }
         ],
-        "document_uuid": "6a83e5ace6aa863c27d8dac4",
+        "document_uuid": "6a83e5a089644b82dd93d2d2",
         "frameworkCode": "iso27001",
         "frameworkName": "Information Security Management System",
-        "frameworkVersion": "ISO27001:2022",
-        "currentFileVersion": "ISO27001:2022"
+        "frameworkVersion": "ISO27001:2022"
       },
-      "createdAt": "2026-08-18T15:16:31.413585+05:30",
-      "updatedAt": "2026-08-18T15:16:31.413589+05:30",
-      "control_id": "A.5.6#6a83e5ace6aa863c27d8dac4"
+      "createdAt": "2026-08-18T17:58:13.684183+05:30",
+      "updatedAt": "2026-08-18T17:58:13.684187+05:30",
+      "control_id": "A.5.5#6a83e5a089644b82dd93d2d2"
     }
   ],
   "public.framework_assignments": [

@@ -185,9 +185,24 @@ def _process_live_streams(evidence_outputs: list[EvidenceOutput]) -> list[dict]:
     for ev in evidence_outputs:
         for fw_name, fw_version, rec in _iter_evidence_records(ev):
             live_streams.append(_format_stream_record(ev, fw_name, fw_version, rec))
-            if len(live_streams) >= 20:
-                return live_streams
     return live_streams
+
+
+def _process_ai_insights(evidence_outputs: list[EvidenceOutput]) -> list[dict]:
+    """Extract AI insights based on LLM recommendations in evidence outputs."""
+    insights = []
+    for ev in evidence_outputs:
+        for fw_name, fw_version, rec in _iter_evidence_records(ev):
+            llm_analysis = _get(rec, "llm_analysis") or {}
+            recommendation = _get(llm_analysis, "recommendation")
+            if recommendation:
+                confidence = str(_get(llm_analysis, "confidence") or "").title()
+                priority = confidence if confidence in ["High", "Medium", "Low"] else "Low"
+                insights.append({
+                    "text": recommendation,
+                    "priority": priority
+                })
+    return insights
 
 
 def _get_dp_count_for_merge(pm: DeploymentPackageMerge) -> int:
@@ -260,7 +275,7 @@ async def get_auditor_dashboard_analytics(
             )).scalars().all()) if assignment_ids else []
             
             evidence_outputs = list((await session.execute(
-                select(EvidenceOutput).order_by(desc(EvidenceOutput.createdAt)).limit(50)
+                select(EvidenceOutput).order_by(desc(EvidenceOutput.createdAt))
             )).scalars().all())
             
             historical_gap_analysis_ids = [
@@ -279,6 +294,7 @@ async def get_auditor_dashboard_analytics(
             overall_protection = round((implemented_dps_overall / total_dps_overall) * 100) if total_dps_overall > 0 else 0
 
             live_streams = _process_live_streams(evidence_outputs)
+            ai_insights = _process_ai_insights(evidence_outputs)
             deployment_points = _process_deployment_points(merges, live_packages)
 
             response_data = {
@@ -287,9 +303,10 @@ async def get_auditor_dashboard_analytics(
                 "controlPassing": f"{passing_controls_overall}/{total_controls_overall}",
                 "extraControls": extra_controls_overall, 
                 "frameworkHealth": framework_health,
-                "activeGaps": active_gaps[:10], 
+                "activeGaps": active_gaps, 
                 "liveAuditStreams": live_streams,
                 "deploymentPoints": deployment_points,
+                "aiInsights": ai_insights,
             }
 
             return success(response_data, message="Auditor dashboard analytics retrieved successfully")
