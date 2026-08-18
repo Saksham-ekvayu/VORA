@@ -20,9 +20,9 @@ from vora_shared.models import (
 from vora_shared.responses import server_error, success
 from vora_shared.security import RequestContext, get_context
 
-logger = logging.getLogger("dashboard_router")
 
-router = APIRouter(tags=["dashboard"])
+router = APIRouter(tags=["customer-admin-dashboard"])
+logger = logging.getLogger(__name__)
 
 
 def _get(obj: Any, key: str, default=None):
