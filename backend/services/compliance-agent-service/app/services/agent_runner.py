@@ -128,6 +128,45 @@ def compute_final_score(
         return score_low
 
 
+def generate_recommendation(
+    confidence: str,
+    control_id: str,
+    control_name: str,
+    dp_text: str,
+    reason: str,
+) -> str:
+    """Generate solid, actionable recommendations based on confidence level."""
+    confidence = (confidence or "low").lower().strip()
+    
+    if confidence == "high":
+        # HIGH: Clear, actionable steps for immediate implementation
+        return (
+            f"This deployment point is well-satisfied. "
+            f"Recommend immediate approval and implementation. "
+            f"Action: {dp_text}. "
+            f"Evidence confirms control '{control_id}' requirement."
+        )
+    elif confidence == "medium":
+        # MEDIUM: Require thorough review before proceeding
+        return (
+            f"This deployment point shows partial alignment. "
+            f"Recommend detailed review and validation before implementation. "
+            f"Steps: (1) Review provided evidence, (2) Validate against '{control_name}', "
+            f"(3) Clarify gaps, (4) Re-submit for approval. "
+            f"Context: {reason}"
+        )
+    else:
+        # LOW: Require expert analysis
+        return (
+            f"This deployment point requires expert analysis. "
+            f"Recommendation: Conduct comprehensive review by compliance expert before any implementation. "
+            f"Priority: Schedule detailed assessment. "
+            f"Reason: {reason}. "
+            f"Next Step: Expert validation and detailed implementation plan required."
+        )
+
+
+
 
 def get_agent_name_for_control(control_id: str, framework_code: str | None) -> str:
     """Dynamically map controls to specific compliance sub-agents."""
@@ -223,22 +262,23 @@ async def analyze_with_llm_async(
             is_local_qwen = True
 
         if is_local_qwen:
-            # Super compact prompts to guarantee staying well under the 256-token limit
-            system_prompt = f"You are {agent_name}. Return JSON: {{\"agent_name\": \"{agent_name}\", \"relevant\": true|false, \"reason\": \"str\", \"confidence\": \"high\"|\"medium\"|\"low\"}}. Write a very short reason (max 10 words)."
-            # Restrict evidence snippet to 120 chars to save token space
-            evidence_snippet = text[:120]
+            # Ultra-compact prompts for 256-token limit Qwen model
+            system_prompt = f"JSON only: {{\"agent_name\": \"{agent_name}\", \"relevant\": bool, \"reason\": \"2-3 words\", \"confidence\": \"high\"|\"medium\"|\"low\"}}"
+            # Restrict everything to save tokens
+            evidence_snippet = text[:60]
+            dp_snippet = dp_text[:70]
             user_prompt = (
-                f"Rule: {dp_text}\n"
+                f"Rule: {dp_snippet}\n"
                 f"Evidence: {evidence_snippet}\n"
-                "Return JSON. Set relevant=true only if evidence explicitly satisfies rule. Write a very short reason (max 10 words)."
+                "Match? JSON:"
             )
-            requested_max_tokens = 65
+            requested_max_tokens = 70
         else:
             # Standard detailed prompt for large context models
             system_prompt = (
                 f"You are the {agent_name}, responsible for evaluating compliance. "
                 "Evaluate if the deployment point is satisfied by the document evidence. "
-                "Return only valid JSON."
+                "Return only valid JSON with all required fields."
             )
             user_prompt = f"""
 You are a strict compliance evaluator.
@@ -286,7 +326,7 @@ Deployment Point:
 Document (Snippet):
 {text[:3000]}
 """
-            requested_max_tokens = 150
+            requested_max_tokens = 200
 
         logger.info(f"[LLM-ASYNC] [SENDING] Dispatching request payload to model '{target_model}'...")
         resp = await client.chat.completions.create(
@@ -443,11 +483,12 @@ async def evaluate_compliance_task(dd_id: str) -> None:
                     return
 
             settings = get_settings()
-            openai_key = settings.openai_api_key or os.environ.get("OPENAI_API_KEY")
+            # Use local Qwen model - don't check for OpenAI key
+            openai_key = None  # Disabled: using local Qwen model only
             openai_base = getattr(settings, "compliance_api_base", None) or os.environ.get("COMPLIANCE_API_BASE")
             if openai_base == "":
                 openai_base = None
-            model_name = getattr(settings, "compliance_model_name", "gpt-4o-mini") or os.environ.get("COMPLIANCE_MODEL_NAME")
+            model_name = getattr(settings, "compliance_model_name", "qwen7b") or os.environ.get("COMPLIANCE_MODEL_NAME")
             
             # Load dynamic thresholds from settings/env
             score_threshold = getattr(settings, "compliance_score_threshold", 0.7)
@@ -548,19 +589,14 @@ async def evaluate_compliance_task(dd_id: str) -> None:
                                 logger.info(f"[COMPLIANCE-TASK] [DECISION] Target: {dp_id} -> NOT COMPLIANT (No Evidence)")
                             else:
                                 similarity = match_score
-                                if openai_key:
-                                    logger.info(f"[COMPLIANCE-TASK] [LLM-CALL] Invoking LLM for control {control_id} | DP: {dp_id}")
-                                    llm_res = await analyze_with_llm_async(
-                                        openai_key, openai_base, model_name, evidence_text, control_id, control_name, control_desc, dp_text, agent_name
-                                    )
-                                    relevant = llm_res.get("relevant", False)
-                                    reason = llm_res.get("reason", "No reason provided")
-                                    confidence = llm_res.get("confidence", "low")
-                                else:
-                                    logger.info(f"[COMPLIANCE-TASK] [LOCAL-FALLBACK] Evaluating similarity threshold locally.")
-                                    relevant = similarity >= getattr(settings, "similarity_threshold_high", 75.0)
-                                    reason = f"Local Similarity Match on extracted evidence (similarity score: {similarity}%)"
-                                    confidence = "high" if similarity >= 90.0 else "medium" if similarity >= 75.0 else "low"
+                                # Always use Qwen LLM (not OpenAI)
+                                logger.info(f"[COMPLIANCE-TASK] [LLM-CALL] Invoking Qwen LLM for control {control_id} | DP: {dp_id}")
+                                llm_res = await analyze_with_llm_async(
+                                    openai_key, openai_base, model_name, evidence_text, control_id, control_name, control_desc, dp_text, agent_name
+                                )
+                                relevant = llm_res.get("relevant", False)
+                                reason = llm_res.get("reason", "No reason provided")
+                                confidence = llm_res.get("confidence", "low")
                                     
                             final_score = compute_final_score(
                                 similarity,
@@ -573,8 +609,19 @@ async def evaluate_compliance_task(dd_id: str) -> None:
                                 score_low,
                                 score_very_low,
                             )
-                            compliance_status = "Controls and Deployment extraction for agent is Compliant" if final_score >= score_threshold else "Controls and Deployment extraction for agent is Not Compliant"
+                            # Rule: >=60% similarity = COMPLIANT, <60% = NON-COMPLIANT
+                            compliance_status = "Compliant" if similarity >= sim_medium else "Non-Compliant"
                             logger.info(f"[COMPLIANCE-TASK] [DP-STATUS] Target: {dp_id} | Similarity: {similarity}% | LLM Relevant: {relevant} | Status: {compliance_status} | Reason: {reason}")
+                            
+                            # Generate recommendation based on confidence level - NO LLM CALL (avoids token overflow)
+                            # Use hardcoded logic based on confidence level and reason
+                            conf_level = (confidence or "low").lower().strip()
+                            if conf_level == "high":
+                                recommendation = f"APPROVED FOR IMPLEMENTATION: {reason}. Proceed with immediate deployment of: {dp_text}"
+                            elif conf_level == "medium":
+                                recommendation = f"CONDITIONAL APPROVAL: {reason}. Conduct thorough validation and stakeholder review before implementing: {dp_text}"
+                            else:  # low
+                                recommendation = f"REQUIRES EXPERT REVIEW: {reason}. Escalate to compliance officer for detailed assessment before any implementation of: {dp_text}"
                             
                             return {
                                 "dp_id": dp_id,
@@ -589,6 +636,7 @@ async def evaluate_compliance_task(dd_id: str) -> None:
                                     "relevant": relevant,
                                     "reason": reason,
                                     "confidence": confidence,
+                                    "recommendation": recommendation,
                                 },
                                 "agent_name": agent_name,
                                 "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -600,18 +648,9 @@ async def evaluate_compliance_task(dd_id: str) -> None:
                         output_doc = {
                             "document_uuid": dd.id,
                             "filename": dd.document.get("originalFileName") or os.path.basename(file_path or "document"),
-                            "file_id": dd.document.get("fileId") or "N/A",
-                            "currentFileVersion": fa.frameworkVersion or "1.0.0",
-                            "user_id": dd.uploadedBy,
-                            "tenantId": dd.tenantId,
-                            "user_name": "System",
-                            "user_email": "",
-                            "user_role": "auditor",
                             "frameworkCode": fa.frameworkCode,
                             "frameworkName": fa.frameworkName,
-                            "frameworkId": dd.deploymentFrameworkId,
                             "frameworkVersion": fa.frameworkVersion,
-                            "source": "Compliance Agent Service",
                             "fileVersions": [
                                 {
                                     "fileVersion": fa.frameworkVersion or "1.0.0",
