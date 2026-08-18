@@ -6,8 +6,9 @@
 import { apiRequest } from "./apiService";
 
 const ADMIN_BASE = "/dashboard/admin";
-const EXPERT_BASE = "/dashboard/expert";
+// const EXPERT_BASE = "/dashboard/expert";
 const CUSTOMER_BASE = "/dashboard/customer-admin";
+const AUDITOR_BASE = "/dashboard/auditor";
 
 /**
  * Build a query string from an optional date range object.
@@ -52,7 +53,7 @@ export function getAdminDashboardAnalytics(dateRange) {
  */
 export async function getAuditorDashboardAnalytics(dateRange) {
   return apiRequest(
-    `${EXPERT_BASE}/analytics${buildDateQuery(dateRange)}`,
+    `${AUDITOR_BASE}/analytics${buildDateQuery(dateRange)}`,
     true
   );
 }
