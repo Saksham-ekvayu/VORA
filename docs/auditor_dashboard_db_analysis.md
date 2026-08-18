@@ -17,7 +17,7 @@ The VORA database architecture heavily utilizes PostgreSQL `JSONB` columns, mean
 ### 2. Framework Health
 - **Required Data:** A list of compliance frameworks (like ISO-27001, NIST-CSF) paired with a percentage progress bar showing their "readiness" score.
 - **Relevant Tables:** `deployment_frameworks`, `package_gap_analyses`.
-- **Extraction Method:** You must calculate readiness specifically from `deployment_frameworks` packages that have `status` set to `"live"` and `type` set to `"deploy"`. The framework's overall health score will be derived from the control gap analyses tied to those live deployment packages.
+- **Extraction Method**: This evaluates the gap analysis of the specific framework. Instead of a strict control-level pass/fail, it calculates the health at a Deployment Point (DP) level by dividing the total number of implemented DPs by the total number of required DPs for that framework.
 
 ### 3. Live Audit Streams
 - **Required Data:** A scrolling feed of real-time audit checks (e.g., "Password Complexity Check • AWS IAM") showing if they Passed, Warned, or Failed.
