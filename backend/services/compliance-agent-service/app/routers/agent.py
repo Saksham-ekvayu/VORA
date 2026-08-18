@@ -159,6 +159,59 @@ async def get_all_output():
         return error(str(exc), 500)
 
 
+@router.get("/output/by-document")
+async def get_output_by_document():
+    """Get compliance results grouped by document (file). Each file with all its 93 controls."""
+    try:
+        logger.info("[GET-OUTPUT-BY-DOC] Fetching evidence outputs grouped by document")
+        async with session_scope() as session:
+            rows = (
+                (await session.execute(select(EvidenceOutput).order_by(EvidenceOutput.createdAt.desc())))
+                .scalars()
+                .all()
+            )
+            
+            # Group by document_uuid
+            grouped = {}
+            for row in rows:
+                output = row.output or {}
+                doc_uuid = output.get("document_uuid", "unknown")
+                filename = output.get("filename", "unknown")
+                
+                if doc_uuid not in grouped:
+                    grouped[doc_uuid] = {
+                        "document_uuid": doc_uuid,
+                        "filename": filename,
+                        "frameworkCode": output.get("frameworkCode"),
+                        "frameworkName": output.get("frameworkName"),
+                        "frameworkVersion": output.get("frameworkVersion"),
+                        "user_id": output.get("user_id"),
+                        "tenantId": output.get("tenantId"),
+                        "controls": []
+                    }
+                
+                # Add this control to the document group
+                grouped[doc_uuid]["controls"].append({
+                    "control_id": row.control_id,
+                    "output": output
+                })
+            
+            # Convert to list
+            documents = list(grouped.values())
+            logger.info(f"[GET-OUTPUT-BY-DOC] Grouped {len(rows)} controls into {len(documents)} documents")
+            
+            return success(
+                message=f"Returned {len(documents)} documents with their compliance results",
+                data={
+                    "total_documents": len(documents),
+                    "documents": documents
+                },
+            )
+    except Exception as exc:
+        logger.exception(f"[GET-OUTPUT-BY-DOC] Error: {exc}")
+        return error(str(exc), 500)
+
+
 async def _find_evidence_by_control_in_jsonb(session, control_id: str):
     all_rows = (await session.execute(select(EvidenceOutput))).scalars().all()
     for candidate in all_rows:

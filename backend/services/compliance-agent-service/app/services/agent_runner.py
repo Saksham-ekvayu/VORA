@@ -620,7 +620,9 @@ async def evaluate_compliance_task(dd_id: str) -> None:
                                     "data": {
                                         str(control_id): {
                                             "control_id": control_id,
-                                            "records": records
+                                            "records": records,
+                                            "document_source": dd.document.get("originalFileName") or os.path.basename(file_path or "document"),
+                                            "file_hash": file_hash
                                         }
                                     }
                                 }
