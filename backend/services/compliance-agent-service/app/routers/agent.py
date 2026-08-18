@@ -13,7 +13,7 @@ from sqlalchemy import func, select
 from vora_shared.config import get_settings
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
-from vora_shared.models import AgentPrompt, EvidenceOutput, UploadedFile
+from vora_shared.models import AgentPrompt, DeploymentDocument, EvidenceOutput, UploadedFile
 from vora_shared.responses import error, success
 
 logger = logging.getLogger(__name__)
@@ -247,14 +247,32 @@ async def evaluate_compliance_by_id(dd_id: str):
 
 @router.post("/evaluate")
 async def evaluate_compliance(request: Request):
+    dd_id = None
     try:
-        body = await request.json()
-        dd_id = body.get("dd_id")
+        body_bytes = await request.body()
+        if body_bytes.strip():
+            body = await request.json()
+            dd_id = body.get("dd_id")
     except Exception:
         return error("Invalid JSON body", 400)
 
     if not dd_id:
-        return error("dd_id is required", 400)
+        try:
+            async with session_scope() as session:
+                latest_dd = (
+                    await session.execute(
+                        select(DeploymentDocument).order_by(DeploymentDocument.createdAt.desc()).limit(1)
+                    )
+                ).scalars().first()
+                
+                if latest_dd:
+                    dd_id = latest_dd.id
+                    logger.info(f"[API] No dd_id provided. Auto-selected the latest DeploymentDocument: {dd_id}")
+                else:
+                    return error("No DeploymentDocument found in database to evaluate compliance.", 404)
+        except Exception as exc:
+            logger.exception(f"[API] Failed to retrieve latest DeploymentDocument: {exc}")
+            return error(f"Failed to auto-select document: {str(exc)}", 500)
 
     logger.info(f"[API] Compliance evaluation requested via body for DeploymentDocument: {dd_id}")
     asyncio.create_task(evaluate_compliance_task(dd_id))
@@ -262,4 +280,37 @@ async def evaluate_compliance(request: Request):
         message="Compliance evaluation started in background",
         data={"dd_id": dd_id, "status": "processing"},
     )
+
+
+@router.post("/evaluate-all")
+async def evaluate_all_compliance():
+    """Evaluate compliance for ALL deployment documents in the system."""
+    try:
+        async with session_scope() as session:
+            all_dds = (
+                await session.execute(
+                    select(DeploymentDocument).order_by(DeploymentDocument.createdAt.desc())
+                )
+            ).scalars().all()
+            
+            if not all_dds:
+                return error("No DeploymentDocuments found in database to evaluate compliance.", 404)
+            
+            logger.info(f"[API-ALL] Starting compliance evaluation for ALL {len(all_dds)} DeploymentDocuments")
+            
+            # Spawn task for each document
+            for dd in all_dds:
+                asyncio.create_task(evaluate_compliance_task(dd.id))
+            
+            return success(
+                message=f"Compliance evaluation started in background for {len(all_dds)} documents",
+                data={
+                    "total_documents": len(all_dds),
+                    "status": "processing",
+                    "document_ids": [dd.id for dd in all_dds]
+                },
+            )
+    except Exception as exc:
+        logger.exception(f"[API-ALL] Failed to start bulk evaluation: {exc}")
+        return error(f"Failed to start bulk evaluation: {str(exc)}", 500)
 
