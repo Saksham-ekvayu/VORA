@@ -110,24 +110,6 @@ const MOCK = {
     { name: "CFR-Part-II:2023", count: 58 },
   ],
 
-  riskByStatus: [
-    {
-      label: "Accepted Risk",
-      high: 2,
-      medium: 4,
-      low: 7,
-    },
-    { label: "Reduced Risk", high: 3, medium: 6, low: 5 },
-    {
-      label: "Transferred Risk",
-      high: 1,
-      medium: 2,
-      low: 3,
-    },
-    { label: "Mitigated Risk", high: 2, medium: 7, low: 9 },
-    { label: "Un-Mitigated Risk", high: 4, medium: 5, low: 2 },
-  ],
-
   aiInsights: [
     {
       text: "Update Access Control Policy (AC-2.1) to enforce least privilege and role-based access.",
@@ -431,6 +413,58 @@ export default function AuditorDashboard() {
           </div>
         </CardWrapper>
 
+        {/* Deployment Points */}
+        <CardWrapper
+          title="Deployment Points"
+          right={
+            <button
+              type="button"
+              onClick={() => navigate("/dashboard/deployment-points")}
+              className="text-primary flex items-center gap-1 text-xs hover:underline cursor-pointer"
+            >
+              View All <Icon name="arrow-right" size="14px" />
+            </button>
+          }
+          className="flex flex-col"
+        >
+          <div
+            className="overflow-y-auto flex-1 space-y-4 pr-0.5"
+            style={{ maxHeight: "220px" }}
+          >
+            {MOCK.deploymentPoints.map((dp) => (
+              <div
+                key={dp.name}
+                className="flex items-center gap-3 w-full group"
+              >
+                {/* Colored pill tag */}
+                <span
+                  className="text-[11px] font-semibold px-1 py-0.3 rounded text-white shrink-0 min-w-24 text-center group-hover:opacity-80 transition-opacity"
+                  style={{
+                    backgroundColor: DASHBOARD_CONFIG.getFrameworkConfig(
+                      dp.name
+                    ).tagColor,
+                  }}
+                >
+                  {dp.name}
+                </span>
+                {/* Progress bar */}
+                <div className="flex-1">
+                  <ProgressBar
+                    value={Math.min((dp.count / 250) * 100, 100)}
+                    color={
+                      DASHBOARD_CONFIG.getFrameworkConfig(dp.name).barColor
+                    }
+                  />
+                </div>
+                {/* Count */}
+                <span className="text-xs font-bold text-foreground w-9 text-right shrink-0 group-hover:text-primary transition-colors">
+                  {dp.count}
+                </span>
+              </div>
+            ))}
+          </div>
+        </CardWrapper>
+
         {/* Active Gaps */}
         <CardWrapper
           title="Active Gaps"
@@ -501,7 +535,7 @@ export default function AuditorDashboard() {
               <span>24x7 Active</span>
             </span>
           }
-          className="flex flex-col"
+          className="flex flex-col xl:col-span-2"
         >
           <div
             className="overflow-y-auto flex-1 pr-0.5"
@@ -526,102 +560,6 @@ export default function AuditorDashboard() {
                 <span className="text-xs text-muted-foreground shrink-0">
                   {stream.ago}
                 </span>
-              </div>
-            ))}
-          </div>
-        </CardWrapper>
-      </div>
-
-      {/* ── Row 3: Deployment Points | Risk by Status | AI Insights ─────── */}
-      <div className="grid xl:grid-cols-3 gap-3 items-stretch">
-        {/* Deployment Points */}
-        <CardWrapper
-          title="Deployment Points"
-          right={
-            <button
-              type="button"
-              onClick={() => navigate("/dashboard/deployment-points")}
-              className="text-primary flex items-center gap-1 text-xs hover:underline cursor-pointer"
-            >
-              View All <Icon name="arrow-right" size="14px" />
-            </button>
-          }
-          className="flex flex-col"
-        >
-          <div
-            className="overflow-y-auto flex-1 space-y-4 pr-0.5"
-            style={{ maxHeight: "220px" }}
-          >
-            {MOCK.deploymentPoints.map((dp) => (
-              <div
-                key={dp.name}
-                className="flex items-center gap-3 w-full group"
-              >
-                {/* Colored pill tag */}
-                <span
-                  className="text-[11px] font-semibold px-1 py-0.3 rounded text-white shrink-0 min-w-24 text-center group-hover:opacity-80 transition-opacity"
-                  style={{
-                    backgroundColor: DASHBOARD_CONFIG.getFrameworkConfig(
-                      dp.name
-                    ).tagColor,
-                  }}
-                >
-                  {dp.name}
-                </span>
-                {/* Progress bar */}
-                <div className="flex-1">
-                  <ProgressBar
-                    value={Math.min((dp.count / 250) * 100, 100)}
-                    color={
-                      DASHBOARD_CONFIG.getFrameworkConfig(dp.name).barColor
-                    }
-                  />
-                </div>
-                {/* Count */}
-                <span className="text-xs font-bold text-foreground w-9 text-right shrink-0 group-hover:text-primary transition-colors">
-                  {dp.count}
-                </span>
-              </div>
-            ))}
-          </div>
-        </CardWrapper>
-
-        {/* Risk by Status */}
-        <CardWrapper title="Risk by Status" className="flex flex-col">
-          {/* Column headers - fixed, don't scroll */}
-          <div className="grid grid-cols-[2.5fr_0.6fr_0.7fr_0.6fr] text-[10px] font-semibold uppercase tracking-wide border-b border-border pb-1.5 gap-2 shrink-0">
-            <span className="text-muted-foreground">Risk Status</span>
-            <span className="text-center text-red-500">High</span>
-            <span className="text-center text-amber-500">Medium</span>
-            <span className="text-center text-emerald-500">Low</span>
-          </div>
-          <div
-            className="overflow-y-auto flex-1 mt-1 pr-0.5"
-            style={{ maxHeight: "220px" }}
-          >
-            {MOCK.riskByStatus.map((r) => (
-              <div
-                key={r.label}
-                className="grid grid-cols-[2.5fr_0.6fr_0.7fr_0.6fr] items-center gap-2 py-2 border-b border-border last:border-0 hover:bg-accent/50 rounded px-0.5 transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-foreground">{r.label}</span>
-                </div>
-                <div className="flex justify-center">
-                  <span className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center text-[10px] font-bold text-white">
-                    {r.high}
-                  </span>
-                </div>
-                <div className="flex justify-center">
-                  <span className="w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center text-[10px] font-bold text-white">
-                    {r.medium}
-                  </span>
-                </div>
-                <div className="flex justify-center">
-                  <span className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] font-bold text-white">
-                    {r.low}
-                  </span>
-                </div>
               </div>
             ))}
           </div>

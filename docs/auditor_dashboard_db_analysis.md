@@ -50,14 +50,5 @@ The VORA database architecture heavily utilizes PostgreSQL `JSONB` columns, mean
 
 ---
 
-## 🔴 Missing / Needs Database Changes [MISSING]
-
-### 1. Risk by Status (Accepted, Reduced, Transferred, Mitigated) [MISSING]
-- **Required Data:** A table that categorizes risks and breaks down exactly how many High, Medium, and Low risks fall into each bucket.
-- **Current Status:** There is no dedicated `risks` or `risk_exceptions` table in the SQL schema.
-- **Workaround:** Unless these risk decisions (e.g., "We accept the risk for control AC-2.1") are specifically stored inside the `assignment` JSONB field of the `framework_assignments` table, a new table or standardized JSON structure is needed to track user-defined risk decisions.
-
----
-
 ## Conclusion
 The core metrics of the Auditor Dashboard have been successfully implemented! All primary metrics (Overall Protection, Active Gaps, Framework Health, Extra Controls, and Live Audit Streams) are fully driven by live database data using the strict deployment point calculations.
