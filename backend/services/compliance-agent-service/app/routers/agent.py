@@ -186,7 +186,7 @@ async def get_output_by_document():
                         "frameworkName": output.get("frameworkName"),
                         "frameworkVersion": output.get("frameworkVersion"),
                         "user_id": output.get("user_id"),
-                        "tenantId": output.get("tenantId"),
+                        # "tenantId": output.get("tenantId"),
                         "controls": []
                     }
                 
