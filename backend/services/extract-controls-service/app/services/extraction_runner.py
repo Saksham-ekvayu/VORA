@@ -1355,7 +1355,7 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
                 try:
                     import httpx
                     logger.info(f"[DD-EXTRACT] Triggering compliance agent evaluation for dd_id: {dd_id}...")
-                    async with httpx.AsyncClient(timeout=10.0) as client:
+                    async with httpx.AsyncClient(timeout=60.0) as client:
                         resp = await client.post(f"http://localhost:7008/api/compliance-agent/evaluate/{dd_id}")
                         if resp.status_code in (200, 201, 202):
                             logger.info(f"[DD-EXTRACT] Successfully triggered compliance agent for dd_id: {dd_id}")

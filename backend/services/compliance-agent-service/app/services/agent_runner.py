@@ -215,13 +215,32 @@ async def analyze_with_llm_async(
             
         client = AsyncOpenAI(**client_args)
         
-        system_prompt = (
-            f"You are the {agent_name}, responsible for evaluating compliance. "
-            "Evaluate if the deployment point is satisfied by the document evidence. "
-            "Return only valid JSON."
-        )
-        
-        user_prompt = f"""
+        # Check if we are running local Qwen (which has context length limitations like 256)
+        is_local_qwen = False
+        if openai_base and ("10101" in openai_base or "192.168" in openai_base or "localhost" in openai_base):
+            is_local_qwen = True
+        if target_model and "qwen" in target_model.lower():
+            is_local_qwen = True
+
+        if is_local_qwen:
+            # Super compact prompts to guarantee staying well under the 256-token limit
+            system_prompt = f"You are {agent_name}. Return JSON: {{\"agent_name\": \"{agent_name}\", \"relevant\": true|false, \"reason\": \"str\", \"confidence\": \"high\"|\"medium\"|\"low\"}}. Write a very short reason (max 10 words)."
+            # Restrict evidence snippet to 120 chars to save token space
+            evidence_snippet = text[:120]
+            user_prompt = (
+                f"Rule: {dp_text}\n"
+                f"Evidence: {evidence_snippet}\n"
+                "Return JSON. Set relevant=true only if evidence explicitly satisfies rule. Write a very short reason (max 10 words)."
+            )
+            requested_max_tokens = 65
+        else:
+            # Standard detailed prompt for large context models
+            system_prompt = (
+                f"You are the {agent_name}, responsible for evaluating compliance. "
+                "Evaluate if the deployment point is satisfied by the document evidence. "
+                "Return only valid JSON."
+            )
+            user_prompt = f"""
 You are a strict compliance evaluator.
 
 Your job is to decide whether the document satisfies the given control and deployment point.
@@ -267,6 +286,8 @@ Deployment Point:
 Document (Snippet):
 {text[:3000]}
 """
+            requested_max_tokens = 150
+
         logger.info(f"[LLM-ASYNC] [SENDING] Dispatching request payload to model '{target_model}'...")
         resp = await client.chat.completions.create(
             model=target_model,
@@ -275,7 +296,7 @@ Document (Snippet):
                 {"role": "user", "content": user_prompt}
             ],
             temperature=0,
-            max_tokens=250,
+            max_tokens=requested_max_tokens,
             response_format={"type": "json_object"}
         )
         
@@ -599,15 +620,20 @@ async def evaluate_compliance_task(dd_id: str) -> None:
                                     "data": {
                                         str(control_id): {
                                             "control_id": control_id,
-                                            "records": records
+                                            "records": records,
+                                            "document_source": dd.document.get("originalFileName") or os.path.basename(file_path or "document"),
+                                            "file_hash": file_hash
                                         }
                                     }
                                 }
                             ]
                         }
                         
+                        # Create unique key: control_id + document_uuid
+                        unique_key = f"{control_id}#{dd.id}"
+                        
                         existing = (await local_session.execute(
-                            select(EvidenceOutput).where(EvidenceOutput.control_id == str(control_id)).limit(1)
+                            select(EvidenceOutput).where(EvidenceOutput.control_id == unique_key).limit(1)
                         )).scalar_one_or_none()
                         
                         if existing:
@@ -616,7 +642,7 @@ async def evaluate_compliance_task(dd_id: str) -> None:
                         else:
                             local_session.add(EvidenceOutput(
                                 id=new_id(),
-                                control_id=str(control_id),
+                                control_id=unique_key,
                                 output=output_doc
                             ))
                         await local_session.commit()
