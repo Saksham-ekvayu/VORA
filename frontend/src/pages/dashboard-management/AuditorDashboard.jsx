@@ -257,7 +257,6 @@ export default function AuditorDashboard() {
       <div className="grid xl:grid-cols-3 gap-3 items-stretch">
         {/* Framework Health */}
         <CardWrapper title="Framework Health" className="flex flex-col">
-          {/* Column headers */}
           <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border pb-1.5 mb-2 shrink-0">
             <span>Framework</span>
             <span>IMPLEMENTED / TOTAL POINTS</span>
@@ -267,51 +266,42 @@ export default function AuditorDashboard() {
             className="overflow-y-auto space-y-2.5 flex-1 pr-0.5"
             style={{ maxHeight: "220px" }}
           >
-            {isLoading || !dashboardData ? (
-              [...Array(4)].map((_, i) => (
-                <div key={i} className="flex items-center gap-3 w-full py-1">
+            {(isLoading || !dashboardData) && [...Array(3)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3 w-full group py-1.5 border-b border-border last:border-0">
                   <Skeleton className="h-5 w-24 shrink-0" />
                   <Skeleton className="h-4 flex-1 rounded-full" />
                   <Skeleton className="h-4 w-8 shrink-0" />
                 </div>
-              ))
-            ) : dashboardData?.frameworkHealth?.length > 0 ? (
-              dashboardData.frameworkHealth.map((fw) => (
+            ))}
+
+            {!isLoading && dashboardData?.frameworkHealth?.length > 0 && dashboardData.frameworkHealth.map((fw) => (
                 <button
                   key={`${fw.name}-${fw.version}`}
                   type="button"
-                  onClick={() =>
-                    navigate(`/dashboard/framework/${frameworkToSlug(fw.name)}`)
-                  }
-                  className="flex items-center gap-3 w-full group cursor-pointer"
+                  onClick={() => navigate(`/dashboard/framework/${frameworkToSlug(fw.name)}`)}
+                  className="flex items-center gap-3 w-full group cursor-pointer py-1.5 border-b border-border last:border-0"
                 >
-                  {/* Colored pill tag */}
                   <span
                     className="text-[11px] font-semibold px-1 py-0.3 rounded text-white shrink-0 min-w-24 text-center group-hover:opacity-80 transition-opacity"
                     style={{
-                      backgroundColor: DASHBOARD_CONFIG.getFrameworkConfig(
-                        fw.version
-                      ).tagColor,
+                      backgroundColor: DASHBOARD_CONFIG.getFrameworkConfig(fw.version).tagColor,
                     }}
                   >
                     {fw.version || fw.name}
                   </span>
-                  {/* Progress bar */}
                   <div className="flex-1">
                     <ProgressBar
                       value={fw.readiness}
-                      color={
-                        DASHBOARD_CONFIG.getFrameworkConfig(fw.version).barColor
-                      }
+                      color={DASHBOARD_CONFIG.getFrameworkConfig(fw.version).barColor}
                     />
                   </div>
-                  {/* Percentage */}
                   <span className="text-xs font-bold text-foreground w-9 text-right shrink-0 group-hover:text-primary transition-colors">
                     {fw.readiness}%
                   </span>
                 </button>
-              ))
-            ) : (
+            ))}
+
+            {!isLoading && dashboardData && !(dashboardData?.frameworkHealth?.length > 0) && (
               <EmptyState message="No framework data available" />
             )}
           </div>
@@ -340,7 +330,7 @@ export default function AuditorDashboard() {
             className="overflow-y-auto flex-1 space-y-4 pr-0.5"
             style={{ maxHeight: "220px" }}
           >
-            {isLoading || !dashboardData ? (
+            {(isLoading || !dashboardData) && (
               [...Array(4)].map((_, i) => (
                 <div key={i} className="flex items-center gap-3 w-full py-1">
                   <Skeleton className="h-5 w-24 shrink-0" />
@@ -348,7 +338,9 @@ export default function AuditorDashboard() {
                   <Skeleton className="h-4 w-8 shrink-0" />
                 </div>
               ))
-            ) : dashboardData?.deploymentPoints?.length > 0 ? (
+            )}
+
+            {!isLoading && dashboardData?.deploymentPoints?.length > 0 && (
               dashboardData.deploymentPoints.map((dp) => (
                 <div
                   key={`${dp.name}-${dp.version}`}
@@ -380,7 +372,9 @@ export default function AuditorDashboard() {
                   </span>
                 </div>
               ))
-            ) : (
+            )}
+
+            {!isLoading && dashboardData && !(dashboardData?.deploymentPoints?.length > 0) && (
               <EmptyState message="No deployment points found" />
             )}
           </div>
@@ -413,7 +407,7 @@ export default function AuditorDashboard() {
             className="flex-1 mt-1 overflow-y-auto"
             style={{ maxHeight: "220px" }}
           >
-            {isLoading || !dashboardData ? (
+            {(isLoading || !dashboardData) && (
               [...Array(5)].map((_, i) => (
                 <div
                   key={i}
@@ -427,7 +421,9 @@ export default function AuditorDashboard() {
                   <Skeleton className="h-4 w-20 shrink-0 ml-2" />
                 </div>
               ))
-            ) : dashboardData?.activeGaps?.length > 0 ? (
+            )}
+
+            {!isLoading && dashboardData?.activeGaps?.length > 0 && (
               dashboardData.activeGaps.map((gap, idx) => (
                 <div
                   key={`${gap.id}-${idx}`}
@@ -464,7 +460,9 @@ export default function AuditorDashboard() {
                   </span>
                 </div>
               ))
-            ) : (
+            )}
+
+            {!isLoading && dashboardData && !(dashboardData?.activeGaps?.length > 0) && (
               <EmptyState message="No active gaps reported" />
             )}
           </div>
@@ -485,7 +483,7 @@ export default function AuditorDashboard() {
             className="overflow-y-auto flex-1 pr-0.5"
             style={{ maxHeight: "300px" }}
           >
-            {isLoading || !dashboardData ? (
+            {(isLoading || !dashboardData) && (
               [...Array(6)].map((_, i) => (
                 <div
                   key={i}
@@ -501,7 +499,9 @@ export default function AuditorDashboard() {
                   <Skeleton className="h-4 w-16 shrink-0" />
                 </div>
               ))
-            ) : dashboardData?.liveAuditStreams?.length > 0 ? (
+            )}
+
+            {!isLoading && dashboardData?.liveAuditStreams?.length > 0 && (
               dashboardData.liveAuditStreams.map((stream, index) => (
                 <div
                   key={`${stream.id}-${index}`}
@@ -531,7 +531,9 @@ export default function AuditorDashboard() {
                   </span>
                 </div>
               ))
-            ) : (
+            )}
+
+            {!isLoading && dashboardData && !(dashboardData?.liveAuditStreams?.length > 0) && (
               <EmptyState message="No live audit streams active" />
             )}
           </div>
@@ -551,7 +553,7 @@ export default function AuditorDashboard() {
             className="overflow-y-auto flex-1 pr-0.5"
             style={{ maxHeight: "300px" }}
           >
-            {isLoading || !dashboardData ? (
+            {(isLoading || !dashboardData) && (
               [...Array(4)].map((_, i) => (
                 <div
                   key={i}
@@ -564,7 +566,9 @@ export default function AuditorDashboard() {
                   <Skeleton className="h-5 w-16 shrink-0 mt-0.5 rounded-full" />
                 </div>
               ))
-            ) : dashboardData?.aiInsights?.length > 0 ? (
+            )}
+
+            {!isLoading && dashboardData?.aiInsights?.length > 0 && (
               dashboardData.aiInsights.map((insight) => (
                 <div
                   key={insight.text.slice(0, 30)}
@@ -578,7 +582,9 @@ export default function AuditorDashboard() {
                   </div>
                 </div>
               ))
-            ) : (
+            )}
+
+            {!isLoading && dashboardData && !(dashboardData?.aiInsights?.length > 0) && (
               <EmptyState message="No AI insights generated yet" />
             )}
           </div>
