@@ -24,7 +24,8 @@ const STATS = {
 const FRAMEWORK_ROWS = [
   {
     id: "iso-27001",
-    framework: "ISO 27001",
+    version: "ISO-27001:2022",
+    framework: "Information Security Management System",
     frameworkSlug: "iso-27001",
     weight: "35%",
     rawScore: "91%",
@@ -35,7 +36,8 @@ const FRAMEWORK_ROWS = [
   },
   {
     id: "iso-9001",
-    framework: "ISO 9001",
+    version: "ISO-9001:2015",
+    framework: "Quality Management System",
     frameworkSlug: "iso-9001",
     weight: "25%",
     rawScore: "89%",
@@ -46,7 +48,8 @@ const FRAMEWORK_ROWS = [
   },
   {
     id: "nist-csf",
-    framework: "NIST CSF",
+    version: "NIST-CSF:2023",
+    framework: "Cybersecurity Framework",
     frameworkSlug: "nist-csf",
     weight: "25%",
     rawScore: "58%",
@@ -57,6 +60,7 @@ const FRAMEWORK_ROWS = [
   },
   {
     id: "21-cfr-part-ii",
+    version: "CFR-Part-II:2025",
     framework: "21 CFR Part II",
     frameworkSlug: "21-cfr-part-ii",
     weight: "15%",
@@ -71,13 +75,6 @@ const FRAMEWORK_ROWS = [
 const FRAMEWORK_NAMES = Array.from(
   new Set(FRAMEWORK_ROWS.map((r) => r.framework))
 );
-
-const FRAMEWORK_COLORS = {
-  "ISO 27001": "text-blue-400",
-  "ISO 9001": "text-green-400",
-  "NIST CSF": "text-violet-400",
-  "21 CFR Part II": "text-red-400",
-};
 
 const PAGE_SIZE = 10;
 
@@ -170,17 +167,25 @@ export default function OverallProtection() {
   // ── Column definitions ──────────────────────────────────────────────────────
   const columns = [
     {
-      key: "framework",
-      label: "Framework",
+      key: "version",
+      label: "Framework Version",
       sortable: false,
       render: (value, row) => (
         <button
           type="button"
           onClick={() => navigate(`/dashboard/framework/${row.frameworkSlug}`)}
-          className={`text-xs font-semibold hover:underline text-left whitespace-nowrap ${FRAMEWORK_COLORS[value] ?? "text-primary"}`}
+          className="text-xs font-semibold hover:underline text-left whitespace-nowrap"
         >
           {value}
         </button>
+      ),
+    },
+    {
+      key: "framework",
+      label: "Framework Name",
+      sortable: false,
+      render: (value) => (
+        <span className="text-sm font-medium text-foreground">{value}</span>
       ),
     },
     {
