@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Icon from "@/components/custom/Icon";
 import SearchInput from "@/components/custom/SearchInput";
 import TableHeaderActions from "@/components/custom/TableHeaderActions";
+import CustomPagination from "@/components/custom/CustomPagination";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
 
@@ -150,8 +151,13 @@ export default function DeploymentPoints() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [frameworkFilter, setFrameworkFilter] = useState("All Frameworks");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
-  const handleSearch = useCallback((term) => setSearchTerm(term), []);
+  const handleSearch = useCallback((term) => {
+    setSearchTerm(term);
+    setPage(1);
+  }, []);
 
   const frameworkOptions = useMemo(() => {
     const versions = new Set(DEPLOYMENT_POINTS.map((dp) => dp.frameworkVersion).filter(Boolean));
@@ -165,7 +171,10 @@ export default function DeploymentPoints() {
       triggerClassName: "w-fit",
       options: frameworkOptions.map((opt, idx) => ({
         label: opt,
-        onClick: () => setFrameworkFilter(opt),
+        onClick: () => {
+          setFrameworkFilter(opt);
+          setPage(1);
+        },
         separatorBefore: idx === 1,
       })),
     },
@@ -182,6 +191,29 @@ export default function DeploymentPoints() {
     }
     return list;
   }, [searchTerm, frameworkFilter]);
+
+  const paginatedData = useMemo(() => {
+    const start = (page - 1) * limit;
+    return filtered.slice(start, start + limit);
+  }, [filtered, page, limit]);
+
+  const totalPages = Math.ceil(filtered.length / limit);
+
+  const paginationObj = {
+    currentPage: page,
+    totalPages: totalPages,
+    limit: limit,
+    totalItems: filtered.length,
+    hasPrevPage: page > 1,
+    hasNextPage: page < totalPages,
+    onLimitChange: (newLimit) => {
+      setLimit(newLimit);
+      setPage(1);
+    },
+    onPageChange: (newPage) => {
+      setPage(newPage);
+    }
+  };
 
   return (
     <div className="space-y-3 my-2">
@@ -259,18 +291,18 @@ export default function DeploymentPoints() {
             </div>
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
-              {filtered.map((point) => (
+              {paginatedData.map((point) => (
                 <DeploymentCard key={point.id} point={point} />
               ))}
             </div>
           )}
         </div>
 
-        {/* Footer count */}
-        <div className="flex justify-between items-center px-4 py-3 border-t border-border bg-muted text-sm text-muted-foreground">
-          Showing {filtered.length} of {DEPLOYMENT_POINTS.length} Deployment
-          Points
-        </div>
+        {/* Pagination Footer */}
+        <CustomPagination
+          pagination={paginationObj}
+          entityName="Deployment Points"
+        />
       </div>
     </div>
   );
