@@ -426,16 +426,26 @@ def evaluate_controls(
     fw_total_dps = 0
     fw_implemented_dps = 0
     fw_extra_controls = 0
+    fw_extra_controls_list = []
     fw_critical_gaps = 0
     fw_active_gaps = []
     fw_prev_implemented_dps = 0
 
     for ctrl_id, expected in expected_controls.items():
         fw_total_controls += 1
+        req_dps = expected["required_dps"]
+
         if expected["is_extra"]:
             fw_extra_controls += 1
+            fw_extra_controls_list.append({
+                "id": fw_id,
+                "ctrlId": ctrl_id,
+                "control": expected["name"],
+                "frameworkVersion": fw_version,
+                "frameworkName": fw_name,
+                "deploymentPoints": req_dps,
+            })
 
-        req_dps = expected["required_dps"]
         impl_dps = actual_implemented.get(ctrl_id, 0)
         prev_impl = prev_actual_implemented.get(ctrl_id, 0) if prev_actual_implemented is not None else 0
 
@@ -459,6 +469,7 @@ def evaluate_controls(
         fw_total_dps,
         fw_implemented_dps,
         fw_extra_controls,
+        fw_extra_controls_list,
         fw_critical_gaps,
         fw_active_gaps,
         fw_prev_implemented_dps,
@@ -593,6 +604,38 @@ def build_critical_gaps_response(
             }
         }
     }, total
+
+
+def build_extra_controls_response(
+    extra_controls: list[dict], search: str, sort_by: str, sort_order: str, page: int, limit: int
+) -> dict:
+    formatted = list(extra_controls)
+    
+    if search:
+        q = search.lower()
+        formatted = [
+            f for f in formatted 
+            if q in str(f.get("ctrlId", "")).lower() or q in str(f.get("control", "")).lower() or q in str(f.get("frameworkName", "")).lower()
+        ]
+        
+    if sort_by:
+        reverse = sort_order == "desc"
+        formatted.sort(
+            key=lambda x: (
+                x.get(sort_by, 0) if isinstance(x.get(sort_by), (int, float)) else str(x.get(sort_by, ""))
+            ),
+            reverse=reverse,
+        )
+        
+    total = len(formatted)
+    
+    from vora_shared.query_builder import clamp_page, clamp_limit
+    safe_page = clamp_page(page)
+    safe_limit = clamp_limit(limit)
+    start = (safe_page - 1) * safe_limit
+    end = start + safe_limit
+    
+    return formatted[start:end], total
 
 
 def _process_package_controls(
@@ -845,6 +888,7 @@ def process_gap_analyses(
     total_controls_overall = 0
     passing_controls_overall = 0
     extra_controls_overall = 0
+    extra_controls_list = []
     critical_gaps = 0
     active_gaps = []
     framework_health = []
@@ -883,6 +927,7 @@ def process_gap_analyses(
             fw_total_dps,
             fw_implemented_dps,
             fw_extra_controls,
+            fw_extra_controls_list,
             fw_critical_gaps,
             fw_active_gaps,
             fw_prev_implemented_dps,
@@ -893,6 +938,7 @@ def process_gap_analyses(
         total_controls_overall += fw_total_controls
         passing_controls_overall += fw_passing_controls
         extra_controls_overall += fw_extra_controls
+        extra_controls_list.extend(fw_extra_controls_list)
         total_dps_overall += fw_total_dps
         implemented_dps_overall += fw_implemented_dps
         if prev_actual_implemented is not None:
@@ -925,6 +971,7 @@ def process_gap_analyses(
         total_controls_overall,
         passing_controls_overall,
         extra_controls_overall,
+        extra_controls_list,
         critical_gaps,
         active_gaps,
         framework_health,
