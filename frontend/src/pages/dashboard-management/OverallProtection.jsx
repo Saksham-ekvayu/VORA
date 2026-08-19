@@ -160,7 +160,7 @@ export default function OverallProtection() {
         <button
           type="button"
           onClick={() => navigate(`/dashboard/framework/${row.frameworkSlug}`)}
-          className="text-xs font-semibold hover:underline text-left whitespace-nowrap"
+          className="text-xs font-semibold hover:underline text-left whitespace-nowrap cursor-pointer"
         >
           {value}
         </button>
