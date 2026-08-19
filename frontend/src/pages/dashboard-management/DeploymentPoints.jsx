@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Icon from "@/components/custom/Icon";
 import SearchInput from "@/components/custom/SearchInput";
@@ -7,62 +7,9 @@ import TableHeaderActions from "@/components/custom/TableHeaderActions";
 import CustomPagination from "@/components/custom/CustomPagination";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
-
-// ─── Static mock data ─────────────────────────────────────────────────────────
-
-const STATS = {
-  integrations: 4,
-  totalInstances: 581,
-};
-
-const DEPLOYMENT_POINTS = [
-  {
-    id: "5871a270-8439-4d0d-b810-4266b5098397",
-    frameworkName: "Information Security Management System",
-    frameworkVersion: "ISO-27001:2022",
-    instances: 234,
-    controls: [
-      { name: "IAM Policies", pct: 88 },
-      { name: "S3 Bucket Config", pct: 93 },
-      { name: "Security Groups", pct: 79 },
-      { name: "CloudTrail Logging", pct: 72 },
-    ],
-  },
-  {
-    id: "032594ab-079f-4004-871f-0c26e7760865",
-    frameworkName: "Information Security Management System",
-    frameworkVersion: "ISO-27001:2022",
-    instances: 189,
-    controls: [
-      { name: "MFA Enforcement", pct: 82 },
-      { name: "Password Policy", pct: 95 },
-      { name: "Privileged Access", pct: 68 },
-      { name: "Lifecycle Mgmt", pct: 91 },
-    ],
-  },
-  {
-    id: "4e317264-db50-479c-b34d-43da6608f381",
-    frameworkName: "Cybersecurity Framework",
-    frameworkVersion: "NIST-CSF:2020",
-    instances: 100,
-    controls: [
-      { name: "Log Retention", pct: 100 },
-      { name: "Integrity Checks", pct: 78 },
-      { name: "SIEM Integration", pct: 85 },
-    ],
-  },
-  {
-    id: "0510024e-39cc-4884-ac7a-84388f869ac3",
-    frameworkName: "Cybersecurity Framework",
-    frameworkVersion: "NIST-CSF:2020",
-    instances: 58,
-    controls: [
-      { name: "Onboarding Controls", pct: 90 },
-      { name: "Offboarding Checks", pct: 74 },
-      { name: "Background Vetting", pct: 100 },
-    ],
-  },
-];
+import { getAuditorDeploymentPoints } from "@/services/dashboardService";
+import { Skeleton } from "@/components/ui/skeleton";
+import { capitalizeFirstLetter } from "@/utils/stringUtils";
 
 // ─── Stat Mini Box ────────────────────────────────────────────────────────────
 
@@ -87,8 +34,8 @@ function MiniStatBox({ label, value, valueColor }) {
 function ControlBar({ name, pct, color }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="text-xs text-foreground w-36 shrink-0 truncate">
-        {name}
+      <span className="text-sm">
+        {capitalizeFirstLetter(name)}
       </span>
       <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
         <div
@@ -149,10 +96,61 @@ export default function DeploymentPoints() {
 
   const navigate = useNavigate();
 
+  const [deploymentPoints, setDeploymentPoints] = useState([]);
+  const [totalInstancesCount, setTotalInstancesCount] = useState(0);
+  const [totalIntegrationsCount, setTotalIntegrationsCount] = useState(0);
+  const [paginationObj, setPaginationObj] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    limit: 10,
+    totalItems: 0,
+    hasPrevPage: false,
+    hasNextPage: false,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [frameworkFilter, setFrameworkFilter] = useState("All Frameworks");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await getAuditorDeploymentPoints({
+        page,
+        limit,
+        search: searchTerm,
+        frameworkFilter: frameworkFilter !== "All Frameworks" ? frameworkFilter : "",
+      });
+      if (res?.success) {
+        setDeploymentPoints(res.data?.results || []);
+        setTotalInstancesCount(res.data?.totalInstances || 0);
+        setTotalIntegrationsCount(res.data?.totalIntegrations || 0);
+        if (res.pagination) {
+          setPaginationObj({
+            ...res.pagination,
+            limit: res.pagination.itemsPerPage,
+            onLimitChange: (newLimit) => {
+              setLimit(newLimit);
+              setPage(1);
+            },
+            onPageChange: (newPage) => {
+              setPage(newPage);
+            }
+          });
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [page, limit, searchTerm, frameworkFilter]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleSearch = useCallback((term) => {
     setSearchTerm(term);
@@ -160,9 +158,11 @@ export default function DeploymentPoints() {
   }, []);
 
   const frameworkOptions = useMemo(() => {
-    const versions = new Set(DEPLOYMENT_POINTS.map((dp) => dp.frameworkVersion).filter(Boolean));
+    // Note: This ideally should come from a separate API or aggregated list if paginated.
+    // Assuming backend returns a small list or we just extract from current page for now.
+    const versions = new Set(deploymentPoints.map((dp) => dp.frameworkVersion).filter(Boolean));
     return ["All Frameworks", ...Array.from(versions)];
-  }, []);
+  }, [deploymentPoints]);
 
   const tableActions = useMemo(() => [
     {
@@ -180,39 +180,39 @@ export default function DeploymentPoints() {
     },
   ], [frameworkFilter, frameworkOptions]);
 
-  const filtered = useMemo(() => {
-    let list = DEPLOYMENT_POINTS;
-    if (searchTerm.trim()) {
-      const q = searchTerm.toLowerCase();
-      list = list.filter((dp) => dp.frameworkName.toLowerCase().includes(q));
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="grid gap-3 md:grid-cols-2">
+          <Skeleton className="h-48 w-full rounded" />
+          <Skeleton className="h-48 w-full rounded" />
+        </div>
+      );
     }
-    if (frameworkFilter !== "All Frameworks") {
-      list = list.filter((dp) => dp.frameworkVersion === frameworkFilter);
+
+    if (deploymentPoints.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+            <Icon name="folder" size="32px" className="opacity-50" />
+          </div>
+          <p className="text-base font-medium text-muted-foreground">
+            No deployment points found
+          </p>
+          <p className="text-sm text-muted-foreground/70 mt-1">
+            Try adjusting your search or filters
+          </p>
+        </div>
+      );
     }
-    return list;
-  }, [searchTerm, frameworkFilter]);
 
-  const paginatedData = useMemo(() => {
-    const start = (page - 1) * limit;
-    return filtered.slice(start, start + limit);
-  }, [filtered, page, limit]);
-
-  const totalPages = Math.ceil(filtered.length / limit);
-
-  const paginationObj = {
-    currentPage: page,
-    totalPages: totalPages,
-    limit: limit,
-    totalItems: filtered.length,
-    hasPrevPage: page > 1,
-    hasNextPage: page < totalPages,
-    onLimitChange: (newLimit) => {
-      setLimit(newLimit);
-      setPage(1);
-    },
-    onPageChange: (newPage) => {
-      setPage(newPage);
-    }
+    return (
+      <div className="">
+        {deploymentPoints.map((point, idx) => (
+          <DeploymentCard key={point.id || idx} point={point} />
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -223,7 +223,7 @@ export default function DeploymentPoints() {
           <p className="text-2xl font-extrabold text-foreground leading-tight">
             <span className="text-primary">Deployment Points</span>
             <span className="text-base font-semibold text-muted-foreground ml-2">
-              — {STATS.totalInstances} Total Control Instances
+              — {totalInstancesCount} Total Control Instances
             </span>
           </p>
           <p className="text-xs text-muted-foreground mt-1 max-w-xl">
@@ -243,12 +243,12 @@ export default function DeploymentPoints() {
           <div className="flex items-center gap-2 flex-wrap justify-end">
             <MiniStatBox
               label="Integrations"
-              value={STATS.integrations}
+              value={totalIntegrationsCount}
               valueColor="text-primary"
             />
             <MiniStatBox
               label="Total Instances"
-              value={STATS.totalInstances}
+              value={totalInstancesCount}
               valueColor="text-secondary"
             />
           </div>
@@ -276,26 +276,8 @@ export default function DeploymentPoints() {
         </div>
 
         {/* Cards grid */}
-        <div className="p-3">
-          {filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                <Icon name="folder" size="32px" className="opacity-50" />
-              </div>
-              <p className="text-base font-medium text-muted-foreground">
-                No deployment points found
-              </p>
-              <p className="text-sm text-muted-foreground/70 mt-1">
-                Try adjusting your search or filters
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-3 md:grid-cols-2">
-              {paginatedData.map((point) => (
-                <DeploymentCard key={point.id} point={point} />
-              ))}
-            </div>
-          )}
+        <div className="p-3 max-h-[60vh] overflow-y-auto">
+          {renderContent()}
         </div>
 
         {/* Pagination Footer */}

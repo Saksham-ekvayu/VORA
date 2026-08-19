@@ -13,6 +13,8 @@ from app.helpers import (
     process_live_streams,
     process_ai_insights,
     process_deployment_points,
+    process_deployment_points_detailed,
+    build_deployment_points_response,
 )
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import desc, select
@@ -552,4 +554,61 @@ async def get_auditor_extra_controls(
     except Exception:
         logger.exception("Error in extra controls")
         return server_error("Failed to fetch extra controls")
+
+@router.get("/deployment-points")
+async def get_auditor_deployment_points(
+    ctx: Annotated[RequestContext, Depends(get_context)],
+    page: Annotated[int, Query(alias="page")] = 1,
+    limit: Annotated[int, Query(alias="limit")] = 10,
+    search: Annotated[str, Query(alias="search")] = "",
+    framework_filter: Annotated[str, Query(alias="frameworkFilter")] = "",
+):
+    """Get detailed deployment points with control percentages."""
+    try:
+        async with session_scope() as session:
+            dfs = list((await session.execute(
+                select(DeploymentFramework).where(DeploymentFramework.tenantId == ctx.tenant_id)
+            )).scalars().all())
+
+            live_packages, gap_analysis_ids, merge_doc_ids = get_live_packages(dfs)
+
+            gap_analyses = list((await session.execute(
+                select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_analysis_ids))
+            )).scalars().all()) if gap_analysis_ids else []
+
+            merges = list((await session.execute(
+                select(DeploymentPackageMerge).where(DeploymentPackageMerge.id.in_(merge_doc_ids))
+            )).scalars().all()) if merge_doc_ids else []
+
+            assignment_ids = [
+                get_nested(ga.gapAnalysis or {}, "framework_assignment_id")
+                for ga in gap_analyses
+                if get_nested(ga.gapAnalysis or {}, "framework_assignment_id")
+            ]
+
+            assignments = list((await session.execute(
+                select(FrameworkAssignment).where(FrameworkAssignment.id.in_(assignment_ids))
+            )).scalars().all()) if assignment_ids else []
+
+            data = process_deployment_points_detailed(
+                gap_analyses, live_packages, merges, assignments
+            )
+            
+            paginated_data, total_items, total_instances, total_integrations = build_deployment_points_response(
+                data, search, framework_filter, page, limit
+            )
+            
+            return paginated(
+                {
+                    "results": paginated_data,
+                    "totalInstances": total_instances,
+                    "totalIntegrations": total_integrations
+                },
+                build_pagination_meta(clamp_page(page), clamp_limit(limit), total_items),
+                "Deployment points retrieved successfully"
+            )
+
+    except Exception:
+        logger.exception("Error in deployment points")
+        return server_error("Failed to fetch deployment points")
 

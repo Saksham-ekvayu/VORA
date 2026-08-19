@@ -1076,3 +1076,95 @@ def process_deployment_points(
 
         deployment_points.append({"name": fw_name, "version": fw_version, "count": dp_count})
     return deployment_points
+
+
+def _calculate_control_percentages(expected_controls: dict, actual_implemented: dict) -> tuple[int, list[dict]]:
+    total_dps = 0
+    controls_list = []
+    
+    for ctrl_id, expected in expected_controls.items():
+        req_dps = expected["required_dps"]
+        total_dps += req_dps
+        
+        impl_dps = actual_implemented.get(ctrl_id, 0)
+        
+        pct = 100
+        if req_dps > 0:
+            pct = round((min(impl_dps, req_dps) / req_dps) * 100)
+
+        controls_list.append({
+            "name": expected["name"],
+            "pct": pct
+        })
+        
+    return total_dps, controls_list
+
+
+def process_deployment_points_detailed(
+    gap_analyses: list[PackageGapAnalysis],
+    live_packages: list[dict],
+    merges: list[DeploymentPackageMerge],
+    assignments: list[FrameworkAssignment]
+) -> list[dict]:
+    """Calculate deployment points and their control percentages per framework."""
+    result = []
+
+    for lp in live_packages:
+        ga_id = str(get_nested(lp["pkg"], "gapAnalysis"))
+        merge_id = str(get_nested(lp["pkg"], "mergeDocument"))
+
+        ga = next((g for g in gap_analyses if str(g.id) == ga_id), None)
+        merge_doc = next((m for m in merges if str(m.id) == merge_id), None)
+
+        if not merge_doc:
+            continue
+
+        fw_id = str(lp["df"].id)
+        fw_name = lp["df"].frameworkName or UNKNOWN_FRAMEWORK
+        fw_version = lp["df"].frameworkVersion or ""
+
+        gap_data = ga.gapAnalysis or {} if ga else {}
+        fw_assignment_id = get_nested(gap_data, "framework_assignment_id")
+        
+        custom_controls = extract_custom_controls(fw_assignment_id, assignments) if fw_assignment_id else {}
+        expected_controls = extract_expected_controls(merge_doc, custom_controls)
+
+        gap_results = get_nested(gap_data, "deployment_gap_results") or []
+        actual_implemented = extract_actual_implemented(gap_results)
+
+        total_dps, controls_list = _calculate_control_percentages(expected_controls, actual_implemented)
+
+        result.append({
+            "id": fw_id,
+            "frameworkName": fw_name,
+            "frameworkVersion": fw_version,
+            "instances": total_dps,
+            "controls": controls_list
+        })
+        
+    return result
+
+
+def build_deployment_points_response(
+    dp_list: list[dict], search: str, framework_filter: str, page: int, limit: int
+) -> tuple[list[dict], int]:
+    filtered = dp_list
+    if search:
+        s = search.lower()
+        filtered = [dp for dp in filtered if s in (dp.get("frameworkName") or "").lower()]
+    if framework_filter and framework_filter != "All Frameworks":
+        filtered = [dp for dp in filtered if dp.get("frameworkVersion") == framework_filter]
+        
+    total_items = len(filtered)
+    total_instances = sum(dp.get("instances", 0) for dp in filtered)
+    total_integrations = len(dp_list)
+    
+    from vora_shared.query_builder import clamp_page, clamp_limit
+    safe_page = clamp_page(page)
+    safe_limit = clamp_limit(limit)
+    start = (safe_page - 1) * safe_limit
+    end = start + safe_limit
+    
+    return filtered[start:end], total_items, total_instances, total_integrations
+
+
