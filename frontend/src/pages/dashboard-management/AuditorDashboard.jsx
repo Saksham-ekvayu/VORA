@@ -121,15 +121,22 @@ export default function AuditorDashboard() {
   const { datePreset, startDate, endDate, handleDateChange } = useDateFilter();
   const [dashboardData, setDashboardData] = useState();
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
+      setError(null);
       try {
         const res = await getAuditorDashboardAnalytics({ startDate, endDate });
-        setDashboardData(res.data);
+        if (res?.success === false) {
+          setError(res?.message || "Failed to fetch analytics");
+        } else {
+          setDashboardData(res.data);
+        }
       } catch (err) {
         console.error("Failed to fetch auditor analytics", err);
+        setError(err?.message || "Failed to fetch analytics");
       } finally {
         setIsLoading(false);
       }
@@ -180,7 +187,15 @@ export default function AuditorDashboard() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {error ? (
+        <div className="bg-red-500/10 border border-red-500/20 text-red-600 rounded-md p-6 my-4 flex flex-col items-center justify-center gap-2">
+          <Icon name="triangle-alert" size="32px" />
+          <span className="font-medium text-lg">{error}</span>
+          <p className="text-sm opacity-80">Please try refreshing the page or checking your backend logs.</p>
+        </div>
+      ) : (
+        <>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {/* Overall Protection */}
         <TopStatCard
           title="Overall Protection"
@@ -604,6 +619,8 @@ export default function AuditorDashboard() {
           </div>
         </CardWrapper>
       </div>
+      </>
+      )}
     </div>
   );
 }
