@@ -14,13 +14,13 @@ export default function CriticalGaps() {
   usePageTitle("critical-gaps", "Critical Gaps");
 
   const navigate = useNavigate();
+  const urlParams = new URLSearchParams(globalThis.location.search);
 
   const {
     data: rawData,
     loading,
     pagination,
     searchTerm,
-    filters,
     onSearch,
     onFilterChange,
   } = useTableData(getAuditorCriticalGaps, {
@@ -28,7 +28,7 @@ export default function CriticalGaps() {
     defaultSortOrder: "desc",
   });
 
-  const severityFilter = filters?.severityFilter || "";
+  const severityFilter = urlParams.get("severityFilter") || "";
   const tableData = Array.isArray(rawData) ? [] : (rawData?.results || []);
   const stats = (Array.isArray(rawData) ? null : rawData?.stats) || {
     total: 0,
@@ -50,7 +50,7 @@ export default function CriticalGaps() {
       sortable: false,
       render: (value, row) => (
         <Link
-          to={`/dashboard/framework/${row.id}`}
+          to={`/deployment-frameworks/${row.id}`}
           className="hover:underline hover:text-primary"
         >
           {value}
@@ -63,7 +63,7 @@ export default function CriticalGaps() {
       sortable: false,
       render: (value, row) => (
         <Link
-          to={`/dashboard/framework/${row.id}`}
+          to={`/deployment-frameworks/${row.id}`}
           className="hover:underline hover:text-primary"
         >
           {value}

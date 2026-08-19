@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import DataTable from "@/components/data-table/DataTable";
 import CustomBadge from "@/components/custom/CustomBadge";
 import Icon from "@/components/custom/Icon";
@@ -31,10 +31,10 @@ export default function OverallProtection() {
   usePageTitle("overall-protection", "Overall Protection");
 
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const urlParams = new URLSearchParams(globalThis.location.search);
 
   // Extract custom filters from URL
-  const statusFilter = searchParams.get("statusFilter") || "";
+  const statusFilter = urlParams.get("statusFilter") || "";
 
   // Hook for table data
   const {

@@ -87,6 +87,20 @@ export async function getAuditorCriticalGaps(params) {
 }
 
 /**
+ * Get Auditor Controls Passing
+ * @param {Object} [params] - Query parameters
+ * @returns {Promise} Controls passing data
+ */
+export async function getAuditorControlsPassing(params) {
+  const query = new URLSearchParams(params).toString();
+  const endpoint = query
+    ? `${AUDITOR_BASE}/controls-passing?${query}`
+    : `${AUDITOR_BASE}/controls-passing`;
+
+  return apiRequest(endpoint, true);
+}
+
+/**
  * Get Customer Dashboard Analytics
  * @param {Object} [params] - Query parameters (startDate, endDate, frameworkId, etc)
  * @returns {Promise} Dashboard analytics data

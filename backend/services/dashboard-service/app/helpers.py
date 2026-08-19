@@ -21,6 +21,8 @@ from vora_shared.models import (
     EvidenceOutput,
 )
 
+UNKNOWN_FRAMEWORK = "Unknown Framework"
+
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
@@ -367,6 +369,14 @@ def calculate_gap_severity(failing_percentage: int, settings: Any) -> str:
     return "Low"
 
 
+def calculate_control_status(pass_rate: int, settings: Any) -> str:
+    if pass_rate == 100:
+        return "Passing"
+    if pass_rate >= (settings.compliance_score_medium * 100):
+        return "Warning"
+    return "Failing"
+
+
 def _create_active_gap(
     ctrl_id: str,
     expected: dict,
@@ -585,6 +595,143 @@ def build_critical_gaps_response(
     }
 
 
+def _process_package_controls(
+    expected_controls: dict,
+    actual_implemented: dict,
+    fw_name: str,
+    fw_version: str,
+    ga_created_at: Any,
+    settings: Any,
+    stats: dict
+) -> list[dict]:
+    formatted = []
+    for ctrl_id, expected in expected_controls.items():
+        stats["total"] += 1
+        req_dps = expected["required_dps"]
+        impl_dps = actual_implemented.get(ctrl_id, 0)
+        
+        if req_dps == 0:
+            pass_rate = 0
+            status = "Not Evaluated"
+            stats["not_evaluated"] += 1
+        else:
+            pass_rate = round(min((impl_dps / req_dps) * 100, 100))
+            status = calculate_control_status(pass_rate, settings)
+            if status == "Passing":
+                stats["passing"] += 1
+            elif status == "Warning":
+                stats["warning"] += 1
+            else:
+                stats["failing"] += 1
+
+        formatted.append({
+            "id": f"{fw_name}-{ctrl_id}",
+            "ctrlId": ctrl_id,
+            "control": expected["name"],
+            "frameworkVersion": fw_version,
+            "frameworkName": fw_name,
+            "section": expected.get("section", "General"),
+            "instances": req_dps,
+            "passRate": pass_rate,
+            "status": status,
+            "lastRun": ga_created_at.isoformat() if ga_created_at else None,
+        })
+    return formatted
+
+
+def _filter_and_sort_controls(formatted: list[dict], search: str, status_filter: str, sort_by: str, sort_order: str) -> list[dict]:
+    if status_filter:
+        s_filter = status_filter.lower()
+        formatted = [f for f in formatted if f["status"].lower() == s_filter]
+
+    if search:
+        q = search.lower()
+        formatted = [
+            f for f in formatted
+            if q in f["ctrlId"].lower() or q in f["control"].lower() or q in f["frameworkName"].lower()
+        ]
+
+    if sort_by:
+        reverse = sort_order == "desc"
+        formatted.sort(
+            key=lambda x: (
+                x.get(sort_by, 0) if isinstance(x.get(sort_by), (int, float)) else x.get(sort_by, "")
+            ),
+            reverse=reverse,
+        )
+    return formatted
+
+
+def build_controls_passing_response(
+    gap_analyses: list[PackageGapAnalysis],
+    live_packages: list[dict],
+    merges: list[DeploymentPackageMerge],
+    assignments: list[FrameworkAssignment],
+    settings: Any,
+    search: str,
+    status_filter: str,
+    sort_by: str,
+    sort_order: str,
+    page: int,
+    limit: int,
+) -> dict:
+    formatted = []
+    stats = {"passing": 0, "warning": 0, "failing": 0, "not_evaluated": 0, "total": 0}
+
+    for lp in live_packages:
+        ga_id = str(get_nested(lp["pkg"], "gapAnalysis"))
+        merge_id = str(get_nested(lp["pkg"], "mergeDocument"))
+
+        ga = next((g for g in gap_analyses if str(g.id) == ga_id), None)
+        merge_doc = next((m for m in merges if str(m.id) == merge_id), None)
+
+        if not ga or not merge_doc:
+            continue
+
+        gap_data = ga.gapAnalysis or {}
+        fw_assignment_id = get_nested(gap_data, "framework_assignment_id")
+        fw_name = lp["df"].frameworkName or UNKNOWN_FRAMEWORK
+        fw_version = lp["df"].frameworkVersion or ""
+
+        custom_controls = extract_custom_controls(fw_assignment_id, assignments)
+        expected_controls = extract_expected_controls(merge_doc, custom_controls)
+
+        gap_results = get_nested(gap_data, "deployment_gap_results") or []
+        actual_implemented = extract_actual_implemented(gap_results)
+
+        formatted.extend(_process_package_controls(
+            expected_controls, actual_implemented, fw_name, fw_version, ga.createdAt if ga else None, settings, stats
+        ))
+
+    formatted = _filter_and_sort_controls(formatted, search, status_filter, sort_by, sort_order)
+
+    total = len(formatted)
+    
+    from vora_shared.query_builder import clamp_page, clamp_limit
+    safe_page = clamp_page(page)
+    safe_limit = clamp_limit(limit)
+    start = (safe_page - 1) * safe_limit
+    end = start + safe_limit
+
+    overall_pass_rate = 0
+    if stats["total"] > 0:
+        overall_pass_rate = round((stats["passing"] / stats["total"]) * 100)
+
+    return {
+        "results": formatted[start:end],
+        "total": total,
+        "stats": {
+            "passing": stats["passing"],
+            "failing": stats["failing"],
+            "warning": stats["warning"],
+            "notEvaluated": stats["not_evaluated"],
+            "total": stats["total"],
+            "passRate": overall_pass_rate,
+            "failingOrEvidence": stats["failing"] + stats["warning"],
+        }
+    }
+
+
 def filter_and_sort_rows(
     rows: list[dict], search: str, status_filter: str, sort_by: str, sort_order: str
 ) -> list[dict]:
@@ -720,7 +867,7 @@ def process_gap_analyses(
         df_id = get_nested(gap_data, "deployment_framework_id")
         fw_assignment_id = get_nested(gap_data, "framework_assignment_id")
 
-        fw_name = lp["df"].frameworkName or "Unknown Framework"
+        fw_name = lp["df"].frameworkName or UNKNOWN_FRAMEWORK
         fw_version = lp["df"].frameworkVersion or ""
 
         custom_controls = extract_custom_controls(fw_assignment_id, assignments)
@@ -870,7 +1017,7 @@ def process_deployment_points(
     for pm in merges:
         dp_count = _get_dp_count_for_merge(pm)
 
-        fw_name = "Unknown Framework"
+        fw_name = UNKNOWN_FRAMEWORK
         fw_version = ""
         for lp in live_packages:
             if str(get_nested(lp["pkg"], "mergeDocument")) == str(pm.id):
