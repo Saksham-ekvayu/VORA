@@ -596,7 +596,6 @@ def build_critical_gaps_response(
     return {
         "results": formatted[start:end],
         "stats": {
-            "description": "Active control failures exceeding risk tolerance thresholds. Each gap requires remediation evidence before the next audit cycle.",
             "priorities": {
                 "high": high,
                 "medium": medium,

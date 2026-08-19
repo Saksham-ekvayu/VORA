@@ -57,6 +57,7 @@ export default function DataTable({
   emptyMessage = "No data found",
   renderActions,
   searchPlaceholder = "Search...",
+  error = null,
   onRefresh,
   searchTerm: externalSearchTerm = "",
   onClearSearch,
@@ -147,15 +148,27 @@ export default function DataTable({
         <TableRow key="empty-state" className="hover:bg-transparent">
           <TableCell colSpan={emptyColSpan} className="text-center py-12 px-4">
             <div className="flex flex-col items-center gap-4 text-muted-foreground">
-              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-                <Icon name="folder" size="32px" className="opacity-50" />
+              <div
+                className={`w-16 h-16 rounded-full flex items-center justify-center ${error ? "bg-red-500/10 text-red-500" : "bg-muted"}`}
+              >
+                <Icon
+                  name={error ? "triangle-alert" : "folder"}
+                  size="32px"
+                  className={error ? "" : "opacity-50"}
+                />
               </div>
               <div className="text-center">
-                <p className="text-base font-medium text-muted-foreground">
+                <p
+                  className={`text-base font-medium ${error ? "text-red-500" : "text-muted-foreground"}`}
+                >
                   {emptyMessage}
                 </p>
-                <p className="text-sm text-muted-foreground/70 mt-1">
-                  Try adjusting your search or filters
+                <p
+                  className={`text-sm mt-1 ${error ? "text-red-500/80" : "text-muted-foreground/70"}`}
+                >
+                  {error
+                    ? "Please check your backend logs or try again later"
+                    : "Try adjusting your search or filters"}
                 </p>
               </div>
             </div>

@@ -144,6 +144,7 @@ async def get_auditor_dashboard_analytics(
                 total_controls_overall,
                 passing_controls_overall,
                 extra_controls_overall,
+                _, # Ignore extra_controls_list
                 critical_gaps,
                 active_gaps,
                 framework_health,
@@ -293,6 +294,7 @@ async def get_auditor_overall_protection(
                 _,
                 _,
                 _,
+                _, # Ignore extra_controls_list
                 _,
                 framework_health,
                 total_dps_overall,
@@ -412,7 +414,7 @@ async def get_auditor_critical_gaps(
             res = process_gap_analyses(
                 gap_analyses, live_packages, historical_gap_analyses, merges, assignments, settings
             )
-            active_gaps = res[4]
+            active_gaps = res[5]
 
             # Build and paginate rows using helper
             data, total_items = build_critical_gaps_response(

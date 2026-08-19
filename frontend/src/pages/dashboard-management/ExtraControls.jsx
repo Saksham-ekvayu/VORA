@@ -84,13 +84,17 @@ export default function ExtraControls() {
       <div className="rounded border border-border bg-linear-to-br from-background to-card p-3 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <p className="text-2xl font-extrabold text-foreground leading-tight">
-            <span className="text-amber-400">{pagination?.totalItems || 0}</span>{" "}
+            <span className="text-amber-400">
+              {pagination?.totalItems || 0}
+            </span>{" "}
             <span className="text-base font-semibold">
               Controls Above Standard Requirements
             </span>
           </p>
           <p className="text-xs text-muted-foreground">
-            Your organization implements additional controls beyond mandatory framework minimums. These enhance your security posture and demonstrate proactive compliance maturity.
+            Your organization implements additional controls beyond mandatory
+            framework minimums. These enhance your security posture and
+            demonstrate proactive compliance maturity.
           </p>
         </div>
 
