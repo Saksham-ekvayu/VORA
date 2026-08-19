@@ -29,17 +29,27 @@ export default function CriticalGaps() {
   });
 
   const severityFilter = urlParams.get("severityFilter") || "";
-  const tableData = Array.isArray(rawData) ? [] : (rawData?.results || []);
+  const tableData = Array.isArray(rawData) ? [] : rawData?.results || [];
   const stats = (Array.isArray(rawData) ? null : rawData?.stats) || {
     total: 0,
-    description: "Active control failures exceeding risk tolerance thresholds. Each gap requires remediation evidence before the next audit cycle.",
-    priorities: { high: 0, medium: 0, low: 0 }
+    description:
+      "Active control failures exceeding risk tolerance thresholds. Each gap requires remediation evidence before the next audit cycle.",
+    priorities: { high: 0, medium: 0, low: 0 },
   };
 
   const priorityPills = [
-    { label: `${stats.priorities.high} High Priority`, color: "bg-red-500/20 text-red-400 border border-red-500/30" },
-    { label: `${stats.priorities.medium} Medium Priority`, color: "bg-amber-500/20 text-amber-400 border border-amber-500/30" },
-    { label: `${stats.priorities.low} Low Priority`, color: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" },
+    {
+      label: `${stats.priorities.high} High Priority`,
+      color: "bg-red-500/20 text-red-400 border border-red-500/30",
+    },
+    {
+      label: `${stats.priorities.medium} Medium Priority`,
+      color: "bg-amber-500/20 text-amber-400 border border-amber-500/30",
+    },
+    {
+      label: `${stats.priorities.low} Low Priority`,
+      color: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30",
+    },
   ];
 
   // ── Column definitions ──────────────────────────────────────────────────────
@@ -90,9 +100,7 @@ export default function CriticalGaps() {
       key: "instances",
       label: "Instances",
       sortable: false,
-      render: (value) => (
-        <span className="text-center block">{value}</span>
-      ),
+      render: (value) => <span className="text-center block">{value}</span>,
     },
     {
       key: "failingPct",
@@ -119,14 +127,23 @@ export default function CriticalGaps() {
       label: severityFilter || "All Severities",
       triggerClassName: "w-fit min-w-32",
       options: [
-        { label: "All Severities", onClick: () => onFilterChange("severityFilter", "") },
+        {
+          label: "All Severities",
+          onClick: () => onFilterChange("severityFilter", ""),
+        },
         {
           label: "High",
           separatorBefore: true,
           onClick: () => onFilterChange("severityFilter", "High"),
         },
-        { label: "Medium", onClick: () => onFilterChange("severityFilter", "Medium") },
-        { label: "Low", onClick: () => onFilterChange("severityFilter", "Low") },
+        {
+          label: "Medium",
+          onClick: () => onFilterChange("severityFilter", "Medium"),
+        },
+        {
+          label: "Low",
+          onClick: () => onFilterChange("severityFilter", "Low"),
+        },
       ],
     },
   ];

@@ -19,9 +19,7 @@ function StatBox({ label, value, valueColor }) {
         {label}
       </span>
       <span className="w-px h-3.5 bg-border" />
-      <span className={`text-sm font-extrabold ${valueColor}`}>
-        {value}
-      </span>
+      <span className={`text-sm font-extrabold ${valueColor}`}>{value}</span>
     </div>
   );
 }
@@ -49,7 +47,7 @@ export default function ControlsPassing() {
     emptyMessage: "No controls found",
   });
 
-  const tableData = Array.isArray(rawData) ? [] : (rawData?.results || []);
+  const tableData = Array.isArray(rawData) ? [] : rawData?.results || [];
   const STATS = (Array.isArray(rawData) ? null : rawData?.stats) || {
     passing: 0,
     failing: 0,
