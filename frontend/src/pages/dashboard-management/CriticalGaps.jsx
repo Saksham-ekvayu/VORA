@@ -31,8 +31,6 @@ export default function CriticalGaps() {
   const severityFilter = urlParams.get("severityFilter") || "";
   const tableData = Array.isArray(rawData) ? [] : rawData?.results || [];
   const stats = (Array.isArray(rawData) ? null : rawData?.stats) || {
-    description:
-      "Active control failures exceeding risk tolerance thresholds. Each gap requires remediation evidence before the next audit cycle.",
     priorities: { high: 0, medium: 0, low: 0 },
   };
 
@@ -160,7 +158,8 @@ export default function CriticalGaps() {
             </span>
           </p>
           <p className="text-xs text-muted-foreground mt-1 max-w-xl">
-            {stats.description}
+            Active control failures exceeding risk tolerance thresholds. Each
+            gap requires remediation evidence before the next audit cycle.
           </p>
         </div>
 

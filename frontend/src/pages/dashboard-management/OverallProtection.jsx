@@ -44,6 +44,8 @@ export default function OverallProtection() {
     searchTerm,
     onSearch,
     onFilterChange,
+    emptyMessage,
+    error,
   } = useTableData(getAuditorOverallProtection, {
     defaultSortBy: "framework",
     defaultSortOrder: "asc",
@@ -245,11 +247,8 @@ export default function OverallProtection() {
         pagination={pagination}
         headerActions={getHeaderActions()}
         searchPlaceholder="Search framework..."
-        emptyMessage={
-          searchTerm || statusFilter
-            ? "No frameworks match your filters"
-            : "No framework data found"
-        }
+        emptyMessage={emptyMessage}
+        error={error}
       />
     </div>
   );

@@ -101,6 +101,20 @@ export async function getAuditorControlsPassing(params) {
 }
 
 /**
+ * Get Auditor Extra Controls
+ * @param {Object} [params] - Query parameters
+ * @returns {Promise} Extra controls data
+ */
+export async function getAuditorExtraControls(params) {
+  const query = new URLSearchParams(params).toString();
+  const endpoint = query
+    ? `${AUDITOR_BASE}/extra-controls?${query}`
+    : `${AUDITOR_BASE}/extra-controls`;
+
+  return apiRequest(endpoint, true);
+}
+
+/**
  * Get Customer Dashboard Analytics
  * @param {Object} [params] - Query parameters (startDate, endDate, frameworkId, etc)
  * @returns {Promise} Dashboard analytics data

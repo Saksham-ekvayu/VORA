@@ -3,6 +3,8 @@ from typing import Annotated
 
 from app.helpers import (
     build_controls_passing_response,
+    build_critical_gaps_response,
+    build_extra_controls_response,
     build_overall_protection_rows,
     filter_and_sort_rows,
     get_live_packages,
@@ -142,6 +144,7 @@ async def get_auditor_dashboard_analytics(
                 total_controls_overall,
                 passing_controls_overall,
                 extra_controls_overall,
+                _, # Ignore extra_controls_list
                 critical_gaps,
                 active_gaps,
                 framework_health,
@@ -291,6 +294,7 @@ async def get_auditor_overall_protection(
                 _,
                 _,
                 _,
+                _, # Ignore extra_controls_list
                 _,
                 framework_health,
                 total_dps_overall,
@@ -410,7 +414,7 @@ async def get_auditor_critical_gaps(
             res = process_gap_analyses(
                 gap_analyses, live_packages, historical_gap_analyses, merges, assignments, settings
             )
-            active_gaps = res[4]
+            active_gaps = res[5]
 
             # Build and paginate rows using helper
             data, total_items = build_critical_gaps_response(
@@ -490,3 +494,62 @@ async def get_auditor_controls_passing(
     except Exception:
         logger.exception("Error in controls passing")
         return server_error("Failed to fetch controls passing")
+
+
+@router.get("/extra-controls")
+async def get_auditor_extra_controls(
+    ctx: Annotated[RequestContext, Depends(get_context)],
+    page: Annotated[int, Query(alias="page")] = 1,
+    limit: Annotated[int, Query(alias="limit")] = 10,
+    search: Annotated[str, Query(alias="search")] = "",
+    sort_by: Annotated[str, Query(alias="sortBy")] = "createdAt",
+    sort_order: Annotated[str, Query(alias="sortOrder")] = "desc",
+):
+    """Get auditor extra controls for dashboard table."""
+    try:
+        settings = get_settings()
+        
+        async with session_scope() as session:
+            dfs = list((await session.execute(
+                select(DeploymentFramework).where(DeploymentFramework.tenantId == ctx.tenant_id)
+            )).scalars().all())
+
+            live_packages, gap_analysis_ids, merge_doc_ids = get_live_packages(dfs)
+
+            gap_analyses = list((await session.execute(
+                select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_analysis_ids))
+            )).scalars().all()) if gap_analysis_ids else []
+
+            merges = list((await session.execute(
+                select(DeploymentPackageMerge).where(DeploymentPackageMerge.id.in_(merge_doc_ids))
+            )).scalars().all()) if merge_doc_ids else []
+
+            assignment_ids = [
+                get_nested(ga.gapAnalysis or {}, "framework_assignment_id")
+                for ga in gap_analyses
+                if get_nested(ga.gapAnalysis or {}, "framework_assignment_id")
+            ]
+
+            assignments = list((await session.execute(
+                select(FrameworkAssignment).where(FrameworkAssignment.id.in_(assignment_ids))
+            )).scalars().all()) if assignment_ids else []
+
+            res = process_gap_analyses(
+                gap_analyses, live_packages, [], merges, assignments, settings
+            )
+            extra_controls_list = res[3]
+
+            data, total_items = build_extra_controls_response(
+                extra_controls_list, search, sort_by, sort_order, page, limit
+            )
+            
+            return paginated(
+                data,
+                build_pagination_meta(clamp_page(page), clamp_limit(limit), total_items),
+                "Extra controls retrieved successfully"
+            )
+
+    except Exception:
+        logger.exception("Error in extra controls")
+        return server_error("Failed to fetch extra controls")
+

@@ -387,6 +387,7 @@ def _create_active_gap(
     fw_id: str,
     fw_name: str,
     fw_version: str,
+    pkg_version: str,
     settings: Any,
 ) -> dict:
     failing_percentage = 100
@@ -400,6 +401,7 @@ def _create_active_gap(
         "frameworkId": fw_id,
         "framework": fw_name,
         "version": fw_version,
+        "packageVersion": pkg_version,
         "control": expected["name"],
         "description": expected["description"],
         "instances": req_dps,
@@ -418,6 +420,7 @@ def evaluate_controls(
     fw_id: str,
     fw_name: str,
     fw_version: str,
+    pkg_version: str,
     settings: Any,
 ) -> tuple[int, int, int, int, int, int, int, list[dict], int]:
     """Evaluate controls against implemented DPs and return aggregated metrics."""
@@ -426,16 +429,26 @@ def evaluate_controls(
     fw_total_dps = 0
     fw_implemented_dps = 0
     fw_extra_controls = 0
+    fw_extra_controls_list = []
     fw_critical_gaps = 0
     fw_active_gaps = []
     fw_prev_implemented_dps = 0
 
     for ctrl_id, expected in expected_controls.items():
         fw_total_controls += 1
+        req_dps = expected["required_dps"]
+
         if expected["is_extra"]:
             fw_extra_controls += 1
+            fw_extra_controls_list.append({
+                "id": fw_id,
+                "ctrlId": ctrl_id,
+                "control": expected["name"],
+                "frameworkVersion": fw_version,
+                "frameworkName": fw_name,
+                "deploymentPoints": req_dps,
+            })
 
-        req_dps = expected["required_dps"]
         impl_dps = actual_implemented.get(ctrl_id, 0)
         prev_impl = prev_actual_implemented.get(ctrl_id, 0) if prev_actual_implemented is not None else 0
 
@@ -449,7 +462,7 @@ def evaluate_controls(
             fw_critical_gaps += 1
             fw_active_gaps.append(
                 _create_active_gap(
-                    ctrl_id, expected, req_dps, impl_dps, prev_actual_implemented, ga, fw_id, fw_name, fw_version, settings
+                    ctrl_id, expected, req_dps, impl_dps, prev_actual_implemented, ga, fw_id, fw_name, fw_version, pkg_version, settings
                 )
             )
 
@@ -459,6 +472,7 @@ def evaluate_controls(
         fw_total_dps,
         fw_implemented_dps,
         fw_extra_controls,
+        fw_extra_controls_list,
         fw_critical_gaps,
         fw_active_gaps,
         fw_prev_implemented_dps,
@@ -524,7 +538,7 @@ def build_overall_protection_rows(framework_health: list[dict], settings: Any) -
 
 def build_critical_gaps_response(
     active_gaps: list[dict], search: str, severity_filter: str, sort_by: str, sort_order: str, page: int, limit: int
-) -> dict:
+) -> tuple:
     formatted = []
     high = 0
     medium = 0
@@ -585,7 +599,6 @@ def build_critical_gaps_response(
     return {
         "results": formatted[start:end],
         "stats": {
-            "description": "Active control failures exceeding risk tolerance thresholds. Each gap requires remediation evidence before the next audit cycle.",
             "priorities": {
                 "high": high,
                 "medium": medium,
@@ -593,6 +606,38 @@ def build_critical_gaps_response(
             }
         }
     }, total
+
+
+def build_extra_controls_response(
+    extra_controls: list[dict], search: str, sort_by: str, sort_order: str, page: int, limit: int
+) -> tuple:
+    formatted = list(extra_controls)
+    
+    if search:
+        q = search.lower()
+        formatted = [
+            f for f in formatted 
+            if q in str(f.get("ctrlId", "")).lower() or q in str(f.get("control", "")).lower() or q in str(f.get("frameworkName", "")).lower()
+        ]
+        
+    if sort_by:
+        reverse = sort_order == "desc"
+        formatted.sort(
+            key=lambda x: (
+                x.get(sort_by, 0) if isinstance(x.get(sort_by), (int, float)) else str(x.get(sort_by, ""))
+            ),
+            reverse=reverse,
+        )
+        
+    total = len(formatted)
+    
+    from vora_shared.query_builder import clamp_page, clamp_limit
+    safe_page = clamp_page(page)
+    safe_limit = clamp_limit(limit)
+    start = (safe_page - 1) * safe_limit
+    end = start + safe_limit
+    
+    return formatted[start:end], total
 
 
 def _process_package_controls(
@@ -675,7 +720,7 @@ def build_controls_passing_response(
     sort_order: str,
     page: int,
     limit: int,
-) -> dict:
+) -> tuple:
     formatted = []
     stats = {"passing": 0, "warning": 0, "failing": 0, "not_evaluated": 0, "total": 0}
 
@@ -845,6 +890,7 @@ def process_gap_analyses(
     total_controls_overall = 0
     passing_controls_overall = 0
     extra_controls_overall = 0
+    extra_controls_list = []
     critical_gaps = 0
     active_gaps = []
     framework_health = []
@@ -868,6 +914,7 @@ def process_gap_analyses(
 
         fw_name = lp["df"].frameworkName or UNKNOWN_FRAMEWORK
         fw_version = lp["df"].frameworkVersion or ""
+        pkg_version = str(get_nested(lp["pkg"], "packageVersion") or "")
 
         custom_controls = extract_custom_controls(fw_assignment_id, assignments)
         expected_controls = extract_expected_controls(merge_doc, custom_controls)
@@ -883,16 +930,18 @@ def process_gap_analyses(
             fw_total_dps,
             fw_implemented_dps,
             fw_extra_controls,
+            fw_extra_controls_list,
             fw_critical_gaps,
             fw_active_gaps,
             fw_prev_implemented_dps,
         ) = evaluate_controls(
-            expected_controls, actual_implemented, prev_actual_implemented, ga, str(lp["df"].id), fw_name, fw_version, settings
+            expected_controls, actual_implemented, prev_actual_implemented, ga, str(lp["df"].id), fw_name, fw_version, pkg_version, settings
         )
 
         total_controls_overall += fw_total_controls
         passing_controls_overall += fw_passing_controls
         extra_controls_overall += fw_extra_controls
+        extra_controls_list.extend(fw_extra_controls_list)
         total_dps_overall += fw_total_dps
         implemented_dps_overall += fw_implemented_dps
         if prev_actual_implemented is not None:
@@ -925,6 +974,7 @@ def process_gap_analyses(
         total_controls_overall,
         passing_controls_overall,
         extra_controls_overall,
+        extra_controls_list,
         critical_gaps,
         active_gaps,
         framework_health,
