@@ -2,110 +2,80 @@
 import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Icon from "@/components/custom/Icon";
-import CustomBadge from "@/components/custom/CustomBadge";
-import TableHeaderActions from "@/components/custom/TableHeaderActions";
 import SearchInput from "@/components/custom/SearchInput";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { Button } from "@/components/ui/button";
 
 // ─── Static mock data ─────────────────────────────────────────────────────────
 
 const STATS = {
   integrations: 4,
   totalInstances: 581,
-  online: "4 / 4",
-  description:
-    "Control coverage across all integrated infrastructure and identity platforms. Each deployment point hosts multiple control instances that are continuously evaluated.",
 };
 
 const DEPLOYMENT_POINTS = [
   {
-    id: "aws",
-    name: "AWS Infrastructure",
-    framework: "ISO 27001",
-    icon: "cloud",
-    iconColor: "text-blue-400",
-    iconBg: "bg-blue-500/10",
-    status: "Online",
+    id: "5871a270-8439-4d0d-b810-4266b5098397",
+    frameworkName: "Information Security Management System",
+    frameworkVersion: "ISO-27001:2022",
     instances: 234,
-    subtitle: "12 services monitored",
     controls: [
-      { name: "IAM Policies", pct: 88, color: "bg-blue-400" },
-      { name: "S3 Bucket Config", pct: 93, color: "bg-emerald-400" },
-      { name: "Security Groups", pct: 79, color: "bg-amber-400" },
-      { name: "CloudTrail Logging", pct: 72, color: "bg-red-400" },
+      { name: "IAM Policies", pct: 88 },
+      { name: "S3 Bucket Config", pct: 93 },
+      { name: "Security Groups", pct: 79 },
+      { name: "CloudTrail Logging", pct: 72 },
     ],
   },
   {
-    id: "iam",
-    name: "IAM / Okta",
-    framework: "ISO 27001",
-    icon: "key",
-    iconColor: "text-amber-400",
-    iconBg: "bg-amber-500/10",
-    status: "Online",
+    id: "032594ab-079f-4004-871f-0c26e7760865",
+    frameworkName: "Information Security Management System",
+    frameworkVersion: "ISO-27001:2022",
     instances: 189,
-    subtitle: "8 identity domains",
     controls: [
-      { name: "MFA Enforcement", pct: 82, color: "bg-emerald-400" },
-      { name: "Password Policy", pct: 95, color: "bg-emerald-400" },
-      { name: "Privileged Access", pct: 68, color: "bg-amber-400" },
-      { name: "Lifecycle Mgmt", pct: 91, color: "bg-emerald-400" },
+      { name: "MFA Enforcement", pct: 82 },
+      { name: "Password Policy", pct: 95 },
+      { name: "Privileged Access", pct: 68 },
+      { name: "Lifecycle Mgmt", pct: 91 },
     ],
   },
   {
-    id: "logs",
-    name: "Application Logs",
-    framework: "NIST CSF",
-    icon: "document",
-    iconColor: "text-violet-400",
-    iconBg: "bg-violet-500/10",
-    status: "Online",
+    id: "4e317264-db50-479c-b34d-43da6608f381",
+    frameworkName: "Cybersecurity Framework",
+    frameworkVersion: "NIST-CSF:2020",
     instances: 100,
-    subtitle: "6 log sources",
     controls: [
-      { name: "Log Retention", pct: 100, color: "bg-emerald-400" },
-      { name: "Integrity Checks", pct: 78, color: "bg-violet-400" },
-      { name: "SIEM Integration", pct: 85, color: "bg-emerald-400" },
+      { name: "Log Retention", pct: 100 },
+      { name: "Integrity Checks", pct: 78 },
+      { name: "SIEM Integration", pct: 85 },
     ],
   },
   {
-    id: "hr",
-    name: "HR / Admin",
-    framework: "NIST CSF",
-    icon: "users",
-    iconColor: "text-emerald-400",
-    iconBg: "bg-emerald-500/10",
-    status: "Online",
+    id: "0510024e-39cc-4884-ac7a-84388f869ac3",
+    frameworkName: "Cybersecurity Framework",
+    frameworkVersion: "NIST-CSF:2020",
     instances: 58,
-    subtitle: "HR platform + admin tools",
     controls: [
-      { name: "Onboarding Controls", pct: 90, color: "bg-emerald-400" },
-      { name: "Offboarding Checks", pct: 74, color: "bg-amber-400" },
-      { name: "Background Vetting", pct: 100, color: "bg-emerald-400" },
+      { name: "Onboarding Controls", pct: 90 },
+      { name: "Offboarding Checks", pct: 74 },
+      { name: "Background Vetting", pct: 100 },
     ],
   },
 ];
-
-const FRAMEWORK_NAMES = Array.from(
-  new Set(DEPLOYMENT_POINTS.map((dp) => dp.framework))
-);
-const STATUS_NAMES = Array.from(
-  new Set(DEPLOYMENT_POINTS.map((dp) => dp.status))
-);
 
 // ─── Stat Mini Box ────────────────────────────────────────────────────────────
 
 function MiniStatBox({ label, value, valueColor }) {
   return (
-    <div className="flex flex-col items-center justify-center px-4 py-2 rounded border border-border bg-accent min-w-25">
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1 text-center">
+    <div className="flex items-center gap-2.5 px-3 py-1.5 rounded border border-border bg-card shadow-sm">
+      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
         {label}
-      </p>
-      <p
-        className={`text-2xl font-bold leading-none ${valueColor ?? "text-foreground"}`}
+      </span>
+      <span className="w-px h-3.5 bg-border" />
+      <span
+        className={`text-sm font-extrabold ${valueColor ?? "text-foreground"}`}
       >
         {value}
-      </p>
+      </span>
     </div>
   );
 }
@@ -133,30 +103,37 @@ function ControlBar({ name, pct, color }) {
 
 // ─── Deployment point card ────────────────────────────────────────────────────
 
+const BAR_COLORS = [
+  "bg-blue-400",
+  "bg-emerald-400",
+  "bg-amber-400",
+  "bg-violet-400",
+  "bg-rose-400",
+  "bg-cyan-400",
+  "bg-indigo-400"
+];
+
 function DeploymentCard({ point }) {
   return (
     <div className="rounded border border-border bg-linear-to-br from-background to-card p-3 flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div
-            className={`w-7 h-7 rounded flex items-center justify-center ${point.iconBg}`}
-          >
-            <Icon name={point.icon} size="16px" className={point.iconColor} />
+          <div className="w-7 h-7 rounded flex items-center justify-center bg-primary/10">
+            <Icon name="layers" size="16px" className="text-primary" />
           </div>
           <div>
-            <p className={`text-sm font-bold ${point.iconColor}`}>
-              {point.name}
+            <p className="text-sm font-bold text-primary">
+              {point.frameworkName} - ({point.frameworkVersion})
             </p>
-            <p className="text-[10px] text-muted-foreground">
-              {point.instances} control instances · {point.subtitle}
+            <p className="text-xs text-muted-foreground">
+              {point.instances} control instances
             </p>
           </div>
         </div>
-        <CustomBadge status={point.status} size="xs" />
       </div>
       <div className="space-y-2">
-        {point.controls.map((ctrl) => (
-          <ControlBar key={ctrl.name} {...ctrl} />
+        {point.controls.map((ctrl, idx) => (
+          <ControlBar key={ctrl.name} {...ctrl} color={ctrl.color || BAR_COLORS[idx % BAR_COLORS.length]} />
         ))}
       </div>
     </div>
@@ -171,75 +148,22 @@ export default function DeploymentPoints() {
   const navigate = useNavigate();
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [frameworkFilter, setFrameworkFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
 
   const handleSearch = useCallback((term) => setSearchTerm(term), []);
-  const handleFrameworkFilter = useCallback(
-    (val) => setFrameworkFilter(val),
-    []
-  );
-  const handleStatusFilter = useCallback((val) => setStatusFilter(val), []);
 
   const filtered = useMemo(() => {
     let list = DEPLOYMENT_POINTS;
-    if (frameworkFilter)
-      list = list.filter((dp) => dp.framework === frameworkFilter);
-    if (statusFilter) list = list.filter((dp) => dp.status === statusFilter);
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase();
-      list = list.filter((dp) => dp.name.toLowerCase().includes(q));
+      list = list.filter((dp) => dp.frameworkName.toLowerCase().includes(q));
     }
     return list;
-  }, [searchTerm, frameworkFilter, statusFilter]);
-
-  const headerActions = [
-    {
-      type: "dropdown",
-      label: frameworkFilter || "All Frameworks",
-      triggerClassName: "w-fit min-w-36",
-      options: [
-        { label: "All Frameworks", onClick: () => handleFrameworkFilter("") },
-        ...FRAMEWORK_NAMES.map((fw, i) => ({
-          label: fw,
-          separatorBefore: i === 0,
-          onClick: () => handleFrameworkFilter(fw),
-        })),
-      ],
-    },
-    {
-      type: "dropdown",
-      label: statusFilter || "All Status",
-      triggerClassName: "w-fit min-w-28",
-      options: [
-        { label: "All Status", onClick: () => handleStatusFilter("") },
-        ...STATUS_NAMES.map((s, i) => ({
-          label: s,
-          separatorBefore: i === 0,
-          onClick: () => handleStatusFilter(s),
-        })),
-      ],
-    },
-  ];
+  }, [searchTerm]);
 
   return (
     <div className="space-y-3 my-2">
-      {/* Page header */}
-      <div className="flex items-center justify-between px-1">
-        <h2 className="text-lg font-semibold text-foreground">
-          Deployment Points
-        </h2>
-        <button
-          type="button"
-          onClick={() => navigate("/dashboard")}
-          className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-primary border border-border bg-accent hover:border-primary rounded px-3 py-1.5 transition-colors"
-        >
-          <Icon name="arrow-left" size="13px" /> Back to Dashboard
-        </button>
-      </div>
-
       {/* Hero banner */}
-      <div className="rounded border border-border bg-linear-to-br from-background to-card p-3 flex flex-col sm:flex-row sm:items-center gap-4">
+      <div className="rounded border border-border bg-linear-to-br from-background to-card shadow-lg p-3 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <p className="text-2xl font-extrabold text-foreground leading-tight">
             <span className="text-primary">Deployment Points</span>
@@ -248,25 +172,31 @@ export default function DeploymentPoints() {
             </span>
           </p>
           <p className="text-xs text-muted-foreground mt-1 max-w-xl">
-            {STATS.description}
+            Control coverage across all integrated infrastructure and identity
+            platforms. Each deployment point hosts multiple control instances
+            that are continuously evaluated.
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap shrink-0">
-          <MiniStatBox
-            label="Integrations"
-            value={STATS.integrations}
-            valueColor="text-foreground"
-          />
-          <MiniStatBox
-            label="Total Instances"
-            value={STATS.totalInstances}
-            valueColor="text-foreground"
-          />
-          <MiniStatBox
-            label="Online"
-            value={STATS.online}
-            valueColor="text-emerald-400"
-          />
+        <div className="flex flex-col items-end gap-3 shrink-0">
+          <Button
+            size="xs"
+            variant="outline"
+            onClick={() => navigate("/dashboard")}
+          >
+            <Icon name="arrow-left" size="13px" /> Back to Dashboard
+          </Button>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <MiniStatBox
+              label="Integrations"
+              value={STATS.integrations}
+              valueColor="text-primary"
+            />
+            <MiniStatBox
+              label="Total Instances"
+              value={STATS.totalInstances}
+              valueColor="text-secondary"
+            />
+          </div>
         </div>
       </div>
 
@@ -284,9 +214,6 @@ export default function DeploymentPoints() {
               placeholder="Search deployment points..."
               className="flex-1"
             />
-          </div>
-          <div className="flex items-center gap-2">
-            <TableHeaderActions actions={headerActions} />
           </div>
         </div>
 
