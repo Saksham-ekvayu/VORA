@@ -1,17 +1,17 @@
 /* eslint-disable react/prop-types */
 import { useState, useMemo, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import DataTable from "@/components/data-table/DataTable";
 import Icon from "@/components/custom/Icon";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
+import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
 
 // ─── Static mock data ─────────────────────────────────────────────────────────
 
 const STATS = {
   total: 43,
-  description:
-    "Your organization implements 43 additional security controls beyond mandatory framework minimums. These enhance your security posture and demonstrate proactive compliance maturity.",
+  description: `Your organization implements additional controls beyond mandatory framework minimums. These enhance your security posture and demonstrate proactive compliance maturity.`,
 };
 
 const ALL_EXTRA_CONTROLS = [
@@ -21,10 +21,8 @@ const ALL_EXTRA_CONTROLS = [
     control: "Zero-Trust Network Segmentation",
     frameworkVersion: "ISO-27001:2022",
     frameworkName: "Information Security Management System (ISMS)",
-    section: "Network",
-    basis: "Internal Policy",
-    benefit: "Reduces lateral movement blast radius by 94%",
-    status: "Active",
+    deploymentPoints: 5,
+    createdAt: "2026-08-18T13:31:15.672868+00:00",
   },
   {
     id: "EX-002",
@@ -32,10 +30,8 @@ const ALL_EXTRA_CONTROLS = [
     control: "UEBA — Behavioral Anomaly Detection",
     frameworkVersion: "NIST-CSF:2025",
     frameworkName: "Cybersecurity Framework (CSF)",
-    section: "Threat Detection",
-    basis: "Above NIST",
-    benefit: "Detected 3 insider threats in last 90 days",
-    status: "Active",
+    deploymentPoints: 5,
+    createdAt: "2026-08-18T13:31:15.672868+00:00",
   },
   {
     id: "EX-003",
@@ -43,10 +39,8 @@ const ALL_EXTRA_CONTROLS = [
     control: "Immutable Backup Validation",
     frameworkVersion: "ISO-27001:2022",
     frameworkName: "Information Security Management System (ISMS)",
-    section: "Resilience",
-    basis: "Above ISO 27001",
-    benefit: "RTO improved to <2h; ransomware-resilient",
-    status: "Active",
+    deploymentPoints: 5,
+    createdAt: "2026-08-18T13:31:15.672868+00:00",
   },
 ];
 
@@ -115,26 +109,26 @@ export default function ExtraControls() {
       label: "Version",
       sortable: false,
       render: (value, row) => (
-        <button
-          type="button"
-          onClick={() => navigate(`/dashboard/framework/${row.id}`)}
-          className="text-xs font-semibold hover:underline text-left whitespace-nowrap"
+        <Link
+          to={`/dashboard/framework/${row.id}`}
+          className="hover:underline hover:text-primary"
         >
           {value}
-        </button>
+        </Link>
       ),
     },
     {
       key: "frameworkName",
       label: "Framework",
       sortable: false,
-      render: (value) => <span className="">{value}</span>,
-    },
-    {
-      key: "section",
-      label: "section",
-      sortable: false,
-      render: (value) => <span className="">{value}</span>,
+      render: (value, row) => (
+        <Link
+          to={`/dashboard/framework/${row.id}`}
+          className="hover:underline hover:text-primary"
+        >
+          {value}
+        </Link>
+      ),
     },
     {
       key: "ctrlId",
@@ -151,6 +145,22 @@ export default function ExtraControls() {
       label: "control",
       sortable: false,
       render: (value) => <span className="">{value}</span>,
+    },
+    {
+      key: "deploymentPoints",
+      label: "Points",
+      sortable: false,
+      render: (value) => <span className="">{value}</span>,
+    },
+    {
+      key: "createdAt",
+      label: "Created At",
+      sortable: false,
+      render: (value) => (
+        <span className="whitespace-nowrap">
+          {formatDateWithMonthNameAndTime(value)}
+        </span>
+      ),
     },
   ];
 

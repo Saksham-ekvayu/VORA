@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import DataTable from "@/components/data-table/DataTable";
 import CustomBadge from "@/components/custom/CustomBadge";
 import Icon from "@/components/custom/Icon";
@@ -31,10 +31,10 @@ export default function OverallProtection() {
   usePageTitle("overall-protection", "Overall Protection");
 
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const urlParams = new URLSearchParams(globalThis.location.search);
 
   // Extract custom filters from URL
-  const statusFilter = searchParams.get("statusFilter") || "";
+  const statusFilter = urlParams.get("statusFilter") || "";
 
   // Hook for table data
   const {
@@ -51,7 +51,9 @@ export default function OverallProtection() {
     emptyMessage: "No framework data found",
   });
 
-  const frameworksData = Array.isArray(rawData) ? [] : (rawData?.frameworks || []);
+  const frameworksData = Array.isArray(rawData)
+    ? []
+    : rawData?.frameworks || [];
   const currentStats = Array.isArray(rawData) ? null : rawData?.stats;
 
   const handleStatusFilter = (val) => {
@@ -90,25 +92,19 @@ export default function OverallProtection() {
       key: "weight",
       label: "Weight",
       sortable: false,
-      render: (value) => (
-        <span className="">{value}%</span>
-      ),
+      render: (value) => <span className="">{value}%</span>,
     },
     {
       key: "rawScore",
       label: "Raw Score",
       sortable: false,
-      render: (value) => (
-        <span className="">{value}%</span>
-      ),
+      render: (value) => <span className="">{value}%</span>,
     },
     {
       key: "contribution",
       label: "Contribution",
       sortable: false,
-      render: (value) => (
-        <span className="">{value}%</span>
-      ),
+      render: (value) => <span className="">{value}%</span>,
     },
     {
       key: "trend",
@@ -116,14 +112,16 @@ export default function OverallProtection() {
       sortable: false,
       render: (value, row) => (
         <span
-          className={`flex items-center gap-1 ${row.trendUp ? "text-emerald-400" : "text-red-400"
-            }`}
+          className={`flex items-center gap-1 ${
+            row.trendUp ? "text-emerald-400" : "text-red-400"
+          }`}
         >
           <Icon
             name={row.trendUp ? "trending-up" : "trending-down"}
             size="13px"
           />
-          {row.trendUp ? "+" : "-"}{value}%
+          {row.trendUp ? "+" : "-"}
+          {value}%
         </span>
       ),
     },
@@ -181,21 +179,24 @@ export default function OverallProtection() {
             </span>
           </p>
           <p className="text-xs text-muted-foreground mt-1 max-w-xl">
-            Composite score across all active frameworks, deployment points, and control categories. Weighted by criticality and asset exposure.
+            Composite score across all active frameworks, deployment points, and
+            control categories. Weighted by criticality and asset exposure.
           </p>
           {/* Trend + period pills */}
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             <span
-              className={`px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 ${statsToUse.trendUp
-                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                : "bg-red-500/20 text-red-400 border border-red-500/30"
-                }`}
+              className={`px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 ${
+                statsToUse.trendUp
+                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                  : "bg-red-500/20 text-red-400 border border-red-500/30"
+              }`}
             >
               <Icon
                 name={statsToUse.trendUp ? "trending-up" : "trending-down"}
                 size="11px"
               />
-              {statsToUse.trendUp ? "+" : "-"}{statsToUse.trend}% vs last month
+              {statsToUse.trendUp ? "+" : "-"}
+              {statsToUse.trend}% vs last month
             </span>
             <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-accent text-muted-foreground border border-border">
               Last 180 Days

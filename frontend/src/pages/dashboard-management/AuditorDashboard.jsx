@@ -9,7 +9,6 @@ import Icon from "@/components/custom/Icon";
 import { useDateFilter } from "./hooks/useDateFilter";
 import { useAuth } from "@/context/authContext/useAuth";
 import { getRoleLabel } from "@/utils/commonUtils";
-import { frameworkToSlug } from "@/utils/frameworkUtils";
 import DateFilter from "./components/DateFilter";
 import { getAuditorDashboardAnalytics } from "@/services/dashboardService";
 import { formatDateOnly } from "@/utils/dateFormatter";
@@ -281,12 +280,9 @@ export default function AuditorDashboard() {
             {!isLoading &&
               dashboardData?.frameworkHealth?.length > 0 &&
               dashboardData?.frameworkHealth?.map((fw) => (
-                <button
+                <Link
+                  to={`/dashboard/framework/${fw.id}`}
                   key={`${fw.name}-${fw.version}`}
-                  type="button"
-                  onClick={() =>
-                    navigate(`/dashboard/framework/${frameworkToSlug(fw.name)}`)
-                  }
                   className="flex items-center gap-3 w-full group cursor-pointer py-1.5 border-b border-border last:border-0"
                 >
                   <span
@@ -310,7 +306,7 @@ export default function AuditorDashboard() {
                   <span className="text-xs font-bold text-foreground w-9 text-right shrink-0 group-hover:text-primary transition-colors">
                     {fw.readiness}%
                   </span>
-                </button>
+                </Link>
               ))}
 
             {!isLoading &&
@@ -413,7 +409,7 @@ export default function AuditorDashboard() {
           <div className="grid grid-cols-[0.3fr_1.2fr_0.8fr_0.5fr_0.7fr_1fr] text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border-b border-border pb-1.5 gap-1">
             <span>SL.</span>
             <span>Framework</span>
-            <span>Ctrl No.</span>
+            <span className="text-center">Ctrl No.</span>
             <span className="text-center">Inst.</span>
             <span className="text-center">% Failing</span>
             <span className="text-right">Last NC Date</span>
@@ -450,7 +446,7 @@ export default function AuditorDashboard() {
                   <span className="text-xs font-semibold text-primary truncate">
                     {gap.version || gap.framework}
                   </span>
-                  <span className="text-xs text-secondary font-semibold">
+                  <span className="text-xs text-secondary font-semibold text-center">
                     {gap.id}
                   </span>
                   <span className="text-xs text-center text-foreground font-medium">
@@ -586,9 +582,9 @@ export default function AuditorDashboard() {
 
             {!isLoading &&
               dashboardData?.aiInsights?.length > 0 &&
-              dashboardData?.aiInsights?.map((insight) => (
+              dashboardData?.aiInsights?.map((insight, idx) => (
                 <div
-                  key={insight.text.slice(0, 30)}
+                  key={`${insight.text}-${idx}`}
                   className="flex items-start gap-3 py-1.5 border-b border-border last:border-0"
                 >
                   <p className="text-xs text-foreground flex-1 leading-relaxed">

@@ -2,11 +2,15 @@ import logging
 from typing import Annotated
 
 from app.helpers import (
+    build_controls_passing_response,
     build_overall_protection_rows,
     filter_and_sort_rows,
     get_live_packages,
     get_nested,
     process_gap_analyses,
+    process_live_streams,
+    process_ai_insights,
+    process_deployment_points,
 )
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import desc, select
@@ -25,101 +29,6 @@ from vora_shared.security import RequestContext, get_context
 
 router = APIRouter(tags=["auditor-dashboard"])
 logger = logging.getLogger(__name__)
-
-
-def _iter_evidence_records(ev: EvidenceOutput):
-    """Yield records from an evidence output."""
-    out = ev.output or {}
-    fw_name = get_nested(out, "frameworkName")
-    fw_version = get_nested(out, "frameworkVersion") or get_nested(out, "currentFileVersion") or ""
-
-    for fv in get_nested(out, "fileVersions") or []:
-        for cdata in (get_nested(fv, "data") or {}).values():
-            for rec in get_nested(cdata, "records") or []:
-                yield fw_name, fw_version, rec
-
-
-def _format_stream_record(ev: EvidenceOutput, fw_name: str, fw_version: str, rec: dict) -> dict:
-    """Format a single audit stream record."""
-    status_str = get_nested(rec, "compliance_status", "").lower()
-
-    status = "warn"
-    if "not compliant" in status_str:
-        status = "fail"
-    elif "compliant" in status_str:
-        status = "pass"
-
-    desc = get_nested(rec, "deployment_point", "")
-
-    llm_analysis = get_nested(rec, "llm_analysis") or {}
-    reason = get_nested(llm_analysis, "reason", "")
-    confidence = get_nested(llm_analysis, "confidence", "")
-
-    return {
-        "id": get_nested(rec, "file_id", str(ev.id)),
-        "dp_id": get_nested(rec, "dp_id", ""),
-        "status": status,
-        "framework": fw_name,
-        "version": fw_version,
-        "description": desc,
-        "reason": reason,
-        "confidence": confidence,
-        "timestamp": ev.createdAt.isoformat() if ev.createdAt else None,
-    }
-
-
-def _process_live_streams(evidence_outputs: list[EvidenceOutput]) -> list[dict]:
-    """Extract and format recent live audit streams."""
-    live_streams = []
-    for ev in evidence_outputs:
-        for fw_name, fw_version, rec in _iter_evidence_records(ev):
-            live_streams.append(_format_stream_record(ev, fw_name, fw_version, rec))
-    return live_streams
-
-
-def _process_ai_insights(evidence_outputs: list[EvidenceOutput]) -> list[dict]:
-    """Extract AI insights based on LLM recommendations in evidence outputs."""
-    insights = []
-    for ev in evidence_outputs:
-        for fw_name, fw_version, rec in _iter_evidence_records(ev):
-            llm_analysis = get_nested(rec, "llm_analysis") or {}
-            recommendation = get_nested(llm_analysis, "recommendation")
-            if recommendation:
-                confidence = str(get_nested(llm_analysis, "confidence") or "").title()
-                priority = confidence if confidence in ["High", "Medium", "Low"] else "Low"
-                insights.append({"text": recommendation, "priority": priority})
-    return insights
-
-
-def _get_dp_count_for_merge(pm: DeploymentPackageMerge) -> int:
-    controls = pm.controls or {}
-    controls_data = get_nested(controls, "controls_data") or []
-    dp_count = 0
-    for section in controls_data:
-        for control in get_nested(section, "controls") or []:
-            dp_count += len(get_nested(control, "deployment_points") or [])
-    return dp_count
-
-
-def _process_deployment_points(
-    merges: list[DeploymentPackageMerge], live_packages: list[dict]
-) -> list[dict]:
-    """Aggregate configured deployment points per framework."""
-    deployment_points = []
-    for pm in merges:
-        dp_count = _get_dp_count_for_merge(pm)
-
-        fw_name = "Unknown Framework"
-        fw_version = ""
-        for lp in live_packages:
-            if str(get_nested(lp["pkg"], "mergeDocument")) == str(pm.id):
-                fw_name = lp["df"].frameworkName or fw_name
-                fw_version = lp["df"].frameworkVersion or ""
-                break
-
-        deployment_points.append({"name": fw_name, "version": fw_version, "count": dp_count})
-    return deployment_points
-
 
 @router.get("/analytics")
 async def get_auditor_dashboard_analytics(
@@ -228,6 +137,7 @@ async def get_auditor_dashboard_analytics(
                 else []
             )
 
+            settings = get_settings()
             (
                 total_controls_overall,
                 passing_controls_overall,
@@ -239,7 +149,7 @@ async def get_auditor_dashboard_analytics(
                 implemented_dps_overall,
                 _, # Ignore prev_implemented_dps_overall
             ) = process_gap_analyses(
-                gap_analyses, live_packages, historical_gap_analyses, merges, assignments
+                gap_analyses, live_packages, historical_gap_analyses, merges, assignments, settings
             )
             overall_protection = (
                 round((implemented_dps_overall / total_dps_overall) * 100)
@@ -247,9 +157,9 @@ async def get_auditor_dashboard_analytics(
                 else 0
             )
 
-            live_streams = _process_live_streams(evidence_outputs)
-            ai_insights = _process_ai_insights(evidence_outputs)
-            deployment_points = _process_deployment_points(merges, live_packages)
+            live_streams = process_live_streams(evidence_outputs)
+            ai_insights = process_ai_insights(evidence_outputs)
+            deployment_points = process_deployment_points(merges, live_packages)
 
             response_data = {
                 "overallProtection": overall_protection,
@@ -375,6 +285,7 @@ async def get_auditor_overall_protection(
                 else []
             )
 
+            settings = get_settings()
             (
                 total_controls_overall,
                 _,
@@ -386,7 +297,7 @@ async def get_auditor_overall_protection(
                 implemented_dps_overall,
                 prev_implemented_dps_overall,
             ) = process_gap_analyses(
-                gap_analyses, live_packages, historical_gap_analyses, merges, assignments
+                gap_analyses, live_packages, historical_gap_analyses, merges, assignments, settings
             )
 
             overall_protection = (
@@ -404,8 +315,7 @@ async def get_auditor_overall_protection(
             overall_trend_up = overall_trend_val >= 0
             overall_trend_abs = abs(overall_trend_val)
 
-            settings = get_settings()
-
+            overall_trend_abs = abs(overall_trend_val)
             # Build rows
             rows = build_overall_protection_rows(framework_health, settings)
 
@@ -442,3 +352,141 @@ async def get_auditor_overall_protection(
     except Exception:
         logger.exception("Error in overall protection")
         return server_error("Failed to fetch overall protection")
+
+
+@router.get("/critical-gaps")
+async def get_auditor_critical_gaps(
+    ctx: Annotated[RequestContext, Depends(get_context)],
+    page: Annotated[int, Query(alias="page")] = 1,
+    limit: Annotated[int, Query(alias="limit")] = 10,
+    search: Annotated[str, Query(alias="search")] = "",
+    severity_filter: Annotated[str, Query(alias="severityFilter")] = "",
+    sort_by: Annotated[str, Query(alias="sortBy")] = "failingPct",
+    sort_order: Annotated[str, Query(alias="sortOrder")] = "desc",
+):
+    """Get auditor critical gaps for dashboard table."""
+    try:
+        from app.helpers import build_critical_gaps_response
+        async with session_scope() as session:
+            dfs = list((await session.execute(
+                select(DeploymentFramework).where(DeploymentFramework.tenantId == ctx.tenant_id)
+            )).scalars().all())
+
+            live_packages, gap_analysis_ids, merge_doc_ids = get_live_packages(dfs)
+
+            gap_analyses = list((await session.execute(
+                select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_analysis_ids))
+            )).scalars().all()) if gap_analysis_ids else []
+
+            merges = list((await session.execute(
+                select(DeploymentPackageMerge).where(DeploymentPackageMerge.id.in_(merge_doc_ids))
+            )).scalars().all()) if merge_doc_ids else []
+
+            assignment_ids = [
+                get_nested(ga.gapAnalysis or {}, "framework_assignment_id")
+                for ga in gap_analyses
+                if get_nested(ga.gapAnalysis or {}, "framework_assignment_id")
+            ]
+
+            assignments = list((await session.execute(
+                select(FrameworkAssignment).where(FrameworkAssignment.id.in_(assignment_ids))
+            )).scalars().all()) if assignment_ids else []
+
+            historical_gap_analysis_ids = [
+                get_nested(pkg, "gapAnalysis")
+                for df in dfs
+                for pkg in (df.packages or [])
+                if get_nested(pkg, "gapAnalysis")
+            ]
+
+            historical_gap_analyses = list((await session.execute(
+                select(PackageGapAnalysis)
+                .where(PackageGapAnalysis.id.in_(historical_gap_analysis_ids))
+                .order_by(desc(PackageGapAnalysis.createdAt))
+            )).scalars().all()) if historical_gap_analysis_ids else []
+
+            settings = get_settings()
+            # We only need active_gaps, but process_gap_analyses returns a big tuple
+            res = process_gap_analyses(
+                gap_analyses, live_packages, historical_gap_analyses, merges, assignments, settings
+            )
+            active_gaps = res[4]
+
+            # Build and paginate rows using helper
+            data, total_items = build_critical_gaps_response(
+                active_gaps, search, severity_filter, sort_by, sort_order, page, limit
+            )
+            
+            return paginated(
+                data,
+                build_pagination_meta(clamp_page(page), clamp_limit(limit), total_items),
+                "Critical gaps retrieved successfully"
+            )
+
+    except Exception:
+        logger.exception("Error in critical gaps")
+        return server_error("Failed to fetch critical gaps")
+
+
+@router.get("/controls-passing")
+async def get_auditor_controls_passing(
+    ctx: Annotated[RequestContext, Depends(get_context)],
+    page: Annotated[int, Query(alias="page")] = 1,
+    limit: Annotated[int, Query(alias="limit")] = 10,
+    search: Annotated[str, Query(alias="search")] = "",
+    status_filter: Annotated[str, Query(alias="statusFilter")] = "",
+    sort_by: Annotated[str, Query(alias="sortBy")] = "ctrlId",
+    sort_order: Annotated[str, Query(alias="sortOrder")] = "asc",
+):
+    """Get auditor controls passing for dashboard table."""
+    try:
+        settings = get_settings()
+        
+        async with session_scope() as session:
+            dfs = list((await session.execute(
+                select(DeploymentFramework).where(DeploymentFramework.tenantId == ctx.tenant_id)
+            )).scalars().all())
+
+            live_packages, gap_analysis_ids, merge_doc_ids = get_live_packages(dfs)
+
+            gap_analyses = list((await session.execute(
+                select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_analysis_ids))
+            )).scalars().all()) if gap_analysis_ids else []
+
+            merges = list((await session.execute(
+                select(DeploymentPackageMerge).where(DeploymentPackageMerge.id.in_(merge_doc_ids))
+            )).scalars().all()) if merge_doc_ids else []
+
+            assignment_ids = [
+                get_nested(ga.gapAnalysis or {}, "framework_assignment_id")
+                for ga in gap_analyses
+                if get_nested(ga.gapAnalysis or {}, "framework_assignment_id")
+            ]
+
+            assignments = list((await session.execute(
+                select(FrameworkAssignment).where(FrameworkAssignment.id.in_(assignment_ids))
+            )).scalars().all()) if assignment_ids else []
+
+            data, total_items = build_controls_passing_response(
+                gap_analyses,
+                live_packages,
+                merges,
+                assignments,
+                settings,
+                search,
+                status_filter,
+                sort_by,
+                sort_order,
+                page,
+                limit
+            )
+            
+            return paginated(
+                data,
+                build_pagination_meta(clamp_page(page), clamp_limit(limit), total_items),
+                "Controls passing retrieved successfully"
+            )
+
+    except Exception:
+        logger.exception("Error in controls passing")
+        return server_error("Failed to fetch controls passing")
