@@ -535,7 +535,7 @@ def build_overall_protection_rows(framework_health: list[dict], settings: Any) -
 
 def build_critical_gaps_response(
     active_gaps: list[dict], search: str, severity_filter: str, sort_by: str, sort_order: str, page: int, limit: int
-) -> dict:
+) -> tuple:
     formatted = []
     high = 0
     medium = 0
@@ -607,7 +607,7 @@ def build_critical_gaps_response(
 
 def build_extra_controls_response(
     extra_controls: list[dict], search: str, sort_by: str, sort_order: str, page: int, limit: int
-) -> dict:
+) -> tuple:
     formatted = list(extra_controls)
     
     if search:
@@ -717,7 +717,7 @@ def build_controls_passing_response(
     sort_order: str,
     page: int,
     limit: int,
-) -> dict:
+) -> tuple:
     formatted = []
     stats = {"passing": 0, "warning": 0, "failing": 0, "not_evaluated": 0, "total": 0}
 
