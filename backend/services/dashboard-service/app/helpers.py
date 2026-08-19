@@ -384,6 +384,7 @@ def _create_active_gap(
     impl_dps: int,
     prev_actual_implemented: dict[str, int] | None,
     ga: Any,
+    fw_id: str,
     fw_name: str,
     fw_version: str,
     settings: Any,
@@ -396,6 +397,7 @@ def _create_active_gap(
 
     return {
         "id": ctrl_id,
+        "frameworkId": fw_id,
         "framework": fw_name,
         "version": fw_version,
         "control": expected["name"],
@@ -413,6 +415,7 @@ def evaluate_controls(
     actual_implemented: dict[str, int],
     prev_actual_implemented: dict[str, int] | None,
     ga: Any,
+    fw_id: str,
     fw_name: str,
     fw_version: str,
     settings: Any,
@@ -446,7 +449,7 @@ def evaluate_controls(
             fw_critical_gaps += 1
             fw_active_gaps.append(
                 _create_active_gap(
-                    ctrl_id, expected, req_dps, impl_dps, prev_actual_implemented, ga, fw_name, fw_version, settings
+                    ctrl_id, expected, req_dps, impl_dps, prev_actual_implemented, ga, fw_id, fw_name, fw_version, settings
                 )
             )
 
@@ -537,7 +540,7 @@ def build_critical_gaps_response(
             low += 1
             
         formatted.append({
-            "id": g["id"],
+            "id": g.get("frameworkId"),
             "frameworkVersion": g["version"],
             "frameworkName": g["framework"],
             "ctrlNo": g["id"],
@@ -546,7 +549,6 @@ def build_critical_gaps_response(
             "failingPct": f"{g['failing']}%",
             "failingRaw": g["failing"],
             "severity": sev,
-            "daysOpen": 0, # Placeholder if needed
         })
         
     if severity_filter:
@@ -582,9 +584,7 @@ def build_critical_gaps_response(
     
     return {
         "results": formatted[start:end],
-        "total": total,
         "stats": {
-            "total": len(active_gaps),
             "description": "Active control failures exceeding risk tolerance thresholds. Each gap requires remediation evidence before the next audit cycle.",
             "priorities": {
                 "high": high,
@@ -592,12 +592,13 @@ def build_critical_gaps_response(
                 "low": low
             }
         }
-    }
+    }, total
 
 
 def _process_package_controls(
     expected_controls: dict,
     actual_implemented: dict,
+    fw_id: str,
     fw_name: str,
     fw_version: str,
     ga_created_at: Any,
@@ -625,7 +626,7 @@ def _process_package_controls(
                 stats["failing"] += 1
 
         formatted.append({
-            "id": f"{fw_name}-{ctrl_id}",
+            "id": fw_id,
             "ctrlId": ctrl_id,
             "control": expected["name"],
             "frameworkVersion": fw_version,
@@ -700,7 +701,7 @@ def build_controls_passing_response(
         actual_implemented = extract_actual_implemented(gap_results)
 
         formatted.extend(_process_package_controls(
-            expected_controls, actual_implemented, fw_name, fw_version, ga.createdAt if ga else None, settings, stats
+            expected_controls, actual_implemented, str(lp["df"].id), fw_name, fw_version, ga.createdAt if ga else None, settings, stats
         ))
 
     formatted = _filter_and_sort_controls(formatted, search, status_filter, sort_by, sort_order)
@@ -719,17 +720,15 @@ def build_controls_passing_response(
 
     return {
         "results": formatted[start:end],
-        "total": total,
         "stats": {
             "passing": stats["passing"],
             "failing": stats["failing"],
             "warning": stats["warning"],
             "notEvaluated": stats["not_evaluated"],
-            "total": stats["total"],
             "passRate": overall_pass_rate,
             "failingOrEvidence": stats["failing"] + stats["warning"],
         }
-    }
+    }, total
 
 
 def filter_and_sort_rows(
@@ -888,7 +887,7 @@ def process_gap_analyses(
             fw_active_gaps,
             fw_prev_implemented_dps,
         ) = evaluate_controls(
-            expected_controls, actual_implemented, prev_actual_implemented, ga, fw_name, fw_version, settings
+            expected_controls, actual_implemented, prev_actual_implemented, ga, str(lp["df"].id), fw_name, fw_version, settings
         )
 
         total_controls_overall += fw_total_controls

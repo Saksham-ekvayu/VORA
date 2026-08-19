@@ -413,13 +413,13 @@ async def get_auditor_critical_gaps(
             active_gaps = res[4]
 
             # Build and paginate rows using helper
-            data = build_critical_gaps_response(
+            data, total_items = build_critical_gaps_response(
                 active_gaps, search, severity_filter, sort_by, sort_order, page, limit
             )
-
+            
             return paginated(
                 data,
-                build_pagination_meta(clamp_page(page), clamp_limit(limit), data["total"]),
+                build_pagination_meta(clamp_page(page), clamp_limit(limit), total_items),
                 "Critical gaps retrieved successfully"
             )
 
@@ -467,7 +467,7 @@ async def get_auditor_controls_passing(
                 select(FrameworkAssignment).where(FrameworkAssignment.id.in_(assignment_ids))
             )).scalars().all()) if assignment_ids else []
 
-            data = build_controls_passing_response(
+            data, total_items = build_controls_passing_response(
                 gap_analyses,
                 live_packages,
                 merges,
@@ -480,10 +480,10 @@ async def get_auditor_controls_passing(
                 page,
                 limit
             )
-
+            
             return paginated(
                 data,
-                build_pagination_meta(clamp_page(page), clamp_limit(limit), data["total"]),
+                build_pagination_meta(clamp_page(page), clamp_limit(limit), total_items),
                 "Controls passing retrieved successfully"
             )
 

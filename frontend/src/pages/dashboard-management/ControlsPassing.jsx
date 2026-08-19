@@ -178,7 +178,7 @@ export default function ControlsPassing() {
             <span className="text-primary">{STATS.passing}</span>
             <span className="text-muted-foreground text-lg font-semibold">
               {" "}
-              / {STATS.total}
+              / {pagination.totalItems || 0}
             </span>{" "}
             <span className="text-base font-semibold">Controls Passing</span>
           </p>
