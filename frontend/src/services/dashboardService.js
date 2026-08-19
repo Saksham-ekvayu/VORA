@@ -115,6 +115,20 @@ export async function getAuditorExtraControls(params) {
 }
 
 /**
+ * Get Auditor Deployment Points
+ * @param {Object} [params] - Query parameters
+ * @returns {Promise} Deployment points detailed data
+ */
+export async function getAuditorDeploymentPoints(params) {
+  const query = new URLSearchParams(params).toString();
+  const endpoint = query
+    ? `${AUDITOR_BASE}/deployment-points?${query}`
+    : `${AUDITOR_BASE}/deployment-points`;
+
+  return apiRequest(endpoint, true);
+}
+
+/**
  * Get Customer Dashboard Analytics
  * @param {Object} [params] - Query parameters (startDate, endDate, frameworkId, etc)
  * @returns {Promise} Dashboard analytics data
