@@ -29,21 +29,26 @@ function MiniStatBox({ label, value, valueColor }) {
   );
 }
 
-// ─── Control progress bar row ─────────────────────────────────────────────────
+function ControlBar({ name, pct }) {
+  // Determine semantic color based on percentage
+  const getSemanticColor = (val) => {
+    if (val <= 30) return "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]";
+    if (val <= 70) return "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]";
+    return "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]";
+  };
 
-function ControlBar({ name, pct, color }) {
   return (
-    <div className="flex items-center gap-3">
-      <span className="text-sm">
+    <div className="flex items-center gap-3 p-1.5 rounded transition-colors hover:bg-muted/50 group">
+      <span className="text-sm font-medium group-hover:text-primary transition-colors flex-1 truncate" title={capitalizeFirstLetter(name)}>
         {capitalizeFirstLetter(name)}
       </span>
-      <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+      <div className="w-32 h-2.5 rounded-full bg-muted overflow-hidden shrink-0 shadow-inner">
         <div
-          className={`h-full rounded-full transition-all duration-500 ${color}`}
+          className={`h-full rounded-full transition-all duration-700 ease-out ${getSemanticColor(pct)}`}
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className="text-xs font-semibold text-foreground w-9 text-right shrink-0">
+      <span className="text-xs font-bold text-foreground w-10 text-right shrink-0 tabular-nums">
         {pct}%
       </span>
     </div>
@@ -52,38 +57,39 @@ function ControlBar({ name, pct, color }) {
 
 // ─── Deployment point card ────────────────────────────────────────────────────
 
-const BAR_COLORS = [
-  "bg-blue-400",
-  "bg-emerald-400",
-  "bg-amber-400",
-  "bg-violet-400",
-  "bg-rose-400",
-  "bg-cyan-400",
-  "bg-indigo-400"
-];
-
 function DeploymentCard({ point }) {
   return (
-    <div className="rounded border border-border bg-linear-to-br from-background to-card p-3 flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded flex items-center justify-center bg-primary/10">
-            <Icon name="layers" size="16px" className="text-primary" />
+    <div className="rounded border border-border/60 bg-card/80 backdrop-blur-xl shadow-lg flex flex-col overflow-hidden transition-shadow hover:shadow-xl">
+      {/* Card Header */}
+      <div className="flex items-center justify-between p-4 bg-linear-to-r from-primary/10 via-primary/5 to-transparent border-b border-border/50">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-background shadow-sm border border-primary/20">
+            <Icon name="layers" size="20px" className="text-primary drop-shadow-sm" />
           </div>
           <div>
-            <p className="text-sm font-bold text-primary">
-              {point.frameworkName} - ({point.frameworkVersion})
+            <p className="text-base font-extrabold text-foreground tracking-tight">
+              {point.frameworkName} <span className="text-primary font-semibold opacity-80">({point.frameworkVersion})</span>
             </p>
-            <p className="text-xs text-muted-foreground">
-              {point.instances} control instances
+            <p className="text-xs font-medium text-muted-foreground mt-0.5">
+              {point.instances} Total Control Instances Evaluated
             </p>
           </div>
         </div>
       </div>
-      <div className="space-y-2">
-        {point.controls.map((ctrl, idx) => (
-          <ControlBar key={ctrl.name} {...ctrl} color={ctrl.color || BAR_COLORS[idx % BAR_COLORS.length]} />
-        ))}
+
+      {/* Controls Grid */}
+      <div className="p-4 max-h-100 overflow-y-auto custom-scrollbar">
+        {point.controls && point.controls.length > 0 ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-1">
+            {point.controls.map((ctrl, idx) => (
+              <ControlBar key={`${ctrl.name}-${idx}`} {...ctrl} />
+            ))}
+          </div>
+        ) : (
+          <div className="py-8 text-center text-muted-foreground text-sm">
+            No control data available.
+          </div>
+        )}
       </div>
     </div>
   );
@@ -98,7 +104,6 @@ export default function DeploymentPoints() {
 
   const [deploymentPoints, setDeploymentPoints] = useState([]);
   const [totalInstancesCount, setTotalInstancesCount] = useState(0);
-  const [totalIntegrationsCount, setTotalIntegrationsCount] = useState(0);
   const [paginationObj, setPaginationObj] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -126,7 +131,6 @@ export default function DeploymentPoints() {
       if (res?.success) {
         setDeploymentPoints(res.data?.results || []);
         setTotalInstancesCount(res.data?.totalInstances || 0);
-        setTotalIntegrationsCount(res.data?.totalIntegrations || 0);
         if (res.pagination) {
           setPaginationObj({
             ...res.pagination,
@@ -243,7 +247,7 @@ export default function DeploymentPoints() {
           <div className="flex items-center gap-2 flex-wrap justify-end">
             <MiniStatBox
               label="Integrations"
-              value={totalIntegrationsCount}
+              value={paginationObj.totalItems}
               valueColor="text-primary"
             />
             <MiniStatBox
@@ -276,7 +280,7 @@ export default function DeploymentPoints() {
         </div>
 
         {/* Cards grid */}
-        <div className="p-3 max-h-[60vh] overflow-y-auto">
+        <div className="p-2">
           {renderContent()}
         </div>
 

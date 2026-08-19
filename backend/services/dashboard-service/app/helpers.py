@@ -1157,7 +1157,6 @@ def build_deployment_points_response(
         
     total_items = len(filtered)
     total_instances = sum(dp.get("instances", 0) for dp in filtered)
-    total_integrations = len(dp_list)
     
     from vora_shared.query_builder import clamp_page, clamp_limit
     safe_page = clamp_page(page)
@@ -1165,6 +1164,6 @@ def build_deployment_points_response(
     start = (safe_page - 1) * safe_limit
     end = start + safe_limit
     
-    return filtered[start:end], total_items, total_instances, total_integrations
+    return filtered[start:end], total_items, total_instances
 
 

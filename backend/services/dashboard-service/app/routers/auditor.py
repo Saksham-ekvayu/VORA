@@ -594,15 +594,14 @@ async def get_auditor_deployment_points(
                 gap_analyses, live_packages, merges, assignments
             )
             
-            paginated_data, total_items, total_instances, total_integrations = build_deployment_points_response(
+            paginated_data, total_items, total_instances = build_deployment_points_response(
                 data, search, framework_filter, page, limit
             )
             
             return paginated(
                 {
                     "results": paginated_data,
-                    "totalInstances": total_instances,
-                    "totalIntegrations": total_integrations
+                    "totalInstances": total_instances
                 },
                 build_pagination_meta(clamp_page(page), clamp_limit(limit), total_items),
                 "Deployment points retrieved successfully"
