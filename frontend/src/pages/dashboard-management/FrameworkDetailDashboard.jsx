@@ -550,13 +550,14 @@ function StatCard({ title, subtitle, value, pct, icon, iconColor }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function FrameworkDetailDashboard() {
-  const { frameworkId } = useParams();
+  const { id, frameworkId } = useParams();
   const navigate = useNavigate();
 
-  const data = FRAMEWORK_DATA[frameworkId];
+  const paramKey = id || frameworkId;
+  const data = FRAMEWORK_DATA[paramKey] || Object.values(FRAMEWORK_DATA)[0];
 
   // Set dynamic breadcrumb label to actual framework name (e.g. "ISO 27001")
-  usePageTitle(frameworkId, data?.name);
+  usePageTitle(paramKey, data?.name);
 
   if (!data) {
     return (
