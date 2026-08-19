@@ -16,21 +16,21 @@ export default function CriticalGaps() {
   const navigate = useNavigate();
 
   const {
-    data,
+    data: rawData,
     loading,
     pagination,
     searchTerm,
     filters,
     onSearch,
     onFilterChange,
-    rawData,
   } = useTableData(getAuditorCriticalGaps, {
     defaultSortBy: "failingPct",
     defaultSortOrder: "desc",
   });
 
   const severityFilter = filters?.severityFilter || "";
-  const stats = rawData?.stats || {
+  const tableData = Array.isArray(rawData) ? [] : (rawData?.results || []);
+  const stats = (Array.isArray(rawData) ? null : rawData?.stats) || {
     total: 0,
     description: "Active control failures exceeding risk tolerance thresholds. Each gap requires remediation evidence before the next audit cycle.",
     priorities: { high: 0, medium: 0, low: 0 }
@@ -171,7 +171,7 @@ export default function CriticalGaps() {
       <DataTable
         entityName="Gaps"
         columns={columns}
-        data={data}
+        data={tableData}
         loading={loading}
         onSearch={onSearch}
         searchTerm={searchTerm}
