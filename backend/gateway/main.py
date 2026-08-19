@@ -51,6 +51,7 @@ ROUTES = {
     "/api/dashboard/admin": "http://localhost:7003/dashboard/admin",
     "/api/dashboard/expert": "http://localhost:7003/dashboard/expert",
     "/api/dashboard/customer-admin": "http://localhost:7003/dashboard/customer-admin",
+    "/api/dashboard/auditor": "http://localhost:7003/dashboard/auditor",
     # framework-category-service (7004)
     "/api/framework-categories": "http://localhost:7004/framework-categories",
     "/api/framework-category-service/framework-access": "http://localhost:7004/framework-access",
@@ -68,7 +69,7 @@ ROUTES = {
     "/api/comparison": "http://localhost:7009/api/comparison",
     "/api/deployment-gap": "http://localhost:7009/api/deployment-gap",
     # mcp-boto3-server (7010)
-    "/api/scheduler": "http://localhost:7010/scheduler",
+    "/api/mcp": "http://localhost:7010/mcp",
 }
 
 # Sort by length descending to match most specific prefix first

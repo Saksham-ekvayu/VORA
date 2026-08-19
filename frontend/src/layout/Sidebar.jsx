@@ -127,12 +127,29 @@ const ALL_NAV_ITEMS = [
   //   roles: [ROLE_CUSTOMER_ADMIN],
   // },
   {
-    id: "monitoring-setup",
-    title: "Monitoring Setup",
-    description: "Configure monitoring points",
-    icon: "settings",
-    path: "/monitoring-setup",
-    roles: [ROLE_CUSTOMER_ADMIN],
+    id: "mcp-server",
+    title: "MCP Server",
+    description: "Manage mcp server & monitoring",
+    icon: "building",
+    roles: [ROLE_CUSTOMER_ADMIN, ROLE_AUDITOR],
+    children: [
+      {
+        id: "mcp-server-monitoring",
+        title: "MCP Monitoring",
+        description: "View monitoring points",
+        icon: "activity",
+        path: "/mcp-server/monitoring",
+        roles: [ROLE_CUSTOMER_ADMIN, ROLE_AUDITOR],
+      },
+      {
+        id: "mcp-server-monitoring-setup",
+        title: "MCP Monitoring Setup",
+        description: "Configure monitoring points",
+        icon: "settings",
+        path: "/mcp-server/monitoring-setup",
+        roles: [ROLE_CUSTOMER_ADMIN, ROLE_AUDITOR],
+      },
+    ],
   },
   {
     id: "profile",
@@ -206,9 +223,11 @@ function Sidebar({ isOpen, setIsOpen }) {
         return location.pathname === "/" || location.pathname === "/dashboard";
       }
 
-      // Check if current path starts with the menu item path
-      // This ensures parent menu shows active for child routes
-      return location.pathname.startsWith(path);
+      // Check for exact match or child route match (with trailing slash)
+      // This prevents false positives like "/mcp-server/monitoring" matching "/mcp-server/monitoring-setup"
+      return (
+        location.pathname === path || location.pathname.startsWith(`${path}/`)
+      );
     },
     [location.pathname]
   );

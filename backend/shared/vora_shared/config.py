@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     email_pass: str = ""
     email_from: str = ""
     openai_api_key: str = ""
+    compliance_api_base: str = ""
+    compliance_model_name: str = "gpt-4o-mini"
     allowed_extensions: str = "pdf,doc,docx"
     max_file_size: float = 10.0
 
@@ -30,6 +32,16 @@ class Settings(BaseSettings):
     similarity_threshold_high: float = 75.0
     similarity_threshold_medium: float = 50.0
     min_deployment_words: int = 3
+
+    # Compliance Scoring Configuration
+    compliance_score_threshold: float = 0.7
+    compliance_sim_high: float = 80.0
+    compliance_sim_medium: float = 60.0
+    compliance_sim_low: float = 40.0
+    compliance_score_high: float = 0.95
+    compliance_score_medium: float = 0.75
+    compliance_score_low: float = 0.60
+    compliance_score_very_low: float = 0.30
 
     def resolved_database_url(self) -> str:
         url = self.database_url

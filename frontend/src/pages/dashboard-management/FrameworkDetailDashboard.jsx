@@ -1,14 +1,15 @@
 /* eslint-disable react/prop-types */
 import { useParams, useNavigate } from "react-router-dom";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
-import CardWrapper from "../components/CardWrapper";
+import { PieChart, Pie, ResponsiveContainer, Tooltip } from "recharts";
+import CardWrapper from "./components/CardWrapper";
 import Icon from "@/components/custom/Icon";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { Button } from "@/components/ui/button";
 // ─── Per-framework mock data ──────────────────────────────────────────────────
 
 const FRAMEWORK_DATA = {
-  "iso-27001": {
-    name: "ISO 27001",
+  "iso-27001-2022": {
+    name: "ISO-27001:2022",
     version: "ISO 27001:2022",
     tagColor: "#3b82f6",
     controls: {
@@ -140,8 +141,8 @@ const FRAMEWORK_DATA = {
       },
     ],
   },
-  "iso-9001": {
-    name: "ISO 9001",
+  "iso-9001-2008": {
+    name: "ISO-9001:2008",
     version: "ISO 9001:2015",
     tagColor: "#22c55e",
     controls: {
@@ -258,8 +259,8 @@ const FRAMEWORK_DATA = {
       },
     ],
   },
-  "nist-csf": {
-    name: "NIST CSF",
+  "nist-csf-2021": {
+    name: "NIST-CSF:2021",
     version: "NIST CSF v1.1",
     tagColor: "#8b5cf6",
     controls: {
@@ -371,8 +372,8 @@ const FRAMEWORK_DATA = {
       },
     ],
   },
-  "21-cfr-part-ii": {
-    name: "21 CFR Part II",
+  "cfr-part-ii-2023": {
+    name: "CFR-Part-II:2023",
     version: "21 CFR Part 11:2023",
     tagColor: "#ef4444",
     controls: {
@@ -470,6 +471,14 @@ function getCertStatusColor(status) {
   return "bg-red-500";
 }
 
+// Custom Pie sector shape — replaces the deprecated <Cell> mapping.
+// Reads the slice color from `payload.color` and renders the SVG path
+// that recharts pre-computes for the active sector.
+function ColoredPieSlice(props) {
+  const { payload } = props;
+  return <path d={props.path} fill={payload?.color} />;
+}
+
 function DonutChart({ data, total, label }) {
   return (
     <div className="relative w-full h-40">
@@ -484,11 +493,8 @@ function DonutChart({ data, total, label }) {
             paddingAngle={2}
             dataKey="value"
             strokeWidth={0}
-          >
-            {data.map((entry) => (
-              <Cell key={entry.name} fill={entry.color} />
-            ))}
-          </Pie>
+            shape={ColoredPieSlice}
+          />
           <Tooltip
             contentStyle={{
               backgroundColor: "var(--card)",
@@ -544,13 +550,14 @@ function StatCard({ title, subtitle, value, pct, icon, iconColor }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function FrameworkDetailDashboard() {
-  const { frameworkId } = useParams();
+  const { id, frameworkId } = useParams();
   const navigate = useNavigate();
 
-  const data = FRAMEWORK_DATA[frameworkId];
+  const paramKey = id || frameworkId;
+  const data = FRAMEWORK_DATA[paramKey] || Object.values(FRAMEWORK_DATA)[0];
 
   // Set dynamic breadcrumb label to actual framework name (e.g. "ISO 27001")
-  usePageTitle(frameworkId, data?.name);
+  usePageTitle(paramKey, data?.name);
 
   if (!data) {
     return (
@@ -563,6 +570,7 @@ export default function FrameworkDetailDashboard() {
           />
           <p className="text-muted-foreground">Framework not found</p>
           <button
+            type="button"
             onClick={() => navigate("/dashboard")}
             className="mt-3 text-sm text-primary hover:underline"
           >
@@ -586,26 +594,29 @@ export default function FrameworkDetailDashboard() {
   return (
     <div className="space-y-3 my-2">
       {/* ── Header: Framework name + version (left) | Back (right) ──── */}
-      <div className="flex items-center justify-between px-1">
+      <div className="rounded border border-border bg-linear-to-br from-background to-card p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         {/* Left - Framework name & version */}
-        <div className="flex items-center gap-2">
+        <div className="flex-1 min-w-0 flex items-center gap-3">
           <span
-            className="text-xs font-semibold px-2.5 py-1 rounded text-white shrink-0"
+            className="text-sm font-bold px-2.5 py-1 rounded text-white shadow-sm"
             style={{ backgroundColor: data.tagColor }}
           >
             {data.name}
           </span>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground font-medium">
             version: {data.version}
           </span>
         </div>
         {/* Right - Back button */}
-        <button
-          onClick={() => navigate("/dashboard")}
-          className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-primary border border-border bg-accent hover:border-primary rounded px-3 py-1.5 transition-colors"
-        >
-          <Icon name="arrow-left" size="13px" /> Back
-        </button>
+        <div className="shrink-0">
+          <Button
+            size="xs"
+            variant="outline"
+            onClick={() => navigate("/dashboard")}
+          >
+            <Icon name="arrow-left" size="13px" /> Back to Dashboard
+          </Button>
+        </div>
       </div>
 
       {/* ── Row 1: 4 stat cards ───────────────────────────────────────── */}
@@ -793,6 +804,7 @@ export default function FrameworkDetailDashboard() {
           }
           right={
             <button
+              type="button"
               onClick={() => navigate("/deployment-frameworks")}
               className="text-primary text-xs hover:underline flex items-center gap-1 cursor-pointer"
             >
@@ -857,7 +869,10 @@ export default function FrameworkDetailDashboard() {
             </span>
           }
           right={
-            <button className="text-primary text-xs hover:underline flex items-center gap-1 cursor-pointer">
+            <button
+              type="button"
+              className="text-primary text-xs hover:underline flex items-center gap-1 cursor-pointer"
+            >
               View All <Icon name="arrow-right" size="12px" />
             </button>
           }

@@ -8,13 +8,12 @@ import os
 from datetime import datetime, timezone
 from typing import Any
 
-from app.services.agent_runner import process_ingest
 from fastapi import APIRouter, Request
 from sqlalchemy import func, select
 from vora_shared.config import get_settings
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
-from vora_shared.models import AgentPrompt, EvidenceOutput, UploadedFile
+from vora_shared.models import AgentPrompt, DeploymentDocument, EvidenceOutput, UploadedFile
 from vora_shared.responses import error, success
 
 logger = logging.getLogger(__name__)
@@ -22,10 +21,28 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["compliance-agent"])
 
 DEFAULT_AGENTS = [
+    ("Organizational Controls Agent", "Evaluate general organizational policies and procedures."),
+    ("People Controls Agent", "Review human resources security and training procedures."),
+    ("Physical Controls Agent", "Assess physical security, entry logs, and secure areas."),
     ("Access Control Agent", "Evaluate access control evidence against the control requirements."),
+    ("Logging & Monitoring Agent", "Validate logging, alert monitoring, and audit trails coverage."),
+    ("Network Security Agent", "Assess network security, firewall rules, and traffic filtering controls."),
+    ("Secure Development Agent", "Review software development life cycle security and source controls."),
+    (
+        "Technical Controls Agent",
+        "Assess miscellaneous system configuration and endpoint protection controls.",
+    ),
+    ("Leadership Agent", "Review leadership quality goals and management alignment."),
+    ("Planning Agent", "Validate operational planning, risk management, and system mapping."),
+    ("Support & Resources Agent", "Evaluate infrastructure, competence, and documented resources."),
+    ("Operational Controls Agent", "Assess change management and operational control parameters."),
+    (
+        "Performance Evaluation Agent",
+        "Verify internal audits, management reviews, and customer satisfaction logs.",
+    ),
     ("Change Management Agent", "Assess change management documentation and approvals."),
     ("Incident Response Agent", "Review incident response evidence and timelines."),
-    ("Logging & Monitoring Agent", "Validate logging and monitoring coverage."),
+    ("General Compliance Agent", "Review general compliance guidelines and audits."),
 ]
 
 from vora_shared.file_storage import ALLOWED_EXTENSIONS
@@ -38,11 +55,18 @@ def _utcnow_iso() -> str:
 async def _ensure_default_agents() -> list[str]:
     async with session_scope() as session:
         rows = (await session.execute(select(AgentPrompt))).scalars().all()
-        if not rows:
-            for name, prompt in DEFAULT_AGENTS:
+        existing_names = {r.name for r in rows}
+
+        added = False
+        for name, prompt in DEFAULT_AGENTS:
+            if name not in existing_names:
                 session.add(AgentPrompt(id=new_id(), name=name, prompt=prompt, meta={}))
+                added = True
+
+        if added:
             await session.flush()
             rows = (await session.execute(select(AgentPrompt))).scalars().all()
+
         return [r.name for r in rows]
 
 
@@ -141,6 +165,53 @@ async def get_all_output():
         return error(str(exc), 500)
 
 
+@router.get("/output/by-document")
+async def get_output_by_document():
+    """Get compliance results grouped by document (file). Each file with all its 93 controls."""
+    try:
+        logger.info("[GET-OUTPUT-BY-DOC] Fetching evidence outputs grouped by document")
+        async with session_scope() as session:
+            rows = (
+                (await session.execute(select(EvidenceOutput).order_by(EvidenceOutput.createdAt.desc())))
+                .scalars()
+                .all()
+            )
+
+            # Group by document_uuid
+            grouped = {}
+            for row in rows:
+                output = row.output or {}
+                doc_uuid = output.get("document_uuid", "unknown")
+                filename = output.get("filename", "unknown")
+
+                if doc_uuid not in grouped:
+                    grouped[doc_uuid] = {
+                        "document_uuid": doc_uuid,
+                        "filename": filename,
+                        "frameworkCode": output.get("frameworkCode"),
+                        "frameworkName": output.get("frameworkName"),
+                        "frameworkVersion": output.get("frameworkVersion"),
+                        "user_id": output.get("user_id"),
+                        # "tenantId": output.get("tenantId"),
+                        "controls": [],
+                    }
+
+                # Add this control to the document group
+                grouped[doc_uuid]["controls"].append({"control_id": row.control_id, "output": output})
+
+            # Convert to list
+            documents = list(grouped.values())
+            logger.info(f"[GET-OUTPUT-BY-DOC] Grouped {len(rows)} controls into {len(documents)} documents")
+
+            return success(
+                message=f"Returned {len(documents)} documents with their compliance results",
+                data={"total_documents": len(documents), "documents": documents},
+            )
+    except Exception as exc:
+        logger.exception(f"[GET-OUTPUT-BY-DOC] Error: {exc}")
+        return error(str(exc), 500)
+
+
 async def _find_evidence_by_control_in_jsonb(session, control_id: str):
     all_rows = (await session.execute(select(EvidenceOutput))).scalars().all()
     for candidate in all_rows:
@@ -188,107 +259,127 @@ async def status():
         logger.exception(f"[STATUS] Agents fetch failed: {exc}")
         agents = []
 
+    compliance_count = 0
+    uploaded_count = 0
     try:
         async with session_scope() as session:
-            count = (await session.execute(select(func.count()).select_from(EvidenceOutput))).scalar_one()
-        logger.info(f"[STATUS] Evidence files count: {count}")
+            compliance_count = (
+                await session.execute(select(func.count()).select_from(EvidenceOutput))
+            ).scalar_one()
+            uploaded_count = (
+                await session.execute(select(func.count()).select_from(UploadedFile))
+            ).scalar_one()
+        logger.info(
+            f"[STATUS] Database counts | compliance_records={compliance_count} | uploaded_files={uploaded_count}"
+        )
     except Exception as exc:
-        logger.exception(f"[STATUS] Evidence count failed: {exc}")
-        count = 0
+        logger.exception(f"[STATUS] Database counts query failed: {exc}")
 
     settings = get_settings()
     evidence_folder = os.environ.get("UPLOAD_DIR", getattr(settings, "upload_dir", None) or "uploads")
-    logger.info(f"[STATUS] Service healthy | agents={len(agents)} | evidence_files={count}")
     return success(
         message="Service status",
         data={
             "status": "running",
             "evidence_folder": evidence_folder,
             "available_agents": agents,
-            "evidence_files": count,
+            "uploaded_files_count": uploaded_count,
+            "compliance_records_count": compliance_count,
             "allowed_filetypes": list(ALLOWED_EXTENSIONS),
         },
     )
 
 
-def _build_ingest_meta(body: dict, meta_in: dict) -> dict[str, Any]:
-    return {
-        "status": "uploaded",
-        "resourceType": body.get("resourceType") or "deployment-document",
-        "file_hash": body.get("file_hash"),
-        "source": body.get("source") or meta_in.get("source") or "Load Service",
-        "agent_name": body.get("agent_name") or meta_in.get("agent_name"),
-        "user_id": body.get("user_id") or meta_in.get("user_id"),
-        "tenantId": body.get("tenantId") or meta_in.get("tenantId"),
-        "user_name": body.get("user_name") or meta_in.get("name") or meta_in.get("user_name"),
-        "user_email": body.get("user_email") or meta_in.get("email") or meta_in.get("user_email"),
-        "user_role": body.get("user_role") or meta_in.get("role") or meta_in.get("user_role"),
-        "frameworkCode": body.get("frameworkCode") or meta_in.get("frameworkCode"),
-        "frameworkName": body.get("frameworkName") or meta_in.get("frameworkName"),
-        "frameworkId": body.get("frameworkId") or meta_in.get("frameworkId"),
-        "frameworkVersion": body.get("frameworkVersion") or meta_in.get("frameworkVersion"),
-        "currentFileVersion": body.get("currentFileVersion") or meta_in.get("currentFileVersion"),
-        "received_at": _utcnow_iso(),
-    }
+from app.services.agent_runner import evaluate_compliance_task
 
 
-@router.post("/ingest")
-async def ingest(request: Request):
-    """Called by load-document-service after a successful generic document upload."""
+@router.post("/evaluate/{dd_id}")
+async def evaluate_compliance_by_id(dd_id: str):
+    logger.info(f"[API] Manual compliance evaluation requested for DeploymentDocument: {dd_id}")
+    asyncio.create_task(evaluate_compliance_task(dd_id))
+    return success(
+        message="Compliance evaluation started in background",
+        data={"dd_id": dd_id, "status": "processing"},
+    )
+
+
+@router.post("/evaluate")
+async def evaluate_compliance(request: Request):
+    dd_id = None
     try:
-        body = await request.json()
+        body_bytes = await request.body()
+        if body_bytes.strip():
+            body = await request.json()
+            dd_id = body.get("dd_id")
     except Exception:
-        logger.warning("[INGEST] Invalid JSON body received")
         return error("Invalid JSON body", 400)
 
-    if not isinstance(body, dict):
-        logger.warning("[INGEST] Payload is not a JSON object")
-        return error("Payload must be a JSON object", 400)
+    if not dd_id:
+        try:
+            async with session_scope() as session:
+                latest_dd = (
+                    (
+                        await session.execute(
+                            select(DeploymentDocument).order_by(DeploymentDocument.createdAt.desc()).limit(1)
+                        )
+                    )
+                    .scalars()
+                    .first()
+                )
 
-    filename = body.get("filename") or "unknown"
-    filepath = body.get("filepath") or body.get("file_path")
-    ref_id = body.get("id") or body.get("document_uuid")
-    meta_in = body.get("meta") if isinstance(body.get("meta"), dict) else {}
+                if latest_dd:
+                    dd_id = latest_dd.id
+                    logger.info(
+                        f"[API] No dd_id provided. Auto-selected the latest DeploymentDocument: {dd_id}"
+                    )
+                else:
+                    return error("No DeploymentDocument found in database to evaluate compliance.", 404)
+        except Exception as exc:
+            logger.exception(f"[API] Failed to retrieve latest DeploymentDocument: {exc}")
+            return error(f"Failed to auto-select document: {str(exc)}", 500)
 
-    logger.info(f"[INGEST] New file ingestion | filename={filename} | ref_id={ref_id}")
-
-    meta = _build_ingest_meta(body, meta_in)
-
-    async with session_scope() as session:
-        uploaded = UploadedFile(
-            id=new_id(),
-            ref_id=str(ref_id) if ref_id else None,
-            filename=str(filename),
-            file_path=str(filepath) if filepath else None,
-            s3_url=body.get("s3_url"),
-            meta=meta,
-        )
-        session.add(uploaded)
-        await session.flush()
-        file_id = uploaded.id
-        logger.info(f"[INGEST] File registered in DB | file_id={file_id}")
-
-    process_payload = {
-        **body,
-        "file_id": file_id,
-        "uploaded_file_id": file_id,
-        "filename": filename,
-        "filepath": filepath,
-        "control_id": meta.get("agent_name") or "placeholder",
-        "meta": meta,
-    }
-
-    # Background stub processing (OCR/LLM omitted)
-    asyncio.get_running_loop().create_task(process_ingest(process_payload))
-    logger.info(f"[INGEST] File processing queued | file_id={file_id}")
-
+    logger.info(f"[API] Compliance evaluation requested via body for DeploymentDocument: {dd_id}")
+    asyncio.create_task(evaluate_compliance_task(dd_id))
     return success(
-        message="Ingest accepted",
-        status_code=202,
-        data={
-            "file_id": file_id,
-            "filename": filename,
-            "status": "accepted",
-            "ref_id": ref_id,
-        },
+        message="Compliance evaluation started in background",
+        data={"dd_id": dd_id, "status": "processing"},
     )
+
+
+@router.post("/evaluate-all")
+async def evaluate_all_compliance():
+    """Evaluate compliance for ALL deployment documents in the system."""
+    try:
+        async with session_scope() as session:
+            all_dds = (
+                (
+                    await session.execute(
+                        select(DeploymentDocument).order_by(DeploymentDocument.createdAt.desc())
+                    )
+                )
+                .scalars()
+                .all()
+            )
+
+            if not all_dds:
+                return error("No DeploymentDocuments found in database to evaluate compliance.", 404)
+
+            logger.info(
+                f"[API-ALL] Starting compliance evaluation for ALL {len(all_dds)} DeploymentDocuments"
+            )
+
+            # Spawn task for each document
+            for dd in all_dds:
+                asyncio.create_task(evaluate_compliance_task(dd.id))
+
+            return success(
+                message=f"Compliance evaluation started in background for {len(all_dds)} documents",
+                data={
+                    "total_documents": len(all_dds),
+                    "status": "processing",
+                    "document_ids": [dd.id for dd in all_dds],
+                },
+            )
+    except Exception as exc:
+        logger.exception(f"[API-ALL] Failed to start bulk evaluation: {exc}")
+        return error(f"Failed to start bulk evaluation: {str(exc)}", 500)

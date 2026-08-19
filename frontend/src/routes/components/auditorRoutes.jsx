@@ -10,45 +10,47 @@ import {
   DeploymentFramework,
   DeploymentFrameworkDetail,
   FrameworkDetailDashboard,
-  ControlsPassingPage,
-  ExtraControlsPage,
-  CriticalGapsPage,
-  OverallProtectionPage,
-  DeploymentPointsPage,
+  ControlsPassing,
+  ExtraControls,
+  CriticalGaps,
+  OverallProtection,
+  DeploymentPoints,
   Profiles,
+  MonitoringSetup,
+  McpMonitoring,
 } from "../utils/routeImports";
 
 const auditorRoutes = createProtectedRoutes([
   { key: "dashboard", path: "/dashboard", component: AuditorDashboard },
   {
     key: "framework-detail-dashboard",
-    path: "/dashboard/framework/:frameworkId",
+    path: "/dashboard/framework/:id",
     component: FrameworkDetailDashboard,
   },
   {
     key: "controls-passing",
     path: "/dashboard/controls-passing",
-    component: ControlsPassingPage,
+    component: ControlsPassing,
   },
   {
     key: "extra-controls",
     path: "/dashboard/extra-controls",
-    component: ExtraControlsPage,
+    component: ExtraControls,
   },
   {
     key: "critical-gaps",
     path: "/dashboard/critical-gaps",
-    component: CriticalGapsPage,
+    component: CriticalGaps,
   },
   {
     key: "overall-protection",
     path: "/dashboard/overall-protection",
-    component: OverallProtectionPage,
+    component: OverallProtection,
   },
   {
     key: "deployment-points",
     path: "/dashboard/deployment-points",
-    component: DeploymentPointsPage,
+    component: DeploymentPoints,
   },
   { key: "profiles", path: "/profiles", component: Profiles },
   {
@@ -85,6 +87,16 @@ const auditorRoutes = createProtectedRoutes([
     key: "document-detail",
     path: "/deployment-documents/:id",
     component: DeploymentDocumentDetail,
+  },
+  {
+    key: "mcp-server-monitoring",
+    path: "/mcp-server/monitoring",
+    component: McpMonitoring,
+  },
+  {
+    key: "mcp-server-monitoring-setup",
+    path: "/mcp-server/monitoring-setup",
+    component: MonitoringSetup,
   },
 ]);
 

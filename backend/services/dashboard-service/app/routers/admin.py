@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 from typing import Annotated
 
@@ -21,7 +22,8 @@ from vora_shared.messages import MESSAGES
 from vora_shared.models import Customer, User
 from vora_shared.responses import error, success
 
-router = APIRouter(tags=["dashboard-admin"])
+router = APIRouter(tags=["admin-dashboard"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/analytics")
