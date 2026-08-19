@@ -11,10 +11,12 @@ from vora_shared.database import session_scope
 from vora_shared.models import (
     Customer,
     DeploymentFramework,
+    DeploymentPackageMerge,
     Framework,
     FrameworkAccess,
     FrameworkAssignment,
     FrameworkCategory,
+    PackageGapAnalysis,
     User,
 )
 
@@ -264,7 +266,9 @@ def _get(obj: Any, key: str, default: Any = None) -> Any:
     return getattr(obj, key, default) if hasattr(obj, key) else default
 
 
-def extract_custom_controls(fw_assignment_id: str | None, assignments: list[FrameworkAssignment]) -> dict[str, bool]:
+def extract_custom_controls(
+    fw_assignment_id: str | None, assignments: list[FrameworkAssignment]
+) -> dict[str, bool]:
     """Parse custom controls map from FrameworkAssignment."""
     custom_controls = {}
     if not fw_assignment_id:
@@ -282,7 +286,7 @@ def extract_custom_controls(fw_assignment_id: str | None, assignments: list[Fram
             if ctrl_id:
                 is_custom = _get(_get(ctrl, "customization") or {}, "source") == "custom"
                 custom_controls[ctrl_id] = is_custom
-    
+
     return custom_controls
 
 
@@ -298,7 +302,7 @@ def extract_expected_controls(merge_doc: Any, custom_controls: dict[str, bool]) 
                     "name": _get(ctrl, "name") or ctrl_id,
                     "description": _get(ctrl, "description", ""),
                     "required_dps": len(_get(ctrl, "deployment_points") or []),
-                    "is_extra": custom_controls.get(ctrl_id, False)
+                    "is_extra": custom_controls.get(ctrl_id, False),
                 }
     return expected_controls
 
@@ -312,18 +316,16 @@ def extract_actual_implemented(gap_results: list[Any]) -> dict[str, int]:
             continue
         if ctrl_id not in actual_implemented:
             actual_implemented[ctrl_id] = 0
-        
+
         status = str(_get(result, "implementation_status") or "").lower()
         if status in ["implemented", "compliant", "passed", "fully implemented"]:
             actual_implemented[ctrl_id] += 1
-            
+
     return actual_implemented
 
 
 def extract_historical_implemented(
-    df_id: str,
-    current_created_at: datetime | None,
-    historical_gap_analyses: list[Any]
+    df_id: str, current_created_at: datetime | None, historical_gap_analyses: list[Any]
 ) -> dict[str, int] | None:
     """Extract implemented counts from historical gapAnalysis for trend calculation. Returns None if no history exists."""
     if not df_id or not current_created_at:
@@ -334,19 +336,21 @@ def extract_historical_implemented(
         if hga_df_id == df_id and hga.createdAt and hga.createdAt < current_created_at:
             hga_results = _get(hga.gapAnalysis or {}, "deployment_gap_results") or []
             return extract_actual_implemented(hga_results)
-            
+
     return None
 
 
-def _evaluate_trend(ctrl_id: str, req_dps: int, failing_percentage: int, prev_actual_implemented: dict[str, int] | None) -> str:
+def _evaluate_trend(
+    ctrl_id: str, req_dps: int, failing_percentage: int, prev_actual_implemented: dict[str, int] | None
+) -> str:
     if prev_actual_implemented is None or ctrl_id not in prev_actual_implemented:
         return "flat"
-        
+
     prev_impl = prev_actual_implemented[ctrl_id]
     prev_failing_pct = 100
     if req_dps > 0:
         prev_failing_pct = round(((req_dps - prev_impl) / req_dps) * 100)
-    
+
     if failing_percentage > prev_failing_pct:
         return "down"
     if failing_percentage < prev_failing_pct:
@@ -362,14 +366,14 @@ def _create_active_gap(
     prev_actual_implemented: dict[str, int] | None,
     ga: Any,
     fw_name: str,
-    fw_version: str
+    fw_version: str,
 ) -> dict:
     failing_percentage = 100
     if req_dps > 0:
         failing_percentage = round(((req_dps - impl_dps) / req_dps) * 100)
-    
+
     trend = _evaluate_trend(ctrl_id, req_dps, failing_percentage, prev_actual_implemented)
-        
+
     return {
         "id": ctrl_id,
         "framework": fw_name,
@@ -377,9 +381,9 @@ def _create_active_gap(
         "control": expected["name"],
         "description": expected["description"],
         "instances": req_dps,
-        "failing": failing_percentage, 
+        "failing": failing_percentage,
         "lastNC": ga.createdAt.isoformat() if ga and ga.createdAt else None,
-        "trend": trend
+        "trend": trend,
     }
 
 
@@ -389,7 +393,7 @@ def evaluate_controls(
     prev_actual_implemented: dict[str, int] | None,
     ga: Any,
     fw_name: str,
-    fw_version: str
+    fw_version: str,
 ) -> tuple[int, int, int, int, int, int, int, list[dict], int]:
     """Evaluate controls against implemented DPs and return aggregated metrics."""
     fw_total_controls = 0
@@ -405,23 +409,22 @@ def evaluate_controls(
         fw_total_controls += 1
         if expected["is_extra"]:
             fw_extra_controls += 1
-        
+
         req_dps = expected["required_dps"]
         impl_dps = actual_implemented.get(ctrl_id, 0)
         prev_impl = prev_actual_implemented.get(ctrl_id, 0) if prev_actual_implemented is not None else 0
-        
+
         fw_total_dps += req_dps
         fw_implemented_dps += min(impl_dps, req_dps)
         fw_prev_implemented_dps += min(prev_impl, req_dps)
-        
+
         if req_dps > 0 and impl_dps >= req_dps:
             fw_passing_controls += 1
         else:
             fw_critical_gaps += 1
             fw_active_gaps.append(
                 _create_active_gap(
-                    ctrl_id, expected, req_dps, impl_dps, 
-                    prev_actual_implemented, ga, fw_name, fw_version
+                    ctrl_id, expected, req_dps, impl_dps, prev_actual_implemented, ga, fw_name, fw_version
                 )
             )
 
@@ -433,5 +436,264 @@ def evaluate_controls(
         fw_extra_controls,
         fw_critical_gaps,
         fw_active_gaps,
-        fw_prev_implemented_dps
+        fw_prev_implemented_dps,
+    )
+
+
+def calculate_framework_weight(
+    ws: float, total_weight_score: float, idx: int, fw_count: int, allocated_weight: float
+) -> tuple[float, float]:
+    """Calculate the relative weight for a single framework."""
+    if total_weight_score > 0:
+        if idx == fw_count - 1:
+            weight_val = 100 - allocated_weight
+        else:
+            weight_val = round((ws / total_weight_score) * 100)
+            allocated_weight += weight_val
+    else:
+        weight_val = 100 // fw_count if fw_count > 0 else 0
+        if idx == 0 and fw_count > 0:
+            weight_val += 100 % fw_count
+    return weight_val, allocated_weight
+
+
+def get_framework_status(readiness: float, settings: Any) -> str:
+    """Determine framework compliance status based on score."""
+    if readiness < (settings.compliance_score_low * 100):
+        return "At Risk"
+    if readiness <= (settings.compliance_score_medium * 100):
+        return "Needs Attention"
+    return "On Track"
+
+
+def build_overall_protection_rows(framework_health: list[dict], settings: Any) -> list[dict]:
+    """Transform framework health into table rows with dynamic weight and status."""
+    rows = []
+    fw_count = len(framework_health)
+    total_weight_score = sum(fw.get("weight_score", 0) for fw in framework_health)
+
+    allocated_weight = 0
+    for idx, fw in enumerate(framework_health):
+        readiness = fw.get("readiness", 0)
+        ws = fw.get("weight_score", 0)
+        weight_val, allocated_weight = calculate_framework_weight(
+            ws, total_weight_score, idx, fw_count, allocated_weight
+        )
+        status = get_framework_status(readiness, settings)
+
+        rows.append(
+            {
+                "id": fw.get("id"),
+                "version": fw.get("version", ""),
+                "framework": fw.get("name", ""),
+                "weight": weight_val,
+                "rawScore": readiness,
+                "contribution": round(weight_val * readiness / 100, 2),
+                "trend": fw.get("trend", 0),
+                "trendUp": fw.get("trendUp", True),
+                "status": status,
+            }
+        )
+    return rows
+
+
+def filter_and_sort_rows(
+    rows: list[dict], search: str, status_filter: str, sort_by: str, sort_order: str
+) -> list[dict]:
+    """Apply search, status filter, and sorting to rows."""
+    if search:
+        s = search.lower()
+        rows = [r for r in rows if s in r.get("framework", "").lower() or s in r.get("version", "").lower()]
+
+    if status_filter:
+        rows = [r for r in rows if r.get("status") == status_filter]
+
+    if sort_by:
+        reverse = sort_order == "desc"
+        rows.sort(
+            key=lambda x: (
+                x.get(sort_by, 0) if isinstance(x.get(sort_by), (int, float)) else x.get(sort_by, "")
+            ),
+            reverse=reverse,
+        )
+
+    return rows
+
+
+def get_nested(obj: Any, key: str, default=None):
+    if obj is None:
+        return default
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)
+
+
+def get_live_packages(dfs: list[DeploymentFramework]) -> tuple[list[dict], list[str], list[str]]:
+    """Extract live packages, gap analysis IDs, and merge document IDs."""
+    live_packages = []
+    gap_analysis_ids = []
+    merge_doc_ids = []
+
+    for df in dfs:
+        for pkg in df.packages or []:
+            if get_nested(pkg, "status") != "live" or get_nested(pkg, "type") != "deployed":
+                continue
+
+            live_packages.append({"df": df, "pkg": pkg})
+
+            gap_analysis = get_nested(pkg, "gapAnalysis")
+            if gap_analysis:
+                gap_analysis_ids.append(str(gap_analysis))
+
+            merge_doc = get_nested(pkg, "mergeDocument")
+            if merge_doc:
+                merge_doc_ids.append(str(merge_doc))
+
+    return live_packages, gap_analysis_ids, merge_doc_ids
+
+
+def _extract_control_weight(ctrl: Any) -> float:
+    """Extract customer weightage from a control object."""
+    custom = get_nested(ctrl, "customization") or {}
+    weight_obj = get_nested(custom, "weightage") or {}
+    return float(get_nested(weight_obj, "customer_weightage", 10.0))
+
+
+def calculate_fw_weight_score(fw_assignment_id: str, assignments: list[FrameworkAssignment]) -> float:
+    """Calculate dynamic framework weight based on assigned controls' customer_weightage."""
+    fw_weight_score = 0.0
+    if not fw_assignment_id:
+        return fw_weight_score
+
+    assignment = next((a for a in assignments if str(a.id) == fw_assignment_id), None)
+    if not assignment or not assignment.fileVersions:
+        return fw_weight_score
+
+    latest_fv = assignment.fileVersions[-1]
+    ai_ext = get_nested(latest_fv, "aiExtraction") or []
+
+    for sec in ai_ext:
+        for ctrl in get_nested(sec, "controls") or []:
+            fw_weight_score += _extract_control_weight(ctrl)
+
+    return fw_weight_score
+
+
+def calculate_fw_health_and_trend(
+    fw_implemented_dps: int, fw_total_dps: int, prev_actual_implemented: Any, fw_prev_implemented_dps: int
+) -> tuple[float, float, bool]:
+    """Calculate framework health and trend values."""
+    fw_health = 0
+    fw_prev_health = 0
+    if fw_total_dps > 0:
+        fw_health = round((fw_implemented_dps / fw_total_dps) * 100)
+        if prev_actual_implemented is not None:
+            fw_prev_health = round((fw_prev_implemented_dps / fw_total_dps) * 100)
+        else:
+            fw_prev_health = fw_health
+
+    trend_val = fw_health - fw_prev_health
+    trend_up = trend_val >= 0
+    trend_abs = abs(trend_val)
+
+    return fw_health, trend_abs, trend_up
+
+
+def process_gap_analyses(
+    gap_analyses: list[PackageGapAnalysis],
+    live_packages: list[dict],
+    historical_gap_analyses: list[PackageGapAnalysis],
+    merges: list[DeploymentPackageMerge],
+    assignments: list[FrameworkAssignment],
+) -> tuple:
+    """Extract and calculate gap analysis metrics."""
+    total_controls_overall = 0
+    passing_controls_overall = 0
+    extra_controls_overall = 0
+    critical_gaps = 0
+    active_gaps = []
+    framework_health = []
+    total_dps_overall = 0
+    implemented_dps_overall = 0
+    prev_implemented_dps_overall = 0
+
+    for lp in live_packages:
+        ga_id = str(get_nested(lp["pkg"], "gapAnalysis"))
+        merge_id = str(get_nested(lp["pkg"], "mergeDocument"))
+
+        ga = next((g for g in gap_analyses if str(g.id) == ga_id), None)
+        merge_doc = next((m for m in merges if str(m.id) == merge_id), None)
+
+        if not ga or not merge_doc:
+            continue
+
+        gap_data = ga.gapAnalysis or {}
+        df_id = get_nested(gap_data, "deployment_framework_id")
+        fw_assignment_id = get_nested(gap_data, "framework_assignment_id")
+
+        fw_name = lp["df"].frameworkName or "Unknown Framework"
+        fw_version = lp["df"].frameworkVersion or ""
+
+        custom_controls = extract_custom_controls(fw_assignment_id, assignments)
+        expected_controls = extract_expected_controls(merge_doc, custom_controls)
+
+        gap_results = get_nested(gap_data, "deployment_gap_results") or []
+        actual_implemented = extract_actual_implemented(gap_results)
+
+        prev_actual_implemented = extract_historical_implemented(df_id, ga.createdAt, historical_gap_analyses)
+
+        (
+            fw_total_controls,
+            fw_passing_controls,
+            fw_total_dps,
+            fw_implemented_dps,
+            fw_extra_controls,
+            fw_critical_gaps,
+            fw_active_gaps,
+            fw_prev_implemented_dps,
+        ) = evaluate_controls(
+            expected_controls, actual_implemented, prev_actual_implemented, ga, fw_name, fw_version
+        )
+
+        total_controls_overall += fw_total_controls
+        passing_controls_overall += fw_passing_controls
+        extra_controls_overall += fw_extra_controls
+        total_dps_overall += fw_total_dps
+        implemented_dps_overall += fw_implemented_dps
+        if prev_actual_implemented is not None:
+            prev_implemented_dps_overall += fw_prev_implemented_dps
+        else:
+            prev_implemented_dps_overall += fw_implemented_dps
+
+        critical_gaps += fw_critical_gaps
+        active_gaps.extend(fw_active_gaps)
+
+        fw_health, trend_abs, trend_up = calculate_fw_health_and_trend(
+            fw_implemented_dps, fw_total_dps, prev_actual_implemented, fw_prev_implemented_dps
+        )
+
+        fw_weight_score = calculate_fw_weight_score(fw_assignment_id, assignments)
+
+        framework_health.append(
+            {
+                "id": str(lp["df"].id),
+                "name": fw_name,
+                "version": fw_version,
+                "readiness": fw_health,
+                "weight_score": fw_weight_score,
+                "trend": trend_abs,
+                "trendUp": trend_up,
+            }
+        )
+
+    return (
+        total_controls_overall,
+        passing_controls_overall,
+        extra_controls_overall,
+        critical_gaps,
+        active_gaps,
+        framework_health,
+        total_dps_overall,
+        implemented_dps_overall,
+        prev_implemented_dps_overall,
     )

@@ -49,9 +49,7 @@ async def get_admin_dashboard_analytics(
             all_users = list((await session.execute(user_stmt)).scalars().all())
 
             customer_stmt = select(Customer)
-            customer_stmt = apply_date_filters(
-                customer_stmt, Customer, start_date_utc, end_date_utc
-            )
+            customer_stmt = apply_date_filters(customer_stmt, Customer, start_date_utc, end_date_utc)
             customers = list((await session.execute(customer_stmt)).scalars().all())
 
         model_counts = await get_model_counts(start_date_utc, end_date_utc)
@@ -78,9 +76,7 @@ async def get_admin_dashboard_analytics(
             "usersByRole": role_stats,
         }
 
-        response_data = build_response_data(
-            stats, chart_labels, chart_data, recent_created_users, customers
-        )
+        response_data = build_response_data(stats, chart_labels, chart_data, recent_created_users, customers)
 
         logger.info(
             f"[ADMIN-ANALYTICS] Dashboard loaded | users={len(all_users)} | customers={len(customers)} | frameworks={model_counts['totalFrameworks']}"

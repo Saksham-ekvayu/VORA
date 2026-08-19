@@ -65,10 +65,11 @@ export async function getAuditorDashboardAnalytics(dateRange) {
  */
 export async function getAuditorOverallProtection(params) {
   const query = new URLSearchParams(params).toString();
-  return apiRequest(
-    `${AUDITOR_BASE}/overall-protection${query ? `?${query}` : ""}`,
-    true
-  );
+  const endpoint = query
+    ? `${AUDITOR_BASE}/overall-protection?${query}`
+    : `${AUDITOR_BASE}/overall-protection`;
+
+  return apiRequest(endpoint, true);
 }
 
 /**
