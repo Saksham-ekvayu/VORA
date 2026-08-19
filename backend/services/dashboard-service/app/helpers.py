@@ -324,11 +324,10 @@ def extract_historical_implemented(
     df_id: str,
     current_created_at: datetime | None,
     historical_gap_analyses: list[Any]
-) -> dict[str, int]:
-    """Extract implemented counts from historical gapAnalysis for trend calculation."""
-    prev_actual_implemented = {}
+) -> dict[str, int] | None:
+    """Extract implemented counts from historical gapAnalysis for trend calculation. Returns None if no history exists."""
     if not df_id or not current_created_at:
-        return prev_actual_implemented
+        return None
 
     for hga in historical_gap_analyses:
         hga_df_id = _get(hga.gapAnalysis or {}, "deployment_framework_id")
@@ -336,11 +335,11 @@ def extract_historical_implemented(
             hga_results = _get(hga.gapAnalysis or {}, "deployment_gap_results") or []
             return extract_actual_implemented(hga_results)
             
-    return prev_actual_implemented
+    return None
 
 
-def _evaluate_trend(ctrl_id: str, req_dps: int, failing_percentage: int, prev_actual_implemented: dict[str, int]) -> str:
-    if ctrl_id not in prev_actual_implemented:
+def _evaluate_trend(ctrl_id: str, req_dps: int, failing_percentage: int, prev_actual_implemented: dict[str, int] | None) -> str:
+    if prev_actual_implemented is None or ctrl_id not in prev_actual_implemented:
         return "flat"
         
     prev_impl = prev_actual_implemented[ctrl_id]
@@ -360,7 +359,7 @@ def _create_active_gap(
     expected: dict,
     req_dps: int,
     impl_dps: int,
-    prev_actual_implemented: dict[str, int],
+    prev_actual_implemented: dict[str, int] | None,
     ga: Any,
     fw_name: str,
     fw_version: str
@@ -387,11 +386,11 @@ def _create_active_gap(
 def evaluate_controls(
     expected_controls: dict[str, Any],
     actual_implemented: dict[str, int],
-    prev_actual_implemented: dict[str, int],
+    prev_actual_implemented: dict[str, int] | None,
     ga: Any,
     fw_name: str,
     fw_version: str
-) -> tuple[int, int, int, int, int, int, int, list[dict]]:
+) -> tuple[int, int, int, int, int, int, int, list[dict], int]:
     """Evaluate controls against implemented DPs and return aggregated metrics."""
     fw_total_controls = 0
     fw_passing_controls = 0
@@ -400,6 +399,7 @@ def evaluate_controls(
     fw_extra_controls = 0
     fw_critical_gaps = 0
     fw_active_gaps = []
+    fw_prev_implemented_dps = 0
 
     for ctrl_id, expected in expected_controls.items():
         fw_total_controls += 1
@@ -408,9 +408,11 @@ def evaluate_controls(
         
         req_dps = expected["required_dps"]
         impl_dps = actual_implemented.get(ctrl_id, 0)
+        prev_impl = prev_actual_implemented.get(ctrl_id, 0) if prev_actual_implemented is not None else 0
         
         fw_total_dps += req_dps
         fw_implemented_dps += min(impl_dps, req_dps)
+        fw_prev_implemented_dps += min(prev_impl, req_dps)
         
         if req_dps > 0 and impl_dps >= req_dps:
             fw_passing_controls += 1
@@ -430,5 +432,6 @@ def evaluate_controls(
         fw_implemented_dps,
         fw_extra_controls,
         fw_critical_gaps,
-        fw_active_gaps
+        fw_active_gaps,
+        fw_prev_implemented_dps
     )

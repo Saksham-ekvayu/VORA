@@ -1,78 +1,12 @@
 /* eslint-disable react/prop-types */
-import { useState, useMemo, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import DataTable from "@/components/data-table/DataTable";
 import CustomBadge from "@/components/custom/CustomBadge";
 import Icon from "@/components/custom/Icon";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
-
-// ─── Static mock data ─────────────────────────────────────────────────────────
-
-const STATS = {
-  score: 84,
-  trend: "+2% vs last month",
-  trendUp: true,
-  timePeriod: "Last 180 Days",
-  description:
-    "Composite score across all active frameworks, deployment points, and control categories. Weighted by criticality and asset exposure.",
-  frameworksActive: 4,
-  controlsEvaluated: 847,
-  deploymentPoints: 581,
-};
-
-const FRAMEWORK_ROWS = [
-  {
-    id: "iso-27001",
-    version: "ISO-27001:2022",
-    framework: "Information Security Management System",
-    frameworkSlug: "iso-27001",
-    weight: "35%",
-    rawScore: "91%",
-    contribution: "31.85%",
-    trend: "+3%",
-    trendUp: true,
-    status: "On Track",
-  },
-  {
-    id: "iso-9001",
-    version: "ISO-9001:2015",
-    framework: "Quality Management System",
-    frameworkSlug: "iso-9001",
-    weight: "25%",
-    rawScore: "89%",
-    contribution: "22.25%",
-    trend: "+1%",
-    trendUp: true,
-    status: "On Track",
-  },
-  {
-    id: "nist-csf",
-    version: "NIST-CSF:2023",
-    framework: "Cybersecurity Framework",
-    frameworkSlug: "nist-csf",
-    weight: "25%",
-    rawScore: "58%",
-    contribution: "14.50%",
-    trend: "-2%",
-    trendUp: false,
-    status: "Needs Attention",
-  },
-  {
-    id: "21-cfr-part-ii",
-    version: "CFR-Part-II:2025",
-    framework: "21 CFR Part II",
-    frameworkSlug: "21-cfr-part-ii",
-    weight: "15%",
-    rawScore: "67%",
-    contribution: "10.05%",
-    trend: "-1%",
-    trendUp: false,
-    status: "At Risk",
-  },
-];
-
-const PAGE_SIZE = 10;
+import { useTableData } from "@/components/data-table/hooks/useTableData";
+import { getAuditorOverallProtection } from "@/services/dashboardService";
 
 // ─── Stat Mini Box ────────────────────────────────────────────────────────────
 
@@ -97,57 +31,31 @@ export default function OverallProtection() {
   usePageTitle("overall-protection", "Overall Protection");
 
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  // Filters
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  // Extract custom filters from URL
+  const statusFilter = searchParams.get("statusFilter") || "";
 
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
+  // Hook for table data
+  const {
+    data: rawData,
+    loading,
+    pagination,
+    searchTerm,
+    onSearch,
+    onFilterChange,
+  } = useTableData(getAuditorOverallProtection, {
+    defaultSortBy: "framework",
+    defaultSortOrder: "asc",
+    defaultLimit: 10,
+    emptyMessage: "No framework data found",
+  });
 
-  const handleStatusFilter = useCallback((val) => {
-    setStatusFilter(val);
-    setCurrentPage(1);
-  }, []);
+  const frameworksData = Array.isArray(rawData) ? [] : (rawData?.frameworks || []);
+  const currentStats = Array.isArray(rawData) ? null : rawData?.stats;
 
-  const handleSearch = useCallback((term) => {
-    setSearchTerm(term);
-    setCurrentPage(1);
-  }, []);
-
-  // Apply all filters
-  const filteredData = useMemo(() => {
-    let list = FRAMEWORK_ROWS;
-
-    if (statusFilter) {
-      list = list.filter((r) => r.status === statusFilter);
-    }
-
-    if (searchTerm.trim()) {
-      const q = searchTerm.toLowerCase();
-      list = list.filter((r) => r.framework.toLowerCase().includes(q));
-    }
-
-    return list;
-  }, [searchTerm, statusFilter]);
-
-  // Client-side pagination
-  const totalItems = filteredData.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
-  const safePage = Math.min(currentPage, totalPages);
-  const pagedData = filteredData.slice(
-    (safePage - 1) * PAGE_SIZE,
-    safePage * PAGE_SIZE
-  );
-
-  const pagination = {
-    currentPage: safePage,
-    totalPages,
-    totalItems,
-    limit: PAGE_SIZE,
-    hasPrevPage: safePage > 1,
-    hasNextPage: safePage < totalPages,
-    onPageChange: setCurrentPage,
+  const handleStatusFilter = (val) => {
+    onFilterChange("statusFilter", val);
   };
 
   // ── Column definitions ──────────────────────────────────────────────────────
@@ -157,21 +65,25 @@ export default function OverallProtection() {
       label: "Framework Version",
       sortable: false,
       render: (value, row) => (
-        <button
-          type="button"
-          onClick={() => navigate(`/dashboard/framework/${row.frameworkSlug}`)}
-          className="text-xs font-semibold hover:underline text-left whitespace-nowrap cursor-pointer"
+        <Link
+          to={`/deployment-frameworks/${row.id}`}
+          className="hover:underline hover:text-primary"
         >
           {value}
-        </button>
+        </Link>
       ),
     },
     {
       key: "framework",
       label: "Framework Name",
       sortable: false,
-      render: (value) => (
-        <span className="text-sm font-medium text-foreground">{value}</span>
+      render: (value, row) => (
+        <Link
+          to={`/deployment-frameworks/${row.id}`}
+          className="hover:underline hover:text-primary"
+        >
+          {value}
+        </Link>
       ),
     },
     {
@@ -179,7 +91,7 @@ export default function OverallProtection() {
       label: "Weight",
       sortable: false,
       render: (value) => (
-        <span className="text-sm font-medium text-foreground">{value}</span>
+        <span className="">{value}%</span>
       ),
     },
     {
@@ -187,7 +99,7 @@ export default function OverallProtection() {
       label: "Raw Score",
       sortable: false,
       render: (value) => (
-        <span className="text-sm font-bold text-foreground">{value}</span>
+        <span className="">{value}%</span>
       ),
     },
     {
@@ -195,7 +107,7 @@ export default function OverallProtection() {
       label: "Contribution",
       sortable: false,
       render: (value) => (
-        <span className="text-sm font-bold text-emerald-400">{value}</span>
+        <span className="">{value}%</span>
       ),
     },
     {
@@ -204,14 +116,14 @@ export default function OverallProtection() {
       sortable: false,
       render: (value, row) => (
         <span
-          className={`text-xs font-semibold flex items-center gap-1 ${row.trendUp ? "text-emerald-400" : "text-red-400"
+          className={`flex items-center gap-1 ${row.trendUp ? "text-emerald-400" : "text-red-400"
             }`}
         >
           <Icon
             name={row.trendUp ? "trending-up" : "trending-down"}
             size="13px"
           />
-          {value}
+          {row.trendUp ? "+" : "-"}{value}%
         </span>
       ),
     },
@@ -245,6 +157,16 @@ export default function OverallProtection() {
     },
   ];
 
+  // Default stats to avoid render issues when loading
+  const statsToUse = currentStats || {
+    score: 0,
+    trend: 0,
+    trendUp: true,
+    frameworksActive: 0,
+    controlsEvaluated: 0,
+    deploymentPoints: 0,
+  };
+
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-3 my-2">
@@ -253,30 +175,30 @@ export default function OverallProtection() {
         {/* Left — score + description + pills */}
         <div className="flex-1 min-w-0">
           <p className="text-2xl font-extrabold text-foreground leading-tight">
-            <span className="text-primary">{STATS.score}%</span>{" "}
+            <span className="text-primary">{statsToUse.score}%</span>{" "}
             <span className="text-base font-semibold">
               Overall Protection Score
             </span>
           </p>
           <p className="text-xs text-muted-foreground mt-1 max-w-xl">
-            {STATS.description}
+            Composite score across all active frameworks, deployment points, and control categories. Weighted by criticality and asset exposure.
           </p>
           {/* Trend + period pills */}
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             <span
-              className={`px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 ${STATS.trendUp
+              className={`px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 ${statsToUse.trendUp
                 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                 : "bg-red-500/20 text-red-400 border border-red-500/30"
                 }`}
             >
               <Icon
-                name={STATS.trendUp ? "trending-up" : "trending-down"}
+                name={statsToUse.trendUp ? "trending-up" : "trending-down"}
                 size="11px"
               />
-              {STATS.trend}
+              {statsToUse.trendUp ? "+" : "-"}{statsToUse.trend}% vs last month
             </span>
             <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-accent text-muted-foreground border border-border">
-              {STATS.timePeriod}
+              Last 180 Days
             </span>
           </div>
         </div>
@@ -293,17 +215,17 @@ export default function OverallProtection() {
           <div className="flex items-center gap-2 flex-wrap justify-end">
             <MiniStatBox
               label="Frameworks Active"
-              value={STATS.frameworksActive}
+              value={statsToUse.frameworksActive}
               valueColor="text-primary"
             />
             <MiniStatBox
               label="Controls Evaluated"
-              value={STATS.controlsEvaluated}
+              value={statsToUse.controlsEvaluated}
               valueColor="text-foreground"
             />
             <MiniStatBox
               label="Deployment Points"
-              value={STATS.deploymentPoints}
+              value={statsToUse.deploymentPoints}
               valueColor="text-primary"
             />
           </div>
@@ -314,11 +236,11 @@ export default function OverallProtection() {
       <DataTable
         entityName="Frameworks"
         columns={columns}
-        data={pagedData}
-        loading={false}
-        onSearch={handleSearch}
+        data={frameworksData}
+        loading={loading}
+        onSearch={onSearch}
         searchTerm={searchTerm}
-        onClearSearch={() => handleSearch("")}
+        onClearSearch={() => onSearch("")}
         pagination={pagination}
         headerActions={getHeaderActions()}
         searchPlaceholder="Search framework..."
