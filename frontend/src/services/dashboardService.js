@@ -73,6 +73,20 @@ export async function getAuditorOverallProtection(params) {
 }
 
 /**
+ * Get Auditor Critical Gaps
+ * @param {Object} [params] - Query parameters
+ * @returns {Promise} Critical gaps data
+ */
+export async function getAuditorCriticalGaps(params) {
+  const query = new URLSearchParams(params).toString();
+  const endpoint = query
+    ? `${AUDITOR_BASE}/critical-gaps?${query}`
+    : `${AUDITOR_BASE}/critical-gaps`;
+
+  return apiRequest(endpoint, true);
+}
+
+/**
  * Get Customer Dashboard Analytics
  * @param {Object} [params] - Query parameters (startDate, endDate, frameworkId, etc)
  * @returns {Promise} Dashboard analytics data

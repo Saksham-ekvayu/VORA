@@ -228,6 +228,7 @@ async def get_auditor_dashboard_analytics(
                 else []
             )
 
+            settings = get_settings()
             (
                 total_controls_overall,
                 passing_controls_overall,
@@ -239,7 +240,7 @@ async def get_auditor_dashboard_analytics(
                 implemented_dps_overall,
                 _, # Ignore prev_implemented_dps_overall
             ) = process_gap_analyses(
-                gap_analyses, live_packages, historical_gap_analyses, merges, assignments
+                gap_analyses, live_packages, historical_gap_analyses, merges, assignments, settings
             )
             overall_protection = (
                 round((implemented_dps_overall / total_dps_overall) * 100)
@@ -375,6 +376,7 @@ async def get_auditor_overall_protection(
                 else []
             )
 
+            settings = get_settings()
             (
                 total_controls_overall,
                 _,
@@ -386,7 +388,7 @@ async def get_auditor_overall_protection(
                 implemented_dps_overall,
                 prev_implemented_dps_overall,
             ) = process_gap_analyses(
-                gap_analyses, live_packages, historical_gap_analyses, merges, assignments
+                gap_analyses, live_packages, historical_gap_analyses, merges, assignments, settings
             )
 
             overall_protection = (
@@ -404,8 +406,7 @@ async def get_auditor_overall_protection(
             overall_trend_up = overall_trend_val >= 0
             overall_trend_abs = abs(overall_trend_val)
 
-            settings = get_settings()
-
+            overall_trend_abs = abs(overall_trend_val)
             # Build rows
             rows = build_overall_protection_rows(framework_health, settings)
 
@@ -442,3 +443,77 @@ async def get_auditor_overall_protection(
     except Exception:
         logger.exception("Error in overall protection")
         return server_error("Failed to fetch overall protection")
+
+
+@router.get("/critical-gaps")
+async def get_auditor_critical_gaps(
+    ctx: Annotated[RequestContext, Depends(get_context)],
+    page: Annotated[int, Query(alias="page")] = 1,
+    limit: Annotated[int, Query(alias="limit")] = 10,
+    search: Annotated[str, Query(alias="search")] = "",
+    severity_filter: Annotated[str, Query(alias="severityFilter")] = "",
+    sort_by: Annotated[str, Query(alias="sortBy")] = "failingPct",
+    sort_order: Annotated[str, Query(alias="sortOrder")] = "desc",
+):
+    """Get auditor critical gaps for dashboard table."""
+    try:
+        from app.helpers import build_critical_gaps_response
+        async with session_scope() as session:
+            dfs = list((await session.execute(
+                select(DeploymentFramework).where(DeploymentFramework.tenantId == ctx.tenant_id)
+            )).scalars().all())
+
+            live_packages, gap_analysis_ids, merge_doc_ids = get_live_packages(dfs)
+
+            gap_analyses = list((await session.execute(
+                select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_analysis_ids))
+            )).scalars().all()) if gap_analysis_ids else []
+
+            merges = list((await session.execute(
+                select(DeploymentPackageMerge).where(DeploymentPackageMerge.id.in_(merge_doc_ids))
+            )).scalars().all()) if merge_doc_ids else []
+
+            assignment_ids = [
+                get_nested(ga.gapAnalysis or {}, "framework_assignment_id")
+                for ga in gap_analyses
+                if get_nested(ga.gapAnalysis or {}, "framework_assignment_id")
+            ]
+
+            assignments = list((await session.execute(
+                select(FrameworkAssignment).where(FrameworkAssignment.id.in_(assignment_ids))
+            )).scalars().all()) if assignment_ids else []
+
+            historical_gap_analysis_ids = [
+                get_nested(pkg, "gapAnalysis")
+                for df in dfs
+                for pkg in (df.packages or [])
+                if get_nested(pkg, "gapAnalysis")
+            ]
+
+            historical_gap_analyses = list((await session.execute(
+                select(PackageGapAnalysis)
+                .where(PackageGapAnalysis.id.in_(historical_gap_analysis_ids))
+                .order_by(desc(PackageGapAnalysis.createdAt))
+            )).scalars().all()) if historical_gap_analysis_ids else []
+
+            settings = get_settings()
+            # We only need active_gaps, but process_gap_analyses returns a big tuple
+            res = process_gap_analyses(
+                gap_analyses, live_packages, historical_gap_analyses, merges, assignments, settings
+            )
+            active_gaps = res[4]
+
+            # Build and paginate rows using helper
+            data = build_critical_gaps_response(
+                active_gaps, search, severity_filter, sort_by, sort_order, page, limit
+            )
+
+            return paginated(
+                data,
+                build_pagination_meta(clamp_page(page), clamp_limit(limit), data["total"]),
+                "Critical gaps retrieved successfully"
+            )
+
+    except Exception:
+        logger.exception("Error in critical gaps")
+        return server_error("Failed to fetch critical gaps")

@@ -30,6 +30,7 @@ export function useTableData(fetchFunction, options = {}) {
 
   // State
   const [data, setData] = useState([]);
+  const [rawData, setRawData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [emptyMessage, setEmptyMessage] = useState(defaultEmptyMessage);
 
@@ -91,12 +92,21 @@ export function useTableData(fetchFunction, options = {}) {
     try {
       const res = await fetchFunction(queryParams);
 
-      setData(res.data || []);
+      setRawData(res.data);
+
+      let actualData = [];
+      if (Array.isArray(res.data)) {
+        actualData = res.data;
+      } else if (res.data && typeof res.data === "object") {
+        actualData = res.data.results || res.data.frameworks || res.data.items || [];
+      }
+
+      setData(actualData);
 
       // Handle empty message
-      if (res.message && res.data?.length === 0) {
+      if (res.message && actualData.length === 0) {
         setEmptyMessage(res.message);
-      } else if (search && res.data?.length === 0) {
+      } else if (search && actualData.length === 0) {
         setEmptyMessage(`No results found for "${search}"`);
       } else {
         setEmptyMessage(defaultEmptyMessage);
@@ -124,6 +134,7 @@ export function useTableData(fetchFunction, options = {}) {
       }
 
       setData([]);
+      setRawData(null);
       setEmptyMessage(errorMessage);
       return [];
     } finally {
@@ -233,5 +244,6 @@ export function useTableData(fetchFunction, options = {}) {
     refetch,
     setData,
     setLoading,
+    rawData,
   };
 }

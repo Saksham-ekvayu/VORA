@@ -358,6 +358,14 @@ def _evaluate_trend(
     return "flat"
 
 
+def calculate_gap_severity(failing_percentage: int, settings: Any) -> str:
+    if failing_percentage > (1 - settings.compliance_score_low) * 100:
+        return "High"
+    if failing_percentage > (1 - settings.compliance_score_medium) * 100:
+        return "Medium"
+    return "Low"
+
+
 def _create_active_gap(
     ctrl_id: str,
     expected: dict,
@@ -367,6 +375,7 @@ def _create_active_gap(
     ga: Any,
     fw_name: str,
     fw_version: str,
+    settings: Any,
 ) -> dict:
     failing_percentage = 100
     if req_dps > 0:
@@ -384,6 +393,7 @@ def _create_active_gap(
         "failing": failing_percentage,
         "lastNC": ga.createdAt.isoformat() if ga and ga.createdAt else None,
         "trend": trend,
+        "severity": calculate_gap_severity(failing_percentage, settings),
     }
 
 
@@ -394,6 +404,7 @@ def evaluate_controls(
     ga: Any,
     fw_name: str,
     fw_version: str,
+    settings: Any,
 ) -> tuple[int, int, int, int, int, int, int, list[dict], int]:
     """Evaluate controls against implemented DPs and return aggregated metrics."""
     fw_total_controls = 0
@@ -424,7 +435,7 @@ def evaluate_controls(
             fw_critical_gaps += 1
             fw_active_gaps.append(
                 _create_active_gap(
-                    ctrl_id, expected, req_dps, impl_dps, prev_actual_implemented, ga, fw_name, fw_version
+                    ctrl_id, expected, req_dps, impl_dps, prev_actual_implemented, ga, fw_name, fw_version, settings
                 )
             )
 
@@ -495,6 +506,82 @@ def build_overall_protection_rows(framework_health: list[dict], settings: Any) -
             }
         )
     return rows
+
+
+def build_critical_gaps_response(
+    active_gaps: list[dict], search: str, severity_filter: str, sort_by: str, sort_order: str, page: int, limit: int
+) -> dict:
+    formatted = []
+    high = 0
+    medium = 0
+    low = 0
+    
+    for g in active_gaps:
+        sev = g.get("severity", "Low")
+        if sev == "High":
+            high += 1
+        elif sev == "Medium":
+            medium += 1
+        else:
+            low += 1
+            
+        formatted.append({
+            "id": g["id"],
+            "frameworkVersion": g["version"],
+            "frameworkName": g["framework"],
+            "ctrlNo": g["id"],
+            "controlName": g["control"],
+            "instances": g["instances"],
+            "failingPct": f"{g['failing']}%",
+            "failingRaw": g["failing"],
+            "severity": sev,
+            "daysOpen": 0, # Placeholder if needed
+        })
+        
+    if severity_filter:
+        s_filter = severity_filter.lower()
+        formatted = [f for f in formatted if f["severity"].lower() == s_filter]
+        
+    if search:
+        q = search.lower()
+        formatted = [
+            f for f in formatted 
+            if q in f["ctrlNo"].lower() or q in f["controlName"].lower() or q in f["frameworkName"].lower()
+        ]
+        
+    if sort_by:
+        reverse = sort_order == "desc"
+        # Since 'failingPct' is a string like '9%', sort by the raw value
+        actual_sort_key = "failingRaw" if sort_by == "failingPct" else sort_by
+        formatted.sort(
+            key=lambda x: (
+                x.get(actual_sort_key, 0) if isinstance(x.get(actual_sort_key), (int, float)) else x.get(actual_sort_key, "")
+            ),
+            reverse=reverse,
+        )
+        
+    total = len(formatted)
+    
+    # Calculate pagination slice bounds, clamping page and limit.
+    from vora_shared.query_builder import clamp_page, clamp_limit
+    safe_page = clamp_page(page)
+    safe_limit = clamp_limit(limit)
+    start = (safe_page - 1) * safe_limit
+    end = start + safe_limit
+    
+    return {
+        "results": formatted[start:end],
+        "total": total,
+        "stats": {
+            "total": len(active_gaps),
+            "description": "Active control failures exceeding risk tolerance thresholds. Each gap requires remediation evidence before the next audit cycle.",
+            "priorities": {
+                "high": high,
+                "medium": medium,
+                "low": low
+            }
+        }
+    }
 
 
 def filter_and_sort_rows(
@@ -605,6 +692,7 @@ def process_gap_analyses(
     historical_gap_analyses: list[PackageGapAnalysis],
     merges: list[DeploymentPackageMerge],
     assignments: list[FrameworkAssignment],
+    settings: Any,
 ) -> tuple:
     """Extract and calculate gap analysis metrics."""
     total_controls_overall = 0
@@ -652,7 +740,7 @@ def process_gap_analyses(
             fw_active_gaps,
             fw_prev_implemented_dps,
         ) = evaluate_controls(
-            expected_controls, actual_implemented, prev_actual_implemented, ga, fw_name, fw_version
+            expected_controls, actual_implemented, prev_actual_implemented, ga, fw_name, fw_version, settings
         )
 
         total_controls_overall += fw_total_controls
