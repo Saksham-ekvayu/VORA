@@ -3,6 +3,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Icon from "@/components/custom/Icon";
 import SearchInput from "@/components/custom/SearchInput";
+import TableHeaderActions from "@/components/custom/TableHeaderActions";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
 
@@ -148,8 +149,27 @@ export default function DeploymentPoints() {
   const navigate = useNavigate();
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [frameworkFilter, setFrameworkFilter] = useState("All Frameworks");
 
   const handleSearch = useCallback((term) => setSearchTerm(term), []);
+
+  const frameworkOptions = useMemo(() => {
+    const versions = new Set(DEPLOYMENT_POINTS.map((dp) => dp.frameworkVersion).filter(Boolean));
+    return ["All Frameworks", ...Array.from(versions)];
+  }, []);
+
+  const tableActions = useMemo(() => [
+    {
+      type: "dropdown",
+      label: frameworkFilter,
+      triggerClassName: "w-fit",
+      options: frameworkOptions.map((opt, idx) => ({
+        label: opt,
+        onClick: () => setFrameworkFilter(opt),
+        separatorBefore: idx === 1,
+      })),
+    },
+  ], [frameworkFilter, frameworkOptions]);
 
   const filtered = useMemo(() => {
     let list = DEPLOYMENT_POINTS;
@@ -157,8 +177,11 @@ export default function DeploymentPoints() {
       const q = searchTerm.toLowerCase();
       list = list.filter((dp) => dp.frameworkName.toLowerCase().includes(q));
     }
+    if (frameworkFilter !== "All Frameworks") {
+      list = list.filter((dp) => dp.frameworkVersion === frameworkFilter);
+    }
     return list;
-  }, [searchTerm]);
+  }, [searchTerm, frameworkFilter]);
 
   return (
     <div className="space-y-3 my-2">
@@ -214,6 +237,9 @@ export default function DeploymentPoints() {
               placeholder="Search deployment points..."
               className="flex-1"
             />
+          </div>
+          <div className="flex items-center gap-2">
+            <TableHeaderActions actions={tableActions} />
           </div>
         </div>
 
