@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import DataTable from "@/components/data-table/DataTable";
 import CustomBadge from "@/components/custom/CustomBadge";
 import Icon from "@/components/custom/Icon";
@@ -49,21 +49,25 @@ export default function CriticalGaps() {
       label: "Framework Version",
       sortable: false,
       render: (value, row) => (
-        <button
-          type="button"
-          onClick={() => navigate(`/dashboard/framework/${row.id}`)}
-          className="text-xs font-semibold hover:underline text-left whitespace-nowrap"
+        <Link
+          to={`/dashboard/framework/${row.id}`}
+          className="hover:underline hover:text-primary"
         >
           {value}
-        </button>
+        </Link>
       ),
     },
     {
       key: "frameworkName",
       label: "Framework Name",
       sortable: false,
-      render: (value) => (
-        <span className="text-xs whitespace-nowrap">{value}</span>
+      render: (value, row) => (
+        <Link
+          to={`/dashboard/framework/${row.id}`}
+          className="hover:underline hover:text-primary"
+        >
+          {value}
+        </Link>
       ),
     },
     {
@@ -71,7 +75,7 @@ export default function CriticalGaps() {
       label: "Ctrl ID",
       sortable: false,
       render: (value) => (
-        <span className="font-mono text-xs font-bold text-secondary bg-muted px-2 py-1 rounded whitespace-nowrap">
+        <span className="font-mono font-bold text-secondary bg-muted px-2 py-1 rounded whitespace-nowrap">
           {value}
         </span>
       ),
@@ -80,14 +84,14 @@ export default function CriticalGaps() {
       key: "controlName",
       label: "Control Name",
       sortable: false,
-      render: (value) => <span className="text-sm">{value}</span>,
+      render: (value) => <span className="capitalize">{value}</span>,
     },
     {
       key: "instances",
       label: "Instances",
       sortable: false,
       render: (value) => (
-        <span className="text-sm font-medium text-center block">{value}</span>
+        <span className="text-center block">{value}</span>
       ),
     },
     {
@@ -95,7 +99,7 @@ export default function CriticalGaps() {
       label: "% Failing",
       sortable: false,
       render: (value) => (
-        <span className="text-sm font-bold text-red-400 text-center block">
+        <span className="font-semibold text-red-400 text-center block">
           {value}
         </span>
       ),

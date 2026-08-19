@@ -1,23 +1,23 @@
 /* eslint-disable react/prop-types */
 import { useState, useMemo, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import DataTable from "@/components/data-table/DataTable";
 import CustomBadge from "@/components/custom/CustomBadge";
 import Icon from "@/components/custom/Icon";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
+import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
 
 // ─── Static mock data ─────────────────────────────────────────────────────────
 
 const STATS = {
-  passing: 711,
-  failing: 98,
-  warning: 38,
+  passing: 1,
+  failing: 2,
+  warning: 1,
   notEvaluated: 0,
-  total: 847,
+  total: 3,
   passRate: 84,
-  failingOrEvidence: 136,
-  updatedAgo: "4 hours ago",
+  failingOrEvidence: 2,
 };
 
 const ALL_CONTROLS = [
@@ -31,7 +31,7 @@ const ALL_CONTROLS = [
     instances: 14,
     passRate: 78,
     status: "Failing",
-    lastRun: "4h ago",
+    lastRun: "2026-08-18T13:31:15.672868+00:00",
   },
   {
     id: "AU-2.1",
@@ -43,7 +43,7 @@ const ALL_CONTROLS = [
     instances: 9,
     passRate: 81,
     status: "Failing",
-    lastRun: "4h ago",
+    lastRun: "2026-08-18T13:31:15.672868+00:00",
   },
   {
     id: "IA-2.1",
@@ -55,7 +55,7 @@ const ALL_CONTROLS = [
     instances: 22,
     passRate: 88,
     status: "Warning",
-    lastRun: "4h ago",
+    lastRun: "2026-08-18T13:31:15.672868+00:00",
   },
 ];
 
@@ -66,11 +66,14 @@ const PAGE_SIZE = 10;
 
 function StatBox({ label, value, valueColor }) {
   return (
-    <div className="flex flex-col items-center justify-center px-4 py-2 rounded border border-border bg-accent min-w-22.5">
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">
+    <div className="flex items-center gap-2.5 px-3 py-1.5 rounded border border-border bg-card shadow-sm">
+      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
         {label}
-      </p>
-      <p className={`text-2xl font-bold leading-none ${valueColor}`}>{value}</p>
+      </span>
+      <span className="w-px h-3.5 bg-border" />
+      <span className={`text-sm font-extrabold ${valueColor}`}>
+        {value}
+      </span>
     </div>
   );
 }
@@ -148,26 +151,26 @@ export default function ControlsPassing() {
       label: "Version",
       sortable: false,
       render: (value, row) => (
-        <button
-          type="button"
-          onClick={() => navigate(`/dashboard/framework/${row.id}`)}
-          className="text-xs font-semibold hover:underline text-left whitespace-nowrap"
+        <Link
+          to={`/dashboard/framework/${row.id}`}
+          className="hover:underline hover:text-primary"
         >
           {value}
-        </button>
+        </Link>
       ),
     },
     {
       key: "frameworkName",
       label: "Framework Name",
       sortable: false,
-      render: (value) => <span className="">{value}</span>,
-    },
-    {
-      key: "section",
-      label: "Section",
-      sortable: false,
-      render: (value) => <span className="">{value}</span>,
+      render: (value, row) => (
+        <Link
+          to={`/dashboard/framework/${row.id}`}
+          className="hover:underline hover:text-primary"
+        >
+          {value}
+        </Link>
+      ),
     },
     {
       key: "ctrlId",
@@ -189,11 +192,7 @@ export default function ControlsPassing() {
       key: "instances",
       label: "Instances",
       sortable: false,
-      render: (value) => (
-        <span className="text-sm font-medium text-foreground text-center block">
-          {value}
-        </span>
-      ),
+      render: (value) => <span className="text-center block">{value}</span>,
     },
     {
       key: "passRate",
@@ -203,7 +202,11 @@ export default function ControlsPassing() {
         let color = "text-emerald-500";
         if (row.status === "Failing") color = "text-red-500";
         else if (row.status === "Warning") color = "text-amber-500";
-        return <span className={`text-sm font-bold ${color}`}>{value}%</span>;
+        return (
+          <span className={`text-sm font-bold block text-center ${color}`}>
+            {value}%
+          </span>
+        );
       },
     },
     {
@@ -217,8 +220,8 @@ export default function ControlsPassing() {
       label: "Last Run",
       sortable: false,
       render: (value) => (
-        <span className="text-sm text-muted-foreground whitespace-nowrap">
-          {value}
+        <span className="whitespace-nowrap">
+          {formatDateWithMonthNameAndTime(value)}
         </span>
       ),
     },
@@ -264,7 +267,7 @@ export default function ControlsPassing() {
           <p className="text-xs text-muted-foreground mt-1 max-w-xl">
             {STATS.passRate}% pass rate across all deployed controls.{" "}
             {STATS.failingOrEvidence} controls currently failing or requiring
-            evidence. Updated {STATS.updatedAgo}.
+            evidence.
           </p>
         </div>
 
