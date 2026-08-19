@@ -18,6 +18,7 @@ from vora_shared.models import (
     FrameworkCategory,
     PackageGapAnalysis,
     User,
+    EvidenceOutput,
 )
 
 
@@ -785,3 +786,97 @@ def process_gap_analyses(
         implemented_dps_overall,
         prev_implemented_dps_overall,
     )
+
+
+def _iter_evidence_records(ev: EvidenceOutput):
+    """Yield records from an evidence output."""
+    out = ev.output or {}
+    fw_name = get_nested(out, "frameworkName")
+    fw_version = get_nested(out, "frameworkVersion") or get_nested(out, "currentFileVersion") or ""
+
+    for fv in get_nested(out, "fileVersions") or []:
+        for cdata in (get_nested(fv, "data") or {}).values():
+            for rec in get_nested(cdata, "records") or []:
+                yield fw_name, fw_version, rec
+
+
+def _format_stream_record(ev: EvidenceOutput, fw_name: str, fw_version: str, rec: dict) -> dict:
+    """Format a single audit stream record."""
+    status_str = get_nested(rec, "compliance_status", "").lower()
+
+    status = "warn"
+    if "not compliant" in status_str:
+        status = "fail"
+    elif "compliant" in status_str:
+        status = "pass"
+
+    desc = get_nested(rec, "deployment_point", "")
+
+    llm_analysis = get_nested(rec, "llm_analysis") or {}
+    reason = get_nested(llm_analysis, "reason", "")
+    confidence = get_nested(llm_analysis, "confidence", "")
+
+    return {
+        "id": get_nested(rec, "file_id", str(ev.id)),
+        "dp_id": get_nested(rec, "dp_id", ""),
+        "status": status,
+        "framework": fw_name,
+        "version": fw_version,
+        "description": desc,
+        "reason": reason,
+        "confidence": confidence,
+        "timestamp": ev.createdAt.isoformat() if ev.createdAt else None,
+    }
+
+
+def process_live_streams(evidence_outputs: list[EvidenceOutput]) -> list[dict]:
+    """Extract and format recent live audit streams."""
+    live_streams = []
+    for ev in evidence_outputs:
+        for fw_name, fw_version, rec in _iter_evidence_records(ev):
+            live_streams.append(_format_stream_record(ev, fw_name, fw_version, rec))
+    return live_streams
+
+
+def process_ai_insights(evidence_outputs: list[EvidenceOutput]) -> list[dict]:
+    """Extract AI insights based on LLM recommendations in evidence outputs."""
+    insights = []
+    for ev in evidence_outputs:
+        for fw_name, fw_version, rec in _iter_evidence_records(ev):
+            llm_analysis = get_nested(rec, "llm_analysis") or {}
+            recommendation = get_nested(llm_analysis, "recommendation")
+            if recommendation:
+                confidence = str(get_nested(llm_analysis, "confidence") or "").title()
+                priority = confidence if confidence in ["High", "Medium", "Low"] else "Low"
+                insights.append({"text": recommendation, "priority": priority})
+    return insights
+
+
+def _get_dp_count_for_merge(pm: DeploymentPackageMerge) -> int:
+    controls = pm.controls or {}
+    controls_data = get_nested(controls, "controls_data") or []
+    dp_count = 0
+    for section in controls_data:
+        for control in get_nested(section, "controls") or []:
+            dp_count += len(get_nested(control, "deployment_points") or [])
+    return dp_count
+
+
+def process_deployment_points(
+    merges: list[DeploymentPackageMerge], live_packages: list[dict]
+) -> list[dict]:
+    """Aggregate configured deployment points per framework."""
+    deployment_points = []
+    for pm in merges:
+        dp_count = _get_dp_count_for_merge(pm)
+
+        fw_name = "Unknown Framework"
+        fw_version = ""
+        for lp in live_packages:
+            if str(get_nested(lp["pkg"], "mergeDocument")) == str(pm.id):
+                fw_name = lp["df"].frameworkName or fw_name
+                fw_version = lp["df"].frameworkVersion or ""
+                break
+
+        deployment_points.append({"name": fw_name, "version": fw_version, "count": dp_count})
+    return deployment_points
