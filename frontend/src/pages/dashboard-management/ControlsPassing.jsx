@@ -25,8 +25,8 @@ const ALL_CONTROLS = [
     id: "AC-2.1",
     ctrlId: "AC-2.1",
     control: "Least Privilege Enforcement",
-    framework: "ISO 27001",
-    frameworkSlug: "iso-27001",
+    frameworkVersion: "ISO-27001:2022",
+    frameworkName: "Information Security Management System (ISMS)",
     section: "Access Control",
     instances: 14,
     passRate: 78,
@@ -37,8 +37,8 @@ const ALL_CONTROLS = [
     id: "AU-2.1",
     ctrlId: "AU-2.1",
     control: "Admin Activity Logging",
-    framework: "ISO 27001",
-    frameworkSlug: "iso-27001",
+    frameworkVersion: "ISO-27001:2022",
+    frameworkName: "Information Security Management System (ISMS)",
     section: "Audit & Accountability",
     instances: 9,
     passRate: 81,
@@ -49,135 +49,15 @@ const ALL_CONTROLS = [
     id: "IA-2.1",
     ctrlId: "IA-2.1",
     control: "Multi-Factor Authentication",
-    framework: "ISO 27001",
-    frameworkSlug: "iso-27001",
+    frameworkVersion: "ISO-27001:2022",
+    frameworkName: "Information Security Management System (ISMS)",
     section: "Identification & Auth",
     instances: 22,
     passRate: 88,
     status: "Warning",
     lastRun: "4h ago",
   },
-  {
-    id: "CM-6.3",
-    ctrlId: "CM-6.3",
-    control: "Configuration Baseline",
-    framework: "NIST CSF",
-    frameworkSlug: "nist-csf",
-    section: "Config Management",
-    instances: 7,
-    passRate: 96,
-    status: "Passing",
-    lastRun: "4h ago",
-  },
-  {
-    id: "SC-12.4",
-    ctrlId: "SC-12.4",
-    control: "Cryptographic Key Rotation",
-    framework: "NIST CSF",
-    frameworkSlug: "nist-csf",
-    section: "System & Comms",
-    instances: 3,
-    passRate: 93,
-    status: "Warning",
-    lastRun: "4h ago",
-  },
-  {
-    id: "BC-12.4",
-    ctrlId: "BC-12.4",
-    control: "Business Continuity Testing",
-    framework: "ISO 27001",
-    frameworkSlug: "iso-27001",
-    section: "Business Continuity",
-    instances: 5,
-    passRate: 91,
-    status: "Passing",
-    lastRun: "4h ago",
-  },
-  {
-    id: "PR.AC-4",
-    ctrlId: "PR.AC-4",
-    control: "Access Permissions Management",
-    framework: "NIST CSF",
-    frameworkSlug: "nist-csf",
-    section: "Access Control",
-    instances: 11,
-    passRate: 69,
-    status: "Failing",
-    lastRun: "4h ago",
-  },
-  {
-    id: "DE.CM-1",
-    ctrlId: "DE.CM-1",
-    control: "Network Monitoring",
-    framework: "NIST CSF",
-    frameworkSlug: "nist-csf",
-    section: "Continuous Monitoring",
-    instances: 8,
-    passRate: 76,
-    status: "Failing",
-    lastRun: "4h ago",
-  },
-  {
-    id: "QM-4.2",
-    ctrlId: "QM-4.2",
-    control: "Document Control Procedures",
-    framework: "ISO 9001",
-    frameworkSlug: "iso-9001",
-    section: "Documentation",
-    instances: 6,
-    passRate: 86,
-    status: "Warning",
-    lastRun: "4h ago",
-  },
-  {
-    id: "QM-9.1",
-    ctrlId: "QM-9.1",
-    control: "Monitoring and Measurement",
-    framework: "ISO 9001",
-    frameworkSlug: "iso-9001",
-    section: "Performance Evaluation",
-    instances: 4,
-    passRate: 93,
-    status: "Passing",
-    lastRun: "4h ago",
-  },
-  {
-    id: "11.10a",
-    ctrlId: "11.10a",
-    control: "Validation of Systems",
-    framework: "21 CFR Part II",
-    frameworkSlug: "21-cfr-part-ii",
-    section: "System Validation",
-    instances: 5,
-    passRate: 81,
-    status: "Failing",
-    lastRun: "4h ago",
-  },
-  {
-    id: "IA-5.1",
-    ctrlId: "IA-5.1",
-    control: "Authenticator Management",
-    framework: "ISO 27001",
-    frameworkSlug: "iso-27001",
-    section: "Identification & Auth",
-    instances: 7,
-    passRate: 88,
-    status: "Passing",
-    lastRun: "4h ago",
-  },
 ];
-
-// Unique framework Control  for the dropdown
-const FRAMEWORK_Control = Array.from(
-  new Set(ALL_CONTROLS.map((c) => c.framework))
-);
-
-const FRAMEWORK_COLORS = {
-  "ISO 27001": "text-blue-400",
-  "ISO 9001": "text-green-400",
-  "NIST CSF": "text-violet-400",
-  "21 CFR Part II": "text-red-400",
-};
 
 // Items per page (client-side)
 const PAGE_SIZE = 10;
@@ -205,7 +85,6 @@ export default function ControlsPassing() {
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState(""); // "" = All
-  const [frameworkFilter, setFrameworkFilter] = useState(""); // "" = All
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -213,11 +92,6 @@ export default function ControlsPassing() {
   // Reset to page 1 whenever a filter changes
   const handleStatusFilter = useCallback((val) => {
     setStatusFilter(val);
-    setCurrentPage(1);
-  }, []);
-
-  const handleFrameworkFilter = useCallback((val) => {
-    setFrameworkFilter(val);
     setCurrentPage(1);
   }, []);
 
@@ -229,10 +103,6 @@ export default function ControlsPassing() {
   // Apply all filters
   const filteredData = useMemo(() => {
     let list = ALL_CONTROLS;
-
-    if (frameworkFilter) {
-      list = list.filter((c) => c.framework === frameworkFilter);
-    }
 
     if (statusFilter) {
       list = list.filter((c) => c.status === statusFilter);
@@ -250,7 +120,7 @@ export default function ControlsPassing() {
     }
 
     return list;
-  }, [searchTerm, statusFilter, frameworkFilter]);
+  }, [searchTerm, statusFilter]);
 
   // Client-side pagination
   const totalItems = filteredData.length;
@@ -274,6 +144,32 @@ export default function ControlsPassing() {
   // ── Column definitions ──────────────────────────────────────────────────────
   const columns = [
     {
+      key: "frameworkVersion",
+      label: "Version",
+      sortable: false,
+      render: (value, row) => (
+        <button
+          type="button"
+          onClick={() => navigate(`/dashboard/framework/${row.id}`)}
+          className="text-xs font-semibold hover:underline text-left whitespace-nowrap"
+        >
+          {value}
+        </button>
+      ),
+    },
+    {
+      key: "frameworkName",
+      label: "Framework Name",
+      sortable: false,
+      render: (value) => <span className="">{value}</span>,
+    },
+    {
+      key: "section",
+      label: "Section",
+      sortable: false,
+      render: (value) => <span className="">{value}</span>,
+    },
+    {
       key: "ctrlId",
       label: "Ctrl ID",
       sortable: false,
@@ -287,33 +183,7 @@ export default function ControlsPassing() {
       key: "control",
       label: "Control",
       sortable: false,
-      render: (value) => (
-        <span className="text-sm font-medium text-foreground">{value}</span>
-      ),
-    },
-    {
-      key: "framework",
-      label: "Framework",
-      sortable: false,
-      render: (value, row) => (
-        <button
-          type="button"
-          onClick={() => navigate(`/dashboard/framework/${row.frameworkSlug}`)}
-          className={`text-xs font-semibold hover:underline text-left whitespace-nowrap ${FRAMEWORK_COLORS[value] ?? "text-primary"}`}
-        >
-          {value}
-        </button>
-      ),
-    },
-    {
-      key: "section",
-      label: "Section",
-      sortable: false,
-      render: (value) => (
-        <span className="text-sm text-muted-foreground whitespace-nowrap">
-          {value}
-        </span>
-      ),
+      render: (value) => <span className="">{value}</span>,
     },
     {
       key: "instances",
@@ -354,21 +224,8 @@ export default function ControlsPassing() {
     },
   ];
 
-  // ── Header actions (framework dropdown + status dropdown) ───────────────────
+  // ── Header actions (status dropdown) ───────────────────
   const getHeaderActions = () => [
-    {
-      type: "dropdown",
-      label: frameworkFilter || "All Frameworks",
-      triggerClassName: "w-fit min-w-36",
-      options: [
-        { label: "All Frameworks", onClick: () => handleFrameworkFilter("") },
-        ...FRAMEWORK_Control.map((fw, i) => ({
-          label: fw,
-          separatorBefore: i === 0,
-          onClick: () => handleFrameworkFilter(fw),
-        })),
-      ],
-    },
     {
       type: "dropdown",
       label: statusFilter || "All Status",
@@ -458,7 +315,7 @@ export default function ControlsPassing() {
         headerActions={getHeaderActions()}
         searchPlaceholder="Search controls..."
         emptyMessage={
-          searchTerm || statusFilter || frameworkFilter
+          searchTerm || statusFilter
             ? "No controls match your filters"
             : "No controls found"
         }

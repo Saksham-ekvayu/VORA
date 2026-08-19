@@ -59,6 +59,20 @@ export async function getAuditorDashboardAnalytics(dateRange) {
 }
 
 /**
+ * Get Auditor Overall Protection (Table + Stats)
+ * @param {Object} [params] - Query parameters
+ * @returns {Promise} Overall protection data
+ */
+export async function getAuditorOverallProtection(params) {
+  const query = new URLSearchParams(params).toString();
+  const endpoint = query
+    ? `${AUDITOR_BASE}/overall-protection?${query}`
+    : `${AUDITOR_BASE}/overall-protection`;
+
+  return apiRequest(endpoint, true);
+}
+
+/**
  * Get Customer Dashboard Analytics
  * @param {Object} [params] - Query parameters (startDate, endDate, frameworkId, etc)
  * @returns {Promise} Dashboard analytics data

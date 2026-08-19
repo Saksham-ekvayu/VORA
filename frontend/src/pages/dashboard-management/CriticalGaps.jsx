@@ -32,8 +32,8 @@ const STATS = {
 const ALL_GAPS = [
   {
     id: "1",
-    framework: "ISO 27001",
-    frameworkSlug: "iso-27001",
+    frameworkVersion: "ISO-27001:2022",
+    frameworkName: "Information Security Management System",
     ctrlNo: "BC-12.4",
     controlName: "Business Continuity Planning",
     instances: 5,
@@ -44,8 +44,8 @@ const ALL_GAPS = [
   },
   {
     id: "2",
-    framework: "ISO 9001",
-    frameworkSlug: "iso-9001",
+    frameworkVersion: "ISO-9001:2015",
+    frameworkName: "Quality Management System",
     ctrlNo: "QM-4.2",
     controlName: "Quality Management Objectives",
     instances: 6,
@@ -56,8 +56,8 @@ const ALL_GAPS = [
   },
   {
     id: "3",
-    framework: "ISO 27001",
-    frameworkSlug: "iso-27001",
+    frameworkVersion: "ISO-27001:2022",
+    frameworkName: "Information Security Management System",
     ctrlNo: "AC-2.1",
     controlName: "Access Control — Least Privilege",
     instances: 14,
@@ -68,8 +68,8 @@ const ALL_GAPS = [
   },
   {
     id: "4",
-    framework: "NIST CSF",
-    frameworkSlug: "nist-csf",
+    frameworkVersion: "NIST-CSF:2.0",
+    frameworkName: "Cyber Security Framework",
     ctrlNo: "PR.AC-4",
     controlName: "Access Permissions Management",
     instances: 11,
@@ -80,8 +80,8 @@ const ALL_GAPS = [
   },
   {
     id: "5",
-    framework: "ISO 27001",
-    frameworkSlug: "iso-27001",
+    frameworkVersion: "ISO-27001:2022",
+    frameworkName: "Information Security Management System",
     ctrlNo: "AU-2.1",
     controlName: "Audit Logging — Administrative",
     instances: 9,
@@ -92,8 +92,8 @@ const ALL_GAPS = [
   },
   {
     id: "6",
-    framework: "NIST CSF",
-    frameworkSlug: "nist-csf",
+    frameworkVersion: "NIST-CSF:2.0",
+    frameworkName: "Cyber Security Framework",
     ctrlNo: "SC-12.4",
     controlName: "Cryptographic Key Rotation",
     instances: 3,
@@ -104,8 +104,8 @@ const ALL_GAPS = [
   },
   {
     id: "7",
-    framework: "ISO 27001",
-    frameworkSlug: "iso-27001",
+    frameworkVersion: "ISO-27001:2022",
+    frameworkName: "Information Security Management System",
     ctrlNo: "IA-2.1",
     controlName: "Multi-Factor Authentication",
     instances: 22,
@@ -116,8 +116,8 @@ const ALL_GAPS = [
   },
   {
     id: "8",
-    framework: "NIST CSF",
-    frameworkSlug: "nist-csf",
+    frameworkVersion: "NIST-CSF:2.0",
+    frameworkName: "Cyber Security Framework",
     ctrlNo: "DE.CM-1",
     controlName: "Network Monitoring",
     instances: 8,
@@ -128,8 +128,8 @@ const ALL_GAPS = [
   },
   {
     id: "9",
-    framework: "ISO 9001",
-    frameworkSlug: "iso-9001",
+    frameworkVersion: "ISO-9001:2015",
+    frameworkName: "Quality Management System",
     ctrlNo: "QM-10.2",
     controlName: "Nonconformity and Corrective Action",
     instances: 5,
@@ -140,8 +140,8 @@ const ALL_GAPS = [
   },
   {
     id: "10",
-    framework: "NIST CSF",
-    frameworkSlug: "nist-csf",
+    frameworkVersion: "NIST-CSF:2.0",
+    frameworkName: "Cyber Security Framework",
     ctrlNo: "ID.AM-2",
     controlName: "Software Inventory",
     instances: 6,
@@ -152,8 +152,8 @@ const ALL_GAPS = [
   },
   {
     id: "11",
-    framework: "ISO 27001",
-    frameworkSlug: "iso-27001",
+    frameworkVersion: "ISO-27001:2022",
+    frameworkName: "Information Security Management System",
     ctrlNo: "CM-6.3",
     controlName: "Configuration Baseline",
     instances: 7,
@@ -164,8 +164,8 @@ const ALL_GAPS = [
   },
   {
     id: "12",
-    framework: "ISO 9001",
-    frameworkSlug: "iso-9001",
+    frameworkVersion: "ISO-9001:2015",
+    frameworkName: "Quality Management System",
     ctrlNo: "QM-8.1",
     controlName: "Operational Planning",
     instances: 4,
@@ -177,28 +177,7 @@ const ALL_GAPS = [
 ];
 
 // Unique frameworks for dropdown
-const FRAMEWORK_NAMES = Array.from(new Set(ALL_GAPS.map((g) => g.framework)));
-
-const FRAMEWORK_COLORS = {
-  "ISO 27001": "text-blue-400",
-  "ISO 9001": "text-green-400",
-  "NIST CSF": "text-violet-400",
-  "21 CFR Part II": "text-red-400",
-};
-
 const PAGE_SIZE = 10;
-
-// ─── Helper Functions ─────────────────────────────────────────────────────────
-
-const getColorByDaysOpen = (value) => {
-  if (value >= 40) {
-    return "text-red-400";
-  }
-  if (value >= 20) {
-    return "text-amber-400";
-  }
-  return "text-foreground";
-};
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -209,16 +188,10 @@ export default function CriticalGaps() {
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
-  const [frameworkFilter, setFrameworkFilter] = useState("");
   const [severityFilter, setSeverityFilter] = useState("");
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-
-  const handleFrameworkFilter = useCallback((val) => {
-    setFrameworkFilter(val);
-    setCurrentPage(1);
-  }, []);
 
   const handleSeverityFilter = useCallback((val) => {
     setSeverityFilter(val);
@@ -233,10 +206,6 @@ export default function CriticalGaps() {
   // Apply all filters
   const filteredData = useMemo(() => {
     let list = ALL_GAPS;
-
-    if (frameworkFilter) {
-      list = list.filter((g) => g.framework === frameworkFilter);
-    }
 
     if (severityFilter) {
       list = list.filter((g) => g.severity === severityFilter);
@@ -254,7 +223,7 @@ export default function CriticalGaps() {
     }
 
     return list;
-  }, [searchTerm, frameworkFilter, severityFilter]);
+  }, [searchTerm, severityFilter]);
 
   // Client-side pagination
   const totalItems = filteredData.length;
@@ -278,8 +247,30 @@ export default function CriticalGaps() {
   // ── Column definitions ──────────────────────────────────────────────────────
   const columns = [
     {
+      key: "frameworkVersion",
+      label: "Framework Version",
+      sortable: false,
+      render: (value, row) => (
+        <button
+          type="button"
+          onClick={() => navigate(`/dashboard/framework/${row.id}`)}
+          className="text-xs font-semibold hover:underline text-left whitespace-nowrap"
+        >
+          {value}
+        </button>
+      ),
+    },
+    {
+      key: "frameworkName",
+      label: "Framework Name",
+      sortable: false,
+      render: (value) => (
+        <span className="text-xs whitespace-nowrap">{value}</span>
+      ),
+    },
+    {
       key: "ctrlNo",
-      label: "Ctrl No.",
+      label: "Ctrl ID",
       sortable: false,
       render: (value) => (
         <span className="font-mono text-xs font-bold text-secondary bg-muted px-2 py-1 rounded whitespace-nowrap">
@@ -291,32 +282,14 @@ export default function CriticalGaps() {
       key: "controlName",
       label: "Control Name",
       sortable: false,
-      render: (value) => (
-        <span className="text-sm font-medium text-foreground">{value}</span>
-      ),
-    },
-    {
-      key: "framework",
-      label: "Framework",
-      sortable: false,
-      render: (value, row) => (
-        <button
-          type="button"
-          onClick={() => navigate(`/dashboard/framework/${row.frameworkSlug}`)}
-          className={`text-xs font-semibold hover:underline text-left whitespace-nowrap ${FRAMEWORK_COLORS[value] ?? "text-primary"}`}
-        >
-          {value}
-        </button>
-      ),
+      render: (value) => <span className="text-sm">{value}</span>,
     },
     {
       key: "instances",
-      label: "Inst.",
+      label: "Instances",
       sortable: false,
       render: (value) => (
-        <span className="text-sm font-medium text-foreground text-center block">
-          {value}
-        </span>
+        <span className="text-sm font-medium text-center block">{value}</span>
       ),
     },
     {
@@ -324,52 +297,21 @@ export default function CriticalGaps() {
       label: "% Failing",
       sortable: false,
       render: (value) => (
-        <span className="text-sm font-bold text-red-400">{value}</span>
+        <span className="text-sm font-bold text-red-400 text-center block">
+          {value}
+        </span>
       ),
     },
     {
       key: "severity",
       label: "Severity",
       sortable: false,
-      render: (value) => <CustomBadge severity={value} size="sm" />,
-    },
-    {
-      key: "daysOpen",
-      label: "Days Open",
-      sortable: false,
-      render: (value) => (
-        <span className={`text-sm font-semibold ${getColorByDaysOpen(value)}`}>
-          {value}
-        </span>
-      ),
-    },
-    {
-      key: "owner",
-      label: "Owner",
-      sortable: false,
-      render: (value) => (
-        <span className="text-sm text-muted-foreground whitespace-nowrap">
-          {value}
-        </span>
-      ),
+      render: (value) => <CustomBadge severity={value} size="xs" />,
     },
   ];
 
   // ── Header actions ──────────────────────────────────────────────────────────
   const getHeaderActions = () => [
-    {
-      type: "dropdown",
-      label: frameworkFilter || "All Frameworks",
-      triggerClassName: "w-fit min-w-36",
-      options: [
-        { label: "All Frameworks", onClick: () => handleFrameworkFilter("") },
-        ...FRAMEWORK_NAMES.map((fw, i) => ({
-          label: fw,
-          separatorBefore: i === 0,
-          onClick: () => handleFrameworkFilter(fw),
-        })),
-      ],
-    },
     {
       type: "dropdown",
       label: severityFilter || "All Severities",
@@ -402,6 +344,17 @@ export default function CriticalGaps() {
           <p className="text-xs text-muted-foreground mt-1 max-w-xl">
             {STATS.description}
           </p>
+        </div>
+
+        {/* Right — Button */}
+        <div className="flex flex-col items-end gap-2">
+          <Button
+            size="xs"
+            variant="outline"
+            onClick={() => navigate("/dashboard")}
+          >
+            <Icon name="arrow-left" size="13px" /> Back to Dashboard
+          </Button>
           {/* Priority pills */}
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             {STATS.priorities.map((p) => (
@@ -413,17 +366,6 @@ export default function CriticalGaps() {
               </span>
             ))}
           </div>
-        </div>
-
-        {/* Right — Button */}
-        <div className="shrink-0">
-          <Button
-            size="xs"
-            variant="outline"
-            onClick={() => navigate("/dashboard")}
-          >
-            <Icon name="arrow-left" size="13px" /> Back to Dashboard
-          </Button>
         </div>
       </div>
 
@@ -440,7 +382,7 @@ export default function CriticalGaps() {
         headerActions={getHeaderActions()}
         searchPlaceholder="Search gaps..."
         emptyMessage={
-          searchTerm || frameworkFilter || severityFilter
+          searchTerm || severityFilter
             ? "No gaps match your filters"
             : "No critical gaps found"
         }

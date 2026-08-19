@@ -28,12 +28,18 @@ DEFAULT_AGENTS = [
     ("Logging & Monitoring Agent", "Validate logging, alert monitoring, and audit trails coverage."),
     ("Network Security Agent", "Assess network security, firewall rules, and traffic filtering controls."),
     ("Secure Development Agent", "Review software development life cycle security and source controls."),
-    ("Technical Controls Agent", "Assess miscellaneous system configuration and endpoint protection controls."),
+    (
+        "Technical Controls Agent",
+        "Assess miscellaneous system configuration and endpoint protection controls.",
+    ),
     ("Leadership Agent", "Review leadership quality goals and management alignment."),
     ("Planning Agent", "Validate operational planning, risk management, and system mapping."),
     ("Support & Resources Agent", "Evaluate infrastructure, competence, and documented resources."),
     ("Operational Controls Agent", "Assess change management and operational control parameters."),
-    ("Performance Evaluation Agent", "Verify internal audits, management reviews, and customer satisfaction logs."),
+    (
+        "Performance Evaluation Agent",
+        "Verify internal audits, management reviews, and customer satisfaction logs.",
+    ),
     ("Change Management Agent", "Assess change management documentation and approvals."),
     ("Incident Response Agent", "Review incident response evidence and timelines."),
     ("General Compliance Agent", "Review general compliance guidelines and audits."),
@@ -50,17 +56,17 @@ async def _ensure_default_agents() -> list[str]:
     async with session_scope() as session:
         rows = (await session.execute(select(AgentPrompt))).scalars().all()
         existing_names = {r.name for r in rows}
-        
+
         added = False
         for name, prompt in DEFAULT_AGENTS:
             if name not in existing_names:
                 session.add(AgentPrompt(id=new_id(), name=name, prompt=prompt, meta={}))
                 added = True
-                
+
         if added:
             await session.flush()
             rows = (await session.execute(select(AgentPrompt))).scalars().all()
-            
+
         return [r.name for r in rows]
 
 
@@ -170,14 +176,14 @@ async def get_output_by_document():
                 .scalars()
                 .all()
             )
-            
+
             # Group by document_uuid
             grouped = {}
             for row in rows:
                 output = row.output or {}
                 doc_uuid = output.get("document_uuid", "unknown")
                 filename = output.get("filename", "unknown")
-                
+
                 if doc_uuid not in grouped:
                     grouped[doc_uuid] = {
                         "document_uuid": doc_uuid,
@@ -187,25 +193,19 @@ async def get_output_by_document():
                         "frameworkVersion": output.get("frameworkVersion"),
                         "user_id": output.get("user_id"),
                         # "tenantId": output.get("tenantId"),
-                        "controls": []
+                        "controls": [],
                     }
-                
+
                 # Add this control to the document group
-                grouped[doc_uuid]["controls"].append({
-                    "control_id": row.control_id,
-                    "output": output
-                })
-            
+                grouped[doc_uuid]["controls"].append({"control_id": row.control_id, "output": output})
+
             # Convert to list
             documents = list(grouped.values())
             logger.info(f"[GET-OUTPUT-BY-DOC] Grouped {len(rows)} controls into {len(documents)} documents")
-            
+
             return success(
                 message=f"Returned {len(documents)} documents with their compliance results",
-                data={
-                    "total_documents": len(documents),
-                    "documents": documents
-                },
+                data={"total_documents": len(documents), "documents": documents},
             )
     except Exception as exc:
         logger.exception(f"[GET-OUTPUT-BY-DOC] Error: {exc}")
@@ -263,9 +263,15 @@ async def status():
     uploaded_count = 0
     try:
         async with session_scope() as session:
-            compliance_count = (await session.execute(select(func.count()).select_from(EvidenceOutput))).scalar_one()
-            uploaded_count = (await session.execute(select(func.count()).select_from(UploadedFile))).scalar_one()
-        logger.info(f"[STATUS] Database counts | compliance_records={compliance_count} | uploaded_files={uploaded_count}")
+            compliance_count = (
+                await session.execute(select(func.count()).select_from(EvidenceOutput))
+            ).scalar_one()
+            uploaded_count = (
+                await session.execute(select(func.count()).select_from(UploadedFile))
+            ).scalar_one()
+        logger.info(
+            f"[STATUS] Database counts | compliance_records={compliance_count} | uploaded_files={uploaded_count}"
+        )
     except Exception as exc:
         logger.exception(f"[STATUS] Database counts query failed: {exc}")
 
@@ -282,7 +288,6 @@ async def status():
             "allowed_filetypes": list(ALLOWED_EXTENSIONS),
         },
     )
-
 
 
 from app.services.agent_runner import evaluate_compliance_task
@@ -313,14 +318,20 @@ async def evaluate_compliance(request: Request):
         try:
             async with session_scope() as session:
                 latest_dd = (
-                    await session.execute(
-                        select(DeploymentDocument).order_by(DeploymentDocument.createdAt.desc()).limit(1)
+                    (
+                        await session.execute(
+                            select(DeploymentDocument).order_by(DeploymentDocument.createdAt.desc()).limit(1)
+                        )
                     )
-                ).scalars().first()
-                
+                    .scalars()
+                    .first()
+                )
+
                 if latest_dd:
                     dd_id = latest_dd.id
-                    logger.info(f"[API] No dd_id provided. Auto-selected the latest DeploymentDocument: {dd_id}")
+                    logger.info(
+                        f"[API] No dd_id provided. Auto-selected the latest DeploymentDocument: {dd_id}"
+                    )
                 else:
                     return error("No DeploymentDocument found in database to evaluate compliance.", 404)
         except Exception as exc:
@@ -341,29 +352,34 @@ async def evaluate_all_compliance():
     try:
         async with session_scope() as session:
             all_dds = (
-                await session.execute(
-                    select(DeploymentDocument).order_by(DeploymentDocument.createdAt.desc())
+                (
+                    await session.execute(
+                        select(DeploymentDocument).order_by(DeploymentDocument.createdAt.desc())
+                    )
                 )
-            ).scalars().all()
-            
+                .scalars()
+                .all()
+            )
+
             if not all_dds:
                 return error("No DeploymentDocuments found in database to evaluate compliance.", 404)
-            
-            logger.info(f"[API-ALL] Starting compliance evaluation for ALL {len(all_dds)} DeploymentDocuments")
-            
+
+            logger.info(
+                f"[API-ALL] Starting compliance evaluation for ALL {len(all_dds)} DeploymentDocuments"
+            )
+
             # Spawn task for each document
             for dd in all_dds:
                 asyncio.create_task(evaluate_compliance_task(dd.id))
-            
+
             return success(
                 message=f"Compliance evaluation started in background for {len(all_dds)} documents",
                 data={
                     "total_documents": len(all_dds),
                     "status": "processing",
-                    "document_ids": [dd.id for dd in all_dds]
+                    "document_ids": [dd.id for dd in all_dds],
                 },
             )
     except Exception as exc:
         logger.exception(f"[API-ALL] Failed to start bulk evaluation: {exc}")
         return error(f"Failed to start bulk evaluation: {str(exc)}", 500)
-

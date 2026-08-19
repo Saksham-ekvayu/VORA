@@ -236,9 +236,9 @@ export default function DataTable({
           className="border-collapse"
           containerClassName="overflow-visible"
         >
-          <TableHeader className="sticky top-0 z-10 bg-muted">
+          <TableHeader className="sticky top-0 z-20 bg-muted">
             <TableRow className="bg-linear-to-r from-muted to-muted/50 hover:bg-transparent">
-              <TableHead className="sticky left-0 z-20 w-16 px-4 py-2.5 text-left border-b border-border font-semibold text-xs text-muted-foreground uppercase tracking-wider whitespace-nowrap sticky-sr-header">
+              <TableHead className="sticky left-0 w-16 px-4 py-2.5 text-left border-b border-border font-semibold text-xs text-muted-foreground uppercase tracking-wider whitespace-nowrap sticky-sr-header">
                 <div className="flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">
                     #

@@ -2,7 +2,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import DataTable from "@/components/data-table/DataTable";
-import CustomBadge from "@/components/custom/CustomBadge";
 import Icon from "@/components/custom/Icon";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
@@ -20,8 +19,8 @@ const ALL_EXTRA_CONTROLS = [
     id: "EX-001",
     ctrlId: "EX-001",
     control: "Zero-Trust Network Segmentation",
-    framework: "ISO 27001",
-    frameworkSlug: "iso-27001",
+    frameworkVersion: "ISO-27001:2022",
+    frameworkName: "Information Security Management System (ISMS)",
     section: "Network",
     basis: "Internal Policy",
     benefit: "Reduces lateral movement blast radius by 94%",
@@ -31,8 +30,8 @@ const ALL_EXTRA_CONTROLS = [
     id: "EX-002",
     ctrlId: "EX-002",
     control: "UEBA — Behavioral Anomaly Detection",
-    framework: "NIST CSF",
-    frameworkSlug: "nist-csf",
+    frameworkVersion: "NIST-CSF:2025",
+    frameworkName: "Cybersecurity Framework (CSF)",
     section: "Threat Detection",
     basis: "Above NIST",
     benefit: "Detected 3 insider threats in last 90 days",
@@ -42,125 +41,14 @@ const ALL_EXTRA_CONTROLS = [
     id: "EX-003",
     ctrlId: "EX-003",
     control: "Immutable Backup Validation",
-    framework: "ISO 27001",
-    frameworkSlug: "iso-27001",
+    frameworkVersion: "ISO-27001:2022",
+    frameworkName: "Information Security Management System (ISMS)",
     section: "Resilience",
     basis: "Above ISO 27001",
     benefit: "RTO improved to <2h; ransomware-resilient",
     status: "Active",
   },
-  {
-    id: "EX-004",
-    ctrlId: "EX-004",
-    control: "Continuous Penetration Testing",
-    framework: "ISO 27001",
-    frameworkSlug: "iso-27001",
-    section: "Vulnerability Mgmt",
-    basis: "Internal Policy",
-    benefit: "Monthly automated pen-test cadence",
-    status: "Review Due",
-  },
-  {
-    id: "EX-005",
-    ctrlId: "EX-005",
-    control: "Supply Chain Risk Scoring",
-    framework: "NIST CSF",
-    frameworkSlug: "nist-csf",
-    section: "Vendor Risk",
-    basis: "Above ISO 27001",
-    benefit: "Scores 238 active vendors continuously",
-    status: "Active",
-  },
-  {
-    id: "EX-006",
-    ctrlId: "EX-006",
-    control: "AI-Assisted Log Correlation",
-    framework: "ISO 27001",
-    frameworkSlug: "iso-27001",
-    section: "Monitoring",
-    basis: "Internal Policy",
-    benefit: "Reduces MTTD from 72h to 4h",
-    status: "Active",
-  },
-  {
-    id: "EX-007",
-    ctrlId: "EX-007",
-    control: "Hardware Security Key Enforcement",
-    framework: "ISO 27001",
-    frameworkSlug: "iso-27001",
-    section: "Identity & Access",
-    basis: "Above ISO 27001",
-    benefit: "Eliminates phishing-based account takeover",
-    status: "Active",
-  },
-  {
-    id: "EX-008",
-    ctrlId: "EX-008",
-    control: "Data Residency Tagging",
-    framework: "NIST CSF",
-    frameworkSlug: "nist-csf",
-    section: "Data Governance",
-    basis: "Above NIST",
-    benefit: "100% data classified with residency metadata",
-    status: "Active",
-  },
-  {
-    id: "EX-009",
-    ctrlId: "EX-009",
-    control: "Threat Intelligence Feed Integration",
-    framework: "NIST CSF",
-    frameworkSlug: "nist-csf",
-    section: "Threat Detection",
-    basis: "Internal Policy",
-    benefit: "Ingests 14 live threat feeds daily",
-    status: "Active",
-  },
-  {
-    id: "EX-010",
-    ctrlId: "EX-010",
-    control: "Secure Code Review Automation",
-    framework: "ISO 27001",
-    frameworkSlug: "iso-27001",
-    section: "Application Security",
-    basis: "Above ISO 27001",
-    benefit: "Catches 91% of OWASP Top-10 issues pre-release",
-    status: "Review Due",
-  },
-  {
-    id: "EX-011",
-    ctrlId: "EX-011",
-    control: "Privileged Access Workstation Policy",
-    framework: "ISO 27001",
-    frameworkSlug: "iso-27001",
-    section: "Identity & Access",
-    basis: "Internal Policy",
-    benefit: "Isolates admin actions from general user traffic",
-    status: "Active",
-  },
-  {
-    id: "EX-012",
-    ctrlId: "EX-012",
-    control: "Cryptographic Agility Framework",
-    framework: "NIST CSF",
-    frameworkSlug: "nist-csf",
-    section: "Cryptography",
-    basis: "Above NIST",
-    benefit: "Ready for post-quantum migration",
-    status: "Active",
-  },
 ];
-
-// Unique framework names for the dropdown
-const FRAMEWORK_NAMES = Array.from(
-  new Set(ALL_EXTRA_CONTROLS.map((c) => c.framework))
-);
-
-const FRAMEWORK_COLORS = {
-  "ISO 27001": "text-blue-400",
-  "ISO 9001": "text-green-400",
-  "NIST CSF": "text-violet-400",
-  "21 CFR Part II": "text-red-400",
-};
 
 const PAGE_SIZE = 10;
 
@@ -173,21 +61,9 @@ export default function ExtraControls() {
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
-  const [frameworkFilter, setFrameworkFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-
-  const handleFrameworkFilter = useCallback((val) => {
-    setFrameworkFilter(val);
-    setCurrentPage(1);
-  }, []);
-
-  const handleStatusFilter = useCallback((val) => {
-    setStatusFilter(val);
-    setCurrentPage(1);
-  }, []);
 
   const handleSearch = useCallback((term) => {
     setSearchTerm(term);
@@ -197,14 +73,6 @@ export default function ExtraControls() {
   // Apply all filters
   const filteredData = useMemo(() => {
     let list = ALL_EXTRA_CONTROLS;
-
-    if (frameworkFilter) {
-      list = list.filter((c) => c.framework === frameworkFilter);
-    }
-
-    if (statusFilter) {
-      list = list.filter((c) => c.status === statusFilter);
-    }
 
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase();
@@ -219,7 +87,7 @@ export default function ExtraControls() {
     }
 
     return list;
-  }, [searchTerm, frameworkFilter, statusFilter]);
+  }, [searchTerm]);
 
   // Client-side pagination
   const totalItems = filteredData.length;
@@ -243,6 +111,32 @@ export default function ExtraControls() {
   // ── Column definitions ──────────────────────────────────────────────────────
   const columns = [
     {
+      key: "frameworkVersion",
+      label: "Version",
+      sortable: false,
+      render: (value, row) => (
+        <button
+          type="button"
+          onClick={() => navigate(`/dashboard/framework/${row.id}`)}
+          className="text-xs font-semibold hover:underline text-left whitespace-nowrap"
+        >
+          {value}
+        </button>
+      ),
+    },
+    {
+      key: "frameworkName",
+      label: "Framework",
+      sortable: false,
+      render: (value) => <span className="">{value}</span>,
+    },
+    {
+      key: "section",
+      label: "section",
+      sortable: false,
+      render: (value) => <span className="">{value}</span>,
+    },
+    {
       key: "ctrlId",
       label: "Ctrl ID",
       sortable: false,
@@ -256,77 +150,7 @@ export default function ExtraControls() {
       key: "control",
       label: "control",
       sortable: false,
-      render: (value) => (
-        <span className="text-sm font-medium text-foreground">{value}</span>
-      ),
-    },
-    {
-      key: "framework",
-      label: "Framework",
-      sortable: false,
-      render: (value, row) => (
-        <button
-          type="button"
-          onClick={() => navigate(`/dashboard/framework/${row.frameworkSlug}`)}
-          className={`text-xs font-semibold hover:underline text-left whitespace-nowrap ${FRAMEWORK_COLORS[value] ?? "text-primary"}`}
-        >
-          {value}
-        </button>
-      ),
-    },
-    {
-      key: "section",
-      label: "section",
-      sortable: false,
-      render: (value) => (
-        <span className="text-sm text-muted-foreground whitespace-nowrap">
-          {value}
-        </span>
-      ),
-    },
-    {
-      key: "status",
-      label: "Status",
-      sortable: false,
-      render: (value) => <CustomBadge status={value} size="sm" />,
-    },
-  ];
-
-  // ── Header actions ──────────────────────────────────────────────────────────
-  const getHeaderActions = () => [
-    {
-      type: "dropdown",
-      label: frameworkFilter || "All Frameworks",
-      triggerClassName: "w-fit min-w-36",
-      options: [
-        { label: "All Frameworks", onClick: () => handleFrameworkFilter("") },
-        ...FRAMEWORK_NAMES.map((fw, i) => ({
-          label: fw,
-          separatorBefore: i === 0,
-          onClick: () => handleFrameworkFilter(fw),
-        })),
-      ],
-    },
-    {
-      type: "dropdown",
-      label: statusFilter || "All Status",
-      triggerClassName: "w-fit min-w-28",
-      options: [
-        { label: "All Status", onClick: () => handleStatusFilter("") },
-        {
-          label: "Active",
-          separatorBefore: true,
-          onClick: () => handleStatusFilter("Active"),
-        },
-        {
-          label: "Review Due",
-          onClick: () => handleStatusFilter("Review Due"),
-        },
-        {
-          label: "Deprecated",
-          onClick: () => handleStatusFilter("Deprecated"),
-        },
-      ],
+      render: (value) => <span className="">{value}</span>,
     },
   ];
 
@@ -369,10 +193,9 @@ export default function ExtraControls() {
         searchTerm={searchTerm}
         onClearSearch={() => handleSearch("")}
         pagination={pagination}
-        headerActions={getHeaderActions()}
         searchPlaceholder="Search extra controls..."
         emptyMessage={
-          searchTerm || frameworkFilter || statusFilter
+          searchTerm
             ? "No controls match your filters"
             : "No extra controls found"
         }
