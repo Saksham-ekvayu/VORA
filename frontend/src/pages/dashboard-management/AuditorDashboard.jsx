@@ -464,9 +464,12 @@ export default function AuditorDashboard() {
                       <span className="text-xs text-muted-foreground">
                         {idx + 1}
                       </span>
-                      <span className="text-xs font-semibold text-primary truncate">
+                      <Link
+                        to={`/deployment-frameworks/${gap.frameworkId}/comparison-and-gap-analysis?package-version=${gap.packageVersion}&tab=gap-analysis`}
+                        className="text-xs font-semibold text-primary truncate hover:underline"
+                      >
                         {gap.version || gap.framework}
-                      </span>
+                      </Link>
                       <span className="text-xs text-secondary font-semibold text-center">
                         {gap.id}
                       </span>

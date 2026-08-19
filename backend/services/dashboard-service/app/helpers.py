@@ -387,6 +387,7 @@ def _create_active_gap(
     fw_id: str,
     fw_name: str,
     fw_version: str,
+    pkg_version: str,
     settings: Any,
 ) -> dict:
     failing_percentage = 100
@@ -400,6 +401,7 @@ def _create_active_gap(
         "frameworkId": fw_id,
         "framework": fw_name,
         "version": fw_version,
+        "packageVersion": pkg_version,
         "control": expected["name"],
         "description": expected["description"],
         "instances": req_dps,
@@ -418,6 +420,7 @@ def evaluate_controls(
     fw_id: str,
     fw_name: str,
     fw_version: str,
+    pkg_version: str,
     settings: Any,
 ) -> tuple[int, int, int, int, int, int, int, list[dict], int]:
     """Evaluate controls against implemented DPs and return aggregated metrics."""
@@ -459,7 +462,7 @@ def evaluate_controls(
             fw_critical_gaps += 1
             fw_active_gaps.append(
                 _create_active_gap(
-                    ctrl_id, expected, req_dps, impl_dps, prev_actual_implemented, ga, fw_id, fw_name, fw_version, settings
+                    ctrl_id, expected, req_dps, impl_dps, prev_actual_implemented, ga, fw_id, fw_name, fw_version, pkg_version, settings
                 )
             )
 
@@ -911,6 +914,7 @@ def process_gap_analyses(
 
         fw_name = lp["df"].frameworkName or UNKNOWN_FRAMEWORK
         fw_version = lp["df"].frameworkVersion or ""
+        pkg_version = str(get_nested(lp["pkg"], "packageVersion") or "")
 
         custom_controls = extract_custom_controls(fw_assignment_id, assignments)
         expected_controls = extract_expected_controls(merge_doc, custom_controls)
@@ -931,7 +935,7 @@ def process_gap_analyses(
             fw_active_gaps,
             fw_prev_implemented_dps,
         ) = evaluate_controls(
-            expected_controls, actual_implemented, prev_actual_implemented, ga, str(lp["df"].id), fw_name, fw_version, settings
+            expected_controls, actual_implemented, prev_actual_implemented, ga, str(lp["df"].id), fw_name, fw_version, pkg_version, settings
         )
 
         total_controls_overall += fw_total_controls
