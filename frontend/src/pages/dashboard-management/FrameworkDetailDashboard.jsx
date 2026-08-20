@@ -1,17 +1,16 @@
 /* eslint-disable react/prop-types */
 import { useParams, useNavigate } from "react-router-dom";
-import { PieChart, Pie, ResponsiveContainer, Tooltip } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import CardWrapper from "./components/CardWrapper";
 import Icon from "@/components/custom/Icon";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
 // ─── Per-framework mock data ──────────────────────────────────────────────────
 
-const FRAMEWORK_DATA = {
-  "iso-27001-2022": {
+const FRAMEWORK_DATA = [
+  {
     name: "ISO-27001:2022",
     version: "ISO 27001:2022",
-    tagColor: "#3b82f6",
     controls: {
       subscribed: 95,
       compliant: 82,
@@ -24,28 +23,27 @@ const FRAMEWORK_DATA = {
     coverage: {
       total: 103,
       breakdown: [
-        { name: "Pak Controls", value: 48, color: "#10b981" },
-        { name: "Custom", value: 33, color: "#3b82f6" },
-        { name: "Co. Specific", value: 22, color: "#f59e0b" },
+        { name: "Pak Controls", value: 48 },
+        { name: "Org. Specific", value: 22 },
       ],
     },
     compliance: {
       total: 95,
       breakdown: [
-        { name: "Compliant", value: 82, color: "#10b981" },
-        { name: "Non-Compliant", value: 7, color: "#ef4444" },
-        { name: "Not Assessed", value: 6, color: "#f59e0b" },
+        { name: "Compliant", value: 82 },
+        { name: "Non-Compliant", value: 7 },
+        { name: "Not Assessed", value: 6 },
       ],
     },
     auditDashboard: {
       externalCertification: { status: "Yes", date: "Nov 15, 2023" },
       internalAudit: { status: "Partial", date: "Feb 20, 2024" },
       gapAnalysis: [
-        { label: "Access Ctrl", value: -7, color: "#ef4444" },
-        { label: "Incident Res", value: -6, color: "#ef4444" },
-        { label: "Data Privacy", value: -5, color: "#f59e0b" },
-        { label: "Risk Assess", value: -4, color: "#f59e0b" },
-        { label: "Physical Sec", value: -4, color: "#10b981" },
+        { label: "Access Ctrl", value: -7 },
+        { label: "Incident Res", value: -6 },
+        { label: "Data Privacy", value: -5 },
+        { label: "Risk Assess", value: -4 },
+        { label: "Physical Sec", value: -4 },
       ],
     },
     nonCompliantControls: [
@@ -141,10 +139,9 @@ const FRAMEWORK_DATA = {
       },
     ],
   },
-  "iso-9001-2008": {
+  {
     name: "ISO-9001:2008",
     version: "ISO 9001:2015",
-    tagColor: "#22c55e",
     controls: {
       subscribed: 78,
       compliant: 67,
@@ -157,27 +154,26 @@ const FRAMEWORK_DATA = {
     coverage: {
       total: 78,
       breakdown: [
-        { name: "Pak Controls", value: 40, color: "#10b981" },
-        { name: "Custom", value: 22, color: "#3b82f6" },
-        { name: "Co. Specific", value: 16, color: "#f59e0b" },
+        { name: "Pak Controls", value: 40 },
+        { name: "Org. Specific", value: 16 },
       ],
     },
     compliance: {
       total: 78,
       breakdown: [
-        { name: "Compliant", value: 67, color: "#10b981" },
-        { name: "Non-Compliant", value: 5, color: "#ef4444" },
-        { name: "Not Assessed", value: 4, color: "#f59e0b" },
+        { name: "Compliant", value: 67 },
+        { name: "Non-Compliant", value: 5 },
+        { name: "Not Assessed", value: 4 },
       ],
     },
     auditDashboard: {
       externalCertification: { status: "Yes", date: "Oct 05, 2023" },
       internalAudit: { status: "Yes", date: "Jan 12, 2024" },
       gapAnalysis: [
-        { label: "Doc Control", value: -5, color: "#ef4444" },
-        { label: "Process Mon", value: -4, color: "#f59e0b" },
-        { label: "Customer Foc", value: -3, color: "#f59e0b" },
-        { label: "Mgmt Review", value: -2, color: "#10b981" },
+        { label: "Doc Control", value: -5 },
+        { label: "Process Mon", value: -4 },
+        { label: "Customer Foc", value: -3 },
+        { label: "Mgmt Review", value: -2 },
       ],
     },
     nonCompliantControls: [
@@ -259,10 +255,9 @@ const FRAMEWORK_DATA = {
       },
     ],
   },
-  "nist-csf-2021": {
+  {
     name: "NIST-CSF:2021",
     version: "NIST CSF v1.1",
-    tagColor: "#8b5cf6",
     controls: {
       subscribed: 108,
       compliant: 63,
@@ -275,28 +270,27 @@ const FRAMEWORK_DATA = {
     coverage: {
       total: 108,
       breakdown: [
-        { name: "Pak Controls", value: 50, color: "#10b981" },
-        { name: "Custom", value: 38, color: "#3b82f6" },
-        { name: "Co. Specific", value: 20, color: "#f59e0b" },
+        { name: "Pak Controls", value: 50 },
+        { name: "Org. Specific", value: 20 },
       ],
     },
     compliance: {
       total: 108,
       breakdown: [
-        { name: "Compliant", value: 63, color: "#10b981" },
-        { name: "Non-Compliant", value: 22, color: "#ef4444" },
-        { name: "Not Assessed", value: 14, color: "#f59e0b" },
+        { name: "Compliant", value: 63 },
+        { name: "Non-Compliant", value: 22 },
+        { name: "Not Assessed", value: 14 },
       ],
     },
     auditDashboard: {
       externalCertification: { status: "No", date: "—" },
       internalAudit: { status: "Partial", date: "Mar 10, 2024" },
       gapAnalysis: [
-        { label: "Identify", value: -9, color: "#ef4444" },
-        { label: "Protect", value: -7, color: "#ef4444" },
-        { label: "Detect", value: -5, color: "#f59e0b" },
-        { label: "Respond", value: -4, color: "#f59e0b" },
-        { label: "Recover", value: -3, color: "#10b981" },
+        { label: "Identify", value: -9 },
+        { label: "Protect", value: -7 },
+        { label: "Detect", value: -5 },
+        { label: "Respond", value: -4 },
+        { label: "Recover", value: -3 },
       ],
     },
     nonCompliantControls: [
@@ -372,10 +366,9 @@ const FRAMEWORK_DATA = {
       },
     ],
   },
-  "cfr-part-ii-2023": {
+  {
     name: "CFR-Part-II:2023",
     version: "21 CFR Part 11:2023",
-    tagColor: "#ef4444",
     controls: {
       subscribed: 54,
       compliant: 36,
@@ -388,27 +381,26 @@ const FRAMEWORK_DATA = {
     coverage: {
       total: 54,
       breakdown: [
-        { name: "Pak Controls", value: 28, color: "#10b981" },
-        { name: "Custom", value: 16, color: "#3b82f6" },
-        { name: "Co. Specific", value: 10, color: "#f59e0b" },
+        { name: "Pak Controls", value: 28 },
+        { name: "Org. Specific", value: 10 },
       ],
     },
     compliance: {
       total: 54,
       breakdown: [
-        { name: "Compliant", value: 36, color: "#10b981" },
-        { name: "Non-Compliant", value: 10, color: "#ef4444" },
-        { name: "Not Assessed", value: 8, color: "#f59e0b" },
+        { name: "Compliant", value: 36 },
+        { name: "Non-Compliant", value: 10 },
+        { name: "Not Assessed", value: 8 },
       ],
     },
     auditDashboard: {
       externalCertification: { status: "Partial", date: "Dec 01, 2023" },
       internalAudit: { status: "No", date: "—" },
       gapAnalysis: [
-        { label: "Electronic Rec", value: -6, color: "#ef4444" },
-        { label: "Audit Trail", value: -5, color: "#ef4444" },
-        { label: "Signatures", value: -4, color: "#f59e0b" },
-        { label: "Access Ctrl", value: -3, color: "#10b981" },
+        { label: "Electronic Rec", value: -6 },
+        { label: "Audit Trail", value: -5 },
+        { label: "Signatures", value: -4 },
+        { label: "Access Ctrl", value: -3 },
       ],
     },
     nonCompliantControls: [
@@ -462,7 +454,7 @@ const FRAMEWORK_DATA = {
       },
     ],
   },
-};
+];
 
 // ─── Donut chart with center label ───────────────────────────────────────────
 function getCertStatusColor(status) {
@@ -471,17 +463,26 @@ function getCertStatusColor(status) {
   return "bg-red-500";
 }
 
-// Custom Pie sector shape — replaces the deprecated <Cell> mapping.
-// Reads the slice color from `payload.color` and renders the SVG path
-// that recharts pre-computes for the active sector.
-function ColoredPieSlice(props) {
-  const { payload } = props;
-  return <path d={props.path} fill={payload?.color} />;
-}
+const CHART_COLORS = [
+  "#3b82f6", // blue
+  "#10b981", // emerald
+  "#f59e0b", // amber
+  "#ef4444", // red
+  "#8b5cf6", // violet
+  "#06b6d4", // cyan
+  "#ec4899", // pink
+  "#f97316", // orange
+];
 
 function DonutChart({ data, total, label }) {
   return (
     <div className="relative w-full h-40">
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+        <span className="text-2xl font-bold text-foreground">{total}</span>
+        {label && (
+          <span className="text-[10px] text-muted-foreground">{label}</span>
+        )}
+      </div>
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
@@ -493,8 +494,11 @@ function DonutChart({ data, total, label }) {
             paddingAngle={2}
             dataKey="value"
             strokeWidth={0}
-            shape={ColoredPieSlice}
-          />
+          >
+            {data.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+            ))}
+          </Pie>
           <Tooltip
             contentStyle={{
               backgroundColor: "var(--card)",
@@ -505,12 +509,6 @@ function DonutChart({ data, total, label }) {
           />
         </PieChart>
       </ResponsiveContainer>
-      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        <span className="text-2xl font-bold text-foreground">{total}</span>
-        {label && (
-          <span className="text-[10px] text-muted-foreground">{label}</span>
-        )}
-      </div>
     </div>
   );
 }
@@ -597,12 +595,7 @@ export default function FrameworkDetailDashboard() {
       <div className="rounded border border-border bg-linear-to-br from-background to-card p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         {/* Left - Framework name & version */}
         <div className="flex-1 min-w-0 flex items-center gap-3">
-          <span
-            className="text-sm font-bold px-2.5 py-1 rounded text-white shadow-sm"
-            style={{ backgroundColor: data.tagColor }}
-          >
-            {data.name}
-          </span>
+          <span className="text-sm font-bold">{data.name}</span>
           <span className="text-xs text-muted-foreground font-medium">
             version: {data.version}
           </span>
@@ -667,14 +660,14 @@ export default function FrameworkDetailDashboard() {
             </span>
           </div>
           <DonutChart data={coverage.breakdown} total={coverage.total} />
-          <div className="flex items-center justify-center gap-4 mt-2 flex-wrap">
-            {coverage.breakdown.map((item) => (
+          <div className="flex justify-center gap-4 mt-4">
+            {coverage.breakdown.map((item, index) => (
               <div key={item.name} className="flex items-center gap-1.5">
                 <span
-                  className="w-2.5 h-2.5 rounded-full shrink-0"
-                  style={{ backgroundColor: item.color }}
+                  className="w-3 h-3 rounded-full"
+                  style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
                 />
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   {item.name}
                 </span>
               </div>
@@ -696,14 +689,14 @@ export default function FrameworkDetailDashboard() {
             </span>
           </div>
           <DonutChart data={compliance.breakdown} total={compliance.total} />
-          <div className="flex items-center justify-center gap-4 mt-2 flex-wrap">
-            {compliance.breakdown.map((item) => (
+          <div className="flex justify-center gap-4 mt-4">
+            {compliance.breakdown.map((item, index) => (
               <div key={item.name} className="flex items-center gap-1.5">
                 <span
-                  className="w-2.5 h-2.5 rounded-full shrink-0"
-                  style={{ backgroundColor: item.color }}
+                  className="w-3 h-3 rounded-full"
+                  style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
                 />
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   {item.name}
                 </span>
               </div>
@@ -760,32 +753,32 @@ export default function FrameworkDetailDashboard() {
           </div>
 
           {/* Gap Analysis bars */}
-          <div className="space-y-1.5">
-            <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground mb-2">
-              Audit Gap Analyzed
-            </p>
-            {auditDashboard.gapAnalysis.map((gap) => (
-              <div key={gap.label} className="flex items-center gap-2">
-                <span className="text-[11px] text-foreground w-20 shrink-0 truncate">
-                  {gap.label}
-                </span>
-                <div className="flex-1 h-4 rounded bg-muted overflow-hidden">
-                  <div
-                    className="h-full rounded transition-all duration-500"
-                    style={{
-                      width: `${Math.min(Math.abs(gap.value) * 10, 100)}%`,
-                      backgroundColor: gap.color,
-                    }}
-                  />
+          <div className="flex flex-col gap-3">
+            {auditDashboard.gapAnalysis.map((gap, index) => {
+              const gapColor = CHART_COLORS[index % CHART_COLORS.length];
+              return (
+                <div key={gap.label} className="flex items-center gap-3">
+                  <span className="text-xs text-muted-foreground w-20 truncate shrink-0">
+                    {gap.label}
+                  </span>
+                  <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden flex justify-end">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${Math.min(Math.abs(gap.value) * 10, 100)}%`,
+                        backgroundColor: gapColor,
+                      }}
+                    />
+                  </div>
+                  <span
+                    className="text-[11px] font-bold w-5 text-right shrink-0"
+                    style={{ color: gapColor }}
+                  >
+                    {gap.value}
+                  </span>
                 </div>
-                <span
-                  className="text-[11px] font-bold w-5 text-right shrink-0"
-                  style={{ color: gap.color }}
-                >
-                  {gap.value}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardWrapper>
       </div>
