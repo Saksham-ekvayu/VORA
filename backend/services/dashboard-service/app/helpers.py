@@ -1333,6 +1333,26 @@ def _update_auditor_control_metrics(
     )
 
 
+def _calculate_gap_scores(gap_doc) -> dict:
+    if not gap_doc or not gap_doc.gapAnalysis:
+        return {}
+    
+    gap_results = gap_doc.gapAnalysis.get("deployment_gap_results", [])
+    control_gaps = {}
+    for res in gap_results:
+        cid = res.get("assigned_framework_control_id")
+        if cid:
+            control_gaps.setdefault(cid, []).append(res.get("gap_score", 0))
+
+    return {cid: sum(scores) / len(scores) for cid, scores in control_gaps.items()}
+
+
+def _natural_sort_key(item, key_name):
+    import re
+    val = item.get(key_name, "")
+    return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', val)]
+
+
 def _calculate_auditor_metrics(
     comparison_doc, gap_doc, source_map: dict, applicable_map: dict, comp_threshold: float
 ) -> dict:
@@ -1353,39 +1373,20 @@ def _calculate_auditor_metrics(
     ):
         return metrics
 
-    gap_scores = {}
-    if gap_doc and gap_doc.gapAnalysis:
-        gap_results = gap_doc.gapAnalysis.get("deployment_gap_results", [])
-        control_gaps = {}
-        for res in gap_results:
-            cid = res.get("assigned_framework_control_id")
-            g_score = res.get("gap_score", 0)
-            if cid:
-                if cid not in control_gaps:
-                    control_gaps[cid] = []
-                control_gaps[cid].append(g_score)
-        
-        for cid, scores in control_gaps.items():
-            gap_scores[cid] = sum(scores) / len(scores)
+    gap_scores = _calculate_gap_scores(gap_doc)
 
     results = comparison_doc.comparison["comparison_result"]
     for section in results:
         for ctrl in section.get("controls", []):
             ctrl_id = ctrl.get("assigned_framework_control_id", "")
-            if not applicable_map.get(ctrl_id, True):
-                continue
+            if applicable_map.get(ctrl_id, True):
+                _update_auditor_control_metrics(
+                    ctrl, metrics, source_map, comp_threshold, gap_scores.get(ctrl_id)
+                )
 
-            g_score = gap_scores.get(ctrl_id)
-            _update_auditor_control_metrics(ctrl, metrics, source_map, comp_threshold, g_score)
-
-    import re
-    def natural_sort_key(item, key_name):
-        val = item.get(key_name, "")
-        return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', val)]
-
-    metrics["gap_analysis"].sort(key=lambda x: natural_sort_key(x, "id"))
+    metrics["gap_analysis"].sort(key=lambda x: _natural_sort_key(x, "id"))
+    metrics["non_compliant_list"].sort(key=lambda x: _natural_sort_key(x, "ctrlNo"))
     
-    metrics["non_compliant_list"].sort(key=lambda x: natural_sort_key(x, "ctrlNo"))
     for idx, item in enumerate(metrics["non_compliant_list"]):
         item["sl"] = idx + 1
 

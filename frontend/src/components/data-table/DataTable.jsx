@@ -74,9 +74,7 @@ export default function DataTable({
     return (pagination.currentPage - 1) * pagination.limit + index + 1;
   };
 
-  const handlePageChange = (event, page, disabled = false) => {
-    event.preventDefault();
-    if (disabled) return;
+  const handlePageChange = (page) => {
     pagination.onPageChange(page);
   };
 
