@@ -11,19 +11,18 @@ import ProgressBar from "../../components/custom/ProgressBar";
 import { getAuditorFrameworkDetails } from "@/services/dashboardService";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// ─── Per-framework mock data ──────────────────────────────────────────────────
-const CHART_COLORS = [
-  "#3b82f6", // blue
-  "#10b981", // emerald
-  "#f59e0b", // amber
-  "#ef4444", // red
-  "#8b5cf6", // violet
-  "#06b6d4", // cyan
-  "#ec4899", // pink
-  "#f97316", // orange
+const COMPLIANCE_COLORS = [
+  "#0d9488", // green (Compliant)
+  "#ef4444", // red (Non-Compliant)
+  "#f59e0b", // amber (Not Assessed)
 ];
 
-function DonutChart({ data, total, label }) {
+const COVERAGE_COLORS = [
+  "#0d9488", // primary (Pre controls) - from index.css
+  "#9333ea", // secondary (Org. Specific) - from index.css
+];
+
+function DonutChart({ data, total, label, colors }) {
   return (
     <div className="relative w-full h-40">
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -47,7 +46,7 @@ function DonutChart({ data, total, label }) {
             {data.map((entry, index) => (
               <Cell
                 key={`${index}-${entry.name}`}
-                fill={CHART_COLORS[index % CHART_COLORS.length]}
+                fill={colors[index % colors.length]}
               />
             ))}
           </Pie>
@@ -96,7 +95,7 @@ function StatCard({
           </p>
         </div>
         <div className="flex items-end gap-2">
-          <p className="text-3xl font-bold text-foreground leading-none">
+          <p className={cn("text-3xl font-bold leading-none", iconColor)}>
             {value}
           </p>
 
@@ -254,9 +253,9 @@ export default function FrameworkDetailDashboard() {
             </>
           }
           icon="framework"
-          borderColor="border-primary/40"
-          iconColor="text-primary"
-          iconBg="bg-primary/10"
+          borderColor="border-secondary/40"
+          iconColor="text-secondary"
+          iconBg="bg-secondary/10"
         />
         <StatCard
           title="Compliant Controls"
@@ -317,7 +316,7 @@ export default function FrameworkDetailDashboard() {
           </div>
           {isLoading && <Skeleton className="w-full h-40" />}
           {!isLoading && (
-            <DonutChart data={coverage.breakdown} total={coverage.total} />
+            <DonutChart data={coverage.breakdown} total={coverage.total} colors={COVERAGE_COLORS} />
           )}
           <div className="flex justify-center flex-wrap gap-x-4 gap-y-2 mt-4 max-h-20 overflow-y-auto custom-scrollbar">
             {!isLoading && coverage.breakdown.map((item, index) => (
@@ -328,7 +327,7 @@ export default function FrameworkDetailDashboard() {
                 <span
                   className="w-3 h-3 rounded-full shrink-0"
                   style={{
-                    backgroundColor: CHART_COLORS[index % CHART_COLORS.length],
+                    backgroundColor: COVERAGE_COLORS[index % COVERAGE_COLORS.length],
                   }}
                 />
                 <span className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1">
@@ -355,7 +354,7 @@ export default function FrameworkDetailDashboard() {
           </div>
           {isLoading && <Skeleton className="w-full h-40" />}
           {!isLoading && (
-            <DonutChart data={compliance.breakdown} total={compliance.total} />
+            <DonutChart data={compliance.breakdown} total={compliance.total} colors={COMPLIANCE_COLORS} />
           )}
           <div className="flex justify-center flex-wrap gap-x-4 gap-y-2 mt-4 max-h-20 overflow-y-auto custom-scrollbar">
             {!isLoading && compliance.breakdown.map((item, index) => (
@@ -366,7 +365,7 @@ export default function FrameworkDetailDashboard() {
                 <span
                   className="w-3 h-3 rounded-full shrink-0"
                   style={{
-                    backgroundColor: CHART_COLORS[index % CHART_COLORS.length],
+                    backgroundColor: COMPLIANCE_COLORS[index % COMPLIANCE_COLORS.length],
                   }}
                 />
                 <span className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1">
@@ -403,8 +402,7 @@ export default function FrameworkDetailDashboard() {
               <EmptyState message="No gaps found" />
             )}
             {!isLoading && auditDashboard.gapAnalysis.length > 0 &&
-              auditDashboard.gapAnalysis.map((gap, index) => {
-                const gapColor = CHART_COLORS[index % CHART_COLORS.length];
+              auditDashboard.gapAnalysis.map((gap) => {
                 return (
                   <div key={gap.id} className="flex items-center gap-3" title={gap.name}>
                     <span className="text-xs text-muted-foreground w-48 truncate shrink-0">
@@ -414,12 +412,10 @@ export default function FrameworkDetailDashboard() {
                       <ProgressBar
                         value={Math.min(Math.abs(gap.value) * 10, 100)}
                         height="2"
-                        color={gapColor}
                       />
                     </div>
                     <span
-                      className="text-[11px] font-bold w-6 text-right shrink-0"
-                      style={{ color: gapColor }}
+                      className="text-[11px] font-bold w-6 text-right shrink-0 text-primary"
                     >
                       {gap.value}
                     </span>

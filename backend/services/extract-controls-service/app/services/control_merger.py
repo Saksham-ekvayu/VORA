@@ -77,7 +77,7 @@ def get_framework_previous_controls(
             )
             return controls_data, fv.get("fileVersion"), prev_file_hash
 
-    logger.info("[MERGE] ℹ️ No previous extracted version found")
+    logger.info("[MERGE] No previous extracted version found")
     return [], None, None
 
 

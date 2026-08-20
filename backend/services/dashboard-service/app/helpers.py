@@ -322,7 +322,7 @@ def extract_actual_implemented(gap_results: list[Any]) -> dict[str, int]:
     """Extract actual implemented counts from current gapAnalysis."""
     actual_implemented = {}
     for result in gap_results:
-        ctrl_id = _get(result, "assigned_framework_control_id")
+        ctrl_id = _get(result, "deployment_framework_control_id")
         if not ctrl_id:
             continue
         if ctrl_id not in actual_implemented:
@@ -758,7 +758,7 @@ def _filter_and_sort_controls(
 
 def build_controls_passing_response(
     gap_analyses: list[PackageGapAnalysis],
-    live_packages: list[dict],
+    latest_packages: list[dict],
     merges: list[DeploymentPackageMerge],
     assignments: list[FrameworkAssignment],
     settings: Any,
@@ -772,7 +772,7 @@ def build_controls_passing_response(
     formatted = []
     stats = {"passing": 0, "warning": 0, "failing": 0, "not_evaluated": 0, "total": 0}
 
-    for lp in live_packages:
+    for lp in latest_packages:
         ga_id = str(get_nested(lp["pkg"], "gapAnalysis"))
         merge_id = str(get_nested(lp["pkg"], "mergeDocument"))
 
@@ -871,28 +871,29 @@ def get_nested(obj: Any, key: str, default=None):
     return getattr(obj, key, default)
 
 
-def get_live_packages(dfs: list[DeploymentFramework]) -> tuple[list[dict], list[str], list[str]]:
-    """Extract live packages, gap analysis IDs, and merge document IDs."""
-    live_packages = []
+def get_latest_packages(dfs: list[DeploymentFramework]) -> tuple[list[dict], list[str], list[str]]:
+    """Extract latest packages, gap analysis IDs, and merge document IDs."""
+    latest_packages = []
     gap_analysis_ids = []
     merge_doc_ids = []
 
     for df in dfs:
-        for pkg in df.packages or []:
-            if get_nested(pkg, "status") != "live" or get_nested(pkg, "type") != "deployed":
-                continue
+        if not df.packages:
+            continue
+            
+        latest_pkg = max(df.packages, key=lambda p: get_nested(p, "createdAt") or "")
 
-            live_packages.append({"df": df, "pkg": pkg})
+        latest_packages.append({"df": df, "pkg": latest_pkg})
 
-            gap_analysis = get_nested(pkg, "gapAnalysis")
-            if gap_analysis:
-                gap_analysis_ids.append(str(gap_analysis))
+        gap_analysis = get_nested(latest_pkg, "gapAnalysis")
+        if gap_analysis:
+            gap_analysis_ids.append(str(gap_analysis))
 
-            merge_doc = get_nested(pkg, "mergeDocument")
-            if merge_doc:
-                merge_doc_ids.append(str(merge_doc))
+        merge_doc = get_nested(latest_pkg, "mergeDocument")
+        if merge_doc:
+            merge_doc_ids.append(str(merge_doc))
 
-    return live_packages, gap_analysis_ids, merge_doc_ids
+    return latest_packages, gap_analysis_ids, merge_doc_ids
 
 
 def _extract_control_weight(ctrl: Any) -> float:
@@ -949,7 +950,7 @@ def calculate_fw_health_and_trend(
 
 def process_gap_analyses(
     gap_analyses: list[PackageGapAnalysis],
-    live_packages: list[dict],
+    latest_packages: list[dict],
     historical_gap_analyses: list[PackageGapAnalysis],
     merges: list[DeploymentPackageMerge],
     assignments: list[FrameworkAssignment],
@@ -967,7 +968,7 @@ def process_gap_analyses(
     implemented_dps_overall = 0
     prev_implemented_dps_overall = 0
 
-    for lp in live_packages:
+    for lp in latest_packages:
         ga_id = str(get_nested(lp["pkg"], "gapAnalysis"))
         merge_id = str(get_nested(lp["pkg"], "mergeDocument"))
 
@@ -1138,7 +1139,7 @@ def _get_dp_count_for_merge(pm: DeploymentPackageMerge) -> int:
 
 
 def process_deployment_points(
-    merges: list[DeploymentPackageMerge], live_packages: list[dict]
+    merges: list[DeploymentPackageMerge], latest_packages: list[dict]
 ) -> list[dict]:
     """Aggregate configured deployment points per framework."""
     deployment_points = []
@@ -1147,7 +1148,7 @@ def process_deployment_points(
 
         fw_name = UNKNOWN_FRAMEWORK
         fw_version = ""
-        for lp in live_packages:
+        for lp in latest_packages:
             if str(get_nested(lp["pkg"], "mergeDocument")) == str(pm.id):
                 fw_name = lp["df"].frameworkName or fw_name
                 fw_version = lp["df"].frameworkVersion or ""
@@ -1180,14 +1181,14 @@ def _calculate_control_percentages(
 
 def process_deployment_points_detailed(
     gap_analyses: list[PackageGapAnalysis],
-    live_packages: list[dict],
+    latest_packages: list[dict],
     merges: list[DeploymentPackageMerge],
     assignments: list[FrameworkAssignment],
 ) -> list[dict]:
     """Calculate deployment points and their control percentages per framework."""
     result = []
 
-    for lp in live_packages:
+    for lp in latest_packages:
         ga_id = str(get_nested(lp["pkg"], "gapAnalysis"))
         merge_id = str(get_nested(lp["pkg"], "mergeDocument"))
 
@@ -1295,6 +1296,7 @@ def _update_auditor_control_metrics(
     metrics: dict,
     source_map: dict,
     comp_threshold: float,
+    gap_score: float = None,
 ) -> None:
     ctrl_id = ctrl.get("assigned_framework_control_id", "")
     metrics["subscribed"] += 1
@@ -1321,13 +1323,18 @@ def _update_auditor_control_metrics(
         metrics["pre_count"] += 1
 
     ctrl_name = ctrl.get("assigned_framework_control_name", "Unknown")
+    if gap_score is not None:
+        val = round(gap_score * 10)
+    else:
+        val = round((1 - score) * 10)
+
     metrics["gap_analysis"].append(
-        {"id": ctrl_id, "name": ctrl_name, "value": round((1 - score) * 10)}
+        {"id": ctrl_id, "name": ctrl_name, "value": val}
     )
 
 
 def _calculate_auditor_metrics(
-    comparison_doc, source_map: dict, applicable_map: dict, comp_threshold: float
+    comparison_doc, gap_doc, source_map: dict, applicable_map: dict, comp_threshold: float
 ) -> dict:
     metrics = {
         "subscribed": 0,
@@ -1346,6 +1353,21 @@ def _calculate_auditor_metrics(
     ):
         return metrics
 
+    gap_scores = {}
+    if gap_doc and gap_doc.gapAnalysis:
+        gap_results = gap_doc.gapAnalysis.get("deployment_gap_results", [])
+        control_gaps = {}
+        for res in gap_results:
+            cid = res.get("assigned_framework_control_id")
+            g_score = res.get("gap_score", 0)
+            if cid:
+                if cid not in control_gaps:
+                    control_gaps[cid] = []
+                control_gaps[cid].append(g_score)
+        
+        for cid, scores in control_gaps.items():
+            gap_scores[cid] = sum(scores) / len(scores)
+
     results = comparison_doc.comparison["comparison_result"]
     for section in results:
         for ctrl in section.get("controls", []):
@@ -1353,7 +1375,19 @@ def _calculate_auditor_metrics(
             if not applicable_map.get(ctrl_id, True):
                 continue
 
-            _update_auditor_control_metrics(ctrl, metrics, source_map, comp_threshold)
+            g_score = gap_scores.get(ctrl_id)
+            _update_auditor_control_metrics(ctrl, metrics, source_map, comp_threshold, g_score)
+
+    import re
+    def natural_sort_key(item, key_name):
+        val = item.get(key_name, "")
+        return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', val)]
+
+    metrics["gap_analysis"].sort(key=lambda x: natural_sort_key(x, "id"))
+    
+    metrics["non_compliant_list"].sort(key=lambda x: natural_sort_key(x, "ctrlNo"))
+    for idx, item in enumerate(metrics["non_compliant_list"]):
+        item["sl"] = idx + 1
 
     return metrics
 
@@ -1377,26 +1411,39 @@ async def get_auditor_framework_details_helper(
         if not df:
             return None
 
-        package = df.packages[0] if df.packages else None
+        package = max(df.packages, key=lambda p: get_nested(p, "createdAt") or "") if df.packages else None
+        
         comparison_id = None
+        ga_id = None
         if package:
             if isinstance(package, dict):
                 comparison_id = package.get("comparison")
+                ga_id = package.get("gapAnalysis")
             else:
                 comparison_id = getattr(package, "comparison", None)
+                ga_id = getattr(package, "gapAnalysis", None)
 
         comparison_doc = None
         if comparison_id:
             comparison_doc = (
                 await session.execute(
-                    select(PackageComparison).where(PackageComparison.id == comparison_id)
+                    select(PackageComparison).where(PackageComparison.id == str(comparison_id))
+                )
+            ).scalar_one_or_none()
+
+        gap_doc = None
+        if ga_id:
+            from vora_shared.models import PackageGapAnalysis
+            gap_doc = (
+                await session.execute(
+                    select(PackageGapAnalysis).where(PackageGapAnalysis.id == str(ga_id))
                 )
             ).scalar_one_or_none()
 
         source_map, applicable_map = await _build_framework_assignment_maps(
             session, df.assignedFrameworkId
         )
-        m = _calculate_auditor_metrics(comparison_doc, source_map, applicable_map, comp_threshold)
+        m = _calculate_auditor_metrics(comparison_doc, gap_doc, source_map, applicable_map, comp_threshold)
 
         return {
             "id": str(df.id),

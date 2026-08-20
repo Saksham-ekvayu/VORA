@@ -208,7 +208,7 @@ export default function AuditorDashboard() {
               {isLoading || !dashboardData ? (
                 <Skeleton className="h-10 w-24 mt-1" />
               ) : (
-                <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
+                <p className="text-4xl font-bold text-primary group-hover:opacity-80 transition-opacity">
                   {dashboardData?.overallProtection || 0}%
                 </p>
               )}
@@ -218,15 +218,15 @@ export default function AuditorDashboard() {
             <TopStatCard
               title="Critical Gaps"
               icon="warning"
-              iconColor="text-amber-500"
-              iconBg="bg-amber-500/10"
-              borderColor="border-amber-500/40"
+              iconColor="text-red-500"
+              iconBg="bg-red-500/10"
+              borderColor="border-red-500/40"
               navigation="/dashboard/critical-gaps"
             >
               {isLoading || !dashboardData ? (
                 <Skeleton className="h-10 w-24 mt-1" />
               ) : (
-                <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
+                <p className="text-4xl font-bold text-red-500 group-hover:opacity-80 transition-opacity">
                   {dashboardData?.criticalGaps || 0}
                 </p>
               )}
@@ -244,7 +244,7 @@ export default function AuditorDashboard() {
               {isLoading || !dashboardData ? (
                 <Skeleton className="h-10 w-24 mt-1" />
               ) : (
-                <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
+                <p className="text-4xl font-bold text-emerald-500 group-hover:opacity-80 transition-opacity">
                   {dashboardData?.controlPassing || 0}
                 </p>
               )}
@@ -254,15 +254,15 @@ export default function AuditorDashboard() {
             <TopStatCard
               title="Extra Controls"
               icon="star"
-              iconColor="text-amber-400"
-              iconBg="bg-amber-400/10"
-              borderColor="border-amber-400/40"
+              iconColor="text-secondary"
+              iconBg="bg-secondary/10"
+              borderColor="border-secondary/40"
               navigation="/dashboard/extra-controls"
             >
               {isLoading || !dashboardData ? (
                 <Skeleton className="h-10 w-24 mt-1" />
               ) : (
-                <p className="text-4xl font-bold text-foreground group-hover:opacity-80 transition-opacity">
+                <p className="text-4xl font-bold text-secondary group-hover:opacity-80 transition-opacity">
                   {dashboardData?.extraControls || 0}
                 </p>
               )}

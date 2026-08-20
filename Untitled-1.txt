@@ -1,951 +1,480 @@
 {
     "success": true,
-    "message": "Framework details retrieved successfully",
+    "message": "Auditor dashboard analytics retrieved successfully",
     "data": {
-        "id": "6a7db4a5c67d80bce718867c",
-        "frameworkName": "Information Security Management System",
-        "frameworkVersion": "ISO27001:2022",
-        "controls": {
-            "subscribed": 93,
-            "compliant": 31,
-            "nonCompliant": 62,
-            "notAssessed": 0
-        },
-        "coverage": {
-            "total": 93,
-            "breakdown": [
-                {
-                    "name": "Pre controls",
-                    "value": 92
-                },
-                {
-                    "name": "Org. Specific",
-                    "value": 1
-                }
-            ]
-        },
-        "compliance": {
-            "total": 93,
-            "breakdown": [
-                {
-                    "name": "Compliant",
-                    "value": 31
-                },
-                {
-                    "name": "Non-Compliant",
-                    "value": 62
-                },
-                {
-                    "name": "Not Assessed",
-                    "value": 0
-                }
-            ]
-        },
-        "auditDashboard": {
-            "gapAnalysis": [
-                {
-                    "id": "A.5.1",
-                    "name": "policies for information security",
-                    "value": 3
-                },
-                {
-                    "id": "A.5.2",
-                    "name": "information security roles and responsibilities",
-                    "value": 1
-                },
-                {
-                    "id": "A.5.3",
-                    "name": "segregation of duties",
-                    "value": 2
-                },
-                {
-                    "id": "A.5.4",
-                    "name": "management responsibilities",
-                    "value": 2
-                },
-                {
-                    "id": "A.5.5",
-                    "name": "contact with authorities",
-                    "value": 2
-                },
-                {
-                    "id": "A.5.6",
-                    "name": "contact with special interest groups",
-                    "value": 1
-                },
-                {
-                    "id": "A.5.7",
-                    "name": "threat intelligence",
-                    "value": 4
-                },
-                {
-                    "id": "A.5.8",
-                    "name": "information security in project management",
-                    "value": 1
-                },
-                {
-                    "id": "A.5.9",
-                    "name": "inventory of information and other associated assets",
-                    "value": 5
-                },
-                {
-                    "id": "A.5.10",
-                    "name": "acceptable use of information and other associated assets",
-                    "value": 5
-                },
-                {
-                    "id": "A.5.11",
-                    "name": "return of assets",
-                    "value": 6
-                },
-                {
-                    "id": "A.5.12",
-                    "name": "classification of information",
-                    "value": 3
-                },
-                {
-                    "id": "A.5.13",
-                    "name": "labelling of information",
-                    "value": 5
-                },
-                {
-                    "id": "A.5.14",
-                    "name": "information transfer",
-                    "value": 5
-                },
-                {
-                    "id": "A.5.15",
-                    "name": "access control",
-                    "value": 4
-                },
-                {
-                    "id": "A.5.16",
-                    "name": "identity management",
-                    "value": 4
-                },
-                {
-                    "id": "A.5.17",
-                    "name": "authentication information",
-                    "value": 4
-                },
-                {
-                    "id": "A.5.18",
-                    "name": "access rights",
-                    "value": 3
-                },
-                {
-                    "id": "A.5.19",
-                    "name": "information security in supplier relationships",
-                    "value": 1
-                },
-                {
-                    "id": "A.5.20",
-                    "name": "addressing information security within supplier agreements",
-                    "value": 1
-                },
-                {
-                    "id": "A.5.21",
-                    "name": "managing information security in the information and communication technology (ict) supply chain",
-                    "value": 1
-                },
-                {
-                    "id": "A.5.22",
-                    "name": "monitoring, review and change management of supplier services",
-                    "value": 4
-                },
-                {
-                    "id": "A.5.23",
-                    "name": "information security for use of cloud services",
-                    "value": 3
-                },
-                {
-                    "id": "A.5.24",
-                    "name": "information security incident management planning and preparation",
-                    "value": 3
-                },
-                {
-                    "id": "A.5.25",
-                    "name": "assessment and decision on information security events",
-                    "value": 4
-                },
-                {
-                    "id": "A.5.26",
-                    "name": "response to information security incidents",
-                    "value": 2
-                },
-                {
-                    "id": "A.5.27",
-                    "name": "learning from information security incidents",
-                    "value": 4
-                },
-                {
-                    "id": "A.5.28",
-                    "name": "collection of evidence",
-                    "value": 4
-                },
-                {
-                    "id": "A.5.29",
-                    "name": "information security during disruption",
-                    "value": 3
-                },
-                {
-                    "id": "A.5.30",
-                    "name": "ict readiness for business continuity",
-                    "value": 5
-                },
-                {
-                    "id": "A.5.31",
-                    "name": "legal, statutory, regulatory and contractual requirements",
-                    "value": 2
-                },
-                {
-                    "id": "A.5.32",
-                    "name": "intellectual property rights",
-                    "value": 5
-                },
-                {
-                    "id": "A.5.33",
-                    "name": "protection of records",
-                    "value": 5
-                },
-                {
-                    "id": "A.5.34",
-                    "name": "privacy and protection of personal identifiable information (pii)",
-                    "value": 5
-                },
-                {
-                    "id": "A.5.35",
-                    "name": "independent review of information security",
-                    "value": 4
-                },
-                {
-                    "id": "A.5.36",
-                    "name": "compliance with policies, rules and standards for information security",
-                    "value": 3
-                },
-                {
-                    "id": "A.5.37",
-                    "name": "documented operating procedures",
-                    "value": 5
-                },
-                {
-                    "id": "A.6.1",
-                    "name": "screening",
-                    "value": 3
-                },
-                {
-                    "id": "A.6.2",
-                    "name": "terms and conditions of employment",
-                    "value": 2
-                },
-                {
-                    "id": "A.6.3",
-                    "name": "information security awareness, education and training",
-                    "value": 1
-                },
-                {
-                    "id": "A.6.4",
-                    "name": "disciplinary process",
-                    "value": 1
-                },
-                {
-                    "id": "A.6.5",
-                    "name": "responsibilities after termination or change of employment",
-                    "value": 3
-                },
-                {
-                    "id": "A.6.6",
-                    "name": "confidentiality or non-disclosure agreements",
-                    "value": 4
-                },
-                {
-                    "id": "A.6.7",
-                    "name": "remote working",
-                    "value": 2
-                },
-                {
-                    "id": "A.6.8",
-                    "name": "information security event reporting",
-                    "value": 3
-                },
-                {
-                    "id": "A.7.1",
-                    "name": "physical security parameters",
-                    "value": 2
-                },
-                {
-                    "id": "A.7.2",
-                    "name": "physical entry access points",
-                    "value": 3
-                },
-                {
-                    "id": "A.7.3",
-                    "name": "securing offices, rooms and facilities",
-                    "value": 2
-                },
-                {
-                    "id": "A.7.4",
-                    "name": "physical security monitoring",
-                    "value": 3
-                },
-                {
-                    "id": "A.7.5",
-                    "name": "protecting against physical and environmental threats",
-                    "value": 3
-                },
-                {
-                    "id": "A.7.6",
-                    "name": "working in secure areas",
-                    "value": 2
-                },
-                {
-                    "id": "A.7.7",
-                    "name": "clear desk and clear screen",
-                    "value": 3
-                },
-                {
-                    "id": "A.7.8",
-                    "name": "equipment siting and protection",
-                    "value": 3
-                },
-                {
-                    "id": "A.7.9",
-                    "name": "security of assets off-premises",
-                    "value": 4
-                },
-                {
-                    "id": "A.7.10",
-                    "name": "storage media",
-                    "value": 5
-                },
-                {
-                    "id": "A.7.11",
-                    "name": "supporting utilities",
-                    "value": 5
-                },
-                {
-                    "id": "A.7.12",
-                    "name": "cabling security",
-                    "value": 4
-                },
-                {
-                    "id": "A.7.13",
-                    "name": "equipment maintenance",
-                    "value": 4
-                },
-                {
-                    "id": "A.7.14",
-                    "name": "secure disposal or re-use of equipment",
-                    "value": 2
-                },
-                {
-                    "id": "A.8.1",
-                    "name": "user end point devices",
-                    "value": 4
-                },
-                {
-                    "id": "A.8.2",
-                    "name": "privileged access rights",
-                    "value": 4
-                },
-                {
-                    "id": "A.8.3",
-                    "name": "information access restriction",
-                    "value": 3
-                },
-                {
-                    "id": "A.8.4",
-                    "name": "access to source code",
-                    "value": 5
-                },
-                {
-                    "id": "A.8.5",
-                    "name": "secure authentication",
-                    "value": 3
-                },
-                {
-                    "id": "A.8.6",
-                    "name": "capacity management",
-                    "value": 6
-                },
-                {
-                    "id": "A.8.7",
-                    "name": "protection against malware",
-                    "value": 3
-                },
-                {
-                    "id": "A.8.8",
-                    "name": "management of technical vulnerabilities",
-                    "value": 4
-                },
-                {
-                    "id": "A.8.9",
-                    "name": "configuration management",
-                    "value": 3
-                },
-                {
-                    "id": "A.8.10",
-                    "name": "information deletion",
-                    "value": 5
-                },
-                {
-                    "id": "A.8.11",
-                    "name": "data masking",
-                    "value": 5
-                },
-                {
-                    "id": "A.8.12",
-                    "name": "data leakage prevention",
-                    "value": 3
-                },
-                {
-                    "id": "A.8.13",
-                    "name": "information backup",
-                    "value": 4
-                },
-                {
-                    "id": "A.8.14",
-                    "name": "redundancy of information processing facilities",
-                    "value": 6
-                },
-                {
-                    "id": "A.8.15",
-                    "name": "logging",
-                    "value": 3
-                },
-                {
-                    "id": "A.8.16",
-                    "name": "monitoring activities",
-                    "value": 4
-                },
-                {
-                    "id": "A.8.17",
-                    "name": "clock synchronization",
-                    "value": 6
-                },
-                {
-                    "id": "A.8.18",
-                    "name": "use of privileged utility programs",
-                    "value": 5
-                },
-                {
-                    "id": "A.8.19",
-                    "name": "installation of software on operational systems",
-                    "value": 5
-                },
-                {
-                    "id": "A.8.20",
-                    "name": "network security",
-                    "value": 2
-                },
-                {
-                    "id": "A.8.21",
-                    "name": "security of network services",
-                    "value": 3
-                },
-                {
-                    "id": "A.8.22",
-                    "name": "segregation of networks",
-                    "value": 5
-                },
-                {
-                    "id": "A.8.23",
-                    "name": "web filtering",
-                    "value": 6
-                },
-                {
-                    "id": "A.8.24",
-                    "name": "use of cryptography",
-                    "value": 5
-                },
-                {
-                    "id": "A.8.25",
-                    "name": "secure development life cycle",
-                    "value": 3
-                },
-                {
-                    "id": "A.8.26",
-                    "name": "application security requirements",
-                    "value": 3
-                },
-                {
-                    "id": "A.8.27",
-                    "name": "secure system architecture and engineering principles",
-                    "value": 4
-                },
-                {
-                    "id": "A.8.28",
-                    "name": "secure coding",
-                    "value": 2
-                },
-                {
-                    "id": "A.8.29",
-                    "name": "security testing in development and acceptance",
-                    "value": 3
-                },
-                {
-                    "id": "A.8.30",
-                    "name": "outsourced development",
-                    "value": 6
-                },
-                {
-                    "id": "A.8.31",
-                    "name": "development, testing and production environments",
-                    "value": 5
-                },
-                {
-                    "id": "A.8.32",
-                    "name": "change management",
-                    "value": 6
-                },
-                {
-                    "id": "A.8.33",
-                    "name": "test information",
-                    "value": 5
-                },
-                {
-                    "id": "A.8.34",
-                    "name": "protection of information systems during audit testing",
-                    "value": 4
-                }
-            ]
-        },
-        "nonCompliantControls": [
+        "overallProtection": 68,
+        "criticalGaps": 32,
+        "controlPassing": "6/38",
+        "extraControls": 0,
+        "frameworkHealth": [
             {
-                "sl": 1,
-                "ctrlNo": "A.5.1",
-                "name": "policies for information security",
-                "instances": 5,
-                "failing": "35%"
-            },
-            {
-                "sl": 2,
-                "ctrlNo": "A.5.7",
-                "name": "threat intelligence",
-                "instances": 5,
-                "failing": "44%"
-            },
-            {
-                "sl": 3,
-                "ctrlNo": "A.5.9",
-                "name": "inventory of information and other associated assets",
-                "instances": 5,
-                "failing": "55%"
-            },
-            {
-                "sl": 4,
-                "ctrlNo": "A.5.10",
-                "name": "acceptable use of information and other associated assets",
-                "instances": 5,
-                "failing": "45%"
-            },
-            {
-                "sl": 5,
-                "ctrlNo": "A.5.11",
-                "name": "return of assets",
-                "instances": 5,
-                "failing": "61%"
-            },
-            {
-                "sl": 6,
-                "ctrlNo": "A.5.12",
-                "name": "classification of information",
-                "instances": 5,
-                "failing": "34%"
-            },
-            {
-                "sl": 7,
-                "ctrlNo": "A.5.13",
-                "name": "labelling of information",
-                "instances": 5,
-                "failing": "50%"
-            },
-            {
-                "sl": 8,
-                "ctrlNo": "A.5.14",
-                "name": "information transfer",
-                "instances": 5,
-                "failing": "48%"
-            },
-            {
-                "sl": 9,
-                "ctrlNo": "A.5.15",
-                "name": "access control",
-                "instances": 5,
-                "failing": "35%"
-            },
-            {
-                "sl": 10,
-                "ctrlNo": "A.5.16",
-                "name": "identity management",
-                "instances": 5,
-                "failing": "43%"
-            },
-            {
-                "sl": 11,
-                "ctrlNo": "A.5.17",
-                "name": "authentication information",
-                "instances": 5,
-                "failing": "41%"
-            },
-            {
-                "sl": 12,
-                "ctrlNo": "A.5.18",
-                "name": "access rights",
-                "instances": 5,
-                "failing": "35%"
-            },
-            {
-                "sl": 13,
-                "ctrlNo": "A.5.22",
-                "name": "monitoring, review and change management of supplier services",
-                "instances": 5,
-                "failing": "36%"
-            },
-            {
-                "sl": 14,
-                "ctrlNo": "A.5.25",
-                "name": "assessment and decision on information security events",
-                "instances": 5,
-                "failing": "39%"
-            },
-            {
-                "sl": 15,
-                "ctrlNo": "A.5.27",
-                "name": "learning from information security incidents",
-                "instances": 5,
-                "failing": "36%"
-            },
-            {
-                "sl": 16,
-                "ctrlNo": "A.5.28",
-                "name": "collection of evidence",
-                "instances": 5,
-                "failing": "44%"
-            },
-            {
-                "sl": 17,
-                "ctrlNo": "A.5.29",
-                "name": "information security during disruption",
-                "instances": 5,
-                "failing": "35%"
-            },
-            {
-                "sl": 18,
-                "ctrlNo": "A.5.30",
-                "name": "ict readiness for business continuity",
-                "instances": 5,
-                "failing": "45%"
-            },
-            {
-                "sl": 19,
-                "ctrlNo": "A.5.32",
-                "name": "intellectual property rights",
-                "instances": 5,
-                "failing": "50%"
-            },
-            {
-                "sl": 20,
-                "ctrlNo": "A.5.33",
-                "name": "protection of records",
-                "instances": 5,
-                "failing": "48%"
-            },
-            {
-                "sl": 21,
-                "ctrlNo": "A.5.34",
-                "name": "privacy and protection of personal identifiable information (pii)",
-                "instances": 5,
-                "failing": "54%"
-            },
-            {
-                "sl": 22,
-                "ctrlNo": "A.5.35",
-                "name": "independent review of information security",
-                "instances": 5,
-                "failing": "39%"
-            },
-            {
-                "sl": 23,
-                "ctrlNo": "A.5.37",
-                "name": "documented operating procedures",
-                "instances": 5,
-                "failing": "46%"
-            },
-            {
-                "sl": 24,
-                "ctrlNo": "A.6.1",
-                "name": "screening",
-                "instances": 5,
-                "failing": "34%"
-            },
-            {
-                "sl": 25,
-                "ctrlNo": "A.6.6",
-                "name": "confidentiality or non-disclosure agreements",
-                "instances": 5,
-                "failing": "39%"
-            },
-            {
-                "sl": 26,
-                "ctrlNo": "A.6.8",
-                "name": "information security event reporting",
-                "instances": 5,
-                "failing": "32%"
-            },
-            {
-                "sl": 27,
-                "ctrlNo": "A.7.2",
-                "name": "physical entry access points",
-                "instances": 5,
-                "failing": "32%"
-            },
-            {
-                "sl": 28,
-                "ctrlNo": "A.7.4",
-                "name": "physical security monitoring",
-                "instances": 5,
-                "failing": "34%"
-            },
-            {
-                "sl": 29,
-                "ctrlNo": "A.7.5",
-                "name": "protecting against physical and environmental threats",
-                "instances": 5,
-                "failing": "30%"
-            },
-            {
-                "sl": 30,
-                "ctrlNo": "A.7.9",
-                "name": "security of assets off-premises",
-                "instances": 5,
-                "failing": "40%"
-            },
-            {
-                "sl": 31,
-                "ctrlNo": "A.7.10",
-                "name": "storage media",
-                "instances": 5,
-                "failing": "52%"
-            },
-            {
-                "sl": 32,
-                "ctrlNo": "A.7.11",
-                "name": "supporting utilities",
-                "instances": 5,
-                "failing": "48%"
-            },
-            {
-                "sl": 33,
-                "ctrlNo": "A.7.12",
-                "name": "cabling security",
-                "instances": 5,
-                "failing": "39%"
-            },
-            {
-                "sl": 34,
-                "ctrlNo": "A.7.13",
-                "name": "equipment maintenance",
-                "instances": 5,
-                "failing": "37%"
-            },
-            {
-                "sl": 35,
-                "ctrlNo": "A.8.1",
-                "name": "user end point devices",
-                "instances": 5,
-                "failing": "43%"
-            },
-            {
-                "sl": 36,
-                "ctrlNo": "A.8.2",
-                "name": "privileged access rights",
-                "instances": 5,
-                "failing": "36%"
-            },
-            {
-                "sl": 37,
-                "ctrlNo": "A.8.3",
-                "name": "information access restriction",
-                "instances": 5,
-                "failing": "31%"
-            },
-            {
-                "sl": 38,
-                "ctrlNo": "A.8.4",
-                "name": "access to source code",
-                "instances": 5,
-                "failing": "48%"
-            },
-            {
-                "sl": 39,
-                "ctrlNo": "A.8.5",
-                "name": "secure authentication",
-                "instances": 5,
-                "failing": "34%"
-            },
-            {
-                "sl": 40,
-                "ctrlNo": "A.8.6",
-                "name": "capacity management",
-                "instances": 5,
-                "failing": "58%"
-            },
-            {
-                "sl": 41,
-                "ctrlNo": "A.8.8",
-                "name": "management of technical vulnerabilities",
-                "instances": 5,
-                "failing": "44%"
-            },
-            {
-                "sl": 42,
-                "ctrlNo": "A.8.10",
-                "name": "information deletion",
-                "instances": 5,
-                "failing": "47%"
-            },
-            {
-                "sl": 43,
-                "ctrlNo": "A.8.11",
-                "name": "data masking",
-                "instances": 5,
-                "failing": "48%"
-            },
-            {
-                "sl": 44,
-                "ctrlNo": "A.8.13",
-                "name": "information backup",
-                "instances": 5,
-                "failing": "41%"
-            },
-            {
-                "sl": 45,
-                "ctrlNo": "A.8.14",
-                "name": "redundancy of information processing facilities",
-                "instances": 5,
-                "failing": "59%"
-            },
-            {
-                "sl": 46,
-                "ctrlNo": "A.8.16",
-                "name": "monitoring activities",
-                "instances": 5,
-                "failing": "44%"
-            },
-            {
-                "sl": 47,
-                "ctrlNo": "A.8.17",
-                "name": "clock synchronization",
-                "instances": 5,
-                "failing": "62%"
-            },
-            {
-                "sl": 48,
-                "ctrlNo": "A.8.18",
-                "name": "use of privileged utility programs",
-                "instances": 5,
-                "failing": "53%"
-            },
-            {
-                "sl": 49,
-                "ctrlNo": "A.8.19",
-                "name": "installation of software on operational systems",
-                "instances": 5,
-                "failing": "49%"
-            },
-            {
-                "sl": 50,
-                "ctrlNo": "A.8.21",
-                "name": "security of network services",
-                "instances": 5,
-                "failing": "31%"
-            },
-            {
-                "sl": 51,
-                "ctrlNo": "A.8.22",
-                "name": "segregation of networks",
-                "instances": 5,
-                "failing": "54%"
-            },
-            {
-                "sl": 52,
-                "ctrlNo": "A.8.23",
-                "name": "web filtering",
-                "instances": 5,
-                "failing": "57%"
-            },
-            {
-                "sl": 53,
-                "ctrlNo": "A.8.24",
-                "name": "use of cryptography",
-                "instances": 5,
-                "failing": "53%"
-            },
-            {
-                "sl": 54,
-                "ctrlNo": "A.8.25",
-                "name": "secure development life cycle",
-                "instances": 5,
-                "failing": "31%"
-            },
-            {
-                "sl": 55,
-                "ctrlNo": "A.8.26",
-                "name": "application security requirements",
-                "instances": 5,
-                "failing": "34%"
-            },
-            {
-                "sl": 56,
-                "ctrlNo": "A.8.27",
-                "name": "secure system architecture and engineering principles",
-                "instances": 5,
-                "failing": "42%"
-            },
-            {
-                "sl": 57,
-                "ctrlNo": "A.8.29",
-                "name": "security testing in development and acceptance",
-                "instances": 5,
-                "failing": "31%"
-            },
-            {
-                "sl": 58,
-                "ctrlNo": "A.8.30",
-                "name": "outsourced development",
-                "instances": 5,
-                "failing": "62%"
-            },
-            {
-                "sl": 59,
-                "ctrlNo": "A.8.31",
-                "name": "development, testing and production environments",
-                "instances": 5,
-                "failing": "49%"
-            },
-            {
-                "sl": 60,
-                "ctrlNo": "A.8.32",
-                "name": "change management",
-                "instances": 5,
-                "failing": "56%"
-            },
-            {
-                "sl": 61,
-                "ctrlNo": "A.8.33",
-                "name": "test information",
-                "instances": 5,
-                "failing": "51%"
-            },
-            {
-                "sl": 62,
-                "ctrlNo": "A.8.34",
-                "name": "protection of information systems during audit testing",
-                "instances": 5,
-                "failing": "44%"
+                "id": "6a86d0d4141dce83d623916b",
+                "name": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "readiness": 68,
+                "weight_score": 940.0,
+                "trend": 0,
+                "trendUp": true
             }
         ],
-        "notAssessed": []
+        "activeGaps": [
+            {
+                "id": "A.4.1.1",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "background verification checks",
+                "description": "Background verification checks on all candidates to become personnel shall be carried out prior to joining the organization and on an ongoing basis taking into consideration applicable laws, regulations and ethics and be proportional to the business requirements, the classification of the information to be accessed and the perceived risks.",
+                "instances": 5,
+                "failing": 60,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.13.1",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "procedures for information labelling",
+                "description": "An appropriate set of procedures for information labelling shall be developed and implemented in accordance with the information classification scheme adopted by the organization.",
+                "instances": 4,
+                "failing": 25,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Low"
+            },
+            {
+                "id": "A.5.14.1",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "information transfer rules",
+                "description": "Information transfer rules, procedures, or agreements shall be in place for all types of transfer facilities within the organization and between the organization and other parties.",
+                "instances": 4,
+                "failing": 25,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Low"
+            },
+            {
+                "id": "A.5.17.1",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "management of authentication information",
+                "description": "Allocation and management of authentication information shall be controlled by a management process, including advising personnel on appropriate handling of authentication information.",
+                "instances": 4,
+                "failing": 50,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.18.1",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "access rights management",
+                "description": "Access rights to information and other associated assets shall be provisioned, reviewed, modified and removed in accordance with the organization's topic-specific policy on and rules for access control.",
+                "instances": 4,
+                "failing": 25,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Low"
+            },
+            {
+                "id": "A.5.20.1",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "supplier information security requirements",
+                "description": "Relevant information security requirements shall be established and agreed with each supplier based on the type of supplier relationship.",
+                "instances": 4,
+                "failing": 50,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.22.1",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "supplier security practices monitoring",
+                "description": "The organization shall regularly monitor, review, evaluate and manage change in supplier information security practices and service delivery.",
+                "instances": 4,
+                "failing": 25,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Low"
+            },
+            {
+                "id": "A.5.23.1",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "cloud services management",
+                "description": "Processes for acquisition, use, management and exit from cloud services shall be established in accordance with the organization's information security requirements.",
+                "instances": 4,
+                "failing": 25,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Low"
+            },
+            {
+                "id": "A.5.24.1",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "incident management processes",
+                "description": "The organization shall plan and prepare for managing information security incidents by defining, establishing and communicating information security incident management processes, roles and responsibilities.",
+                "instances": 4,
+                "failing": 25,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Low"
+            },
+            {
+                "id": "A.5.25.1",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "assessment of information security events",
+                "description": "The organization shall assess information security events and decide if they are to be categorized as information security incidents.",
+                "instances": 0,
+                "failing": 100,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.16.1",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "identity management",
+                "description": "The full life cycle of identities shall be managed.",
+                "instances": 0,
+                "failing": 100,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.26.2",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "utilization of knowledge from incidents",
+                "description": "Knowledge gained from information security incidents shall be used to strengthen and improve the information security controls.",
+                "instances": 0,
+                "failing": 100,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.26.3",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "procedures for evidence handling",
+                "description": "The organization shall establish and implement procedures for the identification, collection, acquisition and preservation of evidence related to information security events.",
+                "instances": 4,
+                "failing": 50,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.26.4",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "planning for information security during disruption",
+                "description": "The organization shall plan how to maintain information security at an appropriate level during disruption.",
+                "instances": 4,
+                "failing": 25,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Low"
+            },
+            {
+                "id": "A.5.26.5",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "ict readiness planning",
+                "description": "ICT readiness shall be planned, implemented, maintained and tested based on business continuity objectives and ICT continuity requirements.",
+                "instances": 4,
+                "failing": 50,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.26.6",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "identification of legal and regulatory requirements",
+                "description": "Legal, statutory, regulatory and contractual requirements relevant to information security and the organization's approach to meet these requirements shall be identified, documented and kept up to date.",
+                "instances": 4,
+                "failing": 25,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Low"
+            },
+            {
+                "id": "A.5.26.8",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "protection of records",
+                "description": "Records shall be protected from loss, destruction, falsification, unauthorized access and unauthorized release.",
+                "instances": 4,
+                "failing": 50,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.26.10",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "independent review of information security management",
+                "description": "The organization's approach to managing information security and its implementation including people, processes and technologies shall be reviewed independently at planned intervals, or when significant changes occur.",
+                "instances": 4,
+                "failing": 50,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.26.11",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "regular review of compliance",
+                "description": "Compliance with the organization's information security policy, topic-specific policies, rules and standards shall be regularly reviewed.",
+                "instances": 4,
+                "failing": 50,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.26.12",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "documentation of operating procedures",
+                "description": "Operating procedures for information processing facilities shall be documented and made available to personnel who need them.",
+                "instances": 4,
+                "failing": 100,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.26.1",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "response to information security incidents",
+                "description": "Information security incidents shall be responded to in accordance with the documented procedures.",
+                "instances": 0,
+                "failing": 100,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.26.7",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "protection of intellectual property rights",
+                "description": "The organization shall implement appropriate procedures to protect intellectual property rights.",
+                "instances": 0,
+                "failing": 100,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.1.1",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "information security policy",
+                "description": "Information security policy and topic-specific policies shall be defined, approved by management, published, communicated to and acknowledged by relevant personnel and relevant interested parties, and reviewed at planned intervals and if significant changes occur.",
+                "instances": 5,
+                "failing": 20,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Low"
+            },
+            {
+                "id": "A.5.1.4",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "application of information security",
+                "description": "Management shall require all personnel to apply information security in accordance with the established information security policy, topic-specific policies and procedures of the organization.",
+                "instances": 5,
+                "failing": 60,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.1.6",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "contact with security forums",
+                "description": "The organization shall establish and maintain contact with special interest groups or other specialist security forums and professional associations.",
+                "instances": 5,
+                "failing": 40,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Medium"
+            },
+            {
+                "id": "A.5.1.9",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "asset inventory",
+                "description": "An inventory of information and other associated assets, including owners, shall be developed and maintained.",
+                "instances": 5,
+                "failing": 40,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Medium"
+            },
+            {
+                "id": "A.5.1.10",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "acceptable use rules",
+                "description": "Rules for the acceptable use and procedures for handling information and other associated assets shall be identified, documented and implemented.",
+                "instances": 5,
+                "failing": 20,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Low"
+            },
+            {
+                "id": "A.5.1.11",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "return of assets",
+                "description": "Personnel and other interested parties as appropriate shall return all the organization's assets in their possession upon change or termination of their employment, contract or agreement.",
+                "instances": 5,
+                "failing": 20,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Low"
+            },
+            {
+                "id": "A.5.1.12",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "information classification",
+                "description": "Information shall be classified according to the information security needs of the organization based on confidentiality, integrity, availability and relevant interested party requirements.",
+                "instances": 5,
+                "failing": 40,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Medium"
+            },
+            {
+                "id": "A.5.1.3",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "segregation of duties",
+                "description": "Conflicting duties and conflicting areas of responsibility shall be segregated.",
+                "instances": 0,
+                "failing": 100,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.1.5",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "contact with relevant authorities",
+                "description": "The organization shall establish and maintain contact with relevant authorities.",
+                "instances": 0,
+                "failing": 100,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.1.8",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "integration into project management",
+                "description": "Information security shall be integrated into project management.",
+                "instances": 0,
+                "failing": 100,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            }
+        ],
+        "liveAuditStreams": [],
+        "deploymentPoints": [
+            {
+                "name": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "count": 130
+            }
+        ],
+        "aiInsights": []
     }
 }
