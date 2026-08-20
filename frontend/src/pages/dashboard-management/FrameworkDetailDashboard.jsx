@@ -22,7 +22,7 @@ const data = {
   coverage: {
     total: 103,
     breakdown: [
-      { name: "Pak Controls", value: 48 },
+      { name: "Pre controls", value: 48 },
       { name: "Org. Specific", value: 22 },
     ],
   },
@@ -55,73 +55,68 @@ const data = {
     {
       sl: 1,
       ctrlNo: "BC-12.4",
-      description: "Cryptographic Key Establishment",
+      name: "Cryptographic Key Establishment",
       instances: 9,
       failing: "9%",
-      lastNcDate: "2024-02-28",
     },
     {
       sl: 2,
       ctrlNo: "AU-9.2",
-      description: "Content of Audit Records",
+      name: "Content of Audit Records",
       instances: 3,
       failing: "5%",
-      lastNcDate: "2024-02-10",
     },
     {
       sl: 3,
       ctrlNo: "AC-2.1",
-      description: "Access Control Policy",
+      name: "Access Control Policy",
       instances: 14,
       failing: "23%",
-      lastNcDate: "2024-03-01",
     },
     {
       sl: 4,
       ctrlNo: "CM-6.3",
-      description: "Configuration Settings",
+      name: "Configuration Settings",
       instances: 5,
       failing: "18%",
-      lastNcDate: "2024-02-28",
     },
     {
       sl: 5,
       ctrlNo: "IA-5.1",
-      description: "Authenticator Management",
+      name: "Authenticator Management",
       instances: 7,
       failing: "12%",
-      lastNcDate: "2024-02-20",
     },
   ],
   notAssessed: [
     {
       sl: 1,
       ctrlNo: "MP-6.1",
-      description: "Media Sanitization",
+      name: "Media Sanitization",
       reason: "Manual review scheduled",
     },
     {
       sl: 2,
       ctrlNo: "AT-2.2",
-      description: "Security Awareness Training",
+      name: "Security Awareness Training",
       reason: "Training platform update",
     },
     {
       sl: 3,
       ctrlNo: "SA-6.3",
-      description: "Vulnerability Scanning",
+      name: "Vulnerability Scanning",
       reason: "Scanner offline",
     },
     {
       sl: 4,
       ctrlNo: "PE-5.4",
-      description: "Fire Protection",
+      name: "Fire Protection",
       reason: "Awaiting evidence upload",
     },
     {
       sl: 5,
       ctrlNo: "SI-7.8",
-      description: "Software and Information Integrity",
+      name: "Software and Information Integrity",
       reason: "Out of scope this quarter",
     },
   ],
@@ -477,13 +472,12 @@ export default function FrameworkDetailDashboard() {
           }
           className="flex flex-col"
         >
-          <div className="grid grid-cols-[0.25fr_0.7fr_1.6fr_0.4fr_0.6fr_0.85fr] text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border-b border-border pb-1.5 gap-1 shrink-0">
+          <div className="grid grid-cols-[0.25fr_0.8fr_2fr_0.6fr_0.6fr] text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border-b border-border pb-1.5 gap-1 shrink-0">
             <span>SL.</span>
             <span>Ctrl No.</span>
-            <span>Description</span>
+            <span>Name</span>
             <span className="text-center">Inst.</span>
             <span className="text-center">% Failing</span>
-            <span className="text-right">Last NC Date</span>
           </div>
           <div
             className="overflow-y-auto flex-1 pr-1 custom-scrollbar"
@@ -492,14 +486,14 @@ export default function FrameworkDetailDashboard() {
             {nonCompliantControls.map((ctrl) => (
               <div
                 key={ctrl.sl}
-                className="grid grid-cols-[0.25fr_0.7fr_1.6fr_0.4fr_0.6fr_0.85fr] gap-1 items-center py-2 border-b border-border last:border-0 hover:bg-accent/50 rounded transition-colors px-0.5"
+                className="grid grid-cols-[0.25fr_0.8fr_2fr_0.6fr_0.6fr] gap-1 items-center py-2 border-b border-border last:border-0 hover:bg-accent/50 rounded transition-colors px-0.5"
               >
                 <span className="text-xs text-muted-foreground">{ctrl.sl}</span>
                 <span className="text-xs text-secondary font-semibold">
                   {ctrl.ctrlNo}
                 </span>
                 <span className="text-xs text-foreground leading-tight">
-                  {ctrl.description}
+                  {ctrl.name}
                 </span>
                 <span className="text-xs text-center font-medium">
                   {ctrl.instances}
@@ -545,7 +539,7 @@ export default function FrameworkDetailDashboard() {
           <div className="grid grid-cols-[0.25fr_0.7fr_1.8fr_1.5fr] text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border-b border-border pb-1.5 gap-1 shrink-0">
             <span>SL.</span>
             <span>Ctrl</span>
-            <span>Description</span>
+            <span>name</span>
             <span>Reason</span>
           </div>
           <div
@@ -562,7 +556,7 @@ export default function FrameworkDetailDashboard() {
                   {ctrl.ctrlNo}
                 </span>
                 <span className="text-xs text-foreground leading-tight">
-                  {ctrl.description}
+                  {ctrl.name}
                 </span>
                 <span className="text-xs text-muted-foreground leading-tight">
                   {ctrl.reason}
