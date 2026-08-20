@@ -619,138 +619,18 @@ async def get_auditor_framework_details(
 ):
     try:
         tenant_id = ctx.tenant_id
-        async with session_scope() as session:
-            from vora_shared.models import PackageComparison, FrameworkAssignment
-            # 1. Fetch Deployment Framework
-            df = (await session.execute(
-                select(DeploymentFramework)
-                .where(DeploymentFramework.id == deployment_framework_id)
-                .where(DeploymentFramework.tenantId == tenant_id)
-            )).scalar_one_or_none()
-
-            if not df:
-                return server_error("Framework not found")
-
-            # 2. Fetch Comparison Document (using comparison ID from package)
-            package = df.packages[0] if df.packages else None
-            comparison_id = package.get("comparison") if package and isinstance(package, dict) else (getattr(package, "comparison", None) if package else None)
+        from app.helpers import get_auditor_framework_details_helper
+        
+        settings = get_settings()
+        data = await get_auditor_framework_details_helper(
+            deployment_framework_id, tenant_id, settings.compliance_score_threshold
+        )
+        
+        if not data:
+            return server_error("Framework not found")
             
-            comparison_doc = None
-            if comparison_id:
-                comparison_doc = (await session.execute(
-                    select(PackageComparison).where(PackageComparison.id == comparison_id)
-                )).scalar_one_or_none()
-
-            # 3. Fetch Assigned Framework to get customization sources
-            assigned_fw = (await session.execute(
-                select(FrameworkAssignment).where(FrameworkAssignment.id == df.assignedFrameworkId)
-            )).scalar_one_or_none()
-
-            source_map = {}
-            applicable_map = {}
-            if assigned_fw and getattr(assigned_fw, "fileVersions", None):
-                for fv in assigned_fw.fileVersions:
-                    for ext in fv.get("aiExtraction", []):
-                        for ctrl in ext.get("controls", []):
-                            c_id = ctrl.get("id")
-                            customization = ctrl.get("customization") or {}
-                            source = customization.get("source")
-                            if c_id and source:
-                                source_map[c_id] = source
-                            
-                            is_applicable = customization.get("is_applicable", True)
-                            if c_id:
-                                applicable_map[c_id] = is_applicable
-
-            # Process logic based on config
-            settings = get_settings()
-            comp_threshold = settings.compliance_score_threshold
-
-            subscribed = 0
-            compliant = 0
-            non_compliant = 0
-            
-            custom_count = 0
-            pre_count = 0
-            
-            gap_analysis = []
-            non_compliant_list = []
-
-            if comparison_doc and comparison_doc.comparison and "comparison_result" in comparison_doc.comparison:
-                results = comparison_doc.comparison["comparison_result"]
-                for section in results:
-                    for ctrl in section.get("controls", []):
-                        ctrl_id = ctrl.get("assigned_framework_control_id", "")
-                        
-                        # Skip if not applicable
-                        if not applicable_map.get(ctrl_id, True):
-                            continue
-                            
-                        subscribed += 1
-                        score = ctrl.get("comparison_score", 0)
-
-                        is_compliant = score >= comp_threshold
-                        if is_compliant:
-                            compliant += 1
-                        else:
-                            non_compliant += 1
-                            
-                            # Add to non-compliant list
-                            dps = ctrl.get("deployment_framework_deployment_points", [])
-                            instances = len(dps)
-                            failing = f"{round((1 - score) * 100)}%"
-                            
-                            non_compliant_list.append({
-                                "sl": non_compliant,
-                                "ctrlNo": ctrl_id,
-                                "name": ctrl.get("assigned_framework_control_name", ""),
-                                "instances": instances,
-                                "failing": failing
-                            })
-                            
-                        # Count org specific vs pre controls based on customization source from FrameworkAssignment
-                        source = source_map.get(ctrl_id)
-                        if source == "custom":
-                            custom_count += 1
-                        else:
-                            pre_count += 1
-                            
-                        # Add control to gap analysis
-                        ctrl_name = ctrl.get("assigned_framework_control_name", "Unknown")
-                        gap_val = round((1 - score) * 10)  # Gap representation 0-10
-                        gap_analysis.append({"id": ctrl_id, "name": ctrl_name, "value": gap_val})
-
-            return success({
-                "id": str(df.id),
-                "frameworkName": df.frameworkName,
-                "frameworkVersion": df.frameworkVersion,
-                "controls": {
-                    "subscribed": subscribed,
-                    "compliant": compliant,
-                    "nonCompliant": non_compliant,
-                    "notAssessed": 0
-                },
-                "coverage": {
-                    "total": pre_count + custom_count,
-                    "breakdown": [
-                        {"name": "Pre controls", "value": pre_count},
-                        {"name": "Org. Specific", "value": custom_count}
-                    ]
-                },
-                "compliance": {
-                    "total": compliant + non_compliant,
-                    "breakdown": [
-                        {"name": "Compliant", "value": compliant},
-                        {"name": "Non-Compliant", "value": non_compliant},
-                        {"name": "Not Assessed", "value": 0}
-                    ]
-                },
-                "auditDashboard": {"gapAnalysis": gap_analysis},
-                "nonCompliantControls": non_compliant_list,
-                "notAssessed": []
-            }, "Framework details retrieved successfully")
+        return success(data, "Framework details retrieved successfully")
 
     except Exception:
         logger.exception("Error fetching framework details")
         return server_error("Failed to fetch framework details")
-
