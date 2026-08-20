@@ -53,7 +53,7 @@ SELECT COALESCE(
 FROM (
     SELECT *
     FROM "$safeSchema"."$safeTable"
-    LIMIT 3
+    LIMIT 1
 ) t;
 "@
 

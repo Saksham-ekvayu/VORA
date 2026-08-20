@@ -1,241 +1,480 @@
 {
     "success": true,
-    "message": "Framework details retrieved successfully",
+    "message": "Auditor dashboard analytics retrieved successfully",
     "data": {
-        "id": "6a86d0d4141dce83d623916b",
-        "frameworkName": "Information Security Management System",
-        "frameworkVersion": "ISO27001:2022",
-        "controls": {
-            "subscribed": 38,
-            "compliant": 38,
-            "nonCompliant": 0,
-            "notAssessed": 0
-        },
-        "coverage": {
-            "total": 38,
-            "breakdown": [
-                {
-                    "name": "Pre controls",
-                    "value": 37
-                },
-                {
-                    "name": "Org. Specific",
-                    "value": 1
-                }
-            ]
-        },
-        "compliance": {
-            "total": 38,
-            "breakdown": [
-                {
-                    "name": "Compliant",
-                    "value": 38
-                },
-                {
-                    "name": "Non-Compliant",
-                    "value": 0
-                },
-                {
-                    "name": "Not Assessed",
-                    "value": 0
-                }
-            ]
-        },
-        "auditDashboard": {
-            "gapAnalysis": [
-                {
-                    "id": "A.5.1",
-                    "name": "policies for information security",
-                    "value": 1
-                },
-                {
-                    "id": "A.5.2",
-                    "name": "information security roles and responsibilities",
-                    "value": 0
-                },
-                {
-                    "id": "A.5.4",
-                    "name": "management responsibilities",
-                    "value": 3
-                },
-                {
-                    "id": "A.5.6",
-                    "name": "contact with special interest groups",
-                    "value": 2
-                },
-                {
-                    "id": "A.5.7",
-                    "name": "threat intelligence",
-                    "value": 1
-                },
-                {
-                    "id": "A.5.9",
-                    "name": "inventory of information and other associated assets",
-                    "value": 2
-                },
-                {
-                    "id": "A.5.10",
-                    "name": "acceptable use of information and other associated assets",
-                    "value": 2
-                },
-                {
-                    "id": "A.5.11",
-                    "name": "return of assets",
-                    "value": 1
-                },
-                {
-                    "id": "A.5.12",
-                    "name": "classification of information",
-                    "value": 2
-                },
-                {
-                    "id": "A.5.13",
-                    "name": "labelling of information",
-                    "value": 3
-                },
-                {
-                    "id": "A.5.14",
-                    "name": "information transfer",
-                    "value": 2
-                },
-                {
-                    "id": "A.5.15",
-                    "name": "access control",
-                    "value": 2
-                },
-                {
-                    "id": "A.5.17",
-                    "name": "authentication information",
-                    "value": 3
-                },
-                {
-                    "id": "A.5.18",
-                    "name": "access rights",
-                    "value": 2
-                },
-                {
-                    "id": "A.5.19",
-                    "name": "information security in supplier relationships",
-                    "value": 2
-                },
-                {
-                    "id": "A.5.20",
-                    "name": "addressing information security within supplier agreements",
-                    "value": 2
-                },
-                {
-                    "id": "A.5.21",
-                    "name": "managing information security in the information and communication technology (ict) supply chain",
-                    "value": 1
-                },
-                {
-                    "id": "A.5.22",
-                    "name": "monitoring, review and change management of supplier services",
-                    "value": 2
-                },
-                {
-                    "id": "A.5.23",
-                    "name": "information security for use of cloud services",
-                    "value": 1
-                },
-                {
-                    "id": "A.5.24",
-                    "name": "information security incident management planning and preparation",
-                    "value": 2
-                },
-                {
-                    "id": "A.5.25",
-                    "name": "assessment and decision on information security events",
-                    "value": 0
-                },
-                {
-                    "id": "A.5.27",
-                    "name": "learning from information security incidents",
-                    "value": 0
-                },
-                {
-                    "id": "A.5.28",
-                    "name": "collection of evidence",
-                    "value": 2
-                },
-                {
-                    "id": "A.5.29",
-                    "name": "information security during disruption",
-                    "value": 1
-                },
-                {
-                    "id": "A.5.30",
-                    "name": "ict readiness for business continuity",
-                    "value": 3
-                },
-                {
-                    "id": "A.5.31",
-                    "name": "legal, statutory, regulatory and contractual requirements",
-                    "value": 3
-                },
-                {
-                    "id": "A.5.33",
-                    "name": "protection of records",
-                    "value": 2
-                },
-                {
-                    "id": "A.5.34",
-                    "name": "privacy and protection of personal identifiable information (pii)",
-                    "value": 1
-                },
-                {
-                    "id": "A.5.35",
-                    "name": "independent review of information security",
-                    "value": 2
-                },
-                {
-                    "id": "A.5.36",
-                    "name": "compliance with policies, rules and standards for information security",
-                    "value": 2
-                },
-                {
-                    "id": "A.5.37",
-                    "name": "documented operating procedures",
-                    "value": 9
-                },
-                {
-                    "id": "A.5.3",
-                    "name": "segregation of duties",
-                    "value": 0
-                },
-                {
-                    "id": "A.5.5",
-                    "name": "contact with authorities",
-                    "value": 0
-                },
-                {
-                    "id": "A.5.8",
-                    "name": "information security in project management",
-                    "value": 0
-                },
-                {
-                    "id": "A.5.16",
-                    "name": "identity management",
-                    "value": 0
-                },
-                {
-                    "id": "A.5.26",
-                    "name": "response to information security incidents",
-                    "value": 0
-                },
-                {
-                    "id": "A.5.32",
-                    "name": "intellectual property rights",
-                    "value": 0
-                },
-                {
-                    "id": "A.6.9",
-                    "name": "screening",
-                    "value": 3
-                }
-            ]
-        },
-        "nonCompliantControls": [],
-        "notAssessed": []
+        "overallProtection": 68,
+        "criticalGaps": 32,
+        "controlPassing": "6/38",
+        "extraControls": 0,
+        "frameworkHealth": [
+            {
+                "id": "6a86d0d4141dce83d623916b",
+                "name": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "readiness": 68,
+                "weight_score": 940.0,
+                "trend": 0,
+                "trendUp": true
+            }
+        ],
+        "activeGaps": [
+            {
+                "id": "A.4.1.1",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "background verification checks",
+                "description": "Background verification checks on all candidates to become personnel shall be carried out prior to joining the organization and on an ongoing basis taking into consideration applicable laws, regulations and ethics and be proportional to the business requirements, the classification of the information to be accessed and the perceived risks.",
+                "instances": 5,
+                "failing": 60,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.13.1",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "procedures for information labelling",
+                "description": "An appropriate set of procedures for information labelling shall be developed and implemented in accordance with the information classification scheme adopted by the organization.",
+                "instances": 4,
+                "failing": 25,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Low"
+            },
+            {
+                "id": "A.5.14.1",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "information transfer rules",
+                "description": "Information transfer rules, procedures, or agreements shall be in place for all types of transfer facilities within the organization and between the organization and other parties.",
+                "instances": 4,
+                "failing": 25,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Low"
+            },
+            {
+                "id": "A.5.17.1",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "management of authentication information",
+                "description": "Allocation and management of authentication information shall be controlled by a management process, including advising personnel on appropriate handling of authentication information.",
+                "instances": 4,
+                "failing": 50,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.18.1",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "access rights management",
+                "description": "Access rights to information and other associated assets shall be provisioned, reviewed, modified and removed in accordance with the organization's topic-specific policy on and rules for access control.",
+                "instances": 4,
+                "failing": 25,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Low"
+            },
+            {
+                "id": "A.5.20.1",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "supplier information security requirements",
+                "description": "Relevant information security requirements shall be established and agreed with each supplier based on the type of supplier relationship.",
+                "instances": 4,
+                "failing": 50,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.22.1",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "supplier security practices monitoring",
+                "description": "The organization shall regularly monitor, review, evaluate and manage change in supplier information security practices and service delivery.",
+                "instances": 4,
+                "failing": 25,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Low"
+            },
+            {
+                "id": "A.5.23.1",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "cloud services management",
+                "description": "Processes for acquisition, use, management and exit from cloud services shall be established in accordance with the organization's information security requirements.",
+                "instances": 4,
+                "failing": 25,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Low"
+            },
+            {
+                "id": "A.5.24.1",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "incident management processes",
+                "description": "The organization shall plan and prepare for managing information security incidents by defining, establishing and communicating information security incident management processes, roles and responsibilities.",
+                "instances": 4,
+                "failing": 25,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Low"
+            },
+            {
+                "id": "A.5.25.1",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "assessment of information security events",
+                "description": "The organization shall assess information security events and decide if they are to be categorized as information security incidents.",
+                "instances": 0,
+                "failing": 100,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.16.1",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "identity management",
+                "description": "The full life cycle of identities shall be managed.",
+                "instances": 0,
+                "failing": 100,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.26.2",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "utilization of knowledge from incidents",
+                "description": "Knowledge gained from information security incidents shall be used to strengthen and improve the information security controls.",
+                "instances": 0,
+                "failing": 100,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.26.3",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "procedures for evidence handling",
+                "description": "The organization shall establish and implement procedures for the identification, collection, acquisition and preservation of evidence related to information security events.",
+                "instances": 4,
+                "failing": 50,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.26.4",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "planning for information security during disruption",
+                "description": "The organization shall plan how to maintain information security at an appropriate level during disruption.",
+                "instances": 4,
+                "failing": 25,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Low"
+            },
+            {
+                "id": "A.5.26.5",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "ict readiness planning",
+                "description": "ICT readiness shall be planned, implemented, maintained and tested based on business continuity objectives and ICT continuity requirements.",
+                "instances": 4,
+                "failing": 50,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.26.6",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "identification of legal and regulatory requirements",
+                "description": "Legal, statutory, regulatory and contractual requirements relevant to information security and the organization's approach to meet these requirements shall be identified, documented and kept up to date.",
+                "instances": 4,
+                "failing": 25,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Low"
+            },
+            {
+                "id": "A.5.26.8",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "protection of records",
+                "description": "Records shall be protected from loss, destruction, falsification, unauthorized access and unauthorized release.",
+                "instances": 4,
+                "failing": 50,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.26.10",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "independent review of information security management",
+                "description": "The organization's approach to managing information security and its implementation including people, processes and technologies shall be reviewed independently at planned intervals, or when significant changes occur.",
+                "instances": 4,
+                "failing": 50,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.26.11",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "regular review of compliance",
+                "description": "Compliance with the organization's information security policy, topic-specific policies, rules and standards shall be regularly reviewed.",
+                "instances": 4,
+                "failing": 50,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.26.12",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "documentation of operating procedures",
+                "description": "Operating procedures for information processing facilities shall be documented and made available to personnel who need them.",
+                "instances": 4,
+                "failing": 100,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.26.1",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "response to information security incidents",
+                "description": "Information security incidents shall be responded to in accordance with the documented procedures.",
+                "instances": 0,
+                "failing": 100,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.26.7",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "protection of intellectual property rights",
+                "description": "The organization shall implement appropriate procedures to protect intellectual property rights.",
+                "instances": 0,
+                "failing": 100,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.1.1",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "information security policy",
+                "description": "Information security policy and topic-specific policies shall be defined, approved by management, published, communicated to and acknowledged by relevant personnel and relevant interested parties, and reviewed at planned intervals and if significant changes occur.",
+                "instances": 5,
+                "failing": 20,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Low"
+            },
+            {
+                "id": "A.5.1.4",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "application of information security",
+                "description": "Management shall require all personnel to apply information security in accordance with the established information security policy, topic-specific policies and procedures of the organization.",
+                "instances": 5,
+                "failing": 60,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.1.6",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "contact with security forums",
+                "description": "The organization shall establish and maintain contact with special interest groups or other specialist security forums and professional associations.",
+                "instances": 5,
+                "failing": 40,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Medium"
+            },
+            {
+                "id": "A.5.1.9",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "asset inventory",
+                "description": "An inventory of information and other associated assets, including owners, shall be developed and maintained.",
+                "instances": 5,
+                "failing": 40,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Medium"
+            },
+            {
+                "id": "A.5.1.10",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "acceptable use rules",
+                "description": "Rules for the acceptable use and procedures for handling information and other associated assets shall be identified, documented and implemented.",
+                "instances": 5,
+                "failing": 20,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Low"
+            },
+            {
+                "id": "A.5.1.11",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "return of assets",
+                "description": "Personnel and other interested parties as appropriate shall return all the organization's assets in their possession upon change or termination of their employment, contract or agreement.",
+                "instances": 5,
+                "failing": 20,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Low"
+            },
+            {
+                "id": "A.5.1.12",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "information classification",
+                "description": "Information shall be classified according to the information security needs of the organization based on confidentiality, integrity, availability and relevant interested party requirements.",
+                "instances": 5,
+                "failing": 40,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "Medium"
+            },
+            {
+                "id": "A.5.1.3",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "segregation of duties",
+                "description": "Conflicting duties and conflicting areas of responsibility shall be segregated.",
+                "instances": 0,
+                "failing": 100,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.1.5",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "contact with relevant authorities",
+                "description": "The organization shall establish and maintain contact with relevant authorities.",
+                "instances": 0,
+                "failing": 100,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            },
+            {
+                "id": "A.5.1.8",
+                "frameworkId": "6a86d0d4141dce83d623916b",
+                "framework": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "packageVersion": "2.0.0",
+                "control": "integration into project management",
+                "description": "Information security shall be integrated into project management.",
+                "instances": 0,
+                "failing": 100,
+                "lastNC": "2026-08-20T10:25:51.155212+00:00",
+                "trend": "flat",
+                "severity": "High"
+            }
+        ],
+        "liveAuditStreams": [],
+        "deploymentPoints": [
+            {
+                "name": "Information Security Management System",
+                "version": "ISO27001:2022",
+                "count": 130
+            }
+        ],
+        "aiInsights": []
     }
 }
