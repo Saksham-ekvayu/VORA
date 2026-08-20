@@ -80,9 +80,7 @@ export default function CustomPagination({
         </div>
         {pagination.onLimitChange && (
           <div className="flex items-center gap-2">
-            <Label className="text-sm whitespace-nowrap">
-              Rows per page:
-            </Label>
+            <Label className="text-sm whitespace-nowrap">Rows per page:</Label>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -126,11 +124,7 @@ export default function CustomPagination({
               aria-disabled={!pagination.hasPrevPage || loading}
               tabIndex={!pagination.hasPrevPage || loading ? -1 : 0}
               onClick={(event) =>
-                handlePageChange(
-                  event,
-                  1,
-                  !pagination.hasPrevPage || loading
-                )
+                handlePageChange(event, 1, !pagination.hasPrevPage || loading)
               }
               title="First page"
             >
@@ -180,9 +174,7 @@ export default function CustomPagination({
                   }
                   aria-disabled={loading}
                   tabIndex={loading ? -1 : 0}
-                  onClick={(event) =>
-                    handlePageChange(event, page, loading)
-                  }
+                  onClick={(event) => handlePageChange(event, page, loading)}
                 >
                   {page}
                 </PaginationLink>

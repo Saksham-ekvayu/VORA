@@ -5,463 +5,126 @@ import CardWrapper from "./components/CardWrapper";
 import Icon from "@/components/custom/Icon";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 // ─── Per-framework mock data ──────────────────────────────────────────────────
 
-const FRAMEWORK_DATA = [
-  {
-    name: "ISO-27001:2022",
-    version: "ISO 27001:2022",
-    controls: {
-      subscribed: 95,
-      compliant: 82,
-      compliantPct: "84%",
-      nonCompliant: 7,
-      nonCompliantPct: "7%",
-      notAssessed: 6,
-      notAssessedPct: "6%",
-    },
-    coverage: {
-      total: 103,
-      breakdown: [
-        { name: "Pak Controls", value: 48 },
-        { name: "Org. Specific", value: 22 },
-      ],
-    },
-    compliance: {
-      total: 95,
-      breakdown: [
-        { name: "Compliant", value: 82 },
-        { name: "Non-Compliant", value: 7 },
-        { name: "Not Assessed", value: 6 },
-      ],
-    },
-    auditDashboard: {
-      externalCertification: { status: "Yes", date: "Nov 15, 2023" },
-      internalAudit: { status: "Partial", date: "Feb 20, 2024" },
-      gapAnalysis: [
-        { label: "Access Ctrl", value: -7 },
-        { label: "Incident Res", value: -6 },
-        { label: "Data Privacy", value: -5 },
-        { label: "Risk Assess", value: -4 },
-        { label: "Physical Sec", value: -4 },
-      ],
-    },
-    nonCompliantControls: [
-      {
-        sl: 1,
-        ctrlNo: "BC-12.4",
-        description: "Cryptographic Key Establishment",
-        instances: 9,
-        failing: "9%",
-        lastNcDate: "2024-02-28",
-      },
-      {
-        sl: 2,
-        ctrlNo: "AU-9.2",
-        description: "Content of Audit Records",
-        instances: 3,
-        failing: "5%",
-        lastNcDate: "2024-02-10",
-      },
-      {
-        sl: 3,
-        ctrlNo: "AC-2.1",
-        description: "Access Control Policy",
-        instances: 14,
-        failing: "23%",
-        lastNcDate: "2024-03-01",
-      },
-      {
-        sl: 4,
-        ctrlNo: "CM-6.3",
-        description: "Configuration Settings",
-        instances: 5,
-        failing: "18%",
-        lastNcDate: "2024-02-28",
-      },
-      {
-        sl: 5,
-        ctrlNo: "IA-5.1",
-        description: "Authenticator Management",
-        instances: 7,
-        failing: "12%",
-        lastNcDate: "2024-02-20",
-      },
-    ],
-    notAssessed: [
-      {
-        sl: 1,
-        ctrlNo: "MP-6.1",
-        description: "Media Sanitization",
-        reason: "Manual review scheduled",
-      },
-      {
-        sl: 2,
-        ctrlNo: "AT-2.2",
-        description: "Security Awareness Training",
-        reason: "Training platform update",
-      },
-      {
-        sl: 3,
-        ctrlNo: "SA-6.3",
-        description: "Vulnerability Scanning",
-        reason: "Scanner offline",
-      },
-      {
-        sl: 4,
-        ctrlNo: "PE-5.4",
-        description: "Fire Protection",
-        reason: "Awaiting evidence upload",
-      },
-      {
-        sl: 5,
-        ctrlNo: "SI-7.8",
-        description: "Software and Information Integrity",
-        reason: "Out of scope this quarter",
-      },
-    ],
-    subscriptions: [
-      {
-        framework: "ISO 27001 BMS Base",
-        version: "2022",
-        startDate: "Jan 10, 2024",
-        duration: "24 mo",
-        users: 348,
-        location: "EU-Rest",
-      },
-      {
-        framework: "ISO 27001 Cloud",
-        version: "2013",
-        startDate: "Feb 01, 2024",
-        duration: "12 mo",
-        users: 198,
-        location: "EU-Rest",
-      },
+const data = {
+  id: 1,
+  frameworkName: "Information Security Management System",
+  frameworkVersion: "ISO-27001:2022",
+  controls: {
+    subscribed: 95, // All applicable controls in assigned framework
+    compliant: 82, // Controls with status Compliant
+    nonCompliant: 7, // Controls with status Non-Compliant
+    notAssessed: 6, // Controls with status Not Assessed
+  },
+  coverage: {
+    total: 103,
+    breakdown: [
+      { name: "Pak Controls", value: 48 },
+      { name: "Org. Specific", value: 22 },
     ],
   },
-  {
-    name: "ISO-9001:2008",
-    version: "ISO 9001:2015",
-    controls: {
-      subscribed: 78,
-      compliant: 67,
-      compliantPct: "89%",
-      nonCompliant: 5,
-      nonCompliantPct: "6%",
-      notAssessed: 4,
-      notAssessedPct: "5%",
-    },
-    coverage: {
-      total: 78,
-      breakdown: [
-        { name: "Pak Controls", value: 40 },
-        { name: "Org. Specific", value: 16 },
-      ],
-    },
-    compliance: {
-      total: 78,
-      breakdown: [
-        { name: "Compliant", value: 67 },
-        { name: "Non-Compliant", value: 5 },
-        { name: "Not Assessed", value: 4 },
-      ],
-    },
-    auditDashboard: {
-      externalCertification: { status: "Yes", date: "Oct 05, 2023" },
-      internalAudit: { status: "Yes", date: "Jan 12, 2024" },
-      gapAnalysis: [
-        { label: "Doc Control", value: -5 },
-        { label: "Process Mon", value: -4 },
-        { label: "Customer Foc", value: -3 },
-        { label: "Mgmt Review", value: -2 },
-      ],
-    },
-    nonCompliantControls: [
-      {
-        sl: 1,
-        ctrlNo: "QM-4.2",
-        description: "Document Control Procedures",
-        instances: 6,
-        failing: "14%",
-        lastNcDate: "2024-02-18",
-      },
-      {
-        sl: 2,
-        ctrlNo: "QM-8.1",
-        description: "Operational Planning",
-        instances: 4,
-        failing: "9%",
-        lastNcDate: "2024-02-15",
-      },
-      {
-        sl: 3,
-        ctrlNo: "QM-9.1",
-        description: "Monitoring and Measurement",
-        instances: 3,
-        failing: "7%",
-        lastNcDate: "2024-03-01",
-      },
-      {
-        sl: 4,
-        ctrlNo: "QM-6.2",
-        description: "Quality Objectives",
-        instances: 2,
-        failing: "5%",
-        lastNcDate: "2024-02-20",
-      },
-      {
-        sl: 5,
-        ctrlNo: "QM-10.2",
-        description: "Nonconformity and Corrective Action",
-        instances: 5,
-        failing: "11%",
-        lastNcDate: "2024-02-28",
-      },
-    ],
-    notAssessed: [
-      {
-        sl: 1,
-        ctrlNo: "QM-7.4",
-        description: "Communication",
-        reason: "Policy review pending",
-      },
-      {
-        sl: 2,
-        ctrlNo: "QM-5.3",
-        description: "Roles and Responsibilities",
-        reason: "Org chart update",
-      },
-      {
-        sl: 3,
-        ctrlNo: "QM-8.4",
-        description: "External Providers",
-        reason: "Vendor audit scheduled",
-      },
-      {
-        sl: 4,
-        ctrlNo: "QM-4.1",
-        description: "Context of Organization",
-        reason: "Strategy review ongoing",
-      },
-    ],
-    subscriptions: [
-      {
-        framework: "ISO 9001 QMS Base",
-        version: "2015",
-        startDate: "Mar 01, 2024",
-        duration: "24 mo",
-        users: 210,
-        location: "EU-Rest",
-      },
+  compliance: {
+    total: 95,
+    breakdown: [
+      { name: "Compliant", value: 82 },
+      { name: "Non-Compliant", value: 7 },
+      { name: "Not Assessed", value: 6 },
     ],
   },
-  {
-    name: "NIST-CSF:2021",
-    version: "NIST CSF v1.1",
-    controls: {
-      subscribed: 108,
-      compliant: 63,
-      compliantPct: "58%",
-      nonCompliant: 22,
-      nonCompliantPct: "20%",
-      notAssessed: 14,
-      notAssessedPct: "13%",
-    },
-    coverage: {
-      total: 108,
-      breakdown: [
-        { name: "Pak Controls", value: 50 },
-        { name: "Org. Specific", value: 20 },
-      ],
-    },
-    compliance: {
-      total: 108,
-      breakdown: [
-        { name: "Compliant", value: 63 },
-        { name: "Non-Compliant", value: 22 },
-        { name: "Not Assessed", value: 14 },
-      ],
-    },
-    auditDashboard: {
-      externalCertification: { status: "No", date: "—" },
-      internalAudit: { status: "Partial", date: "Mar 10, 2024" },
-      gapAnalysis: [
-        { label: "Identify", value: -9 },
-        { label: "Protect", value: -7 },
-        { label: "Detect", value: -5 },
-        { label: "Respond", value: -4 },
-        { label: "Recover", value: -3 },
-      ],
-    },
-    nonCompliantControls: [
-      {
-        sl: 1,
-        ctrlNo: "PR.AC-4",
-        description: "Access Permissions Management",
-        instances: 11,
-        failing: "31%",
-        lastNcDate: "2024-03-05",
-      },
-      {
-        sl: 2,
-        ctrlNo: "DE.CM-1",
-        description: "Network Monitoring",
-        instances: 8,
-        failing: "24%",
-        lastNcDate: "2024-02-28",
-      },
-      {
-        sl: 3,
-        ctrlNo: "ID.AM-2",
-        description: "Software Inventory",
-        instances: 6,
-        failing: "18%",
-        lastNcDate: "2024-03-01",
-      },
-      {
-        sl: 4,
-        ctrlNo: "RS.CO-2",
-        description: "Incident Reporting",
-        instances: 4,
-        failing: "12%",
-        lastNcDate: "2024-02-25",
-      },
-      {
-        sl: 5,
-        ctrlNo: "PR.DS-1",
-        description: "Data at Rest Protection",
-        instances: 9,
-        failing: "27%",
-        lastNcDate: "2024-03-02",
-      },
-    ],
-    notAssessed: [
-      {
-        sl: 1,
-        ctrlNo: "RC.RP-1",
-        description: "Recovery Planning",
-        reason: "Plan under development",
-      },
-      {
-        sl: 2,
-        ctrlNo: "ID.GV-3",
-        description: "Legal Requirements",
-        reason: "Legal review pending",
-      },
-      {
-        sl: 3,
-        ctrlNo: "PR.IP-9",
-        description: "Response Plans",
-        reason: "Template not finalized",
-      },
-    ],
-    subscriptions: [
-      {
-        framework: "NIST CSF Core",
-        version: "1.1",
-        startDate: "Jan 15, 2024",
-        duration: "12 mo",
-        users: 156,
-        location: "US-East",
-      },
+  auditDashboard: {
+    gapAnalysis: [
+      { label: "Access Ctrl", value: -7 },
+      { label: "Incident Res", value: -6 },
+      { label: "Data Privacy", value: -5 },
+      { label: "Risk Assess", value: -4 },
+      { label: "Physical Sec", value: -4 },
+      { label: "Physical Sec", value: -4 },
+      { label: "Physical Sec", value: -4 },
+      { label: "Physical Sec", value: -4 },
+      { label: "Physical Sec", value: -4 },
+      { label: "Physical Sec", value: -4 },
+      { label: "Physical Sec", value: -4 },
+      { label: "Physical Sec", value: -4 },
+      { label: "Physical Sec", value: -4 },
     ],
   },
-  {
-    name: "CFR-Part-II:2023",
-    version: "21 CFR Part 11:2023",
-    controls: {
-      subscribed: 54,
-      compliant: 36,
-      compliantPct: "67%",
-      nonCompliant: 10,
-      nonCompliantPct: "19%",
-      notAssessed: 8,
-      notAssessedPct: "15%",
+  nonCompliantControls: [
+    {
+      sl: 1,
+      ctrlNo: "BC-12.4",
+      description: "Cryptographic Key Establishment",
+      instances: 9,
+      failing: "9%",
+      lastNcDate: "2024-02-28",
     },
-    coverage: {
-      total: 54,
-      breakdown: [
-        { name: "Pak Controls", value: 28 },
-        { name: "Org. Specific", value: 10 },
-      ],
+    {
+      sl: 2,
+      ctrlNo: "AU-9.2",
+      description: "Content of Audit Records",
+      instances: 3,
+      failing: "5%",
+      lastNcDate: "2024-02-10",
     },
-    compliance: {
-      total: 54,
-      breakdown: [
-        { name: "Compliant", value: 36 },
-        { name: "Non-Compliant", value: 10 },
-        { name: "Not Assessed", value: 8 },
-      ],
+    {
+      sl: 3,
+      ctrlNo: "AC-2.1",
+      description: "Access Control Policy",
+      instances: 14,
+      failing: "23%",
+      lastNcDate: "2024-03-01",
     },
-    auditDashboard: {
-      externalCertification: { status: "Partial", date: "Dec 01, 2023" },
-      internalAudit: { status: "No", date: "—" },
-      gapAnalysis: [
-        { label: "Electronic Rec", value: -6 },
-        { label: "Audit Trail", value: -5 },
-        { label: "Signatures", value: -4 },
-        { label: "Access Ctrl", value: -3 },
-      ],
+    {
+      sl: 4,
+      ctrlNo: "CM-6.3",
+      description: "Configuration Settings",
+      instances: 5,
+      failing: "18%",
+      lastNcDate: "2024-02-28",
     },
-    nonCompliantControls: [
-      {
-        sl: 1,
-        ctrlNo: "11.10a",
-        description: "Validation of Systems",
-        instances: 5,
-        failing: "19%",
-        lastNcDate: "2024-02-28",
-      },
-      {
-        sl: 2,
-        ctrlNo: "11.10e",
-        description: "Audit Trail Controls",
-        instances: 7,
-        failing: "26%",
-        lastNcDate: "2024-03-01",
-      },
-      {
-        sl: 3,
-        ctrlNo: "11.300",
-        description: "Electronic Signatures",
-        instances: 4,
-        failing: "15%",
-        lastNcDate: "2024-02-20",
-      },
-    ],
-    notAssessed: [
-      {
-        sl: 1,
-        ctrlNo: "11.50",
-        description: "Signature Manifestations",
-        reason: "Legal review pending",
-      },
-      {
-        sl: 2,
-        ctrlNo: "11.70",
-        description: "Signature/Record Linking",
-        reason: "Technical assessment due",
-      },
-    ],
-    subscriptions: [
-      {
-        framework: "21 CFR Part 11 Base",
-        version: "2023",
-        startDate: "Feb 01, 2024",
-        duration: "12 mo",
-        users: 89,
-        location: "US-East",
-      },
-    ],
-  },
-];
-
-// ─── Donut chart with center label ───────────────────────────────────────────
-function getCertStatusColor(status) {
-  if (status === "Yes") return "bg-emerald-500";
-  if (status === "Partial") return "bg-amber-500";
-  return "bg-red-500";
-}
+    {
+      sl: 5,
+      ctrlNo: "IA-5.1",
+      description: "Authenticator Management",
+      instances: 7,
+      failing: "12%",
+      lastNcDate: "2024-02-20",
+    },
+  ],
+  notAssessed: [
+    {
+      sl: 1,
+      ctrlNo: "MP-6.1",
+      description: "Media Sanitization",
+      reason: "Manual review scheduled",
+    },
+    {
+      sl: 2,
+      ctrlNo: "AT-2.2",
+      description: "Security Awareness Training",
+      reason: "Training platform update",
+    },
+    {
+      sl: 3,
+      ctrlNo: "SA-6.3",
+      description: "Vulnerability Scanning",
+      reason: "Scanner offline",
+    },
+    {
+      sl: 4,
+      ctrlNo: "PE-5.4",
+      description: "Fire Protection",
+      reason: "Awaiting evidence upload",
+    },
+    {
+      sl: 5,
+      ctrlNo: "SI-7.8",
+      description: "Software and Information Integrity",
+      reason: "Out of scope this quarter",
+    },
+  ],
+};
 
 const CHART_COLORS = [
   "#3b82f6", // blue
@@ -496,7 +159,10 @@ function DonutChart({ data, total, label }) {
             strokeWidth={0}
           >
             {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+              <Cell
+                key={`cell-${index}`}
+                fill={CHART_COLORS[index % CHART_COLORS.length]}
+              />
             ))}
           </Pie>
           <Tooltip
@@ -515,32 +181,43 @@ function DonutChart({ data, total, label }) {
 
 // ─── Top stat card ────────────────────────────────────────────────────────────
 
-function StatCard({ title, subtitle, value, pct, icon, iconColor }) {
+function StatCard({
+  title,
+  subtitle,
+  value,
+  icon,
+  borderColor = "border-primary/40",
+  iconColor = "text-primary",
+  iconBg = "bg-primary/10",
+}) {
   return (
-    <div className="rounded border border-border bg-linear-to-br from-background to-card p-3 flex flex-col gap-1.5 shadow-lg">
-      <div className="flex items-center justify-between">
+    <div className="rounded border border-border bg-linear-to-br from-background to-card p-3 flex justify-between gap-1.5 shadow-lg">
+      <div className="flex flex-col justify-between gap-2">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground leading-tight">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground leading-tight">
             {title}
           </p>
+        </div>
+        <div className="flex items-end gap-2">
+          <p className="text-3xl font-bold text-foreground leading-none">
+            {value}
+          </p>
+
           {subtitle && (
-            <p className="text-[10px] text-muted-foreground">{subtitle}</p>
+            <p className="text-[11px] text-muted-foreground">{subtitle}</p>
           )}
         </div>
-        <span className={iconColor}>
-          <Icon name={icon} size="18px" />
-        </span>
       </div>
-      <div className="flex items-end gap-2">
-        <p className="text-3xl font-bold text-foreground leading-none">
-          {value}
-        </p>
-        {pct && (
-          <span className="text-xs font-semibold text-emerald-500 mb-0.5">
-            {pct}
-          </span>
+      <span
+        className={cn(
+          "w-12 h-12 rounded shrink-0 flex items-center justify-center transition-transform duration-300 group-hover:scale-105 border",
+          borderColor,
+          iconBg,
+          iconColor
         )}
-      </div>
+      >
+        <Icon name={icon} size="24px" />
+      </span>
     </div>
   );
 }
@@ -548,14 +225,13 @@ function StatCard({ title, subtitle, value, pct, icon, iconColor }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function FrameworkDetailDashboard() {
-  const { id, frameworkId } = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
 
-  const paramKey = id || frameworkId;
-  const data = FRAMEWORK_DATA[paramKey] || Object.values(FRAMEWORK_DATA)[0];
+  const paramKey = id;
 
   // Set dynamic breadcrumb label to actual framework name (e.g. "ISO 27001")
-  usePageTitle(paramKey, data?.name);
+  usePageTitle(paramKey, "Framework Details");
 
   if (!data) {
     return (
@@ -586,7 +262,6 @@ export default function FrameworkDetailDashboard() {
     auditDashboard,
     nonCompliantControls,
     notAssessed,
-    subscriptions,
   } = data;
 
   return (
@@ -595,9 +270,9 @@ export default function FrameworkDetailDashboard() {
       <div className="rounded border border-border bg-linear-to-br from-background to-card p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         {/* Left - Framework name & version */}
         <div className="flex-1 min-w-0 flex items-center gap-3">
-          <span className="text-sm font-bold">{data.name}</span>
+          <span className="text-sm font-bold">{data.frameworkName}</span>
           <span className="text-xs text-muted-foreground font-medium">
-            version: {data.version}
+            version: {data.frameworkVersion}
           </span>
         </div>
         {/* Right - Back button */}
@@ -619,28 +294,33 @@ export default function FrameworkDetailDashboard() {
           subtitle="Subscribed by Company"
           value={controls.subscribed}
           icon="framework"
+          borderColor="border-primary/40"
           iconColor="text-primary"
+          iconBg="bg-primary/10"
         />
         <StatCard
           title="Compliant Controls"
           value={controls.compliant}
-          pct={controls.compliantPct}
           icon="check-circle"
+          borderColor="border-emerald-500/40"
           iconColor="text-emerald-500"
+          iconBg="bg-emerald-500/10"
         />
         <StatCard
           title="Non-Compliant Controls"
           value={controls.nonCompliant}
-          pct={controls.nonCompliantPct}
           icon="warning"
+          borderColor="border-red-500/40"
           iconColor="text-red-500"
+          iconBg="bg-red-500/10"
         />
         <StatCard
           title="Not Assessed Controls"
           value={controls.notAssessed}
-          pct={controls.notAssessedPct}
           icon="star"
+          borderColor="border-amber-400/40"
           iconColor="text-amber-400"
+          iconBg="bg-amber-400/10"
         />
       </div>
 
@@ -660,14 +340,19 @@ export default function FrameworkDetailDashboard() {
             </span>
           </div>
           <DonutChart data={coverage.breakdown} total={coverage.total} />
-          <div className="flex justify-center gap-4 mt-4">
+          <div className="flex justify-center flex-wrap gap-x-4 gap-y-2 mt-4 max-h-[80px] overflow-y-auto custom-scrollbar">
             {coverage.breakdown.map((item, index) => (
-              <div key={item.name} className="flex items-center gap-1.5">
+              <div
+                key={item.name}
+                className="flex items-center gap-1.5 shrink-0"
+              >
                 <span
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
+                  className="w-3 h-3 rounded-full shrink-0"
+                  style={{
+                    backgroundColor: CHART_COLORS[index % CHART_COLORS.length],
+                  }}
                 />
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
                   {item.name}
                 </span>
               </div>
@@ -689,14 +374,19 @@ export default function FrameworkDetailDashboard() {
             </span>
           </div>
           <DonutChart data={compliance.breakdown} total={compliance.total} />
-          <div className="flex justify-center gap-4 mt-4">
+          <div className="flex justify-center flex-wrap gap-x-4 gap-y-2 mt-4 max-h-[80px] overflow-y-auto custom-scrollbar">
             {compliance.breakdown.map((item, index) => (
-              <div key={item.name} className="flex items-center gap-1.5">
+              <div
+                key={item.name}
+                className="flex items-center gap-1.5 shrink-0"
+              >
                 <span
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
+                  className="w-3 h-3 rounded-full shrink-0"
+                  style={{
+                    backgroundColor: CHART_COLORS[index % CHART_COLORS.length],
+                  }}
                 />
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
                   {item.name}
                 </span>
               </div>
@@ -711,54 +401,18 @@ export default function FrameworkDetailDashboard() {
               <div className="w-6 h-6 rounded bg-primary/20 flex items-center justify-center shrink-0">
                 <Icon name="shield" size="14px" className="text-primary" />
               </div>
-              Audit Dashboard (External + Internal)
+              Audit Dashboard
             </div>
           }
           className="flex flex-col"
         >
-          {/* Certification row */}
-          <div className="grid grid-cols-2 gap-3 mb-3 pb-3 border-b border-border">
-            <div>
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
-                External Certification
-              </p>
-              <div className="flex items-center gap-1.5">
-                <span
-                  className={`w-2 h-2 rounded-full ${getCertStatusColor(auditDashboard.externalCertification.status)}`}
-                />
-                <span className="text-xs font-semibold text-foreground">
-                  {auditDashboard.externalCertification.status}
-                </span>
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                {auditDashboard.externalCertification.date}
-              </p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
-                Internal Audit
-              </p>
-              <div className="flex items-center gap-1.5">
-                <span
-                  className={`w-2 h-2 rounded-full ${getCertStatusColor(auditDashboard.internalAudit.status)}`}
-                />
-                <span className="text-xs font-semibold text-foreground">
-                  {auditDashboard.internalAudit.status}
-                </span>
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                {auditDashboard.internalAudit.date}
-              </p>
-            </div>
-          </div>
-
           {/* Gap Analysis bars */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 max-h-60 overflow-y-auto custom-scrollbar pr-1">
             {auditDashboard.gapAnalysis.map((gap, index) => {
               const gapColor = CHART_COLORS[index % CHART_COLORS.length];
               return (
                 <div key={gap.label} className="flex items-center gap-3">
-                  <span className="text-xs text-muted-foreground w-20 truncate shrink-0">
+                  <span className="text-xs text-muted-foreground w-24 truncate shrink-0">
                     {gap.label}
                   </span>
                   <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden flex justify-end">
@@ -771,7 +425,7 @@ export default function FrameworkDetailDashboard() {
                     />
                   </div>
                   <span
-                    className="text-[11px] font-bold w-5 text-right shrink-0"
+                    className="text-[11px] font-bold w-6 text-right shrink-0"
                     style={{ color: gapColor }}
                   >
                     {gap.value}
@@ -815,8 +469,8 @@ export default function FrameworkDetailDashboard() {
             <span className="text-right">Last NC Date</span>
           </div>
           <div
-            className="overflow-y-auto flex-1 pr-0.5"
-            style={{ maxHeight: "200px" }}
+            className="overflow-y-auto flex-1 pr-1 custom-scrollbar"
+            style={{ maxHeight: "220px" }}
           >
             {nonCompliantControls.map((ctrl) => (
               <div
@@ -878,8 +532,8 @@ export default function FrameworkDetailDashboard() {
             <span>Reason</span>
           </div>
           <div
-            className="overflow-y-auto flex-1 pr-0.5"
-            style={{ maxHeight: "200px" }}
+            className="overflow-y-auto flex-1 pr-1 custom-scrollbar"
+            style={{ maxHeight: "220px" }}
           >
             {notAssessed.map((ctrl) => (
               <div
@@ -901,54 +555,6 @@ export default function FrameworkDetailDashboard() {
           </div>
         </CardWrapper>
       </div>
-
-      {/* ── Row 4: Active Subscription Details ───────────────────────── */}
-      <CardWrapper
-        title="Active Subscription Details"
-        right={
-          <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-500">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            {subscriptions.length} active · auto-renew on
-          </span>
-        }
-      >
-        <div className="grid grid-cols-[2fr_0.6fr_0.9fr_0.6fr_0.5fr_0.8fr] text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border-b border-border pb-1.5 gap-2 shrink-0">
-          <span>Framework</span>
-          <span>Version</span>
-          <span>Start Date</span>
-          <span>Duration</span>
-          <span className="text-center">Users</span>
-          <span>Location</span>
-        </div>
-        <div className="space-y-0">
-          {subscriptions.map((sub) => (
-            <div
-              key={sub.framework}
-              className="grid grid-cols-[2fr_0.6fr_0.9fr_0.6fr_0.5fr_0.8fr] gap-2 items-center py-2 border-b border-border last:border-0 hover:bg-accent/50 rounded transition-colors px-0.5"
-            >
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                <span className="text-xs text-foreground font-medium truncate">
-                  {sub.framework}
-                </span>
-              </div>
-              <span className="text-xs text-muted-foreground">
-                {sub.version}
-              </span>
-              <span className="text-xs text-primary font-medium">
-                {sub.startDate}
-              </span>
-              <span className="text-xs text-foreground">{sub.duration}</span>
-              <span className="text-xs text-center font-semibold text-foreground">
-                {sub.users}
-              </span>
-              <span className="text-xs text-primary font-medium">
-                {sub.location}
-              </span>
-            </div>
-          ))}
-        </div>
-      </CardWrapper>
     </div>
   );
 }
