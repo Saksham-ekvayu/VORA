@@ -7,7 +7,7 @@ from app.helpers import (
     build_extra_controls_response,
     build_overall_protection_rows,
     filter_and_sort_rows,
-    get_live_packages,
+    get_latest_packages,
     get_nested,
     process_gap_analyses,
     process_live_streams,
@@ -52,7 +52,7 @@ async def get_auditor_dashboard_analytics(
                 .all()
             )
 
-            live_packages, gap_analysis_ids, merge_doc_ids = get_live_packages(dfs)
+            latest_packages, gap_analysis_ids, merge_doc_ids = get_latest_packages(dfs)
 
             gap_analyses = (
                 list(
@@ -154,7 +154,7 @@ async def get_auditor_dashboard_analytics(
                 implemented_dps_overall,
                 _, # Ignore prev_implemented_dps_overall
             ) = process_gap_analyses(
-                gap_analyses, live_packages, historical_gap_analyses, merges, assignments, settings
+                gap_analyses, latest_packages, historical_gap_analyses, merges, assignments, settings
             )
             overall_protection = (
                 round((implemented_dps_overall / total_dps_overall) * 100)
@@ -164,7 +164,7 @@ async def get_auditor_dashboard_analytics(
 
             live_streams = process_live_streams(evidence_outputs)
             ai_insights = process_ai_insights(evidence_outputs)
-            deployment_points = process_deployment_points(merges, live_packages)
+            deployment_points = process_deployment_points(merges, latest_packages)
 
             response_data = {
                 "overallProtection": overall_protection,
@@ -211,7 +211,7 @@ async def get_auditor_overall_protection(
                 .all()
             )
 
-            live_packages, gap_analysis_ids, merge_doc_ids = get_live_packages(dfs)
+            latest_packages, gap_analysis_ids, merge_doc_ids = get_latest_packages(dfs)
 
             gap_analyses = (
                 list(
@@ -303,7 +303,7 @@ async def get_auditor_overall_protection(
                 implemented_dps_overall,
                 prev_implemented_dps_overall,
             ) = process_gap_analyses(
-                gap_analyses, live_packages, historical_gap_analyses, merges, assignments, settings
+                gap_analyses, latest_packages, historical_gap_analyses, merges, assignments, settings
             )
 
             overall_protection = (
@@ -378,7 +378,7 @@ async def get_auditor_critical_gaps(
                 select(DeploymentFramework).where(DeploymentFramework.tenantId == ctx.tenant_id)
             )).scalars().all())
 
-            live_packages, gap_analysis_ids, merge_doc_ids = get_live_packages(dfs)
+            latest_packages, gap_analysis_ids, merge_doc_ids = get_latest_packages(dfs)
 
             gap_analyses = list((await session.execute(
                 select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_analysis_ids))
@@ -414,7 +414,7 @@ async def get_auditor_critical_gaps(
             settings = get_settings()
             # We only need active_gaps, but process_gap_analyses returns a big tuple
             res = process_gap_analyses(
-                gap_analyses, live_packages, historical_gap_analyses, merges, assignments, settings
+                gap_analyses, latest_packages, historical_gap_analyses, merges, assignments, settings
             )
             active_gaps = res[5]
 
@@ -453,7 +453,7 @@ async def get_auditor_controls_passing(
                 select(DeploymentFramework).where(DeploymentFramework.tenantId == ctx.tenant_id)
             )).scalars().all())
 
-            live_packages, gap_analysis_ids, merge_doc_ids = get_live_packages(dfs)
+            latest_packages, gap_analysis_ids, merge_doc_ids = get_latest_packages(dfs)
 
             gap_analyses = list((await session.execute(
                 select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_analysis_ids))
@@ -475,7 +475,7 @@ async def get_auditor_controls_passing(
 
             data, total_items = build_controls_passing_response(
                 gap_analyses,
-                live_packages,
+                latest_packages,
                 merges,
                 assignments,
                 settings,
@@ -516,7 +516,7 @@ async def get_auditor_extra_controls(
                 select(DeploymentFramework).where(DeploymentFramework.tenantId == ctx.tenant_id)
             )).scalars().all())
 
-            live_packages, gap_analysis_ids, merge_doc_ids = get_live_packages(dfs)
+            latest_packages, gap_analysis_ids, merge_doc_ids = get_latest_packages(dfs)
 
             gap_analyses = list((await session.execute(
                 select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_analysis_ids))
@@ -537,7 +537,7 @@ async def get_auditor_extra_controls(
             )).scalars().all()) if assignment_ids else []
 
             res = process_gap_analyses(
-                gap_analyses, live_packages, [], merges, assignments, settings
+                gap_analyses, latest_packages, [], merges, assignments, settings
             )
             extra_controls_list = res[3]
 
@@ -570,7 +570,7 @@ async def get_auditor_deployment_points(
                 select(DeploymentFramework).where(DeploymentFramework.tenantId == ctx.tenant_id)
             )).scalars().all())
 
-            live_packages, gap_analysis_ids, merge_doc_ids = get_live_packages(dfs)
+            latest_packages, gap_analysis_ids, merge_doc_ids = get_latest_packages(dfs)
 
             gap_analyses = list((await session.execute(
                 select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_analysis_ids))
@@ -591,7 +591,7 @@ async def get_auditor_deployment_points(
             )).scalars().all()) if assignment_ids else []
 
             data = process_deployment_points_detailed(
-                gap_analyses, live_packages, merges, assignments
+                gap_analyses, latest_packages, merges, assignments
             )
             
             paginated_data, total_items, total_instances = build_deployment_points_response(
@@ -611,3 +611,26 @@ async def get_auditor_deployment_points(
         logger.exception("Error in deployment points")
         return server_error("Failed to fetch deployment points")
 
+
+@router.get("/framework-details/{deployment_framework_id}")
+async def get_auditor_framework_details(
+    deployment_framework_id: str,
+    ctx: Annotated[RequestContext, Depends(get_context)]
+):
+    try:
+        tenant_id = ctx.tenant_id
+        from app.helpers import get_auditor_framework_details_helper
+        
+        settings = get_settings()
+        data = await get_auditor_framework_details_helper(
+            deployment_framework_id, tenant_id, settings.compliance_score_threshold
+        )
+        
+        if not data:
+            return server_error("Framework not found")
+            
+        return success(data, "Framework details retrieved successfully")
+
+    except Exception:
+        logger.exception("Error fetching framework details")
+        return server_error("Failed to fetch framework details")
