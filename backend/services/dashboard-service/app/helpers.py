@@ -758,7 +758,7 @@ def _filter_and_sort_controls(
 
 def build_controls_passing_response(
     gap_analyses: list[PackageGapAnalysis],
-    live_packages: list[dict],
+    latest_packages: list[dict],
     merges: list[DeploymentPackageMerge],
     assignments: list[FrameworkAssignment],
     settings: Any,
@@ -772,7 +772,7 @@ def build_controls_passing_response(
     formatted = []
     stats = {"passing": 0, "warning": 0, "failing": 0, "not_evaluated": 0, "total": 0}
 
-    for lp in live_packages:
+    for lp in latest_packages:
         ga_id = str(get_nested(lp["pkg"], "gapAnalysis"))
         merge_id = str(get_nested(lp["pkg"], "mergeDocument"))
 
@@ -871,28 +871,29 @@ def get_nested(obj: Any, key: str, default=None):
     return getattr(obj, key, default)
 
 
-def get_live_packages(dfs: list[DeploymentFramework]) -> tuple[list[dict], list[str], list[str]]:
-    """Extract live packages, gap analysis IDs, and merge document IDs."""
-    live_packages = []
+def get_latest_packages(dfs: list[DeploymentFramework]) -> tuple[list[dict], list[str], list[str]]:
+    """Extract latest packages, gap analysis IDs, and merge document IDs."""
+    latest_packages = []
     gap_analysis_ids = []
     merge_doc_ids = []
 
     for df in dfs:
-        for pkg in df.packages or []:
-            if get_nested(pkg, "status") != "live" or get_nested(pkg, "type") != "deployed":
-                continue
+        if not df.packages:
+            continue
+            
+        latest_pkg = max(df.packages, key=lambda p: get_nested(p, "createdAt") or "")
 
-            live_packages.append({"df": df, "pkg": pkg})
+        latest_packages.append({"df": df, "pkg": latest_pkg})
 
-            gap_analysis = get_nested(pkg, "gapAnalysis")
-            if gap_analysis:
-                gap_analysis_ids.append(str(gap_analysis))
+        gap_analysis = get_nested(latest_pkg, "gapAnalysis")
+        if gap_analysis:
+            gap_analysis_ids.append(str(gap_analysis))
 
-            merge_doc = get_nested(pkg, "mergeDocument")
-            if merge_doc:
-                merge_doc_ids.append(str(merge_doc))
+        merge_doc = get_nested(latest_pkg, "mergeDocument")
+        if merge_doc:
+            merge_doc_ids.append(str(merge_doc))
 
-    return live_packages, gap_analysis_ids, merge_doc_ids
+    return latest_packages, gap_analysis_ids, merge_doc_ids
 
 
 def _extract_control_weight(ctrl: Any) -> float:
@@ -949,7 +950,7 @@ def calculate_fw_health_and_trend(
 
 def process_gap_analyses(
     gap_analyses: list[PackageGapAnalysis],
-    live_packages: list[dict],
+    latest_packages: list[dict],
     historical_gap_analyses: list[PackageGapAnalysis],
     merges: list[DeploymentPackageMerge],
     assignments: list[FrameworkAssignment],
@@ -967,7 +968,7 @@ def process_gap_analyses(
     implemented_dps_overall = 0
     prev_implemented_dps_overall = 0
 
-    for lp in live_packages:
+    for lp in latest_packages:
         ga_id = str(get_nested(lp["pkg"], "gapAnalysis"))
         merge_id = str(get_nested(lp["pkg"], "mergeDocument"))
 
@@ -1138,7 +1139,7 @@ def _get_dp_count_for_merge(pm: DeploymentPackageMerge) -> int:
 
 
 def process_deployment_points(
-    merges: list[DeploymentPackageMerge], live_packages: list[dict]
+    merges: list[DeploymentPackageMerge], latest_packages: list[dict]
 ) -> list[dict]:
     """Aggregate configured deployment points per framework."""
     deployment_points = []
@@ -1147,7 +1148,7 @@ def process_deployment_points(
 
         fw_name = UNKNOWN_FRAMEWORK
         fw_version = ""
-        for lp in live_packages:
+        for lp in latest_packages:
             if str(get_nested(lp["pkg"], "mergeDocument")) == str(pm.id):
                 fw_name = lp["df"].frameworkName or fw_name
                 fw_version = lp["df"].frameworkVersion or ""
@@ -1180,14 +1181,14 @@ def _calculate_control_percentages(
 
 def process_deployment_points_detailed(
     gap_analyses: list[PackageGapAnalysis],
-    live_packages: list[dict],
+    latest_packages: list[dict],
     merges: list[DeploymentPackageMerge],
     assignments: list[FrameworkAssignment],
 ) -> list[dict]:
     """Calculate deployment points and their control percentages per framework."""
     result = []
 
-    for lp in live_packages:
+    for lp in latest_packages:
         ga_id = str(get_nested(lp["pkg"], "gapAnalysis"))
         merge_id = str(get_nested(lp["pkg"], "mergeDocument"))
 
