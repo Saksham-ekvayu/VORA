@@ -322,7 +322,7 @@ def extract_actual_implemented(gap_results: list[Any]) -> dict[str, int]:
     """Extract actual implemented counts from current gapAnalysis."""
     actual_implemented = {}
     for result in gap_results:
-        ctrl_id = _get(result, "assigned_framework_control_id")
+        ctrl_id = _get(result, "deployment_framework_control_id")
         if not ctrl_id:
             continue
         if ctrl_id not in actual_implemented:
@@ -1378,7 +1378,7 @@ async def get_auditor_framework_details_helper(
         if not df:
             return None
 
-        package = df.packages[0] if df.packages else None
+        package = max(df.packages, key=lambda p: get_nested(p, "createdAt") or "") if df.packages else None
         comparison_id = None
         if package:
             if isinstance(package, dict):
