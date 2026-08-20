@@ -89,7 +89,9 @@ def get_effective_start_date(default_start: datetime, user_start_date: datetime 
     return user_start_date if user_start_date > default_start else default_start
 
 
-async def _count_model(model: type, start_date: datetime | None, end_date: datetime | None, **extra) -> int:
+async def _count_model(
+    model: type, start_date: datetime | None, end_date: datetime | None, **extra
+) -> int:
     async with session_scope() as session:
         stmt = select(func.count()).select_from(model)
         stmt = apply_date_filters(stmt, model, start_date, end_date)
@@ -98,7 +100,9 @@ async def _count_model(model: type, start_date: datetime | None, end_date: datet
         return (await session.execute(stmt)).scalar_one()
 
 
-async def get_model_counts(start_date: datetime | None, end_date: datetime | None) -> dict[str, int]:
+async def get_model_counts(
+    start_date: datetime | None, end_date: datetime | None
+) -> dict[str, int]:
     (
         total_frameworks,
         total_deployment_frameworks,
@@ -156,7 +160,9 @@ def format_recent_users(all_users: list[User]) -> list[dict[str, Any]]:
     ]
 
 
-def generate_chart_labels(start_date: datetime | None = None, end_date: datetime | None = None) -> list[str]:
+def generate_chart_labels(
+    start_date: datetime | None = None, end_date: datetime | None = None
+) -> list[str]:
     end = end_date or utcnow()
     start = start_date or (end - timedelta(days=29))
 
@@ -185,7 +191,9 @@ def get_creation_type(user: User) -> str:
     return getattr(created_by, "type", None) or "self"
 
 
-def populate_chart_data(recent_users: list[User], chart_labels: list[str]) -> dict[str, dict[str, int]]:
+def populate_chart_data(
+    recent_users: list[User], chart_labels: list[str]
+) -> dict[str, dict[str, int]]:
     total_data = initialize_chart_data(chart_labels)
 
     label_set = set(chart_labels)
@@ -344,7 +352,10 @@ def extract_historical_implemented(
 
 
 def _evaluate_trend(
-    ctrl_id: str, req_dps: int, failing_percentage: int, prev_actual_implemented: dict[str, int] | None
+    ctrl_id: str,
+    req_dps: int,
+    failing_percentage: int,
+    prev_actual_implemented: dict[str, int] | None,
 ) -> str:
     if prev_actual_implemented is None or ctrl_id not in prev_actual_implemented:
         return "flat"
@@ -440,17 +451,21 @@ def evaluate_controls(
 
         if expected["is_extra"]:
             fw_extra_controls += 1
-            fw_extra_controls_list.append({
-                "id": fw_id,
-                "ctrlId": ctrl_id,
-                "control": expected["name"],
-                "frameworkVersion": fw_version,
-                "frameworkName": fw_name,
-                "deploymentPoints": req_dps,
-            })
+            fw_extra_controls_list.append(
+                {
+                    "id": fw_id,
+                    "ctrlId": ctrl_id,
+                    "control": expected["name"],
+                    "frameworkVersion": fw_version,
+                    "frameworkName": fw_name,
+                    "deploymentPoints": req_dps,
+                }
+            )
 
         impl_dps = actual_implemented.get(ctrl_id, 0)
-        prev_impl = prev_actual_implemented.get(ctrl_id, 0) if prev_actual_implemented is not None else 0
+        prev_impl = (
+            prev_actual_implemented.get(ctrl_id, 0) if prev_actual_implemented is not None else 0
+        )
 
         fw_total_dps += req_dps
         fw_implemented_dps += min(impl_dps, req_dps)
@@ -462,7 +477,17 @@ def evaluate_controls(
             fw_critical_gaps += 1
             fw_active_gaps.append(
                 _create_active_gap(
-                    ctrl_id, expected, req_dps, impl_dps, prev_actual_implemented, ga, fw_id, fw_name, fw_version, pkg_version, settings
+                    ctrl_id,
+                    expected,
+                    req_dps,
+                    impl_dps,
+                    prev_actual_implemented,
+                    ga,
+                    fw_id,
+                    fw_name,
+                    fw_version,
+                    pkg_version,
+                    settings,
                 )
             )
 
@@ -537,13 +562,19 @@ def build_overall_protection_rows(framework_health: list[dict], settings: Any) -
 
 
 def build_critical_gaps_response(
-    active_gaps: list[dict], search: str, severity_filter: str, sort_by: str, sort_order: str, page: int, limit: int
+    active_gaps: list[dict],
+    search: str,
+    severity_filter: str,
+    sort_by: str,
+    sort_order: str,
+    page: int,
+    limit: int,
 ) -> tuple:
     formatted = []
     high = 0
     medium = 0
     low = 0
-    
+
     for g in active_gaps:
         sev = g.get("severity", "Low")
         if sev == "High":
@@ -552,59 +583,61 @@ def build_critical_gaps_response(
             medium += 1
         else:
             low += 1
-            
-        formatted.append({
-            "id": g.get("frameworkId"),
-            "frameworkVersion": g["version"],
-            "frameworkName": g["framework"],
-            "ctrlNo": g["id"],
-            "controlName": g["control"],
-            "instances": g["instances"],
-            "failingPct": f"{g['failing']}%",
-            "failingRaw": g["failing"],
-            "severity": sev,
-        })
-        
+
+        formatted.append(
+            {
+                "id": g.get("frameworkId"),
+                "frameworkVersion": g["version"],
+                "frameworkName": g["framework"],
+                "ctrlNo": g["id"],
+                "controlName": g["control"],
+                "instances": g["instances"],
+                "failingPct": f"{g['failing']}%",
+                "failingRaw": g["failing"],
+                "severity": sev,
+            }
+        )
+
     if severity_filter:
         s_filter = severity_filter.lower()
         formatted = [f for f in formatted if f["severity"].lower() == s_filter]
-        
+
     if search:
         q = search.lower()
         formatted = [
-            f for f in formatted 
-            if q in f["ctrlNo"].lower() or q in f["controlName"].lower() or q in f["frameworkName"].lower()
+            f
+            for f in formatted
+            if q in f["ctrlNo"].lower()
+            or q in f["controlName"].lower()
+            or q in f["frameworkName"].lower()
         ]
-        
+
     if sort_by:
         reverse = sort_order == "desc"
         # Since 'failingPct' is a string like '9%', sort by the raw value
         actual_sort_key = "failingRaw" if sort_by == "failingPct" else sort_by
         formatted.sort(
             key=lambda x: (
-                x.get(actual_sort_key, 0) if isinstance(x.get(actual_sort_key), (int, float)) else x.get(actual_sort_key, "")
+                x.get(actual_sort_key, 0)
+                if isinstance(x.get(actual_sort_key), (int, float))
+                else x.get(actual_sort_key, "")
             ),
             reverse=reverse,
         )
-        
+
     total = len(formatted)
-    
+
     # Calculate pagination slice bounds, clamping page and limit.
     from vora_shared.query_builder import clamp_page, clamp_limit
+
     safe_page = clamp_page(page)
     safe_limit = clamp_limit(limit)
     start = (safe_page - 1) * safe_limit
     end = start + safe_limit
-    
+
     return {
         "results": formatted[start:end],
-        "stats": {
-            "priorities": {
-                "high": high,
-                "medium": medium,
-                "low": low
-            }
-        }
+        "stats": {"priorities": {"high": high, "medium": medium, "low": low}},
     }, total
 
 
@@ -612,31 +645,37 @@ def build_extra_controls_response(
     extra_controls: list[dict], search: str, sort_by: str, sort_order: str, page: int, limit: int
 ) -> tuple:
     formatted = list(extra_controls)
-    
+
     if search:
         q = search.lower()
         formatted = [
-            f for f in formatted 
-            if q in str(f.get("ctrlId", "")).lower() or q in str(f.get("control", "")).lower() or q in str(f.get("frameworkName", "")).lower()
+            f
+            for f in formatted
+            if q in str(f.get("ctrlId", "")).lower()
+            or q in str(f.get("control", "")).lower()
+            or q in str(f.get("frameworkName", "")).lower()
         ]
-        
+
     if sort_by:
         reverse = sort_order == "desc"
         formatted.sort(
             key=lambda x: (
-                x.get(sort_by, 0) if isinstance(x.get(sort_by), (int, float)) else str(x.get(sort_by, ""))
+                x.get(sort_by, 0)
+                if isinstance(x.get(sort_by), (int, float))
+                else str(x.get(sort_by, ""))
             ),
             reverse=reverse,
         )
-        
+
     total = len(formatted)
-    
+
     from vora_shared.query_builder import clamp_page, clamp_limit
+
     safe_page = clamp_page(page)
     safe_limit = clamp_limit(limit)
     start = (safe_page - 1) * safe_limit
     end = start + safe_limit
-    
+
     return formatted[start:end], total
 
 
@@ -648,14 +687,14 @@ def _process_package_controls(
     fw_version: str,
     ga_created_at: Any,
     settings: Any,
-    stats: dict
+    stats: dict,
 ) -> list[dict]:
     formatted = []
     for ctrl_id, expected in expected_controls.items():
         stats["total"] += 1
         req_dps = expected["required_dps"]
         impl_dps = actual_implemented.get(ctrl_id, 0)
-        
+
         if req_dps == 0:
             pass_rate = 0
             status = "Not Evaluated"
@@ -670,22 +709,26 @@ def _process_package_controls(
             else:
                 stats["failing"] += 1
 
-        formatted.append({
-            "id": fw_id,
-            "ctrlId": ctrl_id,
-            "control": expected["name"],
-            "frameworkVersion": fw_version,
-            "frameworkName": fw_name,
-            "section": expected.get("section", "General"),
-            "instances": req_dps,
-            "passRate": pass_rate,
-            "status": status,
-            "lastRun": ga_created_at.isoformat() if ga_created_at else None,
-        })
+        formatted.append(
+            {
+                "id": fw_id,
+                "ctrlId": ctrl_id,
+                "control": expected["name"],
+                "frameworkVersion": fw_version,
+                "frameworkName": fw_name,
+                "section": expected.get("section", "General"),
+                "instances": req_dps,
+                "passRate": pass_rate,
+                "status": status,
+                "lastRun": ga_created_at.isoformat() if ga_created_at else None,
+            }
+        )
     return formatted
 
 
-def _filter_and_sort_controls(formatted: list[dict], search: str, status_filter: str, sort_by: str, sort_order: str) -> list[dict]:
+def _filter_and_sort_controls(
+    formatted: list[dict], search: str, status_filter: str, sort_by: str, sort_order: str
+) -> list[dict]:
     if status_filter:
         s_filter = status_filter.lower()
         formatted = [f for f in formatted if f["status"].lower() == s_filter]
@@ -693,15 +736,20 @@ def _filter_and_sort_controls(formatted: list[dict], search: str, status_filter:
     if search:
         q = search.lower()
         formatted = [
-            f for f in formatted
-            if q in f["ctrlId"].lower() or q in f["control"].lower() or q in f["frameworkName"].lower()
+            f
+            for f in formatted
+            if q in f["ctrlId"].lower()
+            or q in f["control"].lower()
+            or q in f["frameworkName"].lower()
         ]
 
     if sort_by:
         reverse = sort_order == "desc"
         formatted.sort(
             key=lambda x: (
-                x.get(sort_by, 0) if isinstance(x.get(sort_by), (int, float)) else x.get(sort_by, "")
+                x.get(sort_by, 0)
+                if isinstance(x.get(sort_by), (int, float))
+                else x.get(sort_by, "")
             ),
             reverse=reverse,
         )
@@ -745,15 +793,25 @@ def build_controls_passing_response(
         gap_results = get_nested(gap_data, "deployment_gap_results") or []
         actual_implemented = extract_actual_implemented(gap_results)
 
-        formatted.extend(_process_package_controls(
-            expected_controls, actual_implemented, str(lp["df"].id), fw_name, fw_version, ga.createdAt if ga else None, settings, stats
-        ))
+        formatted.extend(
+            _process_package_controls(
+                expected_controls,
+                actual_implemented,
+                str(lp["df"].id),
+                fw_name,
+                fw_version,
+                ga.createdAt if ga else None,
+                settings,
+                stats,
+            )
+        )
 
     formatted = _filter_and_sort_controls(formatted, search, status_filter, sort_by, sort_order)
 
     total = len(formatted)
-    
+
     from vora_shared.query_builder import clamp_page, clamp_limit
+
     safe_page = clamp_page(page)
     safe_limit = clamp_limit(limit)
     start = (safe_page - 1) * safe_limit
@@ -772,7 +830,7 @@ def build_controls_passing_response(
             "notEvaluated": stats["not_evaluated"],
             "passRate": overall_pass_rate,
             "failingOrEvidence": stats["failing"] + stats["warning"],
-        }
+        },
     }, total
 
 
@@ -782,7 +840,11 @@ def filter_and_sort_rows(
     """Apply search, status filter, and sorting to rows."""
     if search:
         s = search.lower()
-        rows = [r for r in rows if s in r.get("framework", "").lower() or s in r.get("version", "").lower()]
+        rows = [
+            r
+            for r in rows
+            if s in r.get("framework", "").lower() or s in r.get("version", "").lower()
+        ]
 
     if status_filter:
         rows = [r for r in rows if r.get("status") == status_filter]
@@ -791,7 +853,9 @@ def filter_and_sort_rows(
         reverse = sort_order == "desc"
         rows.sort(
             key=lambda x: (
-                x.get(sort_by, 0) if isinstance(x.get(sort_by), (int, float)) else x.get(sort_by, "")
+                x.get(sort_by, 0)
+                if isinstance(x.get(sort_by), (int, float))
+                else x.get(sort_by, "")
             ),
             reverse=reverse,
         )
@@ -838,7 +902,9 @@ def _extract_control_weight(ctrl: Any) -> float:
     return float(get_nested(weight_obj, "customer_weightage", 10.0))
 
 
-def calculate_fw_weight_score(fw_assignment_id: str, assignments: list[FrameworkAssignment]) -> float:
+def calculate_fw_weight_score(
+    fw_assignment_id: str, assignments: list[FrameworkAssignment]
+) -> float:
     """Calculate dynamic framework weight based on assigned controls' customer_weightage."""
     fw_weight_score = 0.0
     if not fw_assignment_id:
@@ -859,7 +925,10 @@ def calculate_fw_weight_score(fw_assignment_id: str, assignments: list[Framework
 
 
 def calculate_fw_health_and_trend(
-    fw_implemented_dps: int, fw_total_dps: int, prev_actual_implemented: Any, fw_prev_implemented_dps: int
+    fw_implemented_dps: int,
+    fw_total_dps: int,
+    prev_actual_implemented: Any,
+    fw_prev_implemented_dps: int,
 ) -> tuple[float, float, bool]:
     """Calculate framework health and trend values."""
     fw_health = 0
@@ -922,7 +991,9 @@ def process_gap_analyses(
         gap_results = get_nested(gap_data, "deployment_gap_results") or []
         actual_implemented = extract_actual_implemented(gap_results)
 
-        prev_actual_implemented = extract_historical_implemented(df_id, ga.createdAt, historical_gap_analyses)
+        prev_actual_implemented = extract_historical_implemented(
+            df_id, ga.createdAt, historical_gap_analyses
+        )
 
         (
             fw_total_controls,
@@ -935,7 +1006,15 @@ def process_gap_analyses(
             fw_active_gaps,
             fw_prev_implemented_dps,
         ) = evaluate_controls(
-            expected_controls, actual_implemented, prev_actual_implemented, ga, str(lp["df"].id), fw_name, fw_version, pkg_version, settings
+            expected_controls,
+            actual_implemented,
+            prev_actual_implemented,
+            ga,
+            str(lp["df"].id),
+            fw_name,
+            fw_version,
+            pkg_version,
+            settings,
         )
 
         total_controls_overall += fw_total_controls
@@ -1078,25 +1157,24 @@ def process_deployment_points(
     return deployment_points
 
 
-def _calculate_control_percentages(expected_controls: dict, actual_implemented: dict) -> tuple[int, list[dict]]:
+def _calculate_control_percentages(
+    expected_controls: dict, actual_implemented: dict
+) -> tuple[int, list[dict]]:
     total_dps = 0
     controls_list = []
-    
+
     for ctrl_id, expected in expected_controls.items():
         req_dps = expected["required_dps"]
         total_dps += req_dps
-        
+
         impl_dps = actual_implemented.get(ctrl_id, 0)
-        
+
         pct = 100
         if req_dps > 0:
             pct = round((min(impl_dps, req_dps) / req_dps) * 100)
 
-        controls_list.append({
-            "name": expected["name"],
-            "pct": pct
-        })
-        
+        controls_list.append({"name": expected["name"], "pct": pct})
+
     return total_dps, controls_list
 
 
@@ -1104,7 +1182,7 @@ def process_deployment_points_detailed(
     gap_analyses: list[PackageGapAnalysis],
     live_packages: list[dict],
     merges: list[DeploymentPackageMerge],
-    assignments: list[FrameworkAssignment]
+    assignments: list[FrameworkAssignment],
 ) -> list[dict]:
     """Calculate deployment points and their control percentages per framework."""
     result = []
@@ -1125,23 +1203,29 @@ def process_deployment_points_detailed(
 
         gap_data = ga.gapAnalysis or {} if ga else {}
         fw_assignment_id = get_nested(gap_data, "framework_assignment_id")
-        
-        custom_controls = extract_custom_controls(fw_assignment_id, assignments) if fw_assignment_id else {}
+
+        custom_controls = (
+            extract_custom_controls(fw_assignment_id, assignments) if fw_assignment_id else {}
+        )
         expected_controls = extract_expected_controls(merge_doc, custom_controls)
 
         gap_results = get_nested(gap_data, "deployment_gap_results") or []
         actual_implemented = extract_actual_implemented(gap_results)
 
-        total_dps, controls_list = _calculate_control_percentages(expected_controls, actual_implemented)
+        total_dps, controls_list = _calculate_control_percentages(
+            expected_controls, actual_implemented
+        )
 
-        result.append({
-            "id": fw_id,
-            "frameworkName": fw_name,
-            "frameworkVersion": fw_version,
-            "instances": total_dps,
-            "controls": controls_list
-        })
-        
+        result.append(
+            {
+                "id": fw_id,
+                "frameworkName": fw_name,
+                "frameworkVersion": fw_version,
+                "instances": total_dps,
+                "controls": controls_list,
+            }
+        )
+
     return result
 
 
@@ -1154,16 +1238,192 @@ def build_deployment_points_response(
         filtered = [dp for dp in filtered if s in (dp.get("frameworkName") or "").lower()]
     if framework_filter and framework_filter != "All Frameworks":
         filtered = [dp for dp in filtered if dp.get("frameworkVersion") == framework_filter]
-        
+
     total_items = len(filtered)
     total_instances = sum(dp.get("instances", 0) for dp in filtered)
-    
+
     from vora_shared.query_builder import clamp_page, clamp_limit
+
     safe_page = clamp_page(page)
     safe_limit = clamp_limit(limit)
     start = (safe_page - 1) * safe_limit
     end = start + safe_limit
-    
+
     return filtered[start:end], total_items, total_instances
 
 
+def _update_assignment_maps(file_version: dict, source_map: dict, applicable_map: dict) -> None:
+    for extraction in file_version.get("aiExtraction", []):
+        for control in extraction.get("controls", []):
+            control_id = control.get("id")
+            if not control_id:
+                continue
+
+            customization = control.get("customization") or {}
+            source = customization.get("source")
+            if source:
+                source_map[control_id] = source
+
+            applicable_map[control_id] = customization.get("is_applicable", True)
+
+
+async def _build_framework_assignment_maps(
+    session, assigned_framework_id: str
+) -> tuple[dict, dict]:
+    from sqlalchemy import select
+    from vora_shared.models import FrameworkAssignment
+
+    assigned_fw = (
+        await session.execute(
+            select(FrameworkAssignment).where(FrameworkAssignment.id == assigned_framework_id)
+        )
+    ).scalar_one_or_none()
+
+    source_map = {}
+    applicable_map = {}
+    if not assigned_fw:
+        return source_map, applicable_map
+
+    for file_version in getattr(assigned_fw, "fileVersions", None) or []:
+        _update_assignment_maps(file_version, source_map, applicable_map)
+
+    return source_map, applicable_map
+
+
+def _update_auditor_control_metrics(
+    ctrl: dict,
+    metrics: dict,
+    source_map: dict,
+    comp_threshold: float,
+) -> None:
+    ctrl_id = ctrl.get("assigned_framework_control_id", "")
+    metrics["subscribed"] += 1
+    score = ctrl.get("comparison_score", 0)
+
+    if score >= comp_threshold:
+        metrics["compliant"] += 1
+    else:
+        metrics["non_compliant"] += 1
+        dps = ctrl.get("deployment_framework_deployment_points", [])
+        metrics["non_compliant_list"].append(
+            {
+                "sl": metrics["non_compliant"],
+                "ctrlNo": ctrl_id,
+                "name": ctrl.get("assigned_framework_control_name", ""),
+                "instances": len(dps),
+                "failing": f"{round((1 - score) * 100)}%",
+            }
+        )
+
+    if source_map.get(ctrl_id) == "custom":
+        metrics["custom_count"] += 1
+    else:
+        metrics["pre_count"] += 1
+
+    ctrl_name = ctrl.get("assigned_framework_control_name", "Unknown")
+    metrics["gap_analysis"].append(
+        {"id": ctrl_id, "name": ctrl_name, "value": round((1 - score) * 10)}
+    )
+
+
+def _calculate_auditor_metrics(
+    comparison_doc, source_map: dict, applicable_map: dict, comp_threshold: float
+) -> dict:
+    metrics = {
+        "subscribed": 0,
+        "compliant": 0,
+        "non_compliant": 0,
+        "custom_count": 0,
+        "pre_count": 0,
+        "gap_analysis": [],
+        "non_compliant_list": [],
+    }
+
+    if (
+        not comparison_doc
+        or not comparison_doc.comparison
+        or "comparison_result" not in comparison_doc.comparison
+    ):
+        return metrics
+
+    results = comparison_doc.comparison["comparison_result"]
+    for section in results:
+        for ctrl in section.get("controls", []):
+            ctrl_id = ctrl.get("assigned_framework_control_id", "")
+            if not applicable_map.get(ctrl_id, True):
+                continue
+
+            _update_auditor_control_metrics(ctrl, metrics, source_map, comp_threshold)
+
+    return metrics
+
+
+async def get_auditor_framework_details_helper(
+    deployment_framework_id: str, tenant_id: str, comp_threshold: float
+) -> dict | None:
+    from sqlalchemy import select
+    from vora_shared.models import PackageComparison, DeploymentFramework
+    from vora_shared.database import session_scope
+
+    async with session_scope() as session:
+        df = (
+            await session.execute(
+                select(DeploymentFramework)
+                .where(DeploymentFramework.id == deployment_framework_id)
+                .where(DeploymentFramework.tenantId == tenant_id)
+            )
+        ).scalar_one_or_none()
+
+        if not df:
+            return None
+
+        package = df.packages[0] if df.packages else None
+        comparison_id = None
+        if package:
+            if isinstance(package, dict):
+                comparison_id = package.get("comparison")
+            else:
+                comparison_id = getattr(package, "comparison", None)
+
+        comparison_doc = None
+        if comparison_id:
+            comparison_doc = (
+                await session.execute(
+                    select(PackageComparison).where(PackageComparison.id == comparison_id)
+                )
+            ).scalar_one_or_none()
+
+        source_map, applicable_map = await _build_framework_assignment_maps(
+            session, df.assignedFrameworkId
+        )
+        m = _calculate_auditor_metrics(comparison_doc, source_map, applicable_map, comp_threshold)
+
+        return {
+            "id": str(df.id),
+            "frameworkName": df.frameworkName,
+            "frameworkVersion": df.frameworkVersion,
+            "controls": {
+                "subscribed": m["subscribed"],
+                "compliant": m["compliant"],
+                "nonCompliant": m["non_compliant"],
+                "notAssessed": 0,
+            },
+            "coverage": {
+                "total": m["pre_count"] + m["custom_count"],
+                "breakdown": [
+                    {"name": "Pre controls", "value": m["pre_count"]},
+                    {"name": "Org. Specific", "value": m["custom_count"]},
+                ],
+            },
+            "compliance": {
+                "total": m["compliant"] + m["non_compliant"],
+                "breakdown": [
+                    {"name": "Compliant", "value": m["compliant"]},
+                    {"name": "Non-Compliant", "value": m["non_compliant"]},
+                    {"name": "Not Assessed", "value": 0},
+                ],
+            },
+            "auditDashboard": {"gapAnalysis": m["gap_analysis"]},
+            "nonCompliantControls": m["non_compliant_list"],
+            "notAssessed": [],
+        }

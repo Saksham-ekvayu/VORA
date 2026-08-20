@@ -59,6 +59,15 @@ export async function getAuditorDashboardAnalytics(dateRange) {
 }
 
 /**
+ * Get Auditor Framework Details
+ * @param {string} deploymentFrameworkId - The deployment framework ID
+ * @returns {Promise} Framework details data
+ */
+export async function getAuditorFrameworkDetails(deploymentFrameworkId) {
+  return apiRequest(`${AUDITOR_BASE}/framework-details/${deploymentFrameworkId}`, true);
+}
+
+/**
  * Get Auditor Overall Protection (Table + Stats)
  * @param {Object} [params] - Query parameters
  * @returns {Promise} Overall protection data

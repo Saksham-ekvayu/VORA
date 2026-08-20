@@ -611,3 +611,26 @@ async def get_auditor_deployment_points(
         logger.exception("Error in deployment points")
         return server_error("Failed to fetch deployment points")
 
+
+@router.get("/framework-details/{deployment_framework_id}")
+async def get_auditor_framework_details(
+    deployment_framework_id: str,
+    ctx: Annotated[RequestContext, Depends(get_context)]
+):
+    try:
+        tenant_id = ctx.tenant_id
+        from app.helpers import get_auditor_framework_details_helper
+        
+        settings = get_settings()
+        data = await get_auditor_framework_details_helper(
+            deployment_framework_id, tenant_id, settings.compliance_score_threshold
+        )
+        
+        if not data:
+            return server_error("Framework not found")
+            
+        return success(data, "Framework details retrieved successfully")
+
+    except Exception:
+        logger.exception("Error fetching framework details")
+        return server_error("Failed to fetch framework details")

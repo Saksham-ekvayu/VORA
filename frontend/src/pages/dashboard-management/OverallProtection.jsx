@@ -12,15 +12,12 @@ import { getAuditorOverallProtection } from "@/services/dashboardService";
 
 function MiniStatBox({ label, value, valueColor }) {
   return (
-    <div className="flex flex-col items-center justify-center px-4 py-2 rounded border border-border bg-accent min-w-27.5">
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1 text-center">
+    <div className="flex items-center gap-2.5 px-3 py-1.5 rounded border border-border bg-card shadow-sm">
+      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
         {label}
-      </p>
-      <p
-        className={`text-2xl font-bold leading-none ${valueColor ?? "text-foreground"}`}
-      >
-        {value}
-      </p>
+      </span>
+      <span className="w-px h-3.5 bg-border" />
+      <span className={`text-sm font-extrabold ${valueColor}`}>{value}</span>
     </div>
   );
 }
@@ -184,26 +181,6 @@ export default function OverallProtection() {
             Composite score across all active frameworks, deployment points, and
             control categories. Weighted by criticality and asset exposure.
           </p>
-          {/* Trend + period pills */}
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <span
-              className={`px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 ${
-                statsToUse.trendUp
-                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                  : "bg-red-500/20 text-red-400 border border-red-500/30"
-              }`}
-            >
-              <Icon
-                name={statsToUse.trendUp ? "trending-up" : "trending-down"}
-                size="11px"
-              />
-              {statsToUse.trendUp ? "+" : "-"}
-              {statsToUse.trend}% vs last month
-            </span>
-            <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-accent text-muted-foreground border border-border">
-              Last 180 Days
-            </span>
-          </div>
         </div>
 
         {/* Right — Button & 4 stat boxes */}
@@ -224,12 +201,12 @@ export default function OverallProtection() {
             <MiniStatBox
               label="Controls Evaluated"
               value={statsToUse.controlsEvaluated}
-              valueColor="text-foreground"
+              valueColor="text-emerald-500"
             />
             <MiniStatBox
               label="Deployment Points"
               value={statsToUse.deploymentPoints}
-              valueColor="text-primary"
+              valueColor="text-amber-500"
             />
           </div>
         </div>
