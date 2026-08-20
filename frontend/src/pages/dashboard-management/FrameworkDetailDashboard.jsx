@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import CardWrapper from "./components/CardWrapper";
@@ -7,121 +8,10 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import ProgressBar from "../../components/custom/ProgressBar";
+import { getAuditorFrameworkDetails } from "@/services/dashboardService";
+import { Skeleton } from "@/components/ui/skeleton";
+
 // ─── Per-framework mock data ──────────────────────────────────────────────────
-
-const data = {
-  id: 1,
-  frameworkName: "Information Security Management System",
-  frameworkVersion: "ISO-27001:2022",
-  controls: {
-    subscribed: 95, // All applicable controls in assigned framework
-    compliant: 82, // Controls with status Compliant
-    nonCompliant: 7, // Controls with status Non-Compliant
-    notAssessed: 6, // Controls with status Not Assessed
-  },
-  coverage: {
-    total: 103,
-    breakdown: [
-      { name: "Pre controls", value: 48 },
-      { name: "Org. Specific", value: 22 },
-    ],
-  },
-  compliance: {
-    total: 95,
-    breakdown: [
-      { name: "Compliant", value: 82 },
-      { name: "Non-Compliant", value: 7 },
-      { name: "Not Assessed", value: 6 },
-    ],
-  },
-  auditDashboard: {
-    gapAnalysis: [
-      { label: "Access Ctrl", value: 7 },
-      { label: "Incident Res", value: 6 },
-      { label: "Data Privacy", value: 5 },
-      { label: "Risk Assess", value: 4 },
-      { label: "Physical Sec", value: 4 },
-      { label: "Physical Sec", value: 4 },
-      { label: "Physical Sec", value: 4 },
-      { label: "Physical Sec", value: 4 },
-      { label: "Physical Sec", value: 7 },
-      { label: "Physical Sec", value: 9 },
-      { label: "Physical Sec", value: 3 },
-      { label: "Physical Sec", value: 6 },
-      { label: "Physical Sec", value: 1 },
-    ],
-  },
-  nonCompliantControls: [
-    {
-      sl: 1,
-      ctrlNo: "BC-12.4",
-      name: "Cryptographic Key Establishment",
-      instances: 9,
-      failing: "9%",
-    },
-    {
-      sl: 2,
-      ctrlNo: "AU-9.2",
-      name: "Content of Audit Records",
-      instances: 3,
-      failing: "5%",
-    },
-    {
-      sl: 3,
-      ctrlNo: "AC-2.1",
-      name: "Access Control Policy",
-      instances: 14,
-      failing: "23%",
-    },
-    {
-      sl: 4,
-      ctrlNo: "CM-6.3",
-      name: "Configuration Settings",
-      instances: 5,
-      failing: "18%",
-    },
-    {
-      sl: 5,
-      ctrlNo: "IA-5.1",
-      name: "Authenticator Management",
-      instances: 7,
-      failing: "12%",
-    },
-  ],
-  notAssessed: [
-    {
-      sl: 1,
-      ctrlNo: "MP-6.1",
-      name: "Media Sanitization",
-      reason: "Manual review scheduled",
-    },
-    {
-      sl: 2,
-      ctrlNo: "AT-2.2",
-      name: "Security Awareness Training",
-      reason: "Training platform update",
-    },
-    {
-      sl: 3,
-      ctrlNo: "SA-6.3",
-      name: "Vulnerability Scanning",
-      reason: "Scanner offline",
-    },
-    {
-      sl: 4,
-      ctrlNo: "PE-5.4",
-      name: "Fire Protection",
-      reason: "Awaiting evidence upload",
-    },
-    {
-      sl: 5,
-      ctrlNo: "SI-7.8",
-      name: "Software and Information Integrity",
-      reason: "Out of scope this quarter",
-    },
-  ],
-};
-
 const CHART_COLORS = [
   "#3b82f6", // blue
   "#10b981", // emerald
@@ -175,6 +65,17 @@ function DonutChart({ data, total, label }) {
   );
 }
 
+// ─── Empty State ──────────────────────────────────────────────────────────────
+
+function EmptyState({ message = "No data available", icon = "inbox" }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-8 gap-2 text-center min-h-25">
+      <Icon name={icon} size="24px" className="opacity-50" />
+      <span className="text-xs">{message}</span>
+    </div>
+  );
+}
+
 // ─── Top stat card ────────────────────────────────────────────────────────────
 
 function StatCard({
@@ -223,13 +124,51 @@ function StatCard({
 export default function FrameworkDetailDashboard() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const paramKey = id;
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await getAuditorFrameworkDetails(id);
+        if (res?.success === false) {
+          setError(res?.message || "Failed to fetch framework details");
+        } else {
+          setData(res.data);
+        }
+      } catch (err) {
+        console.error(err);
+        setError(err?.message || "Failed to fetch framework details");
+      } finally {
+        setLoading(false);
+      }
+    }
+    if (id) {
+      fetchData();
+    }
+  }, [id]);
 
   // Set dynamic breadcrumb label to actual framework name (e.g. "ISO 27001")
   usePageTitle(paramKey, "Framework Details");
 
-  if (!data) {
+  if (error) {
+    return (
+      <div className="bg-red-500/10 border border-red-500/20 text-red-600 rounded-md p-6 my-4 flex flex-col items-center justify-center gap-2">
+        <Icon name="triangle-alert" size="32px" />
+        <span className="font-medium text-lg">{error}</span>
+        <p className="text-sm opacity-80">
+          Please try refreshing the page or checking your backend logs.
+        </p>
+      </div>
+    );
+  }
+
+  if (!loading && !data) {
     return (
       <div className="flex items-center justify-center min-h-100">
         <div className="text-center">
@@ -251,14 +190,14 @@ export default function FrameworkDetailDashboard() {
     );
   }
 
-  const {
-    controls,
-    coverage,
-    compliance,
-    auditDashboard,
-    nonCompliantControls,
-    notAssessed,
-  } = data;
+  const isLoading = loading || !data;
+
+  const controls = data?.controls || { subscribed: 0, compliant: 0, nonCompliant: 0, notAssessed: 0 };
+  const coverage = data?.coverage || { total: 0, breakdown: [] };
+  const compliance = data?.compliance || { total: 0, breakdown: [] };
+  const auditDashboard = data?.auditDashboard || { gapAnalysis: [] };
+  const nonCompliantControls = data?.nonCompliantControls || [];
+  const notAssessed = data?.notAssessed || [];
 
   return (
     <div className="space-y-3 my-2">
@@ -275,15 +214,17 @@ export default function FrameworkDetailDashboard() {
             </div>
             <div>
               <h1 className="text-lg font-extrabold tracking-tight text-foreground flex items-center gap-2">
-                {data.frameworkName}
+                {isLoading && <Skeleton className="h-6 w-48" />}
+                {!isLoading && data?.frameworkName}
               </h1>
-              <p className="text-xs text-muted-foreground font-medium mt-0.5 flex items-center gap-1.5">
+              <div className="text-xs text-muted-foreground font-medium mt-0.5 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
                 Active Version:{" "}
                 <span className="text-primary font-semibold">
-                  {data.frameworkVersion}
+                  {isLoading && <Skeleton className="h-4 w-24 inline-block align-middle" />}
+                  {!isLoading && data?.frameworkVersion}
                 </span>
-              </p>
+              </div>
             </div>
           </div>
 
@@ -306,7 +247,12 @@ export default function FrameworkDetailDashboard() {
         <StatCard
           title="Controls"
           subtitle="Subscribed by Company"
-          value={controls.subscribed}
+          value={
+            <>
+              {isLoading && <Skeleton className="h-8 w-16" />}
+              {!isLoading && controls.subscribed}
+            </>
+          }
           icon="framework"
           borderColor="border-primary/40"
           iconColor="text-primary"
@@ -314,7 +260,12 @@ export default function FrameworkDetailDashboard() {
         />
         <StatCard
           title="Compliant Controls"
-          value={controls.compliant}
+          value={
+            <>
+              {isLoading && <Skeleton className="h-8 w-16" />}
+              {!isLoading && controls.compliant}
+            </>
+          }
           icon="check-circle"
           borderColor="border-emerald-500/40"
           iconColor="text-emerald-500"
@@ -322,7 +273,12 @@ export default function FrameworkDetailDashboard() {
         />
         <StatCard
           title="Non-Compliant Controls"
-          value={controls.nonCompliant}
+          value={
+            <>
+              {isLoading && <Skeleton className="h-8 w-16" />}
+              {!isLoading && controls.nonCompliant}
+            </>
+          }
           icon="warning"
           borderColor="border-red-500/40"
           iconColor="text-red-500"
@@ -330,7 +286,12 @@ export default function FrameworkDetailDashboard() {
         />
         <StatCard
           title="Not Assessed Controls"
-          value={controls.notAssessed}
+          value={
+            <>
+              {isLoading && <Skeleton className="h-8 w-16" />}
+              {!isLoading && controls.notAssessed}
+            </>
+          }
           icon="star"
           borderColor="border-amber-400/40"
           iconColor="text-amber-400"
@@ -347,15 +308,19 @@ export default function FrameworkDetailDashboard() {
               Current framework status
             </p>
             <span className="text-sm font-bold text-foreground">
-              {coverage.total}
+              {isLoading && <Skeleton className="h-4 w-8 inline-block align-middle" />}
+              {!isLoading && coverage.total}
             </span>
             <span className="text-[10px] text-muted-foreground">
               Total Controls
             </span>
           </div>
-          <DonutChart data={coverage.breakdown} total={coverage.total} />
+          {isLoading && <Skeleton className="w-full h-40" />}
+          {!isLoading && (
+            <DonutChart data={coverage.breakdown} total={coverage.total} />
+          )}
           <div className="flex justify-center flex-wrap gap-x-4 gap-y-2 mt-4 max-h-20 overflow-y-auto custom-scrollbar">
-            {coverage.breakdown.map((item, index) => (
+            {!isLoading && coverage.breakdown.map((item, index) => (
               <div
                 key={item.name}
                 className="flex items-center gap-1.5 shrink-0"
@@ -366,8 +331,8 @@ export default function FrameworkDetailDashboard() {
                     backgroundColor: CHART_COLORS[index % CHART_COLORS.length],
                   }}
                 />
-                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                  {item.name}
+                <span className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1">
+                  {item.name} <span className="font-semibold text-foreground">{item.value}</span>
                 </span>
               </div>
             ))}
@@ -381,15 +346,19 @@ export default function FrameworkDetailDashboard() {
               Current framework status
             </p>
             <span className="text-sm font-bold text-foreground">
-              {compliance.total}
+              {isLoading && <Skeleton className="h-4 w-8 inline-block align-middle" />}
+              {!isLoading && compliance.total}
             </span>
             <span className="text-[10px] text-muted-foreground">
               Total Controls
             </span>
           </div>
-          <DonutChart data={compliance.breakdown} total={compliance.total} />
+          {isLoading && <Skeleton className="w-full h-40" />}
+          {!isLoading && (
+            <DonutChart data={compliance.breakdown} total={compliance.total} />
+          )}
           <div className="flex justify-center flex-wrap gap-x-4 gap-y-2 mt-4 max-h-20 overflow-y-auto custom-scrollbar">
-            {compliance.breakdown.map((item, index) => (
+            {!isLoading && compliance.breakdown.map((item, index) => (
               <div
                 key={item.name}
                 className="flex items-center gap-1.5 shrink-0"
@@ -400,8 +369,8 @@ export default function FrameworkDetailDashboard() {
                     backgroundColor: CHART_COLORS[index % CHART_COLORS.length],
                   }}
                 />
-                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                  {item.name}
+                <span className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1">
+                  {item.name} <span className="font-semibold text-foreground">{item.value}</span>
                 </span>
               </div>
             ))}
@@ -422,29 +391,41 @@ export default function FrameworkDetailDashboard() {
         >
           {/* Gap Analysis bars */}
           <div className="flex flex-col gap-3 max-h-60 overflow-y-auto custom-scrollbar pr-1">
-            {auditDashboard.gapAnalysis.map((gap, index) => {
-              const gapColor = CHART_COLORS[index % CHART_COLORS.length];
-              return (
-                <div key={gap.label} className="flex items-center gap-3">
-                  <span className="text-xs text-muted-foreground w-24 truncate shrink-0">
-                    {gap.label}
-                  </span>
-                  <div className="flex-1">
-                    <ProgressBar
-                      value={Math.min(Math.abs(gap.value) * 10, 100)}
-                      height="2"
-                      color={gapColor}
-                    />
-                  </div>
-                  <span
-                    className="text-[11px] font-bold w-6 text-right shrink-0"
-                    style={{ color: gapColor }}
-                  >
-                    {gap.value}
-                  </span>
+            {isLoading &&
+              [1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <Skeleton className="h-4 w-48 shrink-0" />
+                  <Skeleton className="h-2 flex-1" />
+                  <Skeleton className="h-4 w-6 shrink-0" />
                 </div>
-              );
-            })}
+              ))}
+            {!isLoading && auditDashboard.gapAnalysis.length === 0 && (
+              <EmptyState message="No gaps found" />
+            )}
+            {!isLoading && auditDashboard.gapAnalysis.length > 0 &&
+              auditDashboard.gapAnalysis.map((gap, index) => {
+                const gapColor = CHART_COLORS[index % CHART_COLORS.length];
+                return (
+                  <div key={gap.id} className="flex items-center gap-3" title={gap.name}>
+                    <span className="text-xs text-muted-foreground w-48 truncate shrink-0">
+                      {gap.id} - {gap.name}
+                    </span>
+                    <div className="flex-1">
+                      <ProgressBar
+                        value={Math.min(Math.abs(gap.value) * 10, 100)}
+                        height="2"
+                        color={gapColor}
+                      />
+                    </div>
+                    <span
+                      className="text-[11px] font-bold w-6 text-right shrink-0"
+                      style={{ color: gapColor }}
+                    >
+                      {gap.value}
+                    </span>
+                  </div>
+                );
+              })}
           </div>
         </CardWrapper>
       </div>
@@ -479,41 +460,53 @@ export default function FrameworkDetailDashboard() {
             <span className="text-center">Inst.</span>
             <span className="text-center">% Failing</span>
           </div>
-          <div
-            className="overflow-y-auto flex-1 pr-1 custom-scrollbar"
-            style={{ maxHeight: "220px" }}
-          >
-            {nonCompliantControls.map((ctrl) => (
-              <div
-                key={ctrl.sl}
-                className="grid grid-cols-[0.25fr_0.8fr_2fr_0.6fr_0.6fr] gap-1 items-center py-2 border-b border-border last:border-0 hover:bg-accent/50 rounded transition-colors px-0.5"
-              >
-                <span className="text-xs text-muted-foreground">{ctrl.sl}</span>
-                <span className="text-xs text-secondary font-semibold">
-                  {ctrl.ctrlNo}
-                </span>
-                <span className="text-xs text-foreground leading-tight">
-                  {ctrl.name}
-                </span>
-                <span className="text-xs text-center font-medium">
-                  {ctrl.instances}
-                </span>
-                <div className="flex items-center justify-center gap-1">
-                  <Icon
-                    name="trending-down"
-                    size="11px"
-                    className="text-red-500"
-                  />
-                  <span className="text-xs font-bold text-red-500">
-                    {ctrl.failing}
+          {isLoading && (
+            <div className="flex flex-col gap-2 mt-2">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-8 w-full" />
+              ))}
+            </div>
+          )}
+          {!isLoading && nonCompliantControls.length === 0 && (
+            <EmptyState message="No non-compliant controls" />
+          )}
+          {!isLoading && nonCompliantControls.length > 0 && (
+            <div
+              className="overflow-y-auto flex-1 pr-1 custom-scrollbar"
+              style={{ maxHeight: "220px" }}
+            >
+              {nonCompliantControls.map((ctrl) => (
+                <div
+                  key={ctrl.sl}
+                  className="grid grid-cols-[0.25fr_0.8fr_2fr_0.6fr_0.6fr] gap-1 items-center py-2 border-b border-border last:border-0 hover:bg-accent/50 rounded transition-colors px-0.5"
+                >
+                  <span className="text-xs text-muted-foreground">{ctrl.sl}</span>
+                  <span className="text-xs text-secondary font-semibold">
+                    {ctrl.ctrlNo}
+                  </span>
+                  <span className="text-xs text-foreground leading-tight">
+                    {ctrl.name}
+                  </span>
+                  <span className="text-xs text-center font-medium">
+                    {ctrl.instances}
+                  </span>
+                  <div className="flex items-center justify-center gap-1">
+                    <Icon
+                      name="trending-down"
+                      size="11px"
+                      className="text-red-500"
+                    />
+                    <span className="text-xs font-bold text-red-500">
+                      {ctrl.failing}
+                    </span>
+                  </div>
+                  <span className="text-xs text-right text-muted-foreground">
+                    {ctrl.lastNcDate}
                   </span>
                 </div>
-                <span className="text-xs text-right text-muted-foreground">
-                  {ctrl.lastNcDate}
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardWrapper>
 
         {/* Not Assessed */}
@@ -542,28 +535,40 @@ export default function FrameworkDetailDashboard() {
             <span>name</span>
             <span>Reason</span>
           </div>
-          <div
-            className="overflow-y-auto flex-1 pr-1 custom-scrollbar"
-            style={{ maxHeight: "220px" }}
-          >
-            {notAssessed.map((ctrl) => (
-              <div
-                key={ctrl.sl}
-                className="grid grid-cols-[0.25fr_0.7fr_1.8fr_1.5fr] gap-1 items-center py-2 border-b border-border last:border-0 hover:bg-accent/50 rounded transition-colors px-0.5"
-              >
-                <span className="text-xs text-muted-foreground">{ctrl.sl}</span>
-                <span className="text-xs text-secondary font-semibold">
-                  {ctrl.ctrlNo}
-                </span>
-                <span className="text-xs text-foreground leading-tight">
-                  {ctrl.name}
-                </span>
-                <span className="text-xs text-muted-foreground leading-tight">
-                  {ctrl.reason}
-                </span>
-              </div>
-            ))}
-          </div>
+          {isLoading && (
+            <div className="flex flex-col gap-2 mt-2">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-8 w-full" />
+              ))}
+            </div>
+          )}
+          {!isLoading && notAssessed.length === 0 && (
+            <EmptyState message="All controls assessed" />
+          )}
+          {!isLoading && notAssessed.length > 0 && (
+            <div
+              className="overflow-y-auto flex-1 pr-1 custom-scrollbar"
+              style={{ maxHeight: "220px" }}
+            >
+              {notAssessed.map((ctrl) => (
+                <div
+                  key={ctrl.sl}
+                  className="grid grid-cols-[0.25fr_0.7fr_1.8fr_1.5fr] gap-1 items-center py-2 border-b border-border last:border-0 hover:bg-accent/50 rounded transition-colors px-0.5"
+                >
+                  <span className="text-xs text-muted-foreground">{ctrl.sl}</span>
+                  <span className="text-xs text-secondary font-semibold">
+                    {ctrl.ctrlNo}
+                  </span>
+                  <span className="text-xs text-foreground leading-tight">
+                    {ctrl.name}
+                  </span>
+                  <span className="text-xs text-muted-foreground leading-tight">
+                    {ctrl.reason}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </CardWrapper>
       </div>
     </div>
