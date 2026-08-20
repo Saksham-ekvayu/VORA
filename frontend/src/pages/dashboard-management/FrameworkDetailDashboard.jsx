@@ -6,6 +6,7 @@ import Icon from "@/components/custom/Icon";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import ProgressBar from "../../components/custom/ProgressBar";
 // ─── Per-framework mock data ──────────────────────────────────────────────────
 
 const data = {
@@ -43,11 +44,11 @@ const data = {
       { label: "Physical Sec", value: -4 },
       { label: "Physical Sec", value: -4 },
       { label: "Physical Sec", value: -4 },
-      { label: "Physical Sec", value: -4 },
-      { label: "Physical Sec", value: -4 },
-      { label: "Physical Sec", value: -4 },
-      { label: "Physical Sec", value: -4 },
-      { label: "Physical Sec", value: -4 },
+      { label: "Physical Sec", value: -7 },
+      { label: "Physical Sec", value: -9 },
+      { label: "Physical Sec", value: -3 },
+      { label: "Physical Sec", value: -6 },
+      { label: "Physical Sec", value: -1 },
     ],
   },
   nonCompliantControls: [
@@ -266,24 +267,38 @@ export default function FrameworkDetailDashboard() {
 
   return (
     <div className="space-y-3 my-2">
-      {/* ── Header: Framework name + version (left) | Back (right) ──── */}
-      <div className="rounded border border-border bg-linear-to-br from-background to-card p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        {/* Left - Framework name & version */}
-        <div className="flex-1 min-w-0 flex items-center gap-3">
-          <span className="text-sm font-bold">{data.frameworkName}</span>
-          <span className="text-xs text-muted-foreground font-medium">
-            version: {data.frameworkVersion}
-          </span>
-        </div>
-        {/* Right - Back button */}
-        <div className="shrink-0">
-          <Button
-            size="xs"
-            variant="outline"
-            onClick={() => navigate("/dashboard")}
-          >
-            <Icon name="arrow-left" size="13px" /> Back to Dashboard
-          </Button>
+      {/* ── Premium Header ──── */}
+      <div className="rounded border border-border/50 bg-card overflow-hidden shadow-sm relative">
+        {/* Subtle Gradient Background */}
+        <div className="absolute inset-0 bg-linear-to-r from-primary/10 via-primary/5 to-transparent pointer-events-none" />
+
+        <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          {/* Left - Icon, Name & Version */}
+          <div className="flex-1 min-w-0 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center border border-primary/20 shrink-0 shadow-inner">
+              <Icon name="framework" size="20px" className="text-primary" />
+            </div>
+            <div>
+              <h1 className="text-lg font-extrabold tracking-tight text-foreground flex items-center gap-2">
+                {data.frameworkName}
+              </h1>
+              <p className="text-xs text-muted-foreground font-medium mt-0.5 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
+                Active Version: <span className="text-primary font-semibold">{data.frameworkVersion}</span>
+              </p>
+            </div>
+          </div>
+
+          {/* Right - Back button */}
+          <div className="shrink-0">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigate("/dashboard")}
+            >
+              <Icon name="arrow-left" size="14px" className="mr-1.5" /> Back to Dashboard
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -415,13 +430,11 @@ export default function FrameworkDetailDashboard() {
                   <span className="text-xs text-muted-foreground w-24 truncate shrink-0">
                     {gap.label}
                   </span>
-                  <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden flex justify-end">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${Math.min(Math.abs(gap.value) * 10, 100)}%`,
-                        backgroundColor: gapColor,
-                      }}
+                  <div className="flex-1">
+                    <ProgressBar
+                      value={Math.min(Math.abs(gap.value) * 10, 100)}
+                      height="2"
+                      color={gapColor}
                     />
                   </div>
                   <span

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import CardWrapper from "./components/CardWrapper";
-import ProgressBar from "./components/ProgressBar";
+import ProgressBar from "../../components/custom/ProgressBar";
 import Icon from "@/components/custom/Icon";
 import { useDateFilter } from "./hooks/useDateFilter";
 import { useAuth } from "@/context/authContext/useAuth";
