@@ -8,6 +8,20 @@ import { Button } from "@/components/ui/button";
 import { useTableData } from "@/components/data-table/hooks/useTableData";
 import { getAuditorCriticalGaps } from "@/services/dashboardService";
 
+// ─── Stat Box ─────────────────────────────────────────────────────────────────
+
+function StatBox({ label, value, valueColor }) {
+  return (
+    <div className="flex items-center gap-2.5 px-3 py-1.5 rounded border border-border bg-card shadow-sm">
+      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </span>
+      <span className="w-px h-3.5 bg-border" />
+      <span className={`text-sm font-extrabold ${valueColor}`}>{value}</span>
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function CriticalGaps() {
@@ -36,16 +50,19 @@ export default function CriticalGaps() {
 
   const priorityPills = [
     {
-      label: `${stats.priorities.high} High Priority`,
-      color: "bg-red-500/20 text-red-400 border border-red-500/30",
+      label: "High Priority",
+      value: stats.priorities.high,
+      color: "text-red-400",
     },
     {
-      label: `${stats.priorities.medium} Medium Priority`,
-      color: "bg-amber-500/20 text-amber-400 border border-amber-500/30",
+      label: "Medium Priority",
+      value: stats.priorities.medium,
+      color: "text-amber-400",
     },
     {
-      label: `${stats.priorities.low} Low Priority`,
-      color: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30",
+      label: "Low Priority",
+      value: stats.priorities.low,
+      color: "text-emerald-400",
     },
   ];
 
@@ -175,12 +192,12 @@ export default function CriticalGaps() {
           {/* Priority pills */}
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             {priorityPills.map((p) => (
-              <span
+              <StatBox
                 key={p.label}
-                className={`px-2 py-0.5 rounded text-[11px] font-semibold ${p.color}`}
-              >
-                {p.label}
-              </span>
+                label={p.label}
+                value={p.value}
+                valueColor={p.color}
+              />
             ))}
           </div>
         </div>
