@@ -161,7 +161,7 @@ function DonutChart({ data, total, label }) {
           >
             {data.map((entry, index) => (
               <Cell
-                key={`cell-${index}`}
+                key={`${index}-${entry.name}`}
                 fill={CHART_COLORS[index % CHART_COLORS.length]}
               />
             ))}
@@ -284,7 +284,10 @@ export default function FrameworkDetailDashboard() {
               </h1>
               <p className="text-xs text-muted-foreground font-medium mt-0.5 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
-                Active Version: <span className="text-primary font-semibold">{data.frameworkVersion}</span>
+                Active Version:{" "}
+                <span className="text-primary font-semibold">
+                  {data.frameworkVersion}
+                </span>
               </p>
             </div>
           </div>
@@ -296,7 +299,8 @@ export default function FrameworkDetailDashboard() {
               variant="outline"
               onClick={() => navigate("/dashboard")}
             >
-              <Icon name="arrow-left" size="14px" className="mr-1.5" /> Back to Dashboard
+              <Icon name="arrow-left" size="14px" className="mr-1.5" /> Back to
+              Dashboard
             </Button>
           </div>
         </div>
@@ -355,7 +359,7 @@ export default function FrameworkDetailDashboard() {
             </span>
           </div>
           <DonutChart data={coverage.breakdown} total={coverage.total} />
-          <div className="flex justify-center flex-wrap gap-x-4 gap-y-2 mt-4 max-h-[80px] overflow-y-auto custom-scrollbar">
+          <div className="flex justify-center flex-wrap gap-x-4 gap-y-2 mt-4 max-h-20 overflow-y-auto custom-scrollbar">
             {coverage.breakdown.map((item, index) => (
               <div
                 key={item.name}
@@ -389,7 +393,7 @@ export default function FrameworkDetailDashboard() {
             </span>
           </div>
           <DonutChart data={compliance.breakdown} total={compliance.total} />
-          <div className="flex justify-center flex-wrap gap-x-4 gap-y-2 mt-4 max-h-[80px] overflow-y-auto custom-scrollbar">
+          <div className="flex justify-center flex-wrap gap-x-4 gap-y-2 mt-4 max-h-20 overflow-y-auto custom-scrollbar">
             {compliance.breakdown.map((item, index) => (
               <div
                 key={item.name}
