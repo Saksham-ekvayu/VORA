@@ -165,7 +165,7 @@ export default function DataTable({
 
     return sortedData.map((row, index) => (
       <TableRow
-        key={row.id || index}
+        key={row.id ? `${row.id}-${index}` : index}
         className="transition-all duration-200 hover:bg-accent group"
       >
         {/* SR NO */}
