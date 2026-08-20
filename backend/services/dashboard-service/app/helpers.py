@@ -1296,6 +1296,7 @@ def _update_auditor_control_metrics(
     metrics: dict,
     source_map: dict,
     comp_threshold: float,
+    gap_score: float = None,
 ) -> None:
     ctrl_id = ctrl.get("assigned_framework_control_id", "")
     metrics["subscribed"] += 1
@@ -1322,13 +1323,18 @@ def _update_auditor_control_metrics(
         metrics["pre_count"] += 1
 
     ctrl_name = ctrl.get("assigned_framework_control_name", "Unknown")
+    if gap_score is not None:
+        val = round(gap_score * 10)
+    else:
+        val = round((1 - score) * 10)
+
     metrics["gap_analysis"].append(
-        {"id": ctrl_id, "name": ctrl_name, "value": round((1 - score) * 10)}
+        {"id": ctrl_id, "name": ctrl_name, "value": val}
     )
 
 
 def _calculate_auditor_metrics(
-    comparison_doc, source_map: dict, applicable_map: dict, comp_threshold: float
+    comparison_doc, gap_doc, source_map: dict, applicable_map: dict, comp_threshold: float
 ) -> dict:
     metrics = {
         "subscribed": 0,
@@ -1347,6 +1353,21 @@ def _calculate_auditor_metrics(
     ):
         return metrics
 
+    gap_scores = {}
+    if gap_doc and gap_doc.gapAnalysis:
+        gap_results = gap_doc.gapAnalysis.get("deployment_gap_results", [])
+        control_gaps = {}
+        for res in gap_results:
+            cid = res.get("assigned_framework_control_id")
+            g_score = res.get("gap_score", 0)
+            if cid:
+                if cid not in control_gaps:
+                    control_gaps[cid] = []
+                control_gaps[cid].append(g_score)
+        
+        for cid, scores in control_gaps.items():
+            gap_scores[cid] = sum(scores) / len(scores)
+
     results = comparison_doc.comparison["comparison_result"]
     for section in results:
         for ctrl in section.get("controls", []):
@@ -1354,7 +1375,19 @@ def _calculate_auditor_metrics(
             if not applicable_map.get(ctrl_id, True):
                 continue
 
-            _update_auditor_control_metrics(ctrl, metrics, source_map, comp_threshold)
+            g_score = gap_scores.get(ctrl_id)
+            _update_auditor_control_metrics(ctrl, metrics, source_map, comp_threshold, g_score)
+
+    import re
+    def natural_sort_key(item, key_name):
+        val = item.get(key_name, "")
+        return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', val)]
+
+    metrics["gap_analysis"].sort(key=lambda x: natural_sort_key(x, "id"))
+    
+    metrics["non_compliant_list"].sort(key=lambda x: natural_sort_key(x, "ctrlNo"))
+    for idx, item in enumerate(metrics["non_compliant_list"]):
+        item["sl"] = idx + 1
 
     return metrics
 
@@ -1379,25 +1412,38 @@ async def get_auditor_framework_details_helper(
             return None
 
         package = max(df.packages, key=lambda p: get_nested(p, "createdAt") or "") if df.packages else None
+        
         comparison_id = None
+        ga_id = None
         if package:
             if isinstance(package, dict):
                 comparison_id = package.get("comparison")
+                ga_id = package.get("gapAnalysis")
             else:
                 comparison_id = getattr(package, "comparison", None)
+                ga_id = getattr(package, "gapAnalysis", None)
 
         comparison_doc = None
         if comparison_id:
             comparison_doc = (
                 await session.execute(
-                    select(PackageComparison).where(PackageComparison.id == comparison_id)
+                    select(PackageComparison).where(PackageComparison.id == str(comparison_id))
+                )
+            ).scalar_one_or_none()
+
+        gap_doc = None
+        if ga_id:
+            from vora_shared.models import PackageGapAnalysis
+            gap_doc = (
+                await session.execute(
+                    select(PackageGapAnalysis).where(PackageGapAnalysis.id == str(ga_id))
                 )
             ).scalar_one_or_none()
 
         source_map, applicable_map = await _build_framework_assignment_maps(
             session, df.assignedFrameworkId
         )
-        m = _calculate_auditor_metrics(comparison_doc, source_map, applicable_map, comp_threshold)
+        m = _calculate_auditor_metrics(comparison_doc, gap_doc, source_map, applicable_map, comp_threshold)
 
         return {
             "id": str(df.id),

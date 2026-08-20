@@ -46,7 +46,7 @@
                 {
                     "id": "A.5.1",
                     "name": "policies for information security",
-                    "value": 0
+                    "value": 1
                 },
                 {
                     "id": "A.5.2",
@@ -56,82 +56,82 @@
                 {
                     "id": "A.5.4",
                     "name": "management responsibilities",
-                    "value": 1
+                    "value": 3
                 },
                 {
                     "id": "A.5.6",
                     "name": "contact with special interest groups",
-                    "value": 1
+                    "value": 2
                 },
                 {
                     "id": "A.5.7",
                     "name": "threat intelligence",
-                    "value": 0
+                    "value": 1
                 },
                 {
                     "id": "A.5.9",
                     "name": "inventory of information and other associated assets",
-                    "value": 1
+                    "value": 2
                 },
                 {
                     "id": "A.5.10",
                     "name": "acceptable use of information and other associated assets",
-                    "value": 0
+                    "value": 2
                 },
                 {
                     "id": "A.5.11",
                     "name": "return of assets",
-                    "value": 0
+                    "value": 1
                 },
                 {
                     "id": "A.5.12",
                     "name": "classification of information",
-                    "value": 0
+                    "value": 2
                 },
                 {
                     "id": "A.5.13",
                     "name": "labelling of information",
-                    "value": 0
+                    "value": 3
                 },
                 {
                     "id": "A.5.14",
                     "name": "information transfer",
-                    "value": 0
+                    "value": 2
                 },
                 {
                     "id": "A.5.15",
                     "name": "access control",
-                    "value": 0
+                    "value": 2
                 },
                 {
                     "id": "A.5.17",
                     "name": "authentication information",
-                    "value": 0
+                    "value": 3
                 },
                 {
                     "id": "A.5.18",
                     "name": "access rights",
-                    "value": 0
+                    "value": 2
                 },
                 {
                     "id": "A.5.19",
                     "name": "information security in supplier relationships",
-                    "value": 1
+                    "value": 2
                 },
                 {
                     "id": "A.5.20",
                     "name": "addressing information security within supplier agreements",
-                    "value": 1
+                    "value": 2
                 },
                 {
                     "id": "A.5.21",
                     "name": "managing information security in the information and communication technology (ict) supply chain",
-                    "value": 0
+                    "value": 1
                 },
                 {
                     "id": "A.5.22",
                     "name": "monitoring, review and change management of supplier services",
-                    "value": 1
+                    "value": 2
                 },
                 {
                     "id": "A.5.23",
@@ -141,7 +141,7 @@
                 {
                     "id": "A.5.24",
                     "name": "information security incident management planning and preparation",
-                    "value": 1
+                    "value": 2
                 },
                 {
                     "id": "A.5.25",
@@ -151,32 +151,32 @@
                 {
                     "id": "A.5.27",
                     "name": "learning from information security incidents",
-                    "value": 1
+                    "value": 0
                 },
                 {
                     "id": "A.5.28",
                     "name": "collection of evidence",
-                    "value": 0
+                    "value": 2
                 },
                 {
                     "id": "A.5.29",
                     "name": "information security during disruption",
-                    "value": 0
+                    "value": 1
                 },
                 {
                     "id": "A.5.30",
                     "name": "ict readiness for business continuity",
-                    "value": 0
+                    "value": 3
                 },
                 {
                     "id": "A.5.31",
                     "name": "legal, statutory, regulatory and contractual requirements",
-                    "value": 0
+                    "value": 3
                 },
                 {
                     "id": "A.5.33",
                     "name": "protection of records",
-                    "value": 0
+                    "value": 2
                 },
                 {
                     "id": "A.5.34",
@@ -186,17 +186,17 @@
                 {
                     "id": "A.5.35",
                     "name": "independent review of information security",
-                    "value": 0
+                    "value": 2
                 },
                 {
                     "id": "A.5.36",
                     "name": "compliance with policies, rules and standards for information security",
-                    "value": 1
+                    "value": 2
                 },
                 {
                     "id": "A.5.37",
                     "name": "documented operating procedures",
-                    "value": 0
+                    "value": 9
                 },
                 {
                     "id": "A.5.3",
@@ -231,7 +231,7 @@
                 {
                     "id": "A.6.9",
                     "name": "screening",
-                    "value": 1
+                    "value": 3
                 }
             ]
         },
