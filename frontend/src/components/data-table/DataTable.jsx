@@ -2,14 +2,6 @@
 
 import Icon from "../custom/Icon";
 import { Button } from "../ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "../ui/dropdown-menu";
-import { ChevronDown } from "lucide-react";
-import { Label } from "../ui/label";
 import { Skeleton } from "../ui/skeleton";
 import {
   Table,
@@ -19,15 +11,9 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-} from "../ui/pagination";
 import TableHeaderActions from "../custom/TableHeaderActions";
 import SearchInput from "../custom/SearchInput";
+import CustomPagination from "../custom/CustomPagination";
 
 /**
  * Reusable DataTable Component
@@ -57,6 +43,7 @@ export default function DataTable({
   emptyMessage = "No data found",
   renderActions,
   searchPlaceholder = "Search...",
+  error = null,
   onRefresh,
   searchTerm: externalSearchTerm = "",
   onClearSearch,
@@ -147,15 +134,27 @@ export default function DataTable({
         <TableRow key="empty-state" className="hover:bg-transparent">
           <TableCell colSpan={emptyColSpan} className="text-center py-12 px-4">
             <div className="flex flex-col items-center gap-4 text-muted-foreground">
-              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-                <Icon name="folder" size="32px" className="opacity-50" />
+              <div
+                className={`w-16 h-16 rounded-full flex items-center justify-center ${error ? "bg-red-500/10 text-red-500" : "bg-muted"}`}
+              >
+                <Icon
+                  name={error ? "triangle-alert" : "folder"}
+                  size="32px"
+                  className={error ? "" : "opacity-50"}
+                />
               </div>
               <div className="text-center">
-                <p className="text-base font-medium text-muted-foreground">
+                <p
+                  className={`text-base font-medium ${error ? "text-red-500" : "text-muted-foreground"}`}
+                >
                   {emptyMessage}
                 </p>
-                <p className="text-sm text-muted-foreground/70 mt-1">
-                  Try adjusting your search or filters
+                <p
+                  className={`text-sm mt-1 ${error ? "text-red-500/80" : "text-muted-foreground/70"}`}
+                >
+                  {error
+                    ? "Please check your backend logs or try again later"
+                    : "Try adjusting your search or filters"}
                 </p>
               </div>
             </div>
@@ -236,9 +235,9 @@ export default function DataTable({
           className="border-collapse"
           containerClassName="overflow-visible"
         >
-          <TableHeader className="sticky top-0 z-10 bg-muted">
+          <TableHeader className="sticky top-0 z-20 bg-muted">
             <TableRow className="bg-linear-to-r from-muted to-muted/50 hover:bg-transparent">
-              <TableHead className="sticky left-0 z-20 w-16 px-4 py-2.5 text-left border-b border-border font-semibold text-xs text-muted-foreground uppercase tracking-wider whitespace-nowrap sticky-sr-header">
+              <TableHead className="sticky left-0 w-16 px-4 py-2.5 text-left border-b border-border font-semibold text-xs text-muted-foreground uppercase tracking-wider whitespace-nowrap sticky-sr-header">
                 <div className="flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">
                     #
@@ -249,11 +248,10 @@ export default function DataTable({
                 <TableHead
                   key={column.key}
                   onClick={() => handleSort(column.key)}
-                  className={`px-4 py-2.5 text-left border-b border-border font-semibold text-xs text-muted-foreground uppercase tracking-wider whitespace-nowrap bg-muted ${
-                    column.sortable
-                      ? "cursor-pointer select-none transition-all duration-200 hover:bg-accent/50 hover:text-primary"
-                      : ""
-                  }`}
+                  className={`px-4 py-2.5 text-left border-b border-border font-semibold text-xs text-muted-foreground uppercase tracking-wider whitespace-nowrap bg-muted ${column.sortable
+                    ? "cursor-pointer select-none transition-all duration-200 hover:bg-accent/50 hover:text-primary"
+                    : ""
+                    }`}
                 >
                   <div className="flex items-center gap-2">
                     <span>{column.label}</span>
@@ -275,207 +273,12 @@ export default function DataTable({
       </div>
 
       {/* Pagination */}
-      {pagination && pagination.totalPages > 0 && (
-        <div className="flex justify-between items-center px-4 py-3 border-t border-border bg-muted flex-wrap gap-4 text-muted-foreground">
-          <div className="flex items-center gap-4">
-            <div className="text-sm">
-              Showing {(pagination.currentPage - 1) * pagination.limit + 1} to{" "}
-              {Math.min(
-                pagination.currentPage * pagination.limit,
-                pagination.totalItems
-              )}{" "}
-              of {pagination.totalItems} {entityName}
-            </div>
-            {pagination.onLimitChange && (
-              <div className="flex items-center gap-2">
-                <Label className="text-sm whitespace-nowrap">
-                  Rows per page:
-                </Label>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="xs"
-                      className="justify-between rounded min-w-12.5 select-none"
-                      disabled={loading}
-                    >
-                      <span>{pagination.limit}</span>
-                      <ChevronDown className="h-4 w-4 opacity-50" />
-                    </Button>
-                  </DropdownMenuTrigger>
-
-                  <DropdownMenuContent
-                    align="center"
-                    className="min-w-12.5 p-0 rounded"
-                  >
-                    {["5", "10", "25", "50", "100"].map((value) => (
-                      <DropdownMenuItem
-                        key={value}
-                        className="justify-center cursor-pointer"
-                        onClick={() => pagination.onLimitChange(Number(value))}
-                      >
-                        {value} rows
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            )}
-          </div>
-          <Pagination className="w-auto justify-end mx-0">
-            <PaginationContent className="select-none">
-              <PaginationItem>
-                <PaginationLink
-                  href="#"
-                  size="sm"
-                  className="rounded"
-                  aria-label="Go to first page"
-                  aria-disabled={!pagination.hasPrevPage || loading}
-                  tabIndex={!pagination.hasPrevPage || loading ? -1 : 0}
-                  onClick={(event) =>
-                    handlePageChange(
-                      event,
-                      1,
-                      !pagination.hasPrevPage || loading
-                    )
-                  }
-                  title="First page"
-                >
-                  <Icon name="left-dubble-arrow" size="14px" />
-                </PaginationLink>
-              </PaginationItem>
-
-              <PaginationItem>
-                <PaginationLink
-                  href="#"
-                  size="sm"
-                  className="rounded"
-                  aria-label="Go to previous page"
-                  aria-disabled={!pagination.hasPrevPage || loading}
-                  tabIndex={!pagination.hasPrevPage || loading ? -1 : 0}
-                  onClick={(event) =>
-                    handlePageChange(
-                      event,
-                      pagination.currentPage - 1,
-                      !pagination.hasPrevPage || loading
-                    )
-                  }
-                  title="Previous page"
-                >
-                  <Icon name="arrow-left" size="14px" />
-                </PaginationLink>
-              </PaginationItem>
-
-              {generatePageNumbers(
-                pagination.currentPage,
-                pagination.totalPages
-              ).map((page, idx) =>
-                page === "..." ? (
-                  <PaginationItem key={`ellipsis-${idx + 1}`}>
-                    <PaginationEllipsis className="text-muted-foreground" />
-                  </PaginationItem>
-                ) : (
-                  <PaginationItem key={page}>
-                    <PaginationLink
-                      href="#"
-                      size="sm"
-                      isActive={page === pagination.currentPage}
-                      className={
-                        page === pagination.currentPage
-                          ? "font-semibold rounded"
-                          : "border-transparent"
-                      }
-                      aria-disabled={loading}
-                      tabIndex={loading ? -1 : 0}
-                      onClick={(event) =>
-                        handlePageChange(event, page, loading)
-                      }
-                    >
-                      {page}
-                    </PaginationLink>
-                  </PaginationItem>
-                )
-              )}
-
-              <PaginationItem>
-                <PaginationLink
-                  href="#"
-                  size="sm"
-                  className="rounded"
-                  aria-label="Go to next page"
-                  aria-disabled={!pagination.hasNextPage || loading}
-                  tabIndex={!pagination.hasNextPage || loading ? -1 : 0}
-                  onClick={(event) =>
-                    handlePageChange(
-                      event,
-                      pagination.currentPage + 1,
-                      !pagination.hasNextPage || loading
-                    )
-                  }
-                  title="Next page"
-                >
-                  <Icon name="arrow-right" size="14px" />
-                </PaginationLink>
-              </PaginationItem>
-
-              <PaginationItem>
-                <PaginationLink
-                  href="#"
-                  size="sm"
-                  className="rounded"
-                  aria-label="Go to last page"
-                  aria-disabled={!pagination.hasNextPage || loading}
-                  tabIndex={!pagination.hasNextPage || loading ? -1 : 0}
-                  onClick={(event) =>
-                    handlePageChange(
-                      event,
-                      pagination.totalPages,
-                      !pagination.hasNextPage || loading
-                    )
-                  }
-                  title="Last page"
-                >
-                  <Icon name="right-dubble-arrow" size="14px" />
-                </PaginationLink>
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
-      )}
+      <CustomPagination
+        pagination={pagination}
+        onPageChange={handlePageChange}
+        loading={loading}
+        entityName={entityName}
+      />
     </div>
   );
-}
-
-// Helper function to generate page numbers with ellipsis
-function generatePageNumbers(currentPage, totalPages) {
-  const pages = [];
-  const delta = 2;
-
-  if (totalPages <= 7) {
-    for (let i = 1; i <= totalPages; i++) {
-      pages.push(i);
-    }
-  } else {
-    pages.push(1);
-
-    if (currentPage > delta + 2) {
-      pages.push("...");
-    }
-
-    const start = Math.max(2, currentPage - delta);
-    const end = Math.min(totalPages - 1, currentPage + delta);
-
-    for (let i = start; i <= end; i++) {
-      pages.push(i);
-    }
-
-    if (currentPage < totalPages - delta - 1) {
-      pages.push("...");
-    }
-
-    pages.push(totalPages);
-  }
-
-  return pages;
 }

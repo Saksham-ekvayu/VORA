@@ -24,7 +24,7 @@ const auditorRoutes = createProtectedRoutes([
   { key: "dashboard", path: "/dashboard", component: AuditorDashboard },
   {
     key: "framework-detail-dashboard",
-    path: "/dashboard/framework/:frameworkId",
+    path: "/dashboard/framework/:id",
     component: FrameworkDetailDashboard,
   },
   {

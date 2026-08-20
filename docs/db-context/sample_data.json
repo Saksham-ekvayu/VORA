@@ -6298,367 +6298,361 @@
     ],
     "public.evidence_output": [
         {
-            "id": "6a83e8de60dfa5bd07bb691e",
+            "id": "6a844fd8c375eab2b0e51b6a",
             "output": {
-                "source": "Compliance Agent Service",
-                "file_id": "6a83e5b8ce3610c8782f3a8b",
-                "user_id": "system-pipeline",
-                "filename": "IEC-62443-4-2-2019.pdf",
-                "tenantId": "default-tenant",
-                "user_name": "System",
-                "user_role": "auditor",
-                "user_email": "",
-                "frameworkId": "6a7db4a5c67d80bce718867c",
+                "filename": "HIPAA Omnibus Rule 2013.pdf",
                 "fileVersions": [
                     {
                         "data": {
-                            "A.5.8": {
+                            "A.5.1": {
                                 "records": [
                                     {
-                                        "file": "IEC-62443-4-2-2019.pdf",
+                                        "file": "HIPAA Omnibus Rule 2013.pdf",
                                         "dp_id": "DP-001",
-                                        "file_id": "6a83e5b8ce3610c8782f3a8b",
-                                        "timestamp": "2026-08-18 05:08:47 UTC",
+                                        "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                                        "timestamp": "2026-08-18 12:28:08 UTC",
                                         "agent_name": "Organizational Controls Agent",
                                         "llm_analysis": {
-                                            "reason": "Fallback: LLM analysis failed (Error code: 404 - {\u0027error\u0027: {\u0027message\u0027: \u0027The model `/media/ubuntu2/qwen-service/models/Qwen2-7B-Instruct-GPTQ-Int4` does not exist.\u0027, \u0027type\u0027: \u0027NotFoundError\u0027, \u0027param\u0027: \u0027model\u0027, \u0027code\u0027: 404}})",
-                                            "relevant": false,
+                                            "reason": "Regulatory compliance",
+                                            "relevant": true,
                                             "agent_name": "Organizational Controls Agent",
-                                            "confidence": "low"
+                                            "confidence": "high",
+                                            "recommendation": "APPROVED FOR IMPLEMENTATION: Regulatory compliance. Proceed with immediate deployment of: Define the information security policy by gathering input from stakeholders and aligning it with organizational goals."
                                         },
-                                        "deployment_point": "Develop a framework for integrating information security into the project management lifecycle, including initiation, planning, execution, and closure.",
-                                        "match_percentage": "36.0%",
-                                        "similarity_score": 36.0,
-                                        "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
+                                        "deployment_point": "Define the information security policy by gathering input from stakeholders and aligning it with organizational goals.",
+                                        "match_percentage": "31.72%",
+                                        "similarity_score": 31.72,
+                                        "compliance_status": "Non-Compliant"
                                     },
                                     {
-                                        "file": "IEC-62443-4-2-2019.pdf",
+                                        "file": "HIPAA Omnibus Rule 2013.pdf",
                                         "dp_id": "DP-002",
-                                        "file_id": "6a83e5b8ce3610c8782f3a8b",
-                                        "timestamp": "2026-08-18 05:08:47 UTC",
+                                        "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                                        "timestamp": "2026-08-18 12:28:08 UTC",
                                         "agent_name": "Organizational Controls Agent",
                                         "llm_analysis": {
-                                            "reason": "Fallback: LLM analysis failed (Error code: 404 - {\u0027error\u0027: {\u0027message\u0027: \u0027The model `/media/ubuntu2/qwen-service/models/Qwen2-7B-Instruct-GPTQ-Int4` does not exist.\u0027, \u0027type\u0027: \u0027NotFoundError\u0027, \u0027param\u0027: \u0027model\u0027, \u0027code\u0027: 404}})",
-                                            "relevant": false,
+                                            "reason": "Management approval documented in Federal Register",
+                                            "relevant": true,
                                             "agent_name": "Organizational Controls Agent",
-                                            "confidence": "low"
+                                            "confidence": "high",
+                                            "recommendation": "APPROVED FOR IMPLEMENTATION: Management approval documented in Federal Register. Proceed with immediate deployment of: Obtain management approval for the policy through formal meetings and documentation."
                                         },
-                                        "deployment_point": "Train project managers on the importance of information security and how to incorporate it into their projects.",
-                                        "match_percentage": "26.91%",
-                                        "similarity_score": 26.91,
-                                        "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
+                                        "deployment_point": "Obtain management approval for the policy through formal meetings and documentation.",
+                                        "match_percentage": "18.37%",
+                                        "similarity_score": 18.37,
+                                        "compliance_status": "Non-Compliant"
                                     },
                                     {
-                                        "file": "IEC-62443-4-2-2019.pdf",
+                                        "file": "HIPAA Omnibus Rule 2013.pdf",
                                         "dp_id": "DP-003",
-                                        "file_id": "6a83e5b8ce3610c8782f3a8b",
-                                        "timestamp": "2026-08-18 05:08:47 UTC",
+                                        "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                                        "timestamp": "2026-08-18 12:28:08 UTC",
                                         "agent_name": "Organizational Controls Agent",
                                         "llm_analysis": {
-                                            "reason": "Fallback: LLM analysis failed (Error code: 404 - {\u0027error\u0027: {\u0027message\u0027: \u0027The model `/media/ubuntu2/qwen-service/models/Qwen2-7B-Instruct-GPTQ-Int4` does not exist.\u0027, \u0027type\u0027: \u0027NotFoundError\u0027, \u0027param\u0027: \u0027model\u0027, \u0027code\u0027: 404}})",
-                                            "relevant": false,
+                                            "reason": "Evidence references a published policy in the Federal Register",
+                                            "relevant": true,
                                             "agent_name": "Organizational Controls Agent",
-                                            "confidence": "low"
+                                            "confidence": "high",
+                                            "recommendation": "APPROVED FOR IMPLEMENTATION: Evidence references a published policy in the Federal Register. Proceed with immediate deployment of: Publish the policy on the organization\u0027s intranet and ensure it is accessible to all employees."
                                         },
-                                        "deployment_point": "Conduct risk assessments for projects to identify potential security vulnerabilities and mitigation strategies.",
-                                        "match_percentage": "28.03%",
-                                        "similarity_score": 28.03,
-                                        "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
+                                        "deployment_point": "Publish the policy on the organization\u0027s intranet and ensure it is accessible to all employees.",
+                                        "match_percentage": "31.97%",
+                                        "similarity_score": 31.97,
+                                        "compliance_status": "Non-Compliant"
                                     },
                                     {
-                                        "file": "IEC-62443-4-2-2019.pdf",
+                                        "file": "HIPAA Omnibus Rule 2013.pdf",
                                         "dp_id": "DP-004",
-                                        "file_id": "6a83e5b8ce3610c8782f3a8b",
-                                        "timestamp": "2026-08-18 05:08:47 UTC",
+                                        "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                                        "timestamp": "2026-08-18 12:28:07 UTC",
                                         "agent_name": "Organizational Controls Agent",
                                         "llm_analysis": {
-                                            "reason": "Fallback: LLM analysis failed (Error code: 404 - {\u0027error\u0027: {\u0027message\u0027: \u0027The model `/media/ubuntu2/qwen-service/models/Qwen2-7B-Instruct-GPTQ-Int4` does not exist.\u0027, \u0027type\u0027: \u0027NotFoundError\u0027, \u0027param\u0027: \u0027model\u0027, \u0027code\u0027: 404}})",
-                                            "relevant": false,
+                                            "reason": "Policy communication through training and awareness is mentioned",
+                                            "relevant": true,
                                             "agent_name": "Organizational Controls Agent",
-                                            "confidence": "low"
+                                            "confidence": "high",
+                                            "recommendation": "APPROVED FOR IMPLEMENTATION: Policy communication through training and awareness is mentioned. Proceed with immediate deployment of: Communicate the policy through training sessions and awareness programs, ensuring all personnel acknowledge their understanding."
                                         },
-                                        "deployment_point": "Document security requirements for each project and ensure they are included in project plans.",
-                                        "match_percentage": "28.04%",
-                                        "similarity_score": 28.04,
-                                        "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
+                                        "deployment_point": "Communicate the policy through training sessions and awareness programs, ensuring all personnel acknowledge their understanding.",
+                                        "match_percentage": "17.64%",
+                                        "similarity_score": 17.64,
+                                        "compliance_status": "Non-Compliant"
                                     },
                                     {
-                                        "file": "IEC-62443-4-2-2019.pdf",
+                                        "file": "HIPAA Omnibus Rule 2013.pdf",
                                         "dp_id": "DP-005",
-                                        "file_id": "6a83e5b8ce3610c8782f3a8b",
-                                        "timestamp": "2026-08-18 05:08:47 UTC",
+                                        "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                                        "timestamp": "2026-08-18 12:28:08 UTC",
                                         "agent_name": "Organizational Controls Agent",
                                         "llm_analysis": {
-                                            "reason": "Fallback: LLM analysis failed (Error code: 404 - {\u0027error\u0027: {\u0027message\u0027: \u0027The model `/media/ubuntu2/qwen-service/models/Qwen2-7B-Instruct-GPTQ-Int4` does not exist.\u0027, \u0027type\u0027: \u0027NotFoundError\u0027, \u0027param\u0027: \u0027model\u0027, \u0027code\u0027: 404}})",
-                                            "relevant": false,
+                                            "reason": "Evidence mentions policy reviews",
+                                            "relevant": true,
                                             "agent_name": "Organizational Controls Agent",
-                                            "confidence": "low"
+                                            "confidence": "high",
+                                            "recommendation": "APPROVED FOR IMPLEMENTATION: Evidence mentions policy reviews. Proceed with immediate deployment of: Schedule regular reviews of the policy, at least annually, and after significant changes in the organization or its environment."
                                         },
-                                        "deployment_point": "Review completed projects for compliance with information security requirements and gather lessons learned for future projects.",
-                                        "match_percentage": "14.72%",
-                                        "similarity_score": 14.72,
-                                        "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
+                                        "deployment_point": "Schedule regular reviews of the policy, at least annually, and after significant changes in the organization or its environment.",
+                                        "match_percentage": "12.9%",
+                                        "similarity_score": 12.9,
+                                        "compliance_status": "Non-Compliant"
                                     }
                                 ],
-                                "control_id": "A.5.8"
+                                "file_hash": "001b4d09a013ed6c7dcc44861af6739986ed44fe2244df9da56f7edcf7eb95c7",
+                                "control_id": "A.5.1",
+                                "document_source": "HIPAA Omnibus Rule 2013.pdf"
                             }
                         },
                         "status": "processed",
                         "fileVersion": "ISO27001:2022",
-                        "processed_at": "2026-08-18T05:08:47.633699+00:00"
+                        "processed_at": "2026-08-18T12:28:08.921041+00:00"
                     }
                 ],
-                "document_uuid": "6a83e5b8f017b6230ec738f0",
+                "document_uuid": "6a83e5a089644b82dd93d2d2",
                 "frameworkCode": "iso27001",
                 "frameworkName": "Information Security Management System",
-                "frameworkVersion": "ISO27001:2022",
-                "currentFileVersion": "ISO27001:2022"
+                "frameworkVersion": "ISO27001:2022"
             },
-            "createdAt": "2026-08-18T10:38:46.702334+05:30",
-            "updatedAt": "2026-08-18T10:39:14.834+05:30",
-            "control_id": "A.5.8"
+            "createdAt": "2026-08-18T17:58:08.998133+05:30",
+            "updatedAt": "2026-08-18T17:58:08.998138+05:30",
+            "control_id": "A.5.1#6a83e5a089644b82dd93d2d2"
         },
         {
-            "id": "6a83e8de9d521c06ba99d52e",
+            "id": "6a844fd9e731c83208c808c8",
             "output": {
-                "source": "Compliance Agent Service",
-                "file_id": "6a83e5b8ce3610c8782f3a8b",
-                "user_id": "system-pipeline",
-                "filename": "IEC-62443-4-2-2019.pdf",
-                "tenantId": "default-tenant",
-                "user_name": "System",
-                "user_role": "auditor",
-                "user_email": "",
-                "frameworkId": "6a7db4a5c67d80bce718867c",
-                "fileVersions": [
-                    {
-                        "data": {
-                            "A.5.9": {
-                                "records": [
-                                    {
-                                        "file": "IEC-62443-4-2-2019.pdf",
-                                        "dp_id": "DP-001",
-                                        "file_id": "6a83e5b8ce3610c8782f3a8b",
-                                        "timestamp": "2026-08-18 05:08:47 UTC",
-                                        "agent_name": "Organizational Controls Agent",
-                                        "llm_analysis": {
-                                            "reason": "Fallback: LLM analysis failed (Error code: 404 - {\u0027error\u0027: {\u0027message\u0027: \u0027The model `/media/ubuntu2/qwen-service/models/Qwen2-7B-Instruct-GPTQ-Int4` does not exist.\u0027, \u0027type\u0027: \u0027NotFoundError\u0027, \u0027param\u0027: \u0027model\u0027, \u0027code\u0027: 404}})",
-                                            "relevant": false,
-                                            "agent_name": "Organizational Controls Agent",
-                                            "confidence": "low"
-                                        },
-                                        "deployment_point": "Identify all information and associated assets within the organization, including hardware, software, and data.",
-                                        "match_percentage": "6.38%",
-                                        "similarity_score": 6.38,
-                                        "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
-                                    },
-                                    {
-                                        "file": "IEC-62443-4-2-2019.pdf",
-                                        "dp_id": "DP-002",
-                                        "file_id": "6a83e5b8ce3610c8782f3a8b",
-                                        "timestamp": "2026-08-18 05:08:47 UTC",
-                                        "agent_name": "Organizational Controls Agent",
-                                        "llm_analysis": {
-                                            "reason": "Fallback: LLM analysis failed (Error code: 404 - {\u0027error\u0027: {\u0027message\u0027: \u0027The model `/media/ubuntu2/qwen-service/models/Qwen2-7B-Instruct-GPTQ-Int4` does not exist.\u0027, \u0027type\u0027: \u0027NotFoundError\u0027, \u0027param\u0027: \u0027model\u0027, \u0027code\u0027: 404}})",
-                                            "relevant": false,
-                                            "agent_name": "Organizational Controls Agent",
-                                            "confidence": "low"
-                                        },
-                                        "deployment_point": "Create a centralized inventory database that includes details such as asset type, owner, and location.",
-                                        "match_percentage": "2.41%",
-                                        "similarity_score": 2.41,
-                                        "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
-                                    },
-                                    {
-                                        "file": "IEC-62443-4-2-2019.pdf",
-                                        "dp_id": "DP-003",
-                                        "file_id": "6a83e5b8ce3610c8782f3a8b",
-                                        "timestamp": "2026-08-18 05:08:47 UTC",
-                                        "agent_name": "Organizational Controls Agent",
-                                        "llm_analysis": {
-                                            "reason": "Fallback: LLM analysis failed (Error code: 404 - {\u0027error\u0027: {\u0027message\u0027: \u0027The model `/media/ubuntu2/qwen-service/models/Qwen2-7B-Instruct-GPTQ-Int4` does not exist.\u0027, \u0027type\u0027: \u0027NotFoundError\u0027, \u0027param\u0027: \u0027model\u0027, \u0027code\u0027: 404}})",
-                                            "relevant": false,
-                                            "agent_name": "Organizational Controls Agent",
-                                            "confidence": "low"
-                                        },
-                                        "deployment_point": "Assign responsibility for maintaining the inventory to specific personnel or teams.",
-                                        "match_percentage": "6.95%",
-                                        "similarity_score": 6.95,
-                                        "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
-                                    },
-                                    {
-                                        "file": "IEC-62443-4-2-2019.pdf",
-                                        "dp_id": "DP-004",
-                                        "file_id": "6a83e5b8ce3610c8782f3a8b",
-                                        "timestamp": "2026-08-18 05:08:47 UTC",
-                                        "agent_name": "Organizational Controls Agent",
-                                        "llm_analysis": {
-                                            "reason": "Fallback: LLM analysis failed (Error code: 404 - {\u0027error\u0027: {\u0027message\u0027: \u0027The model `/media/ubuntu2/qwen-service/models/Qwen2-7B-Instruct-GPTQ-Int4` does not exist.\u0027, \u0027type\u0027: \u0027NotFoundError\u0027, \u0027param\u0027: \u0027model\u0027, \u0027code\u0027: 404}})",
-                                            "relevant": false,
-                                            "agent_name": "Organizational Controls Agent",
-                                            "confidence": "low"
-                                        },
-                                        "deployment_point": "Implement regular audits to ensure the accuracy and completeness of the inventory.",
-                                        "match_percentage": "16.58%",
-                                        "similarity_score": 16.58,
-                                        "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
-                                    },
-                                    {
-                                        "file": "IEC-62443-4-2-2019.pdf",
-                                        "dp_id": "DP-005",
-                                        "file_id": "6a83e5b8ce3610c8782f3a8b",
-                                        "timestamp": "2026-08-18 05:08:47 UTC",
-                                        "agent_name": "Organizational Controls Agent",
-                                        "llm_analysis": {
-                                            "reason": "Fallback: LLM analysis failed (Error code: 404 - {\u0027error\u0027: {\u0027message\u0027: \u0027The model `/media/ubuntu2/qwen-service/models/Qwen2-7B-Instruct-GPTQ-Int4` does not exist.\u0027, \u0027type\u0027: \u0027NotFoundError\u0027, \u0027param\u0027: \u0027model\u0027, \u0027code\u0027: 404}})",
-                                            "relevant": false,
-                                            "agent_name": "Organizational Controls Agent",
-                                            "confidence": "low"
-                                        },
-                                        "deployment_point": "Update the inventory promptly when new assets are acquired or existing assets are disposed of.",
-                                        "match_percentage": "7.04%",
-                                        "similarity_score": 7.04,
-                                        "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
-                                    }
-                                ],
-                                "control_id": "A.5.9"
-                            }
-                        },
-                        "status": "processed",
-                        "fileVersion": "ISO27001:2022",
-                        "processed_at": "2026-08-18T05:08:47.640498+00:00"
-                    }
-                ],
-                "document_uuid": "6a83e5b8f017b6230ec738f0",
-                "frameworkCode": "iso27001",
-                "frameworkName": "Information Security Management System",
-                "frameworkVersion": "ISO27001:2022",
-                "currentFileVersion": "ISO27001:2022"
-            },
-            "createdAt": "2026-08-18T10:38:46.703561+05:30",
-            "updatedAt": "2026-08-18T10:39:14.832939+05:30",
-            "control_id": "A.5.9"
-        },
-        {
-            "id": "6a83e7a4063ac09bfaa76299",
-            "output": {
-                "source": "Compliance Agent Service",
-                "file_id": "6a83e5b8ce3610c8782f3a8b",
-                "user_id": "system-pipeline",
-                "filename": "IEC-62443-4-2-2019.pdf",
-                "tenantId": "default-tenant",
-                "user_name": "System",
-                "user_role": "auditor",
-                "user_email": "",
-                "frameworkId": "6a7db4a5c67d80bce718867c",
+                "filename": "HIPAA Omnibus Rule 2013.pdf",
                 "fileVersions": [
                     {
                         "data": {
                             "A.5.2": {
                                 "records": [
                                     {
-                                        "file": "IEC-62443-4-2-2019.pdf",
+                                        "file": "HIPAA Omnibus Rule 2013.pdf",
                                         "dp_id": "DP-001",
-                                        "file_id": "6a83e5b8ce3610c8782f3a8b",
-                                        "timestamp": "2026-08-18 05:08:47 UTC",
+                                        "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                                        "timestamp": "2026-08-18 12:28:07 UTC",
                                         "agent_name": "Organizational Controls Agent",
                                         "llm_analysis": {
-                                            "reason": "Fallback: LLM analysis failed (Error code: 404 - {\u0027error\u0027: {\u0027message\u0027: \u0027The model `/media/ubuntu2/qwen-service/models/Qwen2-7B-Instruct-GPTQ-Int4` does not exist.\u0027, \u0027type\u0027: \u0027NotFoundError\u0027, \u0027param\u0027: \u0027model\u0027, \u0027code\u0027: 404}})",
-                                            "relevant": false,
+                                            "reason": "Risk assessment is mentioned",
+                                            "relevant": true,
                                             "agent_name": "Organizational Controls Agent",
-                                            "confidence": "low"
+                                            "confidence": "high",
+                                            "recommendation": "APPROVED FOR IMPLEMENTATION: Risk assessment is mentioned. Proceed with immediate deployment of: Conduct a risk assessment to identify key information security roles needed within the organization."
                                         },
                                         "deployment_point": "Conduct a risk assessment to identify key information security roles needed within the organization.",
-                                        "match_percentage": "49.49%",
-                                        "similarity_score": 49.49,
-                                        "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
+                                        "match_percentage": "27.75%",
+                                        "similarity_score": 27.75,
+                                        "compliance_status": "Non-Compliant"
                                     },
                                     {
-                                        "file": "IEC-62443-4-2-2019.pdf",
+                                        "file": "HIPAA Omnibus Rule 2013.pdf",
                                         "dp_id": "DP-002",
-                                        "file_id": "6a83e5b8ce3610c8782f3a8b",
-                                        "timestamp": "2026-08-18 05:08:47 UTC",
+                                        "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                                        "timestamp": "2026-08-18 12:28:07 UTC",
                                         "agent_name": "Organizational Controls Agent",
                                         "llm_analysis": {
-                                            "reason": "Fallback: LLM analysis failed (Error code: 404 - {\u0027error\u0027: {\u0027message\u0027: \u0027The model `/media/ubuntu2/qwen-service/models/Qwen2-7B-Instruct-GPTQ-Int4` does not exist.\u0027, \u0027type\u0027: \u0027NotFoundError\u0027, \u0027param\u0027: \u0027model\u0027, \u0027code\u0027: 404}})",
-                                            "relevant": false,
+                                            "reason": "Regulates role definitions",
+                                            "relevant": true,
                                             "agent_name": "Organizational Controls Agent",
-                                            "confidence": "low"
+                                            "confidence": "high",
+                                            "recommendation": "APPROVED FOR IMPLEMENTATION: Regulates role definitions. Proceed with immediate deployment of: Define specific roles and responsibilities, ensuring clarity in job descriptions and expectations."
                                         },
                                         "deployment_point": "Define specific roles and responsibilities, ensuring clarity in job descriptions and expectations.",
-                                        "match_percentage": "39.77%",
-                                        "similarity_score": 39.77,
-                                        "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
+                                        "match_percentage": "18.25%",
+                                        "similarity_score": 18.25,
+                                        "compliance_status": "Non-Compliant"
                                     },
                                     {
-                                        "file": "IEC-62443-4-2-2019.pdf",
+                                        "file": "HIPAA Omnibus Rule 2013.pdf",
                                         "dp_id": "DP-003",
-                                        "file_id": "6a83e5b8ce3610c8782f3a8b",
-                                        "timestamp": "2026-08-18 05:08:47 UTC",
+                                        "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                                        "timestamp": "2026-08-18 12:28:09 UTC",
                                         "agent_name": "Organizational Controls Agent",
                                         "llm_analysis": {
-                                            "reason": "Fallback: LLM analysis failed (Error code: 404 - {\u0027error\u0027: {\u0027message\u0027: \u0027The model `/media/ubuntu2/qwen-service/models/Qwen2-7B-Instruct-GPTQ-Int4` does not exist.\u0027, \u0027type\u0027: \u0027NotFoundError\u0027, \u0027param\u0027: \u0027model\u0027, \u0027code\u0027: 404}})",
-                                            "relevant": false,
+                                            "reason": "Regulates role allocation process",
+                                            "relevant": true,
                                             "agent_name": "Organizational Controls Agent",
-                                            "confidence": "low"
+                                            "confidence": "high",
+                                            "recommendation": "APPROVED FOR IMPLEMENTATION: Regulates role allocation process. Proceed with immediate deployment of: Allocate roles to personnel based on their skills and organizational needs, ensuring no overlap in conflicting responsibilities."
                                         },
                                         "deployment_point": "Allocate roles to personnel based on their skills and organizational needs, ensuring no overlap in conflicting responsibilities.",
-                                        "match_percentage": "32.08%",
-                                        "similarity_score": 32.08,
-                                        "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
+                                        "match_percentage": "17.02%",
+                                        "similarity_score": 17.02,
+                                        "compliance_status": "Non-Compliant"
                                     },
                                     {
-                                        "file": "IEC-62443-4-2-2019.pdf",
+                                        "file": "HIPAA Omnibus Rule 2013.pdf",
                                         "dp_id": "DP-004",
-                                        "file_id": "6a83e5b8ce3610c8782f3a8b",
-                                        "timestamp": "2026-08-18 05:08:47 UTC",
+                                        "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                                        "timestamp": "2026-08-18 12:28:07 UTC",
                                         "agent_name": "Organizational Controls Agent",
                                         "llm_analysis": {
-                                            "reason": "Fallback: LLM analysis failed (Error code: 404 - {\u0027error\u0027: {\u0027message\u0027: \u0027The model `/media/ubuntu2/qwen-service/models/Qwen2-7B-Instruct-GPTQ-Int4` does not exist.\u0027, \u0027type\u0027: \u0027NotFoundError\u0027, \u0027param\u0027: \u0027model\u0027, \u0027code\u0027: 404}})",
-                                            "relevant": false,
+                                            "reason": "Regulatory compliance",
+                                            "relevant": true,
                                             "agent_name": "Organizational Controls Agent",
-                                            "confidence": "low"
+                                            "confidence": "high",
+                                            "recommendation": "APPROVED FOR IMPLEMENTATION: Regulatory compliance. Proceed with immediate deployment of: Communicate these roles and responsibilities to all relevant personnel through training and documentation."
                                         },
                                         "deployment_point": "Communicate these roles and responsibilities to all relevant personnel through training and documentation.",
-                                        "match_percentage": "46.09%",
-                                        "similarity_score": 46.09,
-                                        "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
+                                        "match_percentage": "17.27%",
+                                        "similarity_score": 17.27,
+                                        "compliance_status": "Non-Compliant"
                                     },
                                     {
-                                        "file": "IEC-62443-4-2-2019.pdf",
+                                        "file": "HIPAA Omnibus Rule 2013.pdf",
                                         "dp_id": "DP-005",
-                                        "file_id": "6a83e5b8ce3610c8782f3a8b",
-                                        "timestamp": "2026-08-18 05:08:46 UTC",
+                                        "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                                        "timestamp": "2026-08-18 12:28:08 UTC",
                                         "agent_name": "Organizational Controls Agent",
                                         "llm_analysis": {
-                                            "reason": "Fallback: LLM analysis failed (Error code: 404 - {\u0027error\u0027: {\u0027message\u0027: \u0027The model `/media/ubuntu2/qwen-service/models/Qwen2-7B-Instruct-GPTQ-Int4` does not exist.\u0027, \u0027type\u0027: \u0027NotFoundError\u0027, \u0027param\u0027: \u0027model\u0027, \u0027code\u0027: 404}})",
-                                            "relevant": false,
+                                            "reason": "Regulates role management",
+                                            "relevant": true,
                                             "agent_name": "Organizational Controls Agent",
-                                            "confidence": "low"
+                                            "confidence": "high",
+                                            "recommendation": "APPROVED FOR IMPLEMENTATION: Regulates role management. Proceed with immediate deployment of: Regularly review and update roles as the organization evolves or as new threats emerge."
                                         },
                                         "deployment_point": "Regularly review and update roles as the organization evolves or as new threats emerge.",
-                                        "match_percentage": "55.97%",
-                                        "similarity_score": 55.97,
-                                        "compliance_status": "Controls and Deployment extraction for agent is Not Compliant"
+                                        "match_percentage": "16.44%",
+                                        "similarity_score": 16.44,
+                                        "compliance_status": "Non-Compliant"
                                     }
                                 ],
-                                "control_id": "A.5.2"
+                                "file_hash": "001b4d09a013ed6c7dcc44861af6739986ed44fe2244df9da56f7edcf7eb95c7",
+                                "control_id": "A.5.2",
+                                "document_source": "HIPAA Omnibus Rule 2013.pdf"
                             }
                         },
                         "status": "processed",
                         "fileVersion": "ISO27001:2022",
-                        "processed_at": "2026-08-18T05:08:47.639332+00:00"
+                        "processed_at": "2026-08-18T12:28:09.360954+00:00"
                     }
                 ],
-                "document_uuid": "6a83e5b8f017b6230ec738f0",
+                "document_uuid": "6a83e5a089644b82dd93d2d2",
                 "frameworkCode": "iso27001",
                 "frameworkName": "Information Security Management System",
-                "frameworkVersion": "ISO27001:2022",
-                "currentFileVersion": "ISO27001:2022"
+                "frameworkVersion": "ISO27001:2022"
             },
-            "createdAt": "2026-08-18T10:33:32.864843+05:30",
-            "updatedAt": "2026-08-18T10:39:14.830807+05:30",
-            "control_id": "A.5.2"
+            "createdAt": "2026-08-18T17:58:09.365975+05:30",
+            "updatedAt": "2026-08-18T17:58:09.365982+05:30",
+            "control_id": "A.5.2#6a83e5a089644b82dd93d2d2"
+        },
+        {
+            "id": "6a844fdd5b2d9939e5863951",
+            "output": {
+                "filename": "HIPAA Omnibus Rule 2013.pdf",
+                "fileVersions": [
+                    {
+                        "data": {
+                            "A.5.5": {
+                                "records": [
+                                    {
+                                        "file": "HIPAA Omnibus Rule 2013.pdf",
+                                        "dp_id": "DP-001",
+                                        "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                                        "timestamp": "2026-08-18 12:28:09 UTC",
+                                        "agent_name": "Organizational Controls Agent",
+                                        "llm_analysis": {
+                                            "reason": "Identifies federal regulations",
+                                            "relevant": true,
+                                            "agent_name": "Organizational Controls Agent",
+                                            "confidence": "high",
+                                            "recommendation": "APPROVED FOR IMPLEMENTATION: Identifies federal regulations. Proceed with immediate deployment of: Identify relevant authorities, such as law enforcement and regulatory bodies, that pertain to the organization\u0027s industry."
+                                        },
+                                        "deployment_point": "Identify relevant authorities, such as law enforcement and regulatory bodies, that pertain to the organization\u0027s industry.",
+                                        "match_percentage": "26.6%",
+                                        "similarity_score": 26.6,
+                                        "compliance_status": "Non-Compliant"
+                                    },
+                                    {
+                                        "file": "HIPAA Omnibus Rule 2013.pdf",
+                                        "dp_id": "DP-002",
+                                        "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                                        "timestamp": "2026-08-18 12:28:13 UTC",
+                                        "agent_name": "Organizational Controls Agent",
+                                        "llm_analysis": {
+                                            "reason": "Evidence points to a government publication related to establishing formal communication channels.",
+                                            "relevant": true,
+                                            "agent_name": "Organizational Controls Agent",
+                                            "confidence": "high",
+                                            "recommendation": "APPROVED FOR IMPLEMENTATION: Evidence points to a government publication related to establishing formal communication channels.. Proceed with immediate deployment of: Establish formal communication channels with these authorities, including contact lists and protocols for engagement."
+                                        },
+                                        "deployment_point": "Establish formal communication channels with these authorities, including contact lists and protocols for engagement.",
+                                        "match_percentage": "17.43%",
+                                        "similarity_score": 17.43,
+                                        "compliance_status": "Non-Compliant"
+                                    },
+                                    {
+                                        "file": "HIPAA Omnibus Rule 2013.pdf",
+                                        "dp_id": "DP-003",
+                                        "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                                        "timestamp": "2026-08-18 12:28:13 UTC",
+                                        "agent_name": "Organizational Controls Agent",
+                                        "llm_analysis": {
+                                            "reason": "Meets the criteria for staying informed through official communications",
+                                            "relevant": true,
+                                            "agent_name": "Organizational Controls Agent",
+                                            "confidence": "high",
+                                            "recommendation": "APPROVED FOR IMPLEMENTATION: Meets the criteria for staying informed through official communications. Proceed with immediate deployment of: Schedule regular meetings or updates with authorities to stay informed about changes in regulations and security threats."
+                                        },
+                                        "deployment_point": "Schedule regular meetings or updates with authorities to stay informed about changes in regulations and security threats.",
+                                        "match_percentage": "31.78%",
+                                        "similarity_score": 31.78,
+                                        "compliance_status": "Non-Compliant"
+                                    },
+                                    {
+                                        "file": "HIPAA Omnibus Rule 2013.pdf",
+                                        "dp_id": "DP-004",
+                                        "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                                        "timestamp": "2026-08-18 12:28:11 UTC",
+                                        "agent_name": "Organizational Controls Agent",
+                                        "llm_analysis": {
+                                            "reason": "Evidence matches rule on documenting interactions with authorities",
+                                            "relevant": true,
+                                            "agent_name": "Organizational Controls Agent",
+                                            "confidence": "high",
+                                            "recommendation": "APPROVED FOR IMPLEMENTATION: Evidence matches rule on documenting interactions with authorities. Proceed with immediate deployment of: Document all interactions with authorities and maintain records for compliance purposes."
+                                        },
+                                        "deployment_point": "Document all interactions with authorities and maintain records for compliance purposes.",
+                                        "match_percentage": "32.64%",
+                                        "similarity_score": 32.64,
+                                        "compliance_status": "Non-Compliant"
+                                    },
+                                    {
+                                        "file": "HIPAA Omnibus Rule 2013.pdf",
+                                        "dp_id": "DP-005",
+                                        "file_id": "6a83e5a0d2e578bb8f81c4c8",
+                                        "timestamp": "2026-08-18 12:28:12 UTC",
+                                        "agent_name": "Organizational Controls Agent",
+                                        "llm_analysis": {
+                                            "reason": "Regulatory compliance",
+                                            "relevant": true,
+                                            "agent_name": "Organizational Controls Agent",
+                                            "confidence": "high",
+                                            "recommendation": "APPROVED FOR IMPLEMENTATION: Regulatory compliance. Proceed with immediate deployment of: Train personnel on the importance of these contacts and how to engage with authorities in case of incidents."
+                                        },
+                                        "deployment_point": "Train personnel on the importance of these contacts and how to engage with authorities in case of incidents.",
+                                        "match_percentage": "11.9%",
+                                        "similarity_score": 11.9,
+                                        "compliance_status": "Non-Compliant"
+                                    }
+                                ],
+                                "file_hash": "001b4d09a013ed6c7dcc44861af6739986ed44fe2244df9da56f7edcf7eb95c7",
+                                "control_id": "A.5.5",
+                                "document_source": "HIPAA Omnibus Rule 2013.pdf"
+                            }
+                        },
+                        "status": "processed",
+                        "fileVersion": "ISO27001:2022",
+                        "processed_at": "2026-08-18T12:28:13.672448+00:00"
+                    }
+                ],
+                "document_uuid": "6a83e5a089644b82dd93d2d2",
+                "frameworkCode": "iso27001",
+                "frameworkName": "Information Security Management System",
+                "frameworkVersion": "ISO27001:2022"
+            },
+            "createdAt": "2026-08-18T17:58:13.684183+05:30",
+            "updatedAt": "2026-08-18T17:58:13.684187+05:30",
+            "control_id": "A.5.5#6a83e5a089644b82dd93d2d2"
         }
     ],
     "public.framework_assignments": [
@@ -14005,6 +13999,17 @@
             "updatedBy": null,
             "description": "International standard that specifies requirements for a quality management system to ensure consistent product and service quality.",
             "frameworkCategoryName": "Quality Management Framework"
+        },
+        {
+            "id": "6a845e7228600aa44b9834b9",
+            "code": "cobit",
+            "isActive": true,
+            "createdAt": "2026-08-18T19:00:26.898138+05:30",
+            "createdBy": "6a7c4c9c576b719ea1c4a6ae",
+            "updatedAt": "2026-08-18T19:00:26.89815+05:30",
+            "updatedBy": null,
+            "description": "Framework for governance and management of enterprise IT, focusing on aligning IT goals with business objectives.",
+            "frameworkCategoryName": "Governance Framework"
         }
     ],
     "public.framework_category_access": [
@@ -14039,6 +14044,22 @@
             "requestedBy": "expert",
             "frameworkCode": "iso9001",
             "frameworkCategoryId": "6a82c12cc737da6c07de459a"
+        },
+        {
+            "id": "6a845ea3c4d5136b8d1eb1a8",
+            "status": "approved",
+            "approval": {
+                "approvedAt": "2026-08-18T13:31:15.633725Z",
+                "approvedBy": "6a7c4c9c576b719ea1c4a6ae"
+            },
+            "expertId": "6a7c5487c507d1d427f30b3a",
+            "createdAt": "2026-08-18T19:01:15.650833+05:30",
+            "rejection": {},
+            "updatedAt": "2026-08-18T19:01:15.650841+05:30",
+            "revocation": {},
+            "requestedBy": "admin",
+            "frameworkCode": "cobit",
+            "frameworkCategoryId": "6a845e7228600aa44b9834b9"
         }
     ],
     "public.framework_merges": [
@@ -32996,6 +33017,42 @@
             "isEmailVerified": true
         },
         {
+            "id": "6a7c56473bc7bba4bb6437d0",
+            "otp": null,
+            "name": "Saksham Kamboj",
+            "role": "auditor",
+            "email": "kambojsakshm@gmail.com",
+            "phone": "917410789456",
+            "avatar": null,
+            "address": {
+                "permanentAddress": {
+                    "city": null,
+                    "state": null,
+                    "country": null,
+                    "locality": null
+                },
+                "temporaryAddress": {
+                    "city": null,
+                    "state": null,
+                    "country": null,
+                    "locality": null
+                }
+            },
+            "isActive": true,
+            "password": "$2b$12$Mx5NRtfgWbrLZ8ip7fHD7ekrDue0CxTM1kjZZ63pWpBH915pXPMMO",
+            "tenantId": "tenant_90930ca65a9a4241",
+            "createdAt": "2026-08-12T16:47:27.291274+05:30",
+            "createdBy": {
+                "type": "customer-admin",
+                "userId": "6a7c5601551f37a9639bfa52"
+            },
+            "updatedAt": "2026-08-19T10:51:50.776636+05:30",
+            "designation": "Senior Auditor",
+            "tokenVersion": 8,
+            "secondaryPhone": null,
+            "isEmailVerified": true
+        },
+        {
             "id": "6a7c56902fe723a9f8c788e1",
             "otp": {
                 "code": "398649",
@@ -33032,29 +33089,6 @@
             "updatedAt": "2026-08-17T10:39:53.65976+05:30",
             "designation": "Senior Expert",
             "tokenVersion": 5,
-            "secondaryPhone": null,
-            "isEmailVerified": true
-        },
-        {
-            "id": "6a829845a2c6e29243266d41",
-            "otp": null,
-            "name": "Saksham Kamboj",
-            "role": "user",
-            "email": "saksham1@ekvayu.com",
-            "phone": "912323232323",
-            "avatar": null,
-            "address": {},
-            "isActive": true,
-            "password": "$2b$12$.gnc1zBuCKX.3pnuDK4OTOFz5vglic.vzcZtVJ/bE6vNZbII7Y/wC",
-            "tenantId": null,
-            "createdAt": "2026-08-17T10:42:37.4271+05:30",
-            "createdBy": {
-                "type": "self",
-                "userId": null
-            },
-            "updatedAt": "2026-08-17T10:45:35.410495+05:30",
-            "designation": null,
-            "tokenVersion": 0,
             "secondaryPhone": null,
             "isEmailVerified": true
         }

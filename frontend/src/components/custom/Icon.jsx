@@ -123,6 +123,8 @@ import {
   FiBriefcase,
   FiSearch,
   FiSettings,
+  FiTrendingUp,
+  FiTrendingDown,
 } from "react-icons/fi";
 
 import {
@@ -189,6 +191,8 @@ const iconMap = {
 
   // Chart/Analytics icons
   chart: MdBarChart,
+  "trending-up": FiTrendingUp,
+  "trending-down": FiTrendingDown,
 
   // Settings/Config icons
   gear: MdBuild,

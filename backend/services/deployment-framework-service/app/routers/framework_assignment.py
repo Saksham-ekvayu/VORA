@@ -232,6 +232,7 @@ async def download_framework_assignment_report(
 
 def _revoke_live_deployment_packages(deployment_frameworks: list[Any]) -> None:
     from app.helpers.deployment_framework_helpers import coerce_packages, dump_packages
+
     for df in deployment_frameworks:
         packages = coerce_packages(df.packages)
         changed = False
@@ -241,10 +242,11 @@ def _revoke_live_deployment_packages(deployment_frameworks: list[Any]) -> None:
                 pkg.type = "archived"
                 pkg.updatedAt = _utcnow()
                 changed = True
-        
+
         if changed:
             df.packages = dump_packages(packages)
             df.updatedAt = _utcnow()
+
 
 @router.patch("/assignments/{frameworkId}/{customerId}/revoke")
 async def revoke_framework_assignment(
@@ -280,12 +282,16 @@ async def revoke_framework_assignment(
         from vora_shared.models import DeploymentFramework
 
         deployment_frameworks = (
-            await session.execute(
-                select(DeploymentFramework).where(
-                    DeploymentFramework.assignedFrameworkId == str(assignment.id)
+            (
+                await session.execute(
+                    select(DeploymentFramework).where(
+                        DeploymentFramework.assignedFrameworkId == str(assignment.id)
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         _revoke_live_deployment_packages(deployment_frameworks)
 

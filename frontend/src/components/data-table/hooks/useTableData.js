@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { toast } from "sonner";
 
 /**
  * Custom hook for managing table data with URL-based state management
@@ -31,6 +30,7 @@ export function useTableData(fetchFunction, options = {}) {
   // State
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [emptyMessage, setEmptyMessage] = useState(defaultEmptyMessage);
 
   const [pagination, setPagination] = useState({
@@ -89,6 +89,7 @@ export function useTableData(fetchFunction, options = {}) {
     }
 
     try {
+      setError(null);
       const res = await fetchFunction(queryParams);
 
       setData(res.data || []);
@@ -119,11 +120,10 @@ export function useTableData(fetchFunction, options = {}) {
 
       if (onError) {
         onError(err);
-      } else {
-        toast.error(errorMessage);
       }
 
       setData([]);
+      setError(errorMessage);
       setEmptyMessage(errorMessage);
       return [];
     } finally {
@@ -211,6 +211,7 @@ export function useTableData(fetchFunction, options = {}) {
     // Data
     data,
     loading,
+    error,
     emptyMessage,
 
     // Pagination
