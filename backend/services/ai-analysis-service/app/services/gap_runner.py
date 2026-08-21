@@ -248,6 +248,10 @@ async def _synthesize_comparison_sections(
 
         items = []
         for ctrl in section.get("controls") or []:
+            customization = ctrl.get("customization") or {}
+            if not customization.get("is_applicable", True):
+                continue
+            
             processed = _process_assignment_control_for_synthesis(ctrl, merged_control_map)
             if processed:
                 items.append(processed)
@@ -476,18 +480,15 @@ async def run_gap(
             logger.info("[GAP-RUNNER] Loading gap configuration...")
             statuses, thresholds = await _load_gap_config(session)
 
-            logger.info("[GAP-RUNNER] Loading comparison results...")
-            comparison_sections = await _load_comparison_grouped(session, df, pkg_ver)
-            logger.info(f"[GAP-RUNNER] Loaded {len(comparison_sections)} comparison sections")
-
+            logger.info("[GAP-RUNNER] Synthesizing comparison sections from latest merge...")
+            assignment_sections = await _load_assignment_controls(session, str(fa_id))
+            comparison_sections = await _synthesize_comparison_sections(
+                session, df, pkg_ver, assignment_sections
+            )
+            
             if not comparison_sections:
-                assignment_sections = await _load_assignment_controls(session, str(fa_id))
-                comparison_sections = await _synthesize_comparison_sections(
-                    session, df, pkg_ver, assignment_sections
-                )
-                if not comparison_sections:
-                    logger.error("No comparison results or controls available for gap analysis")
-                    return
+                logger.error("No comparison results or controls available for gap analysis")
+                return
 
             gap_results = _calculate_gap_results(comparison_sections, thresholds, statuses)
 
