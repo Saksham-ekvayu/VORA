@@ -1836,7 +1836,7 @@
                       },
                       {
                         "id": "DP-002",
-                        "name": "Include these responsibilities in the exit interview process to ensure departing personnel understand their ongoing obligations.",
+                        "name": "Document and communicate these responsibilities to all relevant parties, including contractors and third-party vendors.",
                         "path": "",
                         "remark": "",
                         "source": "",
@@ -2054,7 +2054,7 @@
                     "deployment_points": [
                       {
                         "id": "DP-001",
-                        "name": "Define clear desk policies that specify what items can remain on desks and what must be stored securely.",
+                        "name": "Establish clear screen policies that require users to lock their screens when leaving their workstations unattended.",
                         "path": "",
                         "remark": "",
                         "source": "",
@@ -3458,7 +3458,7 @@
       ],
       "tenantId": "tenant_7395cd7778fbc058",
       "createdAt": "2026-08-20T15:33:00.109767+05:30",
-      "updatedAt": "2026-08-21T10:42:22.379533+05:30",
+      "updatedAt": "2026-08-21T12:33:50.96117+05:30",
       "uploadedBy": "6a86cf7e22b643b35be9529b",
       "frameworkId": "6a86ccb8ace40f97e4827bfb",
       "frameworkCode": "iso27001",
