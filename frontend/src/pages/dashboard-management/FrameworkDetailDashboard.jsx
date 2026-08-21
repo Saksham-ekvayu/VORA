@@ -383,7 +383,7 @@ export default function FrameworkDetailDashboard() {
               <div className="w-6 h-6 rounded bg-primary/20 flex items-center justify-center shrink-0">
                 <Icon name="shield" size="14px" className="text-primary" />
               </div>
-              Audit Dashboard
+              Control Gap Analysis
             </div>
           }
           className="flex flex-col"
@@ -410,14 +410,14 @@ export default function FrameworkDetailDashboard() {
                     </span>
                     <div className="flex-1">
                       <ProgressBar
-                        value={Math.min(Math.abs(gap.value) * 10, 100)}
+                        value={Math.min(Math.abs(gap.value), 100)}
                         height="2"
                       />
                     </div>
                     <span
-                      className="text-[11px] font-bold w-6 text-right shrink-0 text-primary"
+                      className="text-[11px] font-bold w-8 text-right shrink-0 text-primary"
                     >
-                      {gap.value}
+                      {gap.value}%
                     </span>
                   </div>
                 );

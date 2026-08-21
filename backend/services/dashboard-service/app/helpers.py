@@ -363,7 +363,7 @@ def _evaluate_trend(
     prev_impl = prev_actual_implemented[ctrl_id]
     prev_failing_pct = 100
     if req_dps > 0:
-        prev_failing_pct = round(((req_dps - prev_impl) / req_dps) * 100)
+        prev_failing_pct = round(((req_dps - min(prev_impl, req_dps)) / req_dps) * 100)
 
     if failing_percentage > prev_failing_pct:
         return "down"
@@ -463,19 +463,20 @@ def evaluate_controls(
             )
 
         impl_dps = actual_implemented.get(ctrl_id, 0)
-        is_implemented = impl_dps > 0
         
         prev_impl = (
             prev_actual_implemented.get(ctrl_id, 0) if prev_actual_implemented is not None else 0
         )
-        is_prev_implemented = prev_impl > 0
 
-        # Now fw_total_dps represents total controls
-        fw_total_dps += 1
-        fw_implemented_dps += 1 if is_implemented else 0
-        fw_prev_implemented_dps += 1 if is_prev_implemented else 0
+        fw_total_dps += req_dps
+        fw_implemented_dps += min(impl_dps, req_dps)
+        fw_prev_implemented_dps += min(prev_impl, req_dps)
 
-        if is_implemented:
+        failing_percentage = 100
+        if req_dps > 0:
+            failing_percentage = round(((req_dps - min(impl_dps, req_dps)) / req_dps) * 100)
+            
+        if failing_percentage <= 0:
             fw_passing_controls += 1
         else:
             fw_critical_gaps += 1
@@ -484,7 +485,7 @@ def evaluate_controls(
                     ctrl_id,
                     expected,
                     req_dps,
-                    req_dps if is_implemented else 0,
+                    min(impl_dps, req_dps),
                     prev_actual_implemented,
                     ga,
                     fw_id,
@@ -1178,9 +1179,12 @@ def _calculate_control_percentages(
         total_dps += req_dps
 
         impl_dps = actual_implemented.get(ctrl_id, 0)
-        is_implemented = impl_dps > 0
-
-        pct = 100 if is_implemented else 0
+        
+        pct = 100
+        if req_dps > 0:
+            pct = round((min(impl_dps, req_dps) / req_dps) * 100)
+        elif impl_dps == 0:
+            pct = 0
 
         controls_list.append({"name": expected["name"], "pct": pct})
 
@@ -1332,9 +1336,9 @@ def _update_auditor_control_metrics(
 
     ctrl_name = ctrl.get("assigned_framework_control_name", "Unknown")
     if gap_score is not None:
-        val = round(gap_score * 10)
+        val = round((1 - gap_score) * 100)
     else:
-        val = round((1 - score) * 10)
+        val = round(score * 100)
 
     metrics["gap_analysis"].append(
         {"id": ctrl_id, "name": ctrl_name, "value": val}
