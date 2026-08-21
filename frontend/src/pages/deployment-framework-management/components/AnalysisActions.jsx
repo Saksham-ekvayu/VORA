@@ -115,7 +115,12 @@ const useAnalysisOperations = (frameworkId, packageVersion, onRefresh) => {
 // --- Sub-components for specific views ---
 
 const MergeButton = ({ state, onMerge }) => {
-  if (state.isCurrentPackageLive || state.isMergeCompleted) return null;
+  if (state.isCurrentPackageLive) return null;
+
+  let mergeBtnText = "Merge Controls";
+  if (state.isMergeCurrentlyRunning) mergeBtnText = "Merging...";
+  else if (state.isMergeCompleted || state.isMergeFailed)
+    mergeBtnText = "Re-run Merge";
 
   const isDisabled =
     state.viewContext === "detail"
@@ -133,7 +138,7 @@ const MergeButton = ({ state, onMerge }) => {
       title={
         !state.areAllDocumentsExtracted
           ? "All uploaded documents must be successfully AI extracted first."
-          : "Merge Controls"
+          : mergeBtnText
       }
       className="mr-1"
     >
@@ -142,7 +147,7 @@ const MergeButton = ({ state, onMerge }) => {
         size={11}
         className={`animate-${state.isMergeCurrentlyRunning ? "spin" : ""}`}
       />{" "}
-      {state.isMergeCurrentlyRunning ? "Merging..." : "Merge Controls"}
+      {mergeBtnText}
     </Button>
   );
 };
@@ -324,6 +329,7 @@ const AnalysisActions = ({
     setRequestReviewModalOpen,
     isCurrentPackageLive: currentPackage?.status === STATUS_LIVE,
     isMergeCompleted: currentPackage?.mergeDocument?.status === STATUS_MERGED,
+    isMergeFailed: currentPackage?.mergeDocument?.status === STATUS_FAILED,
     isComparisonCompleted:
       currentPackage?.comparison?.status === STATUS_COMPLETED,
     isGapAnalysisCompleted:

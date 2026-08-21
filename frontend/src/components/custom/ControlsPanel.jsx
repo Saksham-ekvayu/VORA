@@ -691,15 +691,17 @@ export default function ControlsPanel({
     });
   };
 
+  const selectableControls = filteredControls.filter(c => !notApplicableIds.has(c._uiKey));
+
   const allSelected =
-    filteredControls.length > 0 &&
-    filteredControls.every((c) => selectedIds.has(c.id));
+    selectableControls.length > 0 &&
+    selectableControls.every((c) => selectedIds.has(c._uiKey));
 
   const handleToggleSelectAll = () => {
     if (allSelected) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(filteredControls.map((c) => c._uiKey)));
+      setSelectedIds(new Set(selectableControls.map((c) => c._uiKey)));
     }
   };
 

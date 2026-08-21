@@ -28,6 +28,7 @@ class PackageGapAnalysis(Base):
     __tablename__ = "package_gap_analyses"
 
     id: Mapped[str] = mapped_column(String(24), primary_key=True, default=new_id)
+    deploymentFrameworkId: Mapped[str | None] = mapped_column(String(24), nullable=True)
     fileHashes: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
     gapAnalysis: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     createdAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)

@@ -89,7 +89,7 @@ def _similarity(a: str, b: str) -> float:
         return _string_similarity(a, b)
 
 
-def _flatten_controls(sections: list[Any]) -> list[dict[str, Any]]:
+def _flatten_controls(sections: list[Any], is_assignment: bool = False) -> list[dict[str, Any]]:
     flat: list[dict[str, Any]] = []
     for section in sections or []:
         if not isinstance(section, dict):
@@ -99,6 +99,12 @@ def _flatten_controls(sections: list[Any]) -> list[dict[str, Any]]:
         for control in section.get("controls") or []:
             if not isinstance(control, dict):
                 continue
+            
+            if is_assignment:
+                customization = control.get("customization") or {}
+                if not customization.get("is_applicable", True):
+                    continue
+                    
             item = dict(control)
             item["_section_id"] = section_id
             item["_section_name"] = section_name
@@ -237,8 +243,8 @@ def _build_comparison_item(
 
 
 def _build_comparison_results(df_sections: list, assignment_sections: list) -> list[dict[str, Any]]:
-    df_controls = _flatten_controls(df_sections)
-    fa_controls = _flatten_controls(assignment_sections)
+    df_controls = _flatten_controls(df_sections, is_assignment=False)
+    fa_controls = _flatten_controls(assignment_sections, is_assignment=True)
 
     section_map: dict[str, dict[str, Any]] = {}
     for fa_ctrl in fa_controls:

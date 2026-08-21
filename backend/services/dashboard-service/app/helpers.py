@@ -363,7 +363,7 @@ def _evaluate_trend(
     prev_impl = prev_actual_implemented[ctrl_id]
     prev_failing_pct = 100
     if req_dps > 0:
-        prev_failing_pct = round(((req_dps - prev_impl) / req_dps) * 100)
+        prev_failing_pct = round(((req_dps - min(prev_impl, req_dps)) / req_dps) * 100)
 
     if failing_percentage > prev_failing_pct:
         return "down"
@@ -463,6 +463,7 @@ def evaluate_controls(
             )
 
         impl_dps = actual_implemented.get(ctrl_id, 0)
+        
         prev_impl = (
             prev_actual_implemented.get(ctrl_id, 0) if prev_actual_implemented is not None else 0
         )
@@ -471,7 +472,11 @@ def evaluate_controls(
         fw_implemented_dps += min(impl_dps, req_dps)
         fw_prev_implemented_dps += min(prev_impl, req_dps)
 
-        if req_dps > 0 and impl_dps >= req_dps:
+        failing_percentage = 100
+        if req_dps > 0:
+            failing_percentage = round(((req_dps - min(impl_dps, req_dps)) / req_dps) * 100)
+            
+        if failing_percentage <= 0:
             fw_passing_controls += 1
         else:
             fw_critical_gaps += 1
@@ -480,7 +485,7 @@ def evaluate_controls(
                     ctrl_id,
                     expected,
                     req_dps,
-                    impl_dps,
+                    min(impl_dps, req_dps),
                     prev_actual_implemented,
                     ga,
                     fw_id,
@@ -693,21 +698,16 @@ def _process_package_controls(
     for ctrl_id, expected in expected_controls.items():
         stats["total"] += 1
         req_dps = expected["required_dps"]
-        impl_dps = actual_implemented.get(ctrl_id, 0)
+        is_implemented = actual_implemented.get(ctrl_id, 0) > 0
 
-        if req_dps == 0:
-            pass_rate = 0
-            status = "Not Evaluated"
-            stats["not_evaluated"] += 1
+        if is_implemented:
+            pass_rate = 100
+            status = "Passing"
+            stats["passing"] += 1
         else:
-            pass_rate = round(min((impl_dps / req_dps) * 100, 100))
-            status = calculate_control_status(pass_rate, settings)
-            if status == "Passing":
-                stats["passing"] += 1
-            elif status == "Warning":
-                stats["warning"] += 1
-            else:
-                stats["failing"] += 1
+            pass_rate = 0
+            status = "Failing"
+            stats["failing"] += 1
 
         formatted.append(
             {
@@ -1143,18 +1143,28 @@ def process_deployment_points(
 ) -> list[dict]:
     """Aggregate configured deployment points per framework."""
     deployment_points = []
-    for pm in merges:
-        dp_count = _get_dp_count_for_merge(pm)
-
-        fw_name = UNKNOWN_FRAMEWORK
-        fw_version = ""
-        for lp in latest_packages:
-            if str(get_nested(lp["pkg"], "mergeDocument")) == str(pm.id):
-                fw_name = lp["df"].frameworkName or fw_name
-                fw_version = lp["df"].frameworkVersion or ""
-                break
-
+    for lp in latest_packages:
+        df = lp["df"]
+        pkg = lp["pkg"]
+        fw_name = df.frameworkName or UNKNOWN_FRAMEWORK
+        fw_version = df.frameworkVersion or ""
+        
+        merge_id = str(get_nested(pkg, "mergeDocument"))
+        
+        # Check if the package has embedded mergedControls (some versions may have this)
+        merged_controls = get_nested(pkg, "mergedControls")
+        if merged_controls and get_nested(merged_controls, "controls_data"):
+            dp_count = 0
+            for sec in get_nested(merged_controls, "controls_data") or []:
+                for ctrl in get_nested(sec, "controls") or []:
+                    dp_count += len(get_nested(ctrl, "deployment_points") or [])
+        else:
+            # Fallback to the DeploymentPackageMerge document
+            pm = next((m for m in merges if str(m.id) == merge_id), None)
+            dp_count = _get_dp_count_for_merge(pm) if pm else 0
+            
         deployment_points.append({"name": fw_name, "version": fw_version, "count": dp_count})
+        
     return deployment_points
 
 
@@ -1169,10 +1179,12 @@ def _calculate_control_percentages(
         total_dps += req_dps
 
         impl_dps = actual_implemented.get(ctrl_id, 0)
-
+        
         pct = 100
         if req_dps > 0:
             pct = round((min(impl_dps, req_dps) / req_dps) * 100)
+        elif impl_dps == 0:
+            pct = 0
 
         controls_list.append({"name": expected["name"], "pct": pct})
 
@@ -1324,9 +1336,9 @@ def _update_auditor_control_metrics(
 
     ctrl_name = ctrl.get("assigned_framework_control_name", "Unknown")
     if gap_score is not None:
-        val = round(gap_score * 10)
+        val = round((1 - gap_score) * 100)
     else:
-        val = round((1 - score) * 10)
+        val = round(score * 100)
 
     metrics["gap_analysis"].append(
         {"id": ctrl_id, "name": ctrl_name, "value": val}
