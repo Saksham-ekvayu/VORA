@@ -196,10 +196,16 @@ def _process_assignment_control_for_synthesis(ctrl: dict, merged_control_map: di
     if not isinstance(ctrl, dict):
         return None
 
-    merged_dps = []
+    df_control_id = ""
+    df_control_name = ""
+    df_control_description = ""
+    
     ctrl_name_lower = (ctrl.get("name") or "").strip().lower()
     if ctrl_name_lower in merged_control_map:
         matched_merged = merged_control_map[ctrl_name_lower]
+        df_control_id = str(matched_merged.get("id") or "")
+        df_control_name = matched_merged.get("name") or ""
+        df_control_description = matched_merged.get("description") or ""
         raw_dps = matched_merged.get("deployment_points") or []
         merged_dps = [
             {"id": str(dp.get("id") or new_id()), "point": dp.get("name") or ""}
@@ -221,11 +227,11 @@ def _process_assignment_control_for_synthesis(ctrl: dict, merged_control_map: di
             for dp in (ctrl.get("deployment_points") or [])
             if isinstance(dp, dict)
         ],
-        "deployment_framework_control_id": "",
-        "deployment_framework_control_name": "",
-        "deployment_framework_control_description": "",
+        "deployment_framework_control_id": df_control_id,
+        "deployment_framework_control_name": df_control_name,
+        "deployment_framework_control_description": df_control_description,
         "deployment_framework_deployment_points": merged_dps,
-        "comparison_score": 0.0,
+        "comparison_score": 1.0 if df_control_id else 0.0,
     }
 
 
@@ -480,15 +486,19 @@ async def run_gap(
             logger.info("[GAP-RUNNER] Loading gap configuration...")
             statuses, thresholds = await _load_gap_config(session)
 
-            logger.info("[GAP-RUNNER] Synthesizing comparison sections from latest merge...")
-            assignment_sections = await _load_assignment_controls(session, str(fa_id))
-            comparison_sections = await _synthesize_comparison_sections(
-                session, df, pkg_ver, assignment_sections
-            )
-            
+            logger.info("[GAP-RUNNER] Loading comparison results...")
+            comparison_sections = await _load_comparison_grouped(session, df, pkg_ver)
+            logger.info(f"[GAP-RUNNER] Loaded {len(comparison_sections)} comparison sections")
+
             if not comparison_sections:
-                logger.error("No comparison results or controls available for gap analysis")
-                return
+                logger.info("[GAP-RUNNER] Synthesizing comparison sections from latest merge...")
+                assignment_sections = await _load_assignment_controls(session, str(fa_id))
+                comparison_sections = await _synthesize_comparison_sections(
+                    session, df, pkg_ver, assignment_sections
+                )
+                if not comparison_sections:
+                    logger.error("No comparison results or controls available for gap analysis")
+                    return
 
             gap_results = _calculate_gap_results(comparison_sections, thresholds, statuses)
 
