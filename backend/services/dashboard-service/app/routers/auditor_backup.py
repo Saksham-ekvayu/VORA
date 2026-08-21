@@ -2891,12 +2891,6 @@ async def get_auditor_deployment_points(
     framework_filter: Annotated[str, Query(alias="frameworkFilter")] = "",
 ):
 
-    def _extract_control_weight(ctrl: Any) -> float:
-        """Extract customer weightage from a control object."""
-        custom = (ctrl or {}).get("customization") or {}
-        weight_obj = (custom or {}).get("weightage") or {}
-        return float((weight_obj or {}).get("customer_weightage", 10.0))
-
     def get_latest_packages(
         dfs: list[DeploymentFramework],
     ) -> tuple[list[dict], list[str], list[str]]:

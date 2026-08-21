@@ -47,12 +47,13 @@ This document details the functionality, data sources, and internal calculations
 ```
 
 **Key Metrics & Calculations mapping**:
-- `data.overallProtection`: `(Total Implemented DPs / Total Required DPs) * 100` across all frameworks.
-- `data.controlPassing`: String format `"{Passing} / {Total}"`. A control is considered "Passing" if its pass rate `(Implemented DPs / Required DPs)` is $\ge$ `compliance_score_threshold`.
-- `data.extraControls`: Count of controls marked as "Extra" (e.g., custom controls via Framework Assignments).
-- `data.frameworkHealth[].health`: Average pass rate of all controls within that specific framework.
-- `data.activeGaps`: Array of failing controls. Failing percentage is `100 - Pass Rate`.
-- `data.deploymentPoints[].count`: Total configured deployment points for that framework extracted from `DeploymentPackageMerge`.
+- `data.overallProtection`: `(Total Implemented DPs / Total Required DPs) * 100` across all deployment frameworks. Check actual implemented_status like implement according to db data
+- `data.criticalGaps`: `Total Not Implemented DPs` across all deployment frameworks. Check actual implemented_status like not implement according to db data
+- `data.controlPassing`: every controls me deployment points h and inka status h like like implement, not implement and partial implement, to contol ke implemented dp check krne h and agar all deployment points of control implemented h to vo control pass rhega.
+- `data.extraControls`: Count of controls marked as "Extra" (e.g., custom controls via Framework Assignments) in customization (source = custom)
+- `data.frameworkHealth[].health`: deployment framework ke sabhi controls ke deployment points ke according check krna h ki kitne deployment points implemented h to uske according health % aayega like implemented dp / total dp.
+- `data.activeGaps`: check all deployemnt points jo not implement and partial implement h.
+- `data.deploymentPoints[].count`: Total configured deployment points for that deployment framework extracted from `DeploymentPackageMerge`.
 
 ---
 
