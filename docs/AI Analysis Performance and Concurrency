@@ -1,0 +1,29 @@
+# Fix AI Analysis Performance and Concurrency
+
+The AI Analysis service has two major issues:
+1. **Comparison is very slow**: The `run_comparison` logic computes the similarity between *every* deployment control and *every* assigned control. For $N$ deployment controls and $M$ assigned controls, it runs $N \times M$ times. In each iteration, it calls `model.encode([a, b])` using the heavy `SentenceTransformer` model. This means the model runs hundreds or thousands of times for a single comparison.
+2. **Tasks don't run in parallel**: Because `run_comparison` is executing computationally heavy model inference in a blocking loop directly on the `asyncio` event loop thread, it completely blocks the server. This prevents `run_gap` or any other requests from executing at the same time.
+
+## Proposed Changes
+
+### 1. Optimize Comparison Embedding Logic (Batching)
+Instead of encoding pairs of text one by one, we will extract all texts, encode them in two large batches (one for deployment controls, one for assigned controls), and then compute the similarity using matrix operations or a vectorized loop.
+
+#### [MODIFY] [comparison_runner.py](file:///c:/EKVAYU/VORA/backend/services/ai-analysis-service/app/services/comparison_runner.py)
+- Refactor `_build_comparison_results` to collect all `fa_text` and `df_text` strings.
+- Pass the entire lists to the embedder in one go: `model.encode(texts)`.
+- Use the precomputed embeddings to calculate the best matches without running the model in the loop.
+
+### 2. Offload CPU-Bound Work to Thread Pool
+We will use `asyncio.to_thread` to push the blocking CPU work (embedding and similarity calculation) to a background thread. This allows the main `asyncio` event loop to remain responsive and process the gap analysis task simultaneously.
+
+#### [MODIFY] [comparison_runner.py](file:///c:/EKVAYU/VORA/backend/services/ai-analysis-service/app/services/comparison_runner.py)
+- Wrap the heavy similarity computation `_build_comparison_results` inside `asyncio.to_thread`.
+- Ensure that the SentenceTransformer is loaded inside the background thread if it isn't already, or loaded at startup.
+
+#### [MODIFY] [gap_runner.py](file:///c:/EKVAYU/VORA/backend/services/ai-analysis-service/app/services/gap_runner.py)
+- If `gap_runner.py` uses `_synthesize_comparison_sections` which also does heavy lifting, wrap that in `asyncio.to_thread` as well.
+
+## User Review Required
+> [!NOTE]
+> This will drastically speed up comparison and allow both comparison and gap analysis to run concurrently without blocking the server. Please review and approve to proceed with these optimizations.
