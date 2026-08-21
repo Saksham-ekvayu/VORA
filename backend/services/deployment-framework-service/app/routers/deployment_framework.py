@@ -722,6 +722,7 @@ async def delete_deployment_framework(id: str, ctx: Annotated[RequestContext, De
 
         packages = coerce_packages(framework.packages)
         file_urls = {doc.fileUrl for pkg in packages for doc in (pkg.documents or []) if doc.fileUrl}
+        deleted_count = 0
         for file_url in file_urls:
             try:
                 file_path = helpers.get_upload_file_path(file_url)

@@ -354,10 +354,11 @@ async def create_pending_merge(session: AsyncSession, file_hashes: list[str]):
 async def create_pending_comparison(
     session: AsyncSession,
     file_hashes: list[str],
+    deployment_framework_id: str,
 ):
     from vora_shared.models import PackageComparison
 
-    if not file_hashes:
+    if not file_hashes or not deployment_framework_id:
         return None
 
     file_hashes = sorted(file_hashes)
@@ -368,6 +369,7 @@ async def create_pending_comparison(
                 select(PackageComparison)
                 .where(
                     PackageComparison.fileHashes == file_hashes,
+                    PackageComparison.deploymentFrameworkId == deployment_framework_id,
                 )
                 .order_by(PackageComparison.createdAt.desc())
             )
@@ -381,6 +383,7 @@ async def create_pending_comparison(
 
     comparison = PackageComparison(
         fileHashes=file_hashes,
+        deploymentFrameworkId=deployment_framework_id,
         comparison={
             "status": "pending",
             "message": "Comparison pending",
@@ -397,10 +400,11 @@ async def create_pending_comparison(
 async def create_pending_gap_analysis(
     session: AsyncSession,
     file_hashes: list[str],
+    deployment_framework_id: str,
 ):
     from vora_shared.models import PackageGapAnalysis
 
-    if not file_hashes:
+    if not file_hashes or not deployment_framework_id:
         return None
 
     file_hashes = sorted(file_hashes)
@@ -409,7 +413,10 @@ async def create_pending_gap_analysis(
         (
             await session.execute(
                 select(PackageGapAnalysis)
-                .where(PackageGapAnalysis.fileHashes == file_hashes)
+                .where(
+                    PackageGapAnalysis.fileHashes == file_hashes,
+                    PackageGapAnalysis.deploymentFrameworkId == deployment_framework_id,
+                )
                 .order_by(PackageGapAnalysis.createdAt.desc())
             )
         )
@@ -422,6 +429,7 @@ async def create_pending_gap_analysis(
 
     gap = PackageGapAnalysis(
         fileHashes=file_hashes,
+        deploymentFrameworkId=deployment_framework_id,
         gapAnalysis={
             "status": "pending",
             "message": "Gap analysis pending",
@@ -454,6 +462,7 @@ async def ensure_package_analysis_refs(
     comparison_doc = await create_pending_comparison(
         session,
         file_hashes,
+        framework_id,
     )
     if comparison_doc:
         package_data["comparison"] = comparison_doc.id
@@ -461,6 +470,7 @@ async def ensure_package_analysis_refs(
     gap_doc = await create_pending_gap_analysis(
         session,
         file_hashes,
+        framework_id,
     )
     if gap_doc:
         package_data["gapAnalysis"] = gap_doc.id
