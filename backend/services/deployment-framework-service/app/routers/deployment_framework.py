@@ -734,6 +734,14 @@ async def delete_deployment_framework(id: str, ctx: Annotated[RequestContext, De
                     f"[DELETE-DEPLOYMENT-FRAMEWORK] Failed to delete file | file_url={file_url} | error={exc}"
                 )
 
+        from sqlalchemy import delete
+        await session.execute(
+            delete(PackageComparison).where(PackageComparison.deploymentFrameworkId == str(id))
+        )
+        await session.execute(
+            delete(PackageGapAnalysis).where(PackageGapAnalysis.deploymentFrameworkId == str(id))
+        )
+
         await session.delete(framework)
         logger.info(
             f"[DELETE-DEPLOYMENT-FRAMEWORK] Framework deleted | id={id} | files_deleted={deleted_count} | user_id={ctx.user.id}"
