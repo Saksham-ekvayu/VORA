@@ -330,8 +330,6 @@ async def get_auditor_dashboard_analytics(
         }
 
 
-
-
     def get_latest_packages(dfs: list[DeploymentFramework]) -> tuple[list[dict], list[str], list[str]]:
         """Extract latest packages, gap analysis IDs, and merge document IDs."""
         latest_packages = []
@@ -1240,6 +1238,62 @@ async def get_auditor_overall_protection(
         return rows
 
 
+    def get_overall_protection_response(
+        gap_analyses, latest_packages, historical_gap_analyses, merges, assignments, settings
+    ):
+        """Calculate and build the paginated overall protection response."""
+        (
+            total_controls_overall,
+            _,
+            _,
+            _,
+            _,
+            _,
+            framework_health,
+            total_dps_overall,
+            implemented_dps_overall,
+            prev_implemented_dps_overall,
+        ) = process_gap_analyses(
+            gap_analyses, latest_packages, historical_gap_analyses, merges, assignments, settings
+        )
+
+        overall_protection = (
+            round((implemented_dps_overall / total_dps_overall) * 100)
+            if total_dps_overall > 0 else 0
+        )
+        overall_prev_protection = (
+            round((prev_implemented_dps_overall / total_dps_overall) * 100)
+            if total_dps_overall > 0 else overall_protection
+        )
+
+        overall_trend_val = overall_protection - overall_prev_protection
+        rows = build_overall_protection_rows(framework_health, settings)
+        rows = filter_and_sort_rows(rows, search, status_filter, sort_by, sort_order)
+
+        page_num = clamp_page(page)
+        limit_num = clamp_limit(limit)
+        total = len(rows)
+        start = (page_num - 1) * limit_num
+        paged_rows = rows[start:start + limit_num]
+
+        data = {
+            "frameworks": paged_rows,
+            "stats": {
+                "score": overall_protection,
+                "trend": abs(overall_trend_val),
+                "trendUp": overall_trend_val >= 0,
+                "frameworksActive": len(framework_health),
+                "controlsEvaluated": total_controls_overall,
+                "deploymentPoints": total_dps_overall,
+            },
+        }
+
+        return paginated(
+            data,
+            build_pagination_meta(page_num, limit_num, total),
+            "Overall protection retrieved successfully",
+        )
+
     try:
         tenant_id = ctx.tenant_id
 
@@ -1334,68 +1388,8 @@ async def get_auditor_overall_protection(
             )
 
             settings = get_settings()
-            (
-                total_controls_overall,
-                _,
-                _,
-                _,
-                _, # Ignore extra_controls_list
-                _,
-                framework_health,
-                total_dps_overall,
-                implemented_dps_overall,
-                prev_implemented_dps_overall,
-            ) = process_gap_analyses(
+            return get_overall_protection_response(
                 gap_analyses, latest_packages, historical_gap_analyses, merges, assignments, settings
-            )
-
-            overall_protection = (
-                round((implemented_dps_overall / total_dps_overall) * 100)
-                if total_dps_overall > 0
-                else 0
-            )
-            overall_prev_protection = (
-                round((prev_implemented_dps_overall / total_dps_overall) * 100)
-                if total_dps_overall > 0
-                else overall_protection
-            )
-
-            overall_trend_val = overall_protection - overall_prev_protection
-            overall_trend_up = overall_trend_val >= 0
-            overall_trend_abs = abs(overall_trend_val)
-
-            overall_trend_abs = abs(overall_trend_val)
-            # Build rows
-            rows = build_overall_protection_rows(framework_health, settings)
-
-            # Apply filters and sorting
-            rows = filter_and_sort_rows(rows, search, status_filter, sort_by, sort_order)
-
-            # Pagination
-            page_num = clamp_page(page)
-            limit_num = clamp_limit(limit)
-
-            total = len(rows)
-            start = (page_num - 1) * limit_num
-            end = start + limit_num
-            paged_rows = rows[start:end]
-
-            data = {
-                "frameworks": paged_rows,
-                "stats": {
-                    "score": overall_protection,
-                    "trend": overall_trend_abs,
-                    "trendUp": overall_trend_up,
-                    "frameworksActive": len(framework_health),
-                    "controlsEvaluated": total_controls_overall,
-                    "deploymentPoints": total_dps_overall,
-                },
-            }
-
-            return paginated(
-                data,
-                build_pagination_meta(page_num, limit_num, total),
-                "Overall protection retrieved successfully",
             )
 
     except Exception:
@@ -1905,6 +1899,17 @@ async def get_auditor_critical_gaps(
 
 
     """Get auditor critical gaps for dashboard table."""
+    def get_critical_gaps_response(active_gaps):
+        """Build and paginate the critical gaps response."""
+        data, total_items = build_critical_gaps_response(
+            active_gaps, search, severity_filter, sort_by, sort_order, page, limit
+        )
+        return paginated(
+            data,
+            build_pagination_meta(clamp_page(page), clamp_limit(limit), total_items),
+            "Critical gaps retrieved successfully",
+        )
+
     try:
         async with session_scope() as session:
             dfs = list((await session.execute(
@@ -1949,18 +1954,7 @@ async def get_auditor_critical_gaps(
             res = process_gap_analyses(
                 gap_analyses, latest_packages, historical_gap_analyses, merges, assignments, settings
             )
-            active_gaps = res[5]
-
-            # Build and paginate rows using helper
-            data, total_items = build_critical_gaps_response(
-                active_gaps, search, severity_filter, sort_by, sort_order, page, limit
-            )
-            
-            return paginated(
-                data,
-                build_pagination_meta(clamp_page(page), clamp_limit(limit), total_items),
-                "Critical gaps retrieved successfully"
-            )
+            return get_critical_gaps_response(res[5])
 
     except Exception:
         logger.exception("Error in critical gaps")
@@ -2204,6 +2198,18 @@ async def get_auditor_controls_passing(
 
 
     """Get auditor controls passing for dashboard table."""
+    def get_controls_passing_response():
+        """Build and paginate the controls passing response."""
+        data, total_items = build_controls_passing_response(
+            gap_analyses, latest_packages, merges, assignments, settings,
+            search, status_filter, sort_by, sort_order, page, limit
+        )
+        return paginated(
+            data,
+            build_pagination_meta(clamp_page(page), clamp_limit(limit), total_items),
+            "Controls passing retrieved successfully",
+        )
+
     try:
         settings = get_settings()
         
@@ -2232,25 +2238,7 @@ async def get_auditor_controls_passing(
                 select(FrameworkAssignment).where(FrameworkAssignment.id.in_(assignment_ids))
             )).scalars().all()) if assignment_ids else []
 
-            data, total_items = build_controls_passing_response(
-                gap_analyses,
-                latest_packages,
-                merges,
-                assignments,
-                settings,
-                search,
-                status_filter,
-                sort_by,
-                sort_order,
-                page,
-                limit
-            )
-            
-            return paginated(
-                data,
-                build_pagination_meta(clamp_page(page), clamp_limit(limit), total_items),
-                "Controls passing retrieved successfully"
-            )
+            return get_controls_passing_response()
 
     except Exception:
         logger.exception("Error in controls passing")
@@ -2709,6 +2697,17 @@ async def get_auditor_extra_controls(
 
 
     """Get auditor extra controls for dashboard table."""
+    def get_extra_controls_response(extra_controls_list):
+        """Build and paginate the extra controls response."""
+        data, total_items = build_extra_controls_response(
+            extra_controls_list, search, sort_by, sort_order, page, limit
+        )
+        return paginated(
+            data,
+            build_pagination_meta(clamp_page(page), clamp_limit(limit), total_items),
+            "Extra controls retrieved successfully",
+        )
+
     try:
         settings = get_settings()
         
@@ -2740,17 +2739,7 @@ async def get_auditor_extra_controls(
             res = process_gap_analyses(
                 gap_analyses, latest_packages, [], merges, assignments, settings
             )
-            extra_controls_list = res[3]
-
-            data, total_items = build_extra_controls_response(
-                extra_controls_list, search, sort_by, sort_order, page, limit
-            )
-            
-            return paginated(
-                data,
-                build_pagination_meta(clamp_page(page), clamp_limit(limit), total_items),
-                "Extra controls retrieved successfully"
-            )
+            return get_extra_controls_response(res[3])
 
     except Exception:
         logger.exception("Error in extra controls")
@@ -2943,6 +2932,20 @@ async def get_auditor_deployment_points(
 
 
     """Get detailed deployment points with control percentages."""
+    def get_deployment_points_response(data):
+        """Build and paginate the deployment points response."""
+        paginated_data, total_items, total_instances = build_deployment_points_response(
+            data, search, framework_filter, page, limit
+        )
+        return paginated(
+            {
+                "results": paginated_data,
+                "totalInstances": total_instances,
+            },
+            build_pagination_meta(clamp_page(page), clamp_limit(limit), total_items),
+            "Deployment points retrieved successfully",
+        )
+
     try:
         async with session_scope() as session:
             dfs = list((await session.execute(
@@ -2972,19 +2975,7 @@ async def get_auditor_deployment_points(
             data = process_deployment_points_detailed(
                 gap_analyses, latest_packages, merges, assignments
             )
-            
-            paginated_data, total_items, total_instances = build_deployment_points_response(
-                data, search, framework_filter, page, limit
-            )
-            
-            return paginated(
-                {
-                    "results": paginated_data,
-                    "totalInstances": total_instances
-                },
-                build_pagination_meta(clamp_page(page), clamp_limit(limit), total_items),
-                "Deployment points retrieved successfully"
-            )
+            return get_deployment_points_response(data)
 
     except Exception:
         logger.exception("Error in deployment points")
@@ -3128,6 +3119,38 @@ async def get_auditor_framework_details(
 
         return metrics
 
+    def get_framework_details_response(df, metrics):
+        """Build the framework details response from calculated metrics."""
+        return {
+            "id": str(df.id),
+            "frameworkName": df.frameworkName,
+            "frameworkVersion": df.frameworkVersion,
+            "controls": {
+                "subscribed": metrics["subscribed"],
+                "compliant": metrics["compliant"],
+                "nonCompliant": metrics["non_compliant"],
+                "notAssessed": 0,
+            },
+            "coverage": {
+                "total": metrics["pre_count"] + metrics["custom_count"],
+                "breakdown": [
+                    {"name": "Pre controls", "value": metrics["pre_count"]},
+                    {"name": "Org. Specific", "value": metrics["custom_count"]},
+                ],
+            },
+            "compliance": {
+                "total": metrics["compliant"] + metrics["non_compliant"],
+                "breakdown": [
+                    {"name": "Compliant", "value": metrics["compliant"]},
+                    {"name": "Non-Compliant", "value": metrics["non_compliant"]},
+                    {"name": "Not Assessed", "value": 0},
+                ],
+            },
+            "auditDashboard": {"gapAnalysis": metrics["gap_analysis"]},
+            "nonCompliantControls": metrics["non_compliant_list"],
+            "notAssessed": [],
+        }
+
     try:
         tenant_id = ctx.tenant_id
         from vora_shared.models import PackageComparison
@@ -3176,35 +3199,7 @@ async def get_auditor_framework_details(
             )
             m = _calculate_auditor_metrics(comparison_doc, gap_doc, source_map, applicable_map, comp_threshold)
 
-            data = {
-                "id": str(df.id),
-                "frameworkName": df.frameworkName,
-                "frameworkVersion": df.frameworkVersion,
-                "controls": {
-                    "subscribed": m["subscribed"],
-                    "compliant": m["compliant"],
-                    "nonCompliant": m["non_compliant"],
-                    "notAssessed": 0,
-                },
-                "coverage": {
-                    "total": m["pre_count"] + m["custom_count"],
-                    "breakdown": [
-                        {"name": "Pre controls", "value": m["pre_count"]},
-                        {"name": "Org. Specific", "value": m["custom_count"]},
-                    ],
-                },
-                "compliance": {
-                    "total": m["compliant"] + m["non_compliant"],
-                    "breakdown": [
-                        {"name": "Compliant", "value": m["compliant"]},
-                        {"name": "Non-Compliant", "value": m["non_compliant"]},
-                        {"name": "Not Assessed", "value": 0},
-                    ],
-                },
-                "auditDashboard": {"gapAnalysis": m["gap_analysis"]},
-                "nonCompliantControls": m["non_compliant_list"],
-                "notAssessed": [],
-            }
+            data = get_framework_details_response(df, m)
 
         return success(data, "Framework details retrieved successfully")
 
