@@ -74,9 +74,7 @@ export default function DataTable({
     return (pagination.currentPage - 1) * pagination.limit + index + 1;
   };
 
-  const handlePageChange = (event, page, disabled = false) => {
-    event.preventDefault();
-    if (disabled) return;
+  const handlePageChange = (page) => {
     pagination.onPageChange(page);
   };
 
@@ -165,7 +163,7 @@ export default function DataTable({
 
     return sortedData.map((row, index) => (
       <TableRow
-        key={row.id || index}
+        key={row.id ? `${row.id}-${index}` : index}
         className="transition-all duration-200 hover:bg-accent group"
       >
         {/* SR NO */}
@@ -248,10 +246,11 @@ export default function DataTable({
                 <TableHead
                   key={column.key}
                   onClick={() => handleSort(column.key)}
-                  className={`px-4 py-2.5 text-left border-b border-border font-semibold text-xs text-muted-foreground uppercase tracking-wider whitespace-nowrap bg-muted ${column.sortable
-                    ? "cursor-pointer select-none transition-all duration-200 hover:bg-accent/50 hover:text-primary"
-                    : ""
-                    }`}
+                  className={`px-4 py-2.5 text-left border-b border-border font-semibold text-xs text-muted-foreground uppercase tracking-wider whitespace-nowrap bg-muted ${
+                    column.sortable
+                      ? "cursor-pointer select-none transition-all duration-200 hover:bg-accent/50 hover:text-primary"
+                      : ""
+                  }`}
                 >
                   <div className="flex items-center gap-2">
                     <span>{column.label}</span>

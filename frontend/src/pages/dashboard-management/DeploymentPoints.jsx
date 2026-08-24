@@ -39,7 +39,10 @@ function ControlBar({ name, pct }) {
 
   return (
     <div className="flex items-center gap-3 p-1.5 rounded transition-colors hover:bg-muted/50 group">
-      <span className="text-sm font-medium group-hover:text-primary transition-colors flex-1 truncate" title={capitalizeFirstLetter(name)}>
+      <span
+        className="text-sm font-medium group-hover:text-primary transition-colors flex-1 truncate"
+        title={capitalizeFirstLetter(name)}
+      >
         {capitalizeFirstLetter(name)}
       </span>
       <div className="w-32 h-2.5 rounded-full bg-muted overflow-hidden shrink-0 shadow-inner">
@@ -64,11 +67,18 @@ function DeploymentCard({ point }) {
       <div className="flex items-center justify-between p-4 bg-linear-to-r from-primary/10 via-primary/5 to-transparent border-b border-border/50">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-background shadow-sm border border-primary/20">
-            <Icon name="layers" size="20px" className="text-primary drop-shadow-sm" />
+            <Icon
+              name="layers"
+              size="20px"
+              className="text-primary drop-shadow-sm"
+            />
           </div>
           <div>
             <p className="text-base font-extrabold text-foreground tracking-tight">
-              {point.frameworkName} <span className="text-primary font-semibold opacity-80">({point.frameworkVersion})</span>
+              {point.frameworkName}{" "}
+              <span className="text-primary font-semibold opacity-80">
+                ({point.frameworkVersion})
+              </span>
             </p>
             <p className="text-xs font-medium text-muted-foreground mt-0.5">
               {point.instances} Total Control Instances Evaluated
@@ -126,7 +136,8 @@ export default function DeploymentPoints() {
         page,
         limit,
         search: searchTerm,
-        frameworkFilter: frameworkFilter !== "All Frameworks" ? frameworkFilter : "",
+        frameworkFilter:
+          frameworkFilter !== "All Frameworks" ? frameworkFilter : "",
       });
       if (res?.success) {
         setDeploymentPoints(res.data?.results || []);
@@ -141,7 +152,7 @@ export default function DeploymentPoints() {
             },
             onPageChange: (newPage) => {
               setPage(newPage);
-            }
+            },
           });
         }
       }
@@ -164,25 +175,30 @@ export default function DeploymentPoints() {
   const frameworkOptions = useMemo(() => {
     // Note: This ideally should come from a separate API or aggregated list if paginated.
     // Assuming backend returns a small list or we just extract from current page for now.
-    const versions = new Set(deploymentPoints.map((dp) => dp.frameworkVersion).filter(Boolean));
+    const versions = new Set(
+      deploymentPoints.map((dp) => dp.frameworkVersion).filter(Boolean)
+    );
     return ["All Frameworks", ...Array.from(versions)];
   }, [deploymentPoints]);
 
-  const tableActions = useMemo(() => [
-    {
-      type: "dropdown",
-      label: frameworkFilter,
-      triggerClassName: "w-fit",
-      options: frameworkOptions.map((opt, idx) => ({
-        label: opt,
-        onClick: () => {
-          setFrameworkFilter(opt);
-          setPage(1);
-        },
-        separatorBefore: idx === 1,
-      })),
-    },
-  ], [frameworkFilter, frameworkOptions]);
+  const tableActions = useMemo(
+    () => [
+      {
+        type: "dropdown",
+        label: frameworkFilter,
+        triggerClassName: "w-fit",
+        options: frameworkOptions.map((opt, idx) => ({
+          label: opt,
+          onClick: () => {
+            setFrameworkFilter(opt);
+            setPage(1);
+          },
+          separatorBefore: idx === 1,
+        })),
+      },
+    ],
+    [frameworkFilter, frameworkOptions]
+  );
 
   const renderContent = () => {
     if (isLoading) {
@@ -280,9 +296,7 @@ export default function DeploymentPoints() {
         </div>
 
         {/* Cards grid */}
-        <div className="p-2">
-          {renderContent()}
-        </div>
+        <div className="p-2">{renderContent()}</div>
 
         {/* Pagination Footer */}
         <CustomPagination
