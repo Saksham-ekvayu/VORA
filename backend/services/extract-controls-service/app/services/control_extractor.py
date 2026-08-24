@@ -458,10 +458,6 @@ def _flag_singleton_fabricated_children(controls: list) -> list:
     return controls
 
 
-
-
-
-
 def _drop_ids_with_whitespace(controls: list) -> list:
     """
     Structural safety net #7 (deterministic, shape-based, framework-agnostic).
@@ -493,8 +489,6 @@ def _drop_ids_with_whitespace(controls: list) -> list:
             f"standard, e.g. Bibliography entry, not a real control): {dropped}"
         )
     return kept
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -965,6 +959,79 @@ def _run_stage1_call(prompt: str, tag: str) -> list:
     return best_salvage
 
 
+# ---------------------------------------------------------------------------
+# Deployment-points guarantee helpers (THE FIX)
+#
+# Two related bugs this addresses:
+#   1) Deployment point COUNT was inconsistent (sometimes 4, sometimes 5)
+#      because the old Stage-2 prompt literally asked for "4-5 points".
+#   2) Deployment points were sometimes 0/empty entirely, because any
+#      control whose description was <=100 chars was SKIPPED from Stage 2
+#      completely and hard-set to "" (see the old needs_dp/no_dp_needed
+#      split). A control with an empty/short/low-quality description
+#      would silently end up with zero deployment points in the UI.
+#
+# Fix: every control now goes through Stage 2, the prompt strictly
+# requires exactly 5 points, and — regardless of what the LLM actually
+# returns — _validate_deployment_points() deterministically pads/trims
+# the result to guarantee exactly 5 points every single time. This never
+# depends on the LLM "behaving"; it's enforced in code after the fact.
+# ---------------------------------------------------------------------------
+
+
+def _generate_default_deployment_points(control_name: str) -> str:
+    """
+    Generate 5 generic-but-sensible deployment points when the control's
+    description is too thin/empty for the LLM to derive real steps from.
+    Used as a guaranteed fallback so a control NEVER ends up with 0 points.
+    """
+    name = (control_name or "this control").strip() or "this control"
+    points = [
+        f"Assign clear ownership and responsibility for implementing {name}.",
+        f"Document the policy or procedure required to operationalize {name}.",
+        f"Communicate the requirements of {name} to all relevant personnel.",
+        f"Establish periodic monitoring/review to verify {name} is being followed.",
+        f"Maintain records or evidence demonstrating {name} is implemented and maintained.",
+    ]
+    return "\n".join(f"{i+1}. {p}" for i, p in enumerate(points))
+
+
+def _validate_deployment_points(raw: Any, control_name: str = "") -> str:
+    """
+    Deterministic safety net: guarantees the returned string ALWAYS has
+    EXACTLY 5 numbered deployment points, no matter what the LLM returned
+    (0, 3, 4, 6, malformed, or empty). This is what actually fixes the
+    "sometimes 4, sometimes 0" bug — it doesn't rely on the LLM behaving,
+    it enforces the count in code after the fact.
+    """
+    if not raw or not str(raw).strip():
+        return _generate_default_deployment_points(control_name)
+
+    raw_str = str(raw).strip()
+    points = re.split(r"\n?\s*\d+\.\s+", raw_str)
+    points = [p.strip() for p in points if p.strip()]
+
+    if not points:
+        return _generate_default_deployment_points(control_name)
+
+    if len(points) > 5:
+        points = points[:5]
+    elif len(points) < 5:
+        default_texts = [
+            re.sub(r"^\d+\.\s*", "", d)
+            for d in _generate_default_deployment_points(control_name).split("\n")
+        ]
+        i = 0
+        while len(points) < 5 and i < len(default_texts):
+            if default_texts[i] not in points:
+                points.append(default_texts[i])
+            i += 1
+        while len(points) < 5:
+            points.append("Review and reinforce adherence to this control periodically.")
+
+    return "\n".join(f"{i+1}. {p}" for i, p in enumerate(points))
+
+
 def extract_framework_controls(
     chunks: list, framework_id: str, is_deployment: bool = False
 ) -> list:
@@ -980,7 +1047,8 @@ def extract_framework_controls(
     2. Completeness check — re-scan for any control the batched pass
        still missed (second-layer safety net, catches batch-boundary
        edge cases).
-    3. Generate Deployment_points for each control (in batches).
+    3. Generate Deployment_points for EVERY control (in batches) —
+       guaranteed exactly 5 points per control, never 0, never 4/6.
     """
     if not chunks:
         logger.warning("[EXTRACT] No chunks provided")
@@ -1118,6 +1186,9 @@ slice you were given.
     # _make_chunk_batches returns exactly ONE batch containing all the
     # text — i.e. behavior is IDENTICAL to the old single-call approach
     # in that case. Nothing changes for small documents.
+    #
+    # NOTE: Stage 1 (extraction accuracy) is UNCHANGED by this fix —
+    # only Stage 2 (deployment points) below was modified.
     # ------------------------------------------------------------------
     batches = _make_chunk_batches(chunks, EXTRACTION_CHUNK_BATCH_SIZE, EXTRACTION_CHUNK_OVERLAP)
     logger.info(
@@ -1150,12 +1221,9 @@ slice you were given.
     controls = _run_completeness_check(text, controls, STRUCTURAL_RULE)
     logger.info(f"[EXTRACT] After completeness check: {len(controls)} candidates total")
 
-
-
     # NEW — drop reference-list citations before any other structural filter
     controls = _drop_ids_with_whitespace(controls)
     logger.info(f"[EXTRACT] After whitespace-ID safety net: {len(controls)} candidates total")
-
 
     # Deterministic document-style detection — drives which safety nets apply
     is_label_based_doc = _detect_label_based_document(text)
@@ -1188,36 +1256,22 @@ slice you were given.
     # controls exist — only their order.
     controls.sort(key=lambda c: _natural_sort_key(str(c.get("Control_id", ""))) if isinstance(c, dict) else [])
 
-    # Stage 2: Generate deployment points (batched, conditional)
+    # ------------------------------------------------------------------
+    # STAGE 2 — Deployment points. Generated for EVERY control, no
+    # skipping based on description length. Guaranteed exactly 5 points
+    # per control via _validate_deployment_points(), regardless of what
+    # the LLM actually returns.
+    # ------------------------------------------------------------------
     logger.info(
-        f"[EXTRACT] Stage 2: Generating deployment points in batches of {DEPLOYMENT_BATCH_SIZE}"
+        f"[EXTRACT] Stage 2: Generating deployment points in batches of {DEPLOYMENT_BATCH_SIZE} "
+        f"(every control gets exactly 5 points — no skipping based on description length)"
     )
 
     final_controls = []
+    total_dp_batches = (len(controls) + DEPLOYMENT_BATCH_SIZE - 1) // DEPLOYMENT_BATCH_SIZE
 
-    needs_dp = []
-    no_dp_needed = []
-
-    for ctrl in controls:
-        desc = str(ctrl.get("Control_description", "")).strip()
-        if len(desc) > 100:
-            needs_dp.append(ctrl)
-        else:
-            ctrl["Deployment_points"] = ""
-            no_dp_needed.append(ctrl)
-
-    logger.info(
-        f"[EXTRACT] Stage 2 filtering: {len(needs_dp)} controls have substantial descriptions (>100 chars), "
-        f"{len(no_dp_needed)} have minimal/empty descriptions (will not generate deployment points)"
-    )
-    logger.info(
-        f"[EXTRACT] Skipping Stage 2 LLM calls for {len(no_dp_needed)} controls without document content"
-    )
-
-    total_dp_batches = (len(needs_dp) + DEPLOYMENT_BATCH_SIZE - 1) // DEPLOYMENT_BATCH_SIZE if needs_dp else 0
-
-    for batch_idx in range(0, len(needs_dp), DEPLOYMENT_BATCH_SIZE):
-        batch = needs_dp[batch_idx : batch_idx + DEPLOYMENT_BATCH_SIZE]
+    for batch_idx in range(0, len(controls), DEPLOYMENT_BATCH_SIZE):
+        batch = controls[batch_idx : batch_idx + DEPLOYMENT_BATCH_SIZE]
         batch_num = batch_idx // DEPLOYMENT_BATCH_SIZE + 1
 
         batch_ids = [str(c.get("Control_id", "")) for c in batch]
@@ -1227,28 +1281,30 @@ slice you were given.
 
         prompt_stage2 = f"""You are an analyser of framework controls.
 
-CRITICAL: Only generate deployment points if the control description contains enough detail to derive implementation steps from.
-If the description is vague or lacks specifics, return empty string for Deployment_points.
-
-For each control with substantial description, generate 4-5 deployment points.
+CRITICAL RULES (no exceptions):
+- EVERY control MUST have EXACTLY 5 deployment points. NOT 4, NOT 6, NEVER empty.
+- If the control description is vague, short, or minimal, you MUST still generate 5
+  sensible, generic deployment points based on the control's NAME and general best
+  practice for that type of control. Do NOT return an empty string under any circumstance.
 
 Deployment points must describe:
-- How to implement this control based on what the document actually says
-- Specific actions required (derived from the control description, not invented)
+- How to implement this control based on what the document says (or general best
+  practice if the description lacks detail)
+- Specific actions/steps required
 - How to operationalize it
 - Important implementation details
 
-Every point should be numbered (1. 2. 3. etc.).
-Store all points as a single string. If insufficient detail in description, use empty string "".
+Every point must be numbered: 1. 2. 3. 4. 5.
+Store all 5 points as a SINGLE string with newlines between them.
 
 IMPORTANT: Keep Section_name exactly as provided. Do NOT change it.
 
 Input JSON:
 {json.dumps(batch)}
 
-Add Deployment_points field to each control.
+Add Deployment_points field to each control (a string with EXACTLY 5 numbered points).
 Use JSON list ONLY:
-[{{"Control_id": "","Control_name": "","Control_type":"","Control_description": "","Section_name": "","Deployment_points": ""}}]
+[{{"Control_id": "","Control_name": "","Control_type":"","Control_description": "","Section_name": "","Deployment_points": "1. ...\\n2. ...\\n3. ...\\n4. ...\\n5. ..."}}]
 
 Return ONLY JSON. No markdown."""
 
@@ -1279,14 +1335,17 @@ Return ONLY JSON. No markdown."""
             merged_batch = []
             for orig_ctrl in batch:
                 c_id = str(orig_ctrl.get("Control_id", "")).strip()
-                orig_ctrl["Deployment_points"] = dp_map.get(
-                    c_id, orig_ctrl.get("Deployment_points", "")
-                )
+                c_name = str(orig_ctrl.get("Control_name", "")).strip()
+                raw_dp = dp_map.get(c_id, orig_ctrl.get("Deployment_points", ""))
+                # Deterministic safety net — guarantees exactly 5 points
+                # regardless of what the LLM actually returned.
+                orig_ctrl["Deployment_points"] = _validate_deployment_points(raw_dp, c_name)
                 merged_batch.append(orig_ctrl)
 
             final_controls.extend(merged_batch)
             logger.info(
-                f"[EXTRACT] DP Batch {batch_num} OK — added {len(merged_batch)} controls with deployment points"
+                f"[EXTRACT] DP Batch {batch_num} OK — added {len(merged_batch)} controls, "
+                f"all guaranteed exactly 5 deployment points"
             )
 
         except json.JSONDecodeError as e:
@@ -1295,30 +1354,29 @@ Return ONLY JSON. No markdown."""
                 logger.warning(
                     f"[EXTRACT] DP Batch {batch_num} truncated — consider lowering DEPLOYMENT_BATCH_SIZE"
                 )
+            # Even on total failure, every control still gets 5 default points.
             for ctrl in batch:
-                ctrl["Deployment_points"] = ""
+                ctrl["Deployment_points"] = _validate_deployment_points(
+                    "", str(ctrl.get("Control_name", ""))
+                )
             final_controls.extend(batch)
 
         except Exception as e:
             logger.exception(f"[EXTRACT] DP Batch {batch_num} API error: {e}")
             for ctrl in batch:
-                ctrl["Deployment_points"] = ""
+                ctrl["Deployment_points"] = _validate_deployment_points(
+                    "", str(ctrl.get("Control_name", ""))
+                )
             final_controls.extend(batch)
 
-    final_controls.extend(no_dp_needed)
-
-    # Final cosmetic sort — after merging needs_dp/no_dp_needed back
-    # together (which otherwise puts all no_dp_needed controls at the end,
-    # breaking natural ID order), sort once more by natural ID order.
+    # Final cosmetic sort by natural ID order
     final_controls.sort(key=lambda c: _natural_sort_key(str(c.get("Control_id", ""))) if isinstance(c, dict) else [])
 
     logger.info(
-        f"[EXTRACT] Stage 2 complete: Generated deployment points for {len(needs_dp)} document-backed controls"
+        f"[EXTRACT] Stage 2 complete: {len(final_controls)} controls — every single one has "
+        f"exactly 5 deployment points guaranteed"
     )
-    logger.info(
-        f"[EXTRACT] Complete: {len(final_controls)} total controls extracted "
-        f"({len(needs_dp)} with deployment points, {len(no_dp_needed)} without)"
-    )
+    logger.info(f"[EXTRACT] Complete: {len(final_controls)} total controls extracted")
     return final_controls
 
 
