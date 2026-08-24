@@ -114,7 +114,43 @@ def _load_document_chunks(file_path: str, chunk_size: int = 1000) -> list[str]:
             except Exception as e:
                 logger.warning(f"[LOAD] pdfplumber failed: {e}")
 
-            # Try 2: If pdfplumber didn't work, use OCR directly
+            # Try 1.5: If pdfplumber didn't work (or mis-reported "0 pages"
+            # on a PDF that actually DOES have a real text layer), try
+            # PyMuPDF (fitz) before falling back to lossy OCR. Different
+            # parser than pdfplumber — frequently succeeds exactly where
+            # pdfplumber fails. This is what avoids OCR-style corruption
+            # (e.g. "A.11.3.1" being misread as "AI.3.1") on PDFs that
+            # actually have a real text layer.
+            if not text_extracted:
+                try:
+                    import fitz  # PyMuPDF
+
+                    logger.info("[LOAD] Attempt 1.5: PyMuPDF (fitz) text extraction...")
+                    doc = fitz.open(file_path)
+                    logger.info(f"[LOAD] PyMuPDF reports {doc.page_count} pages")
+                    if doc.page_count > 0:
+                        for page_num, page in enumerate(doc, 1):
+                            try:
+                                page_text = page.get_text("text")
+                                if page_text and page_text.strip():
+                                    for line in page_text.split("\n"):
+                                        if line.strip():
+                                            text_lines.append(line.strip())
+                                    text_extracted = True
+                            except Exception as e:
+                                logger.warning(f"[LOAD] Page {page_num} PyMuPDF failed: {e}")
+                        if text_extracted:
+                            logger.info(f"[LOAD]  PyMuPDF extracted {len(text_lines)} lines")
+                    doc.close()
+                except ImportError:
+                    logger.warning(
+                        "[LOAD] PyMuPDF not installed — skipping Attempt 1.5. "
+                        "Run: pip install PyMuPDF"
+                    )
+                except Exception as e:
+                    logger.warning(f"[LOAD] PyMuPDF attempt failed: {e}")
+
+            # Try 2: If pdfplumber and PyMuPDF didn't work, use OCR
             if not text_extracted:
                 logger.info("[LOAD] Attempt 2: OCR extraction (pdf2image + pytesseract)...")
                 try:
