@@ -15,6 +15,7 @@ import { capitalizeFirst } from "@/utils/commonUtils";
 export function SectionButton({ section, isActive, count, onClick }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className={`w-full flex flex-col p-2.5 rounded border text-left cursor-pointer transition-all duration-200 ${
         isActive
