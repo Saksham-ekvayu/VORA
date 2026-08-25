@@ -135,35 +135,38 @@ def generate_recommendation(
     control_name: str,
     dp_text: str,
     reason: str,
+    relevant: bool = True,
 ) -> str:
-    """Generate solid, actionable recommendations based on confidence level."""
+    """Generate solid, actionable recommendations based on compliance and confidence level."""
     confidence = (confidence or "low").lower().strip()
+
+    if not relevant:
+        return (
+            f"REQUIRES ACTION: The deployment point is not satisfied. "
+            f"Reason: {reason}. "
+            f"Action: Implement the required control: '{dp_text}' and document it to ensure compliance."
+        )
 
     if confidence == "high":
         # HIGH: Clear, actionable steps for immediate implementation
         return (
-            f"This deployment point is well-satisfied. "
-            f"Recommend immediate approval and implementation. "
-            f"Action: {dp_text}. "
-            f"Evidence confirms control '{control_id}' requirement."
+            f"APPROVED FOR IMPLEMENTATION: This deployment point is well-satisfied. "
+            f"Action: Maintain and audit regularly. "
+            f"Reason: {reason}."
         )
     elif confidence == "medium":
         # MEDIUM: Require thorough review before proceeding
         return (
-            f"This deployment point shows partial alignment. "
-            f"Recommend detailed review and validation before implementation. "
-            f"Steps: (1) Review provided evidence, (2) Validate against '{control_name}', "
-            f"(3) Clarify gaps, (4) Re-submit for approval. "
-            f"Context: {reason}"
+            f"CONDITIONAL APPROVAL: This deployment point shows partial alignment. "
+            f"Recommend review and validation. "
+            f"Reason: {reason}."
         )
     else:
         # LOW: Require expert analysis
         return (
-            f"This deployment point requires expert analysis. "
-            f"Recommendation: Conduct comprehensive review by compliance expert before any implementation. "
-            f"Priority: Schedule detailed assessment. "
+            f"REQUIRES EXPERT REVIEW: This deployment point shows weak alignment. "
             f"Reason: {reason}. "
-            f"Next Step: Expert validation and detailed implementation plan required."
+            f"Action: Escalate to compliance officer for detailed assessment before implementing: {dp_text}"
         )
 
 
@@ -253,29 +256,12 @@ async def analyze_with_llm_async(
 
         client = AsyncOpenAI(**client_args)
 
-        # Check if we are running local Qwen (which has context length limitations like 256)
-        is_local_qwen = False
-        if openai_base and ("10101" in openai_base or "192.168" in openai_base or "localhost" in openai_base):
-            is_local_qwen = True
-        if target_model and "qwen" in target_model.lower():
-            is_local_qwen = True
-
-        if is_local_qwen:
-            # Ultra-compact prompts for 256-token limit Qwen model
-            system_prompt = f'JSON only: {{"agent_name": "{agent_name}", "relevant": bool, "reason": "2-3 words", "confidence": "high"|"medium"|"low"}}'
-            # Restrict everything to save tokens
-            evidence_snippet = text[:60]
-            dp_snippet = dp_text[:70]
-            user_prompt = f"Rule: {dp_snippet}\n" f"Evidence: {evidence_snippet}\n" "Match? JSON:"
-            requested_max_tokens = 70
-        else:
-            # Standard detailed prompt for large context models
-            system_prompt = (
-                f"You are the {agent_name}, responsible for evaluating compliance. "
-                "Evaluate if the deployment point is satisfied by the document evidence. "
-                "Return only valid JSON with all required fields."
-            )
-            user_prompt = f"""
+        system_prompt = (
+            f"You are the {agent_name}, responsible for evaluating compliance. "
+            "Evaluate if the deployment point is satisfied by the document evidence and provide an appropriate recommendation. "
+            "Return only valid JSON."
+        )
+        user_prompt = f"""
 You are a strict compliance evaluator.
 
 Your job is to decide whether the document satisfies the given control and deployment point.
@@ -287,7 +273,8 @@ Schema:
  "agent_name": "string",
  "relevant": true or false,
  "reason": "string",
- "confidence": "high" | "medium" | "low"
+ "confidence": "high" | "medium" | "low",
+ "recommendation": "string"
 }}
 
 Decision Rules:
@@ -300,6 +287,11 @@ Confidence Rules:
 high → strong, explicit match
 medium → partial but reasonable match
 low → weak or unclear match
+
+Recommendation Rules:
+1. Provide a custom, actionable recommendation in the "recommendation" field.
+2. If relevant = true, write: "APPROVED FOR IMPLEMENTATION: [actionable maintenance steps or immediate deployment steps for {dp_text}]."
+3. If relevant = false, write: "REQUIRES ACTION: [steps to document or implement the required controls to satisfy the {dp_text} requirement]."
 
 Strict Rules:
 Return ONLY JSON
@@ -321,7 +313,7 @@ Deployment Point:
 Document (Snippet):
 {text[:3000]}
 """
-            requested_max_tokens = 200
+        requested_max_tokens = 250
 
         logger.info(f"[LLM-ASYNC] [SENDING] Dispatching request payload to model '{target_model}'...")
         resp = await client.chat.completions.create(
@@ -643,6 +635,7 @@ async def evaluate_compliance_task(dd_id: str) -> None:
                                 reason = "This deployment point was not found/extracted in the uploaded deployment document."
                                 confidence = "high"
                                 similarity = 0.0
+                                recommendation = f"REQUIRES ACTION: The deployment point is not satisfied because no matching evidence was found in the document. Action: Document and implement: {dp_text}"
                                 logger.info(
                                     f"[COMPLIANCE-TASK] [DECISION] Target: {dp_id} -> NOT COMPLIANT (No Evidence)"
                                 )
@@ -666,6 +659,11 @@ async def evaluate_compliance_task(dd_id: str) -> None:
                                 relevant = llm_res.get("relevant", False)
                                 reason = llm_res.get("reason", "No reason provided")
                                 confidence = llm_res.get("confidence", "low")
+                                recommendation = llm_res.get("recommendation")
+                                if not recommendation:
+                                    recommendation = generate_recommendation(
+                                        confidence, control_id, control_name, dp_text, reason, relevant
+                                    )
 
                             final_score = compute_final_score(
                                 similarity,
@@ -683,16 +681,6 @@ async def evaluate_compliance_task(dd_id: str) -> None:
                             logger.info(
                                 f"[COMPLIANCE-TASK] [DP-STATUS] Target: {dp_id} | Similarity: {similarity}% | LLM Relevant: {relevant} | Status: {compliance_status} | Reason: {reason}"
                             )
-
-                            # Generate recommendation based on confidence level - NO LLM CALL (avoids token overflow)
-                            # Use hardcoded logic based on confidence level and reason
-                            conf_level = (confidence or "low").lower().strip()
-                            if conf_level == "high":
-                                recommendation = f"APPROVED FOR IMPLEMENTATION: {reason}. Proceed with immediate deployment of: {dp_text}"
-                            elif conf_level == "medium":
-                                recommendation = f"CONDITIONAL APPROVAL: {reason}. Conduct thorough validation and stakeholder review before implementing: {dp_text}"
-                            else:  # low
-                                recommendation = f"REQUIRES EXPERT REVIEW: {reason}. Escalate to compliance officer for detailed assessment before any implementation of: {dp_text}"
 
                             return {
                                 "dp_id": dp_id,
