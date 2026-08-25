@@ -391,8 +391,20 @@ export default function AuditorDashboard() {
                       {/* Bar chart */}
                       <div className="flex-1">
                         <ProgressBar
-                          value={Math.max((dp.count / Math.max(...(dashboardData?.deploymentPoints?.map((d) => d.count) || [1]))) * 100, 5)}
-                          color={DASHBOARD_CONFIG.getFrameworkConfig(dp.version).barColor}
+                          value={Math.max(
+                            (dp.count /
+                              Math.max(
+                                ...(dashboardData?.deploymentPoints?.map(
+                                  (d) => d.count
+                                ) || [1])
+                              )) *
+                              100,
+                            5
+                          )}
+                          color={
+                            DASHBOARD_CONFIG.getFrameworkConfig(dp.version)
+                              .barColor
+                          }
                         />
                       </div>
                       {/* Count */}

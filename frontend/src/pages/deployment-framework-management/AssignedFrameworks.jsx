@@ -1,12 +1,13 @@
-/* eslint-disable react/prop-types */
-
 import { useState } from "react";
-import { useTableData } from "@/components/data-table/hooks/useTableData";
-import { getAssignmentFrameworks } from "@/services/deploymentFrameworkService";
-import GridCardView from "@/components/grid-card/GridCardView";
-import AssignedFrameworkCard from "./components/custom/AssignedFrameworkCard";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useTableData } from "@/components/data-table/hooks/useTableData";
+import { getAssignmentFrameworks } from "@/services/deploymentFrameworkService";
+import DataTable from "@/components/data-table/DataTable";
+import CustomBadge from "@/components/custom/CustomBadge";
+import UserMiniCard from "@/components/custom/UserMiniCard";
+import ActionDropdown from "@/components/custom/ActionDropdown";
+import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
 import {
   downloadFrameworkFile,
   getFrameworkById,
@@ -19,6 +20,7 @@ import {
   STATUS_PENDING,
   STATUS_REVOKED,
 } from "@/utils/commonUtils";
+import FrameworkMiniCard from "@/components/custom/FrameworkMiniCard";
 
 function AssignedFrameworks() {
   const navigate = useNavigate();
@@ -34,7 +36,7 @@ function AssignedFrameworks() {
     onSort: handleSort,
     onFilterChange,
   } = useTableData(getAssignmentFrameworks, {
-    defaultLimit: 12,
+    defaultLimit: 10,
     defaultSortBy: "assignedAt",
     defaultSortOrder: "desc",
     emptyMessage: "No frameworks have been assigned yet",
@@ -58,11 +60,11 @@ function AssignedFrameworks() {
     try {
       const response = await getFrameworkById(framework.frameworkId);
       if (response.success && response.data) {
-        const framework = response.data;
+        const frameworkData = response.data;
         const currentVersion =
-          framework.fileVersions?.find(
-            (v) => v.fileVersion === framework.currentFileVersion
-          ) || framework.fileVersions?.[0];
+          frameworkData.fileVersions?.find(
+            (v) => v.fileVersion === frameworkData.currentFileVersion
+          ) || frameworkData.fileVersions?.[0];
 
         if (!currentVersion?.fileId) {
           toast.error("File information not available");
@@ -70,9 +72,9 @@ function AssignedFrameworks() {
         }
 
         await downloadFrameworkFile(
-          framework.id,
+          frameworkData.id,
           currentVersion.fileId,
-          currentVersion.originalFileName || framework.frameworkName
+          currentVersion.originalFileName || frameworkData.frameworkName
         );
       }
     } catch (err) {
@@ -80,6 +82,105 @@ function AssignedFrameworks() {
     } finally {
       setIsDownloading(false);
     }
+  };
+
+  /* ---------------- TABLE CONFIG ---------------- */
+  const columns = [
+    {
+      key: "frameworkName",
+      label: "Framework Name",
+      sortable: false,
+      render: (value, row) => (
+        <FrameworkMiniCard
+          name={row.frameworkName}
+          description={row.frameworkVersion}
+          link={`/assigned-frameworks/${row.id}`}
+        />
+      ),
+    },
+    {
+      key: "status",
+      label: "Status",
+      sortable: false,
+      render: (value) => <CustomBadge status={value} size="sm" />,
+    },
+    {
+      key: "finalization",
+      label: "Finalization",
+      sortable: false,
+      render: (value, row) => (
+        <CustomBadge
+          size="sm"
+          status={row.finalization?.isFinalized ? "Finalized" : "Pending"}
+        />
+      ),
+    },
+    {
+      key: "assignedBy",
+      label: "Action By",
+      sortable: false,
+      render: (value, row) => {
+        let user = null;
+        if (row.status === "revoked" && row.revocation?.revokedBy) {
+          user = row.revocation.revokedBy;
+        } else if (row.assignment?.assignedBy) {
+          user = row.assignment.assignedBy;
+        }
+
+        if (user) {
+          return (
+            <UserMiniCard
+              name={user.name}
+              email={user.email}
+              avatar={user.avatar}
+            />
+          );
+        }
+        return <span className="text-sm font-medium">System</span>;
+      },
+    },
+    {
+      key: "assignedAt",
+      label: "Action At",
+      sortable: true,
+      render: (value, row) => {
+        let date = row.assignedAt;
+        if (row.status === "revoked" && row.revocation?.revokedAt) {
+          date = row.revocation.revokedAt;
+        } else if (row.assignment?.assignedAt) {
+          date = row.assignment.assignedAt;
+        }
+        return (
+          <span className="text-sm whitespace-nowrap">
+            {formatDateWithMonthNameAndTime(date)}
+          </span>
+        );
+      },
+    },
+  ];
+
+  const renderActions = (row) => {
+    const actions = [
+      {
+        id: `view-${row.id}`,
+        label: "View Details",
+        icon: "eye",
+        onClick: () => navigate(`/assigned-frameworks/${row.id}`),
+      },
+      {
+        id: `download-${row.id}`,
+        label: "Download Framework",
+        icon: "download",
+        onClick: () => handleDownloadFramework(row),
+        disabled: isDownloading,
+      },
+    ];
+
+    return (
+      <div className="flex justify-center">
+        <ActionDropdown actions={actions} />
+      </div>
+    );
   };
 
   const getHeaderActions = () => {
@@ -120,7 +221,7 @@ function AssignedFrameworks() {
             onClick: () => handleFinalizationFilter(STATUS_FINALIZED),
           },
           {
-            label: "Not finalized",
+            label: "Pending",
             onClick: () => handleFinalizationFilter(STATUS_PENDING),
           },
         ],
@@ -131,24 +232,18 @@ function AssignedFrameworks() {
   /* ---------------- UI ---------------- */
   return (
     <div className="my-2">
-      <GridCardView
+      <DataTable
+        entityName="Assigned Frameworks"
+        columns={columns}
         data={assignmentResults}
         loading={loading}
         onSearch={handleSearch}
+        onSort={handleSort}
+        sortConfig={sortConfig}
         searchTerm={searchTerm}
-        sortOrder={sortConfig.sortOrder}
-        headerActions={getHeaderActions()}
-        onSortChange={() => handleSort(sortConfig.sortBy)}
         pagination={pagination}
-        renderCard={(assignment) => (
-          <AssignedFrameworkCard
-            key={assignment.id}
-            framework={assignment}
-            onNavigate={(id) => navigate(`/assigned-frameworks/${id}`)}
-            onDownload={handleDownloadFramework}
-            isDownloading={isDownloading}
-          />
-        )}
+        renderActions={renderActions}
+        headerActions={getHeaderActions()}
         searchPlaceholder="Search by framework name or code..."
         emptyMessage={emptyMessage}
       />

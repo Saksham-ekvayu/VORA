@@ -691,7 +691,9 @@ export default function ControlsPanel({
     });
   };
 
-  const selectableControls = filteredControls.filter(c => !notApplicableIds.has(c._uiKey));
+  const selectableControls = filteredControls.filter(
+    (c) => !notApplicableIds.has(c._uiKey)
+  );
 
   const allSelected =
     selectableControls.length > 0 &&

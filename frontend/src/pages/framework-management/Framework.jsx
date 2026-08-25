@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import DataTable from "@/components/data-table/DataTable";
 import UploadFrameworkModal from "./components/UploadFrameworkModal";
 import UpdateFrameworkModal from "./components/UpdateFrameworkModal";
@@ -32,6 +32,7 @@ import {
 import { useExpertCategoryAccess } from "@/hooks/useExpertCategoryAccess";
 import { useTableData } from "@/components/data-table/hooks/useTableData";
 import StatusCard from "@/components/custom/StatusCard";
+import FrameworkMiniCard from "@/components/custom/FrameworkMiniCard";
 
 // ========== HELPER FUNCTIONS ==========
 // Extract expert actions to reduce cognitive complexity of renderActions
@@ -159,27 +160,15 @@ function Framework() {
   /* ---------------- TABLE CONFIG ---------------- */
   const columns = [
     {
-      key: "frameworkVersion",
-      label: "Framework Version",
-      sortable: false,
-      render: (value) => (
-        <span className="font-mono text-sm bg-muted px-2 py-1 rounded">
-          {value}
-        </span>
-      ),
-    },
-    {
       key: "frameworkName",
       label: "Framework Name",
       sortable: false,
       render: (value, row) => (
-        <Link
-          to={`/frameworks/${row.id}`}
-          className="font-medium text-foreground line-clamp-2 hover:underline"
-          title={value}
-        >
-          {value}
-        </Link>
+        <FrameworkMiniCard
+          name={row.frameworkName}
+          description={row.frameworkVersion}
+          link={`/frameworks/${row.id}`}
+        />
       ),
     },
     {
