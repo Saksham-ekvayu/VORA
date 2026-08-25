@@ -406,31 +406,6 @@ async def _update_deployment_framework_mergeDocument_status(
         session.add(df)
 
 
-async def _update_deployment_framework_mergedControls(
-    session: Any, df_id: str, pkg_ver: str, merged_controls: dict[str, Any]
-) -> None:
-    """Update deployment framework package with merged controls after merge completes."""
-    df = await session.get(DeploymentFramework, df_id)
-    if not df:
-        return
-
-    packages = list(df.packages or [])
-    updated = False
-
-    for p_idx, pkg in enumerate(packages):
-        if not isinstance(pkg, dict) or pkg.get("packageVersion") != pkg_ver:
-            continue
-
-        pkg["mergedControls"] = merged_controls
-        packages[p_idx] = pkg
-        updated = True
-        break
-
-    if updated:
-        df.packages = packages
-        flag_modified(df, "packages")
-        session.add(df)
-
 
 async def run_framework_extraction(framework_id: str, file_id: str) -> None:
     """Load Framework, extract controls using AI, save to document_extraction table"""
@@ -950,9 +925,13 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
 
             file_hashes = sorted(list(set(file_hashes)))
 
-            # Find or create DeploymentPackageMerge record by fileHashes
+            # Find or create DeploymentPackageMerge record
+            existing_merge_id = pkg_info.get("mergeDocument")
             existing_merge = None
-            if file_hashes:
+            if existing_merge_id:
+                existing_merge = await session.get(DeploymentPackageMerge, existing_merge_id)
+
+            if not existing_merge and file_hashes:
                 existing_merge = (
                     (
                         await session.execute(
@@ -974,6 +953,7 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
                 session.add(existing_merge)
             else:
                 existing_merge.status = "processing"
+                existing_merge.fileHashes = file_hashes
                 session.add(existing_merge)
 
             await session.commit()
@@ -1027,14 +1007,7 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
             await session.flush()
             await session.commit()
 
-            # Step 3: Update deployment framework package with mergedControls
-            logger.info(
-                "[PACKAGE-MERGE] Step 3: Updating deployment framework with merged controls..."
-            )
-            await _update_deployment_framework_mergedControls(
-                session, df_id, pkg_ver, controls_payload
-            )
-            await session.commit()
+
 
             # Step 4: Clear stale comparison results so they get recalculated
             logger.info("[PACKAGE-MERGE] Step 4: Clearing stale comparison results...")
@@ -1063,23 +1036,19 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
 
         try:
             async with session_scope() as session:
-                if file_hashes:
-                    existing_merge = (
-                        (
-                            await session.execute(
-                                select(DeploymentPackageMerge)
-                                .where(DeploymentPackageMerge.fileHashes == file_hashes)
-                                .order_by(DeploymentPackageMerge.createdAt.desc())
-                            )
-                        )
-                        .scalars()
-                        .first()
-                    )
-                    if existing_merge:
-                        existing_merge.status = "failed"
-                        existing_merge.summary = {"message": f"Merge failed: {str(exc)}"}
-                        session.add(existing_merge)
-                        await session.commit()
+                df = await session.get(DeploymentFramework, df_id)
+                if df:
+                    for pkg in (df.packages or []):
+                        if isinstance(pkg, dict) and pkg.get("packageVersion") == pkg_ver:
+                            merge_id = pkg.get("mergeDocument")
+                            if merge_id:
+                                existing_merge = await session.get(DeploymentPackageMerge, merge_id)
+                                if existing_merge:
+                                    existing_merge.status = "failed"
+                                    existing_merge.summary = {"message": f"Merge failed: {str(exc)}"}
+                                    session.add(existing_merge)
+                                    await session.commit()
+                            break
         except Exception as db_exc:
             logger.error(f"[PACKAGE-MERGE] Failed to update failure status: {db_exc}")
 
