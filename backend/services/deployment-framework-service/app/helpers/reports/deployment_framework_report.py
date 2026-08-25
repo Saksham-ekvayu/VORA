@@ -115,11 +115,15 @@ def _map_dp_row(row: dict[str, Any], idx: int) -> dict[str, Any]:
 def _build_dp_data(gap_results: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     dp_data: dict[str, list[dict[str, Any]]] = {}
     for row in gap_results or []:
-        dep_id = row.get("deployment_framework_control_id") or row.get("assigned_framework_control_id")
-        if not dep_id:
+        assign_id = row.get("assigned_framework_control_id") or ""
+        dep_id = row.get("deployment_framework_control_id") or ""
+        
+        composite_key = f"{assign_id}::{dep_id}"
+        if composite_key == "::":
             continue
-        dp_data.setdefault(dep_id, [])
-        dp_data[dep_id].append(_map_dp_row(row, len(dp_data[dep_id])))
+            
+        dp_data.setdefault(composite_key, [])
+        dp_data[composite_key].append(_map_dp_row(row, len(dp_data[composite_key])))
     return dp_data
 
 
@@ -139,23 +143,27 @@ def _avg_sim(dp_rows: list[dict[str, Any]]) -> float:
 def _process_comparison_control(
     ctrl: dict[str, Any], dp_data: dict[str, list[dict[str, Any]]]
 ) -> dict[str, Any]:
-    control_id = (
-        ctrl.get("deployment_framework_control_id") or ctrl.get("assigned_framework_control_id") or ""
-    )
+    assign_id = ctrl.get("assigned_framework_control_id") or ""
+    dep_id = ctrl.get("deployment_framework_control_id") or ""
+    composite_key = f"{assign_id}::{dep_id}"
+    
+    control_id = dep_id or assign_id
+    
     raw_score = ctrl.get("comparison_score") or 0
     score = round(raw_score * 100) if raw_score <= 1 else round(raw_score)
 
-    impl, partial, not_impl = _count_from_dp_rows(dp_data.get(control_id, []))
-    sim = _avg_sim(dp_data.get(control_id, []))
+    impl, partial, not_impl = _count_from_dp_rows(dp_data.get(composite_key, []))
+    sim = _avg_sim(dp_data.get(composite_key, []))
 
     return {
         "id": control_id,
+        "composite_key": composite_key,
         "name": ctrl.get("assigned_framework_control_name")
         or ctrl.get("deployment_framework_control_name")
         or control_id,
-        "assigned_id": ctrl.get("assigned_framework_control_id") or "",
+        "assigned_id": assign_id,
         "assigned_name": ctrl.get("assigned_framework_control_name") or "",
-        "deployment_id": ctrl.get("deployment_framework_control_id") or "",
+        "deployment_id": dep_id,
         "deployment_name": ctrl.get("deployment_framework_control_name") or "",
         "score": score,
         "match": _normalise_match(score),
@@ -601,7 +609,7 @@ def _add_deployment_point_analysis(story: list, controls: list, dp_data: dict, t
         )
     )
     for ctrl in controls:
-        gaps = dp_data.get(ctrl["id"], [])
+        gaps = dp_data.get(ctrl.get("composite_key"), [])
         if not gaps:
             continue
         story.append(
