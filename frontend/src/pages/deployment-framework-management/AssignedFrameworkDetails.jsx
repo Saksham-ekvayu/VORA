@@ -19,6 +19,7 @@ import LoadingSpinner from "@/components/custom/Loader/LoadingSpinner";
 import UserAvatar from "@/components/custom/UserAvatar";
 import FileTypeCard from "@/components/custom/FileTypeCard";
 import ControlsPanel from "@/components/custom/ControlsPanel";
+import SearchInput from "@/components/custom/SearchInput";
 import { ControlModal } from "@/components/custom/modal";
 import AssignmentHistoryModal from "./components/AssignmentHistoryModal";
 import FinalizeFrameworkVersionModal from "./components/FinalizeFrameworkVersionModal";
@@ -272,6 +273,7 @@ function AssignedFrameworkDetails() {
   const [loading, setLoading] = useState(true);
   const [controlToEdit, setControlToEdit] = useState(null);
   const [controlToDelete, setControlToDelete] = useState(null);
+  const [globalSearch, setGlobalSearch] = useState("");
 
   const [expandedVersions, setExpandedVersions] = useState(new Set());
   const [showHistoryModal, setShowHistoryModal] = useState(false);
@@ -737,6 +739,13 @@ function AssignedFrameworkDetails() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      <SearchInput
+                        value={globalSearch}
+                        onChange={setGlobalSearch}
+                        onClear={() => setGlobalSearch("")}
+                        placeholder="Search Sections, Controls & DPs..."
+                        className="w-70 h-8 text-xs"
+                      />
                       <Button
                         variant="ghost"
                         size="icon"
@@ -778,6 +787,7 @@ function AssignedFrameworkDetails() {
                         showApplicability={true}
                         showOrgSpecificBadge={true}
                         isDeploymentFramework={true}
+                        globalSearch={globalSearch}
                       />
                     </div>
                   )}

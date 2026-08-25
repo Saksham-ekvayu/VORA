@@ -324,7 +324,9 @@ export default function AuditorDashboard() {
                       <span className="text-xs font-bold text-foreground w-9 text-right shrink-0 group-hover:text-primary transition-colors">
                         {fw.readiness}%
                       </span>
-                      <span className="text-xs ">({fw.implemented_dps}/{fw.total_dps})</span>
+                      <span className="text-xs ">
+                        ({fw.implemented_dps}/{fw.total_dps})
+                      </span>
                     </Link>
                   ))}
 
