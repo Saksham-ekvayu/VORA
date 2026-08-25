@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Any
@@ -199,6 +200,7 @@ def _process_assignment_control_for_synthesis(ctrl: dict, merged_control_map: di
     df_control_id = ""
     df_control_name = ""
     df_control_description = ""
+    merged_dps = []  # ✅ Initialize as empty list
     
     ctrl_name_lower = (ctrl.get("name") or "").strip().lower()
     if ctrl_name_lower in merged_control_map:
@@ -273,31 +275,33 @@ async def _synthesize_comparison_sections(
 
 
 def _find_best_dp_match(af_dp_text: str, deployment_dps: list[dict[str, Any]]) -> tuple[float, str, str]:
-    best_dp_score = 0.0
+    """Find best DP match using batch encoding."""
     best_df_dp_id = ""
     best_df_dp_text = ""
 
-    if not af_dp_text:
+    if not af_dp_text or not deployment_dps:
         return 0.0, "", ""
 
-    from app.services.comparison_runner import _similarity
+    from app.services.comparison_runner import _batch_encode, _batch_similarity
 
-    for df_dp in deployment_dps:
-        if not isinstance(df_dp, dict):
-            continue
-        df_dp_id = str(df_dp.get("id") or "")
-        df_dp_text = df_dp.get("point") or ""
+    # Extract all DP texts
+    dp_texts = [dp.get("point") or "" for dp in deployment_dps if isinstance(dp, dict)]
+    if not dp_texts:
+        return 0.0, "", ""
 
-        if df_dp_text:
-            dp_similarity = _similarity(af_dp_text, df_dp_text)
-            dp_score = dp_similarity * 100 if dp_similarity <= 1.0 else dp_similarity
+    # Batch encode all DPs at once
+    af_emb = _batch_encode([af_dp_text])[0]
+    dp_embeddings = _batch_encode(dp_texts)
 
-            if dp_score > best_dp_score:
-                best_dp_score = dp_score
-                best_df_dp_id = df_dp_id
-                best_df_dp_text = df_dp_text
+    # Find best match
+    dp_score, best_idx = _batch_similarity(af_emb, dp_embeddings)
+    dp_score_pct = dp_score * 100 if dp_score <= 1.0 else dp_score
 
-    return best_dp_score, best_df_dp_id, best_df_dp_text
+    if best_idx >= 0 and best_idx < len(deployment_dps):
+        best_df_dp_id = str(deployment_dps[best_idx].get("id") or "")
+        best_df_dp_text = deployment_dps[best_idx].get("point") or ""
+
+    return dp_score_pct, best_df_dp_id, best_df_dp_text
 
 
 def _process_control_item(
@@ -354,6 +358,7 @@ def _process_control_item(
 def _calculate_gap_results(
     comparison_sections: list[dict[str, Any]], thresholds: dict[str, Any], statuses: dict[str, Any]
 ) -> list[dict[str, Any]]:
+    """Calculate gap results with DP-to-DP semantic similarity comparison."""
     logger.info("[GAP-RUNNER] Processing comparison sections for gap analysis...")
     logger.info("[GAP-RUNNER] Running DP-to-DP semantic similarity comparison...")
 
@@ -500,7 +505,9 @@ async def run_gap(
                     logger.error("No comparison results or controls available for gap analysis")
                     return
 
-            gap_results = _calculate_gap_results(comparison_sections, thresholds, statuses)
+            logger.info("[GAP-RUNNER] Starting DP-to-DP matching (offloading to thread pool)...")
+            # Offload CPU-intensive DP matching to thread pool to avoid blocking event loop
+            gap_results = await asyncio.to_thread(_calculate_gap_results, comparison_sections, thresholds, statuses)
 
             pga = await _save_gap_analysis_result(session, df_id, str(fa_id), pkg_ver, gap_id, gap_results)
 

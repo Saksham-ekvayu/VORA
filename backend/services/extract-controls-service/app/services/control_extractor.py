@@ -1380,6 +1380,170 @@ Return ONLY JSON. No markdown."""
     return final_controls
 
 
+def extract_deployment_controls(
+    chunks: list, framework_id: str, is_deployment: bool = True
+) -> list:
+    """
+    Extract deployment controls from deployment documents/frameworks using AI.
+    This function is SPECIFICALLY for deployment-framework and deployment-document resource types.
+    
+    Two-stage extraction:
+    1. Extract Control_id, Control_name, Control_description, Section_name
+    2. Generate Deployment_points for each control (in batches)
+    
+    This uses the same extraction logic as extract_framework_controls but specifically
+    for deployment-related documents.
+    """
+    if not chunks:
+        logger.warning("[DEPLOYMENT-EXTRACT] No chunks provided")
+        return []
+
+    text = " ".join(chunks) if isinstance(chunks, list) else str(chunks)
+    REGEX = r"\b(?:[A-Z]+(?:\.[A-Z]+)*[-.]?)?\d+(?:\.\d+)*\b"
+
+    # Stage 1: Extract controls
+    logger.info(f"[DEPLOYMENT-EXTRACT] Starting deployment extraction | framework_id={framework_id}")
+
+    # Always use deployment-style prompt for deployment extraction
+    prompt_stage1 = f"""You are a strict JSON generator.
+Extract ALL compliance controls, policy statements, procedures, and key directives from the following text.
+Do NOT skip ANY important directive.
+
+Rules for Control IDs and Section IDs:
+1. If explicit Section and Control IDs exist in the document text, you MUST extract and use them EXACTLY as they appear.
+2. If the document does NOT contain explicit IDs, you MUST generate them sequentially starting strictly from A.1 (e.g., Section IDs: A.1, A.2, A.3...).
+3. When generating, Control IDs MUST be based on their Section ID. For example, if a control belongs to section A.1, its Control IDs must be A.1.1, A.1.2, A.1.3, etc. Do not skip or start from a random number.
+
+Extract the NAME and detailed DESCRIPTION for each item.
+
+For Section_name: Extract the EXACT section/category heading this item belongs to. Do NOT include Section IDs or numbering in the Section_name (e.g. use "Facility Security" instead of "A.7 Facility Security" or "7. Facility Security").
+
+Use JSON list ONLY:
+[{{"Control_id": "","Control_name": "","Control_type":"","Control_description": "","Section_name": ""}}]
+
+TEXT:
+{text}
+
+Return ONLY JSON. No markdown. No text outside JSON."""
+
+    t_start = datetime.now()
+    try:
+        logger.info("[OPENAI] Client initialized for deployment extraction")
+        response = get_openai_client().chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt_stage1}],
+            temperature=0,
+            max_tokens=CONTROL_EXTRACTION_MAX_TOKENS,
+            timeout=3600,  # 1 hour timeout
+        )
+        elapsed = (datetime.now() - t_start).total_seconds()
+        _log_llm_call("DEPLOYMENT-EXTRACT-STAGE1", response, elapsed)
+
+        controls = json.loads(response.choices[0].message.content)
+        logger.info(f"[DEPLOYMENT-EXTRACT] Stage 1 complete: {len(controls)} controls extracted")
+
+    except json.JSONDecodeError as e:
+        logger.exception(f"[DEPLOYMENT-EXTRACT] JSON decode failed: {e}")
+        return []
+    except Exception as e:
+        logger.exception(f"[DEPLOYMENT-EXTRACT] OpenAI API error: {e}", exc_info=True)
+        return []
+
+    # Stage 2: Generate deployment points (batched)
+    logger.info(
+        f"[DEPLOYMENT-EXTRACT] Stage 2: Generating deployment points in batches of {DEPLOYMENT_BATCH_SIZE}"
+    )
+
+    final_controls = []
+    total_batches = (
+        (len(controls) + DEPLOYMENT_BATCH_SIZE - 1) // DEPLOYMENT_BATCH_SIZE if controls else 0
+    )
+
+    for batch_idx in range(0, len(controls), DEPLOYMENT_BATCH_SIZE):
+        batch = controls[batch_idx : batch_idx + DEPLOYMENT_BATCH_SIZE]
+        batch_num = batch_idx // DEPLOYMENT_BATCH_SIZE + 1
+
+        logger.info(f"[DEPLOYMENT-EXTRACT] Batch {batch_num}/{total_batches}: {len(batch)} controls")
+
+        prompt_stage2 = f"""You are an analyser.
+From each control in the given JSON, generate 5-6 deployment points.
+
+Deployment points must describe:
+- How to implement this control
+- What actions/steps are required
+- How to operationalize it
+- Important implementation details
+
+Every point should be numbered (1. 2. 3. etc.).
+Store all points as a single string.
+
+IMPORTANT: Keep Section_name exactly as provided. Do NOT change it.
+
+Input JSON:
+{json.dumps(batch)}
+
+Add Deployment_points field to each control.
+Use JSON list ONLY:
+[{{"Control_id": "","Control_name": "","Control_type":"","Control_description": "","Section_name": "","Deployment_points": ""}}]
+
+Return ONLY JSON. No markdown."""
+
+        t_start = datetime.now()
+        try:
+            response = get_openai_client().chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt_stage2}],
+                temperature=0,
+                max_tokens=DEPLOYMENT_MAX_TOKENS,
+                timeout=3600,  # 1 hour timeout
+            )
+            elapsed = (datetime.now() - t_start).total_seconds()
+            finish_reason = _log_llm_call(f"DEPLOYMENT-EXTRACT-STAGE2-batch{batch_num}", response, elapsed)
+
+            batch_result = json.loads(response.choices[0].message.content)
+
+            # Map deployment points by Control_id to preserve Stage 1 descriptions/names
+            dp_map = {}
+            for res_ctrl in batch_result:
+                if isinstance(res_ctrl, dict):
+                    c_id = str(res_ctrl.get("Control_id", "")).strip()
+                    if c_id:
+                        dp_map[c_id] = res_ctrl.get("Deployment_points", "")
+
+            merged_batch = []
+            for orig_ctrl in batch:
+                c_id = str(orig_ctrl.get("Control_id", "")).strip()
+                orig_ctrl["Deployment_points"] = dp_map.get(
+                    c_id, orig_ctrl.get("Deployment_points", "")
+                )
+                merged_batch.append(orig_ctrl)
+
+            final_controls.extend(merged_batch)
+            logger.info(f"[DEPLOYMENT-EXTRACT] Batch {batch_num}/{total_batches} OK")
+
+        except json.JSONDecodeError as e:
+            logger.exception(f"[DEPLOYMENT-EXTRACT] Batch {batch_num} JSON parse failed: {e}")
+            if finish_reason == "length":
+                logger.warning(
+                    f"[DEPLOYMENT-EXTRACT] Batch {batch_num} truncated — consider lowering DEPLOYMENT_BATCH_SIZE"
+                )
+            # Fallback: keep original controls without deployment points
+            final_controls.extend(batch)
+
+        except Exception as e:
+            logger.exception(f"[DEPLOYMENT-EXTRACT] Batch {batch_num} API error: {e}")
+            final_controls.extend(batch)
+
+    logger.info(f"[DEPLOYMENT-EXTRACT] Complete: {len(final_controls)} controls extracted")
+    return final_controls
+
+
+
+
+
+
+
+
 def convert_to_section_structure(controls: list, resource_type: str = "framework") -> list:
     """
     Convert flat control list to section-wise nested structure with hierarchical support.
