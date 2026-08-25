@@ -1,5 +1,3 @@
-/* eslint-disable react/prop-types */
-
 import { useState } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -27,10 +25,12 @@ import {
   STATUS_PROCESSING,
   STATUS_EXTRACTED,
 } from "@/utils/commonUtils";
-import GridCardView from "@/components/grid-card/GridCardView";
-import DeploymentFrameworkCard from "./components/custom/DeploymentFrameworkCard";
-
+import DataTable from "@/components/data-table/DataTable";
+import StatusCard from "@/components/custom/StatusCard";
+import UserMiniCard from "@/components/custom/UserMiniCard";
+import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
 import UploadDeploymentFrameworkModal from "./components/UploadDeploymentFrameworkModal";
+import FrameworkMiniCard from "@/components/custom/FrameworkMiniCard";
 
 function DeploymentFramework() {
   const { user } = useAuth();
@@ -53,7 +53,7 @@ function DeploymentFramework() {
     onFilterChange,
     refetch,
   } = useTableData(getAllDeploymentFrameworks, {
-    defaultLimit: 6,
+    defaultLimit: 10,
     defaultSortBy: "createdAt",
     defaultSortOrder: "desc",
     emptyMessage: "No deployment frameworks found",
@@ -94,7 +94,10 @@ function DeploymentFramework() {
   };
 
   const handleDownloadFramework = async (row) => {
-    if (!row.fileInfo?.versionFileId) return;
+    if (!row.fileInfo?.versionFileId) {
+      toast.error("File information not available");
+      return;
+    }
     setIsDownloading(true);
 
     try {
@@ -112,6 +115,80 @@ function DeploymentFramework() {
   };
 
   /* ---------------- TABLE CONFIG ---------------- */
+  const columns = [
+    {
+      key: "frameworkName",
+      label: "Framework Name",
+      sortable: false,
+      render: (value, row) => (
+        <FrameworkMiniCard
+          name={row.frameworkName}
+          description={row.frameworkVersion}
+          link={`/deployment-frameworks/${row.id}`}
+        />
+      ),
+    },
+    {
+      key: "package",
+      label: "Package Info",
+      sortable: false,
+      render: (value, row) => {
+        const documentCount = row.document?.count ?? 0;
+        const isPlural = documentCount > 1;
+        return (
+          <div className="flex flex-col">
+            <span className="text-sm font-medium">
+              v{row.currentPackageVersion || "1.0.0"}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {documentCount} document{isPlural ? "s" : ""}
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      key: "aiExtraction",
+      label: "AI Extraction",
+      sortable: false,
+      render: (value) => <StatusCard item={value} />,
+    },
+    {
+      key: "requestReview",
+      label: "Review Status",
+      sortable: false,
+      render: (value) => <StatusCard item={value} />,
+    },
+    {
+      key: "packageStatus",
+      label: "Package Status",
+      sortable: false,
+      render: (value, row) => <StatusCard item={row.package} />,
+    },
+    {
+      key: "uploadedBy",
+      label: "Created By",
+      sortable: false,
+      render: (value) => (
+        <UserMiniCard
+          name={value?.name}
+          email={value?.email}
+          avatar={value?.avatar}
+        />
+      ),
+    },
+    {
+      key: "createdAt",
+      label: "Created On",
+      sortable: true,
+      render: (value) => (
+        <span className="text-sm whitespace-nowrap">
+          {formatDateWithMonthNameAndTime(value)}
+        </span>
+      ),
+    },
+  ];
+
   const renderActions = (row) => {
     const actions = [
       {
@@ -119,6 +196,13 @@ function DeploymentFramework() {
         label: "View Details",
         icon: "eye",
         onClick: () => navigate(`/deployment-frameworks/${row.id}`),
+      },
+      {
+        id: `download-${row.id}`,
+        label: "Download Framework",
+        icon: "download",
+        onClick: () => handleDownloadFramework(row),
+        disabled: isDownloading,
       },
       (isAuditor(user.role) || isCustomerAdmin(user.role)) &&
         row.requestReview?.status !== "approved" && {
@@ -201,27 +285,18 @@ function DeploymentFramework() {
   /* ---------------- UI ---------------- */
   return (
     <div className="my-2">
-      <GridCardView
+      <DataTable
+        entityName="Deployment Frameworks"
+        columns={columns}
         data={deploymentFrameworks}
         loading={loading}
         onSearch={handleSearch}
+        onSort={handleSort}
+        sortConfig={sortConfig}
         searchTerm={searchTerm}
-        sortOrder={sortConfig.sortOrder}
-        onSortChange={() => handleSort(sortConfig.sortBy)}
         pagination={pagination}
+        renderActions={renderActions}
         headerActions={getHeaderActions()}
-        renderCard={(framework) => (
-          <DeploymentFrameworkCard
-            key={framework.id}
-            framework={framework}
-            userRole={user.role}
-            renderActions={renderActions}
-            onNavigate={(id) => navigate(`/deployment-frameworks/${id}`)}
-            onDelete={handleDeleteFramework}
-            onDownload={handleDownloadFramework}
-            isDownloading={isDownloading}
-          />
-        )}
         searchPlaceholder="Search framework name, code, or uploader..."
         emptyMessage={emptyMessage}
       />

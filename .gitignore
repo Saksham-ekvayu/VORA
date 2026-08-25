@@ -42,3 +42,6 @@ docs-md
 
 # Alembic Migrations
 backend/shared/alembic/versions/
+
+# Extra files
+Untitled.txt

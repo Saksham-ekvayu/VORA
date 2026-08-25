@@ -139,7 +139,7 @@ export const getRoleLabel = (role) => {
 export const getAssignmentStatusFilterLabel = (status) => {
   if (status === STATUS_ASSIGNED) return STATUS_LABELS[STATUS_ASSIGNED];
   if (status === STATUS_REVOKED) return STATUS_LABELS[STATUS_REVOKED];
-  return STATUS_LABELS[STATUS_PENDING];
+  return "Assignment Status";
 };
 
 export const getFinalizationStatusFilterLabel = (finalizationStatus) => {
@@ -147,7 +147,7 @@ export const getFinalizationStatusFilterLabel = (finalizationStatus) => {
     return STATUS_LABELS[STATUS_FINALIZED];
   if (finalizationStatus === STATUS_PENDING)
     return STATUS_LABELS[STATUS_NOT_FINALIZED];
-  return STATUS_LABELS[STATUS_PENDING];
+  return "Finalization Status";
 };
 
 export const getAccessStatusFilterLabel = (status) => {

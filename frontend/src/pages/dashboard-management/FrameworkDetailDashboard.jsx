@@ -191,7 +191,12 @@ export default function FrameworkDetailDashboard() {
 
   const isLoading = loading || !data;
 
-  const controls = data?.controls || { subscribed: 0, compliant: 0, nonCompliant: 0, notAssessed: 0 };
+  const controls = data?.controls || {
+    subscribed: 0,
+    compliant: 0,
+    nonCompliant: 0,
+    notAssessed: 0,
+  };
   const coverage = data?.coverage || { total: 0, breakdown: [] };
   const compliance = data?.compliance || { total: 0, breakdown: [] };
   const auditDashboard = data?.auditDashboard || { gapAnalysis: [] };
@@ -220,7 +225,9 @@ export default function FrameworkDetailDashboard() {
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
                 Active Version:{" "}
                 <span className="text-primary font-semibold">
-                  {isLoading && <Skeleton className="h-4 w-24 inline-block align-middle" />}
+                  {isLoading && (
+                    <Skeleton className="h-4 w-24 inline-block align-middle" />
+                  )}
                   {!isLoading && data?.frameworkVersion}
                 </span>
               </div>
@@ -307,7 +314,9 @@ export default function FrameworkDetailDashboard() {
               Current framework status
             </p>
             <span className="text-sm font-bold text-foreground">
-              {isLoading && <Skeleton className="h-4 w-8 inline-block align-middle" />}
+              {isLoading && (
+                <Skeleton className="h-4 w-8 inline-block align-middle" />
+              )}
               {!isLoading && coverage.total}
             </span>
             <span className="text-[10px] text-muted-foreground">
@@ -316,25 +325,34 @@ export default function FrameworkDetailDashboard() {
           </div>
           {isLoading && <Skeleton className="w-full h-40" />}
           {!isLoading && (
-            <DonutChart data={coverage.breakdown} total={coverage.total} colors={COVERAGE_COLORS} />
+            <DonutChart
+              data={coverage.breakdown}
+              total={coverage.total}
+              colors={COVERAGE_COLORS}
+            />
           )}
           <div className="flex justify-center flex-wrap gap-x-4 gap-y-2 mt-4 max-h-20 overflow-y-auto custom-scrollbar">
-            {!isLoading && coverage.breakdown.map((item, index) => (
-              <div
-                key={item.name}
-                className="flex items-center gap-1.5 shrink-0"
-              >
-                <span
-                  className="w-3 h-3 rounded-full shrink-0"
-                  style={{
-                    backgroundColor: COVERAGE_COLORS[index % COVERAGE_COLORS.length],
-                  }}
-                />
-                <span className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1">
-                  {item.name} <span className="font-semibold text-foreground">{item.value}</span>
-                </span>
-              </div>
-            ))}
+            {!isLoading &&
+              coverage.breakdown.map((item, index) => (
+                <div
+                  key={item.name}
+                  className="flex items-center gap-1.5 shrink-0"
+                >
+                  <span
+                    className="w-3 h-3 rounded-full shrink-0"
+                    style={{
+                      backgroundColor:
+                        COVERAGE_COLORS[index % COVERAGE_COLORS.length],
+                    }}
+                  />
+                  <span className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1">
+                    {item.name}{" "}
+                    <span className="font-semibold text-foreground">
+                      {item.value}
+                    </span>
+                  </span>
+                </div>
+              ))}
           </div>
         </CardWrapper>
 
@@ -345,7 +363,9 @@ export default function FrameworkDetailDashboard() {
               Current framework status
             </p>
             <span className="text-sm font-bold text-foreground">
-              {isLoading && <Skeleton className="h-4 w-8 inline-block align-middle" />}
+              {isLoading && (
+                <Skeleton className="h-4 w-8 inline-block align-middle" />
+              )}
               {!isLoading && compliance.total}
             </span>
             <span className="text-[10px] text-muted-foreground">
@@ -354,25 +374,34 @@ export default function FrameworkDetailDashboard() {
           </div>
           {isLoading && <Skeleton className="w-full h-40" />}
           {!isLoading && (
-            <DonutChart data={compliance.breakdown} total={compliance.total} colors={COMPLIANCE_COLORS} />
+            <DonutChart
+              data={compliance.breakdown}
+              total={compliance.total}
+              colors={COMPLIANCE_COLORS}
+            />
           )}
           <div className="flex justify-center flex-wrap gap-x-4 gap-y-2 mt-4 max-h-20 overflow-y-auto custom-scrollbar">
-            {!isLoading && compliance.breakdown.map((item, index) => (
-              <div
-                key={item.name}
-                className="flex items-center gap-1.5 shrink-0"
-              >
-                <span
-                  className="w-3 h-3 rounded-full shrink-0"
-                  style={{
-                    backgroundColor: COMPLIANCE_COLORS[index % COMPLIANCE_COLORS.length],
-                  }}
-                />
-                <span className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1">
-                  {item.name} <span className="font-semibold text-foreground">{item.value}</span>
-                </span>
-              </div>
-            ))}
+            {!isLoading &&
+              compliance.breakdown.map((item, index) => (
+                <div
+                  key={item.name}
+                  className="flex items-center gap-1.5 shrink-0"
+                >
+                  <span
+                    className="w-3 h-3 rounded-full shrink-0"
+                    style={{
+                      backgroundColor:
+                        COMPLIANCE_COLORS[index % COMPLIANCE_COLORS.length],
+                    }}
+                  />
+                  <span className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1">
+                    {item.name}{" "}
+                    <span className="font-semibold text-foreground">
+                      {item.value}
+                    </span>
+                  </span>
+                </div>
+              ))}
           </div>
         </CardWrapper>
 
@@ -401,10 +430,15 @@ export default function FrameworkDetailDashboard() {
             {!isLoading && auditDashboard.gapAnalysis.length === 0 && (
               <EmptyState message="No gaps found" />
             )}
-            {!isLoading && auditDashboard.gapAnalysis.length > 0 &&
+            {!isLoading &&
+              auditDashboard.gapAnalysis.length > 0 &&
               auditDashboard.gapAnalysis.map((gap) => {
                 return (
-                  <div key={gap.id} className="flex items-center gap-3" title={gap.name}>
+                  <div
+                    key={gap.id}
+                    className="flex items-center gap-3"
+                    title={gap.name}
+                  >
                     <span className="text-xs text-muted-foreground w-48 truncate shrink-0">
                       {gap.id} - {gap.name}
                     </span>
@@ -414,9 +448,7 @@ export default function FrameworkDetailDashboard() {
                         height="2"
                       />
                     </div>
-                    <span
-                      className="text-[11px] font-bold w-8 text-right shrink-0 text-primary"
-                    >
+                    <span className="text-[11px] font-bold w-8 text-right shrink-0 text-primary">
                       {gap.value}%
                     </span>
                   </div>
@@ -476,7 +508,9 @@ export default function FrameworkDetailDashboard() {
                   key={ctrl.sl}
                   className="grid grid-cols-[0.25fr_0.8fr_2fr_0.6fr_0.6fr] gap-1 items-center py-2 border-b border-border last:border-0 hover:bg-accent/50 rounded transition-colors px-0.5"
                 >
-                  <span className="text-xs text-muted-foreground">{ctrl.sl}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {ctrl.sl}
+                  </span>
                   <span className="text-xs text-secondary font-semibold">
                     {ctrl.ctrlNo}
                   </span>
@@ -551,7 +585,9 @@ export default function FrameworkDetailDashboard() {
                   key={ctrl.sl}
                   className="grid grid-cols-[0.25fr_0.7fr_1.8fr_1.5fr] gap-1 items-center py-2 border-b border-border last:border-0 hover:bg-accent/50 rounded transition-colors px-0.5"
                 >
-                  <span className="text-xs text-muted-foreground">{ctrl.sl}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {ctrl.sl}
+                  </span>
                   <span className="text-xs text-secondary font-semibold">
                     {ctrl.ctrlNo}
                   </span>

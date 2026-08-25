@@ -199,23 +199,13 @@ function FrameworkAccess() {
       ),
     },
     {
-      key: "frameworkCategory.frameworkCode",
-      label: "Framework Code",
-      sortable: false,
-      render: (value, row) => (
-        <span className="font-mono text-sm bg-muted px-2 py-1 rounded uppercase">
-          {row.frameworkCategory?.frameworkCode}
-        </span>
-      ),
-    },
-    {
       key: "frameworkCategory.frameworkCategoryName",
-      label: "Framework Name",
+      label: "Framework",
       sortable: false,
       render: (value, row) => (
         <FrameworkMiniCard
           name={row.frameworkCategory?.frameworkCategoryName}
-          description={row.frameworkCategory?.description}
+          description={row.frameworkCategory?.frameworkCode}
         />
       ),
     },

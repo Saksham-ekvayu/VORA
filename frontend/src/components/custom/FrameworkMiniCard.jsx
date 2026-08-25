@@ -1,8 +1,9 @@
 /* eslint-disable react/prop-types */
 
 import Icon from "@/components/custom/Icon";
+import { Link } from "react-router-dom";
 
-const FrameworkMiniCard = ({ name, description }) => {
+const FrameworkMiniCard = ({ name, description, link }) => {
   return (
     <div className="flex items-center gap-2">
       <div className="">
@@ -20,13 +21,27 @@ const FrameworkMiniCard = ({ name, description }) => {
         </div>
       </div>
 
-      <div className="flex flex-col">
-        <span className="font-medium text-foreground line-clamp-1" title={name}>
-          {name}
-        </span>
+      <div className="flex flex-col group">
+        {link ? (
+          <Link
+            to={link}
+            className="font-medium text-foreground line-clamp-1 group-hover:underline group-hover:text-primary"
+            title={name}
+          >
+            {name}
+          </Link>
+        ) : (
+          <span
+            className="font-medium text-foreground line-clamp-1"
+            title={name}
+          >
+            {name}
+          </span>
+        )}
+
         {description && (
           <span
-            className="text-xs text-muted-foreground line-clamp-1 max-w-xs"
+            className="text-xs text-muted-foreground line-clamp-1 max-w-xs font-semibold"
             title={description}
           >
             {description}

@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 3fjPhwFIpkgJOSGUhrbvfdW3Y4hQNffMpx2PZ3G6QRwnpy8fWCuXcBEk6XEmgWZ
+\restrict Wug0eIFXSnI9rlS42mgwJgzDCtnSgZUz7jt8bGOddpvHPWu5SUQO8LdWEURAalG
 
 -- Dumped from database version 18.4
 -- Dumped by pg_dump version 18.4
@@ -268,7 +268,8 @@ CREATE TABLE public.package_comparisons (
     "fileHashes" jsonb NOT NULL,
     comparison jsonb NOT NULL,
     "createdAt" timestamp with time zone NOT NULL,
-    "updatedAt" timestamp with time zone NOT NULL
+    "updatedAt" timestamp with time zone NOT NULL,
+    "deploymentFrameworkId" character varying(24)
 );
 
 
@@ -281,7 +282,8 @@ CREATE TABLE public.package_gap_analyses (
     "fileHashes" jsonb NOT NULL,
     "gapAnalysis" jsonb NOT NULL,
     "createdAt" timestamp with time zone NOT NULL,
-    "updatedAt" timestamp with time zone NOT NULL
+    "updatedAt" timestamp with time zone NOT NULL,
+    "deploymentFrameworkId" character varying(24)
 );
 
 
@@ -909,5 +911,5 @@ ALTER TABLE ONLY public.source_credentials
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 3fjPhwFIpkgJOSGUhrbvfdW3Y4hQNffMpx2PZ3G6QRwnpy8fWCuXcBEk6XEmgWZ
+\unrestrict Wug0eIFXSnI9rlS42mgwJgzDCtnSgZUz7jt8bGOddpvHPWu5SUQO8LdWEURAalG
 
