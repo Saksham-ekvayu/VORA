@@ -61,8 +61,6 @@ const LeftPanelSections = ({
   totalSections,
   sections,
   totalControls,
-  sectionSearch,
-  setSectionSearch,
 }) => {
   return (
     <div className="lg:col-span-3 flex flex-col rounded border border-border bg-card shadow-sm overflow-hidden h-full">
@@ -81,20 +79,6 @@ const LeftPanelSections = ({
               {totalControls}
             </span>
           </div>
-        </div>
-        <div className="relative">
-          <Icon
-            name="search"
-            size="14px"
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-          />
-          <input
-            type="text"
-            placeholder="Search sections..."
-            value={sectionSearch}
-            onChange={(e) => setSectionSearch(e.target.value)}
-            className="w-full bg-background border border-border rounded pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
-          />
         </div>
       </div>
 
@@ -183,6 +167,7 @@ const ControlDetailsPanel = ({
   isCustomControl,
   setShowAddModal,
   activeSection,
+  globalSearch,
 }) => {
   return (
     <div className="lg:col-span-5 flex flex-col rounded border border-border bg-card shadow-sm overflow-hidden h-full">
@@ -407,23 +392,44 @@ const ControlDetailsPanel = ({
                   </p>
                 ) : (
                   <div className="space-y-1.5">
-                    {deploymentPoints.map((point, i) => (
-                      <div
-                        key={point.id ?? i}
-                        className="bg-card rounded border border-border hover:border-primary/30 hover:shadow-sm transition-all"
-                      >
-                        <div className="flex gap-2 p-2">
-                          <div className="w-5 h-5 rounded bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
-                            {i + 1}
+                    {deploymentPoints
+                      .filter((point) => {
+                        if (!globalSearch?.trim()) return true;
+                        const q = globalSearch.toLowerCase().trim();
+
+                        // If the active control name/ID matches, or active section matches, show all DPs
+                        if (
+                          activeControl?.name?.toLowerCase().includes(q) ||
+                          activeControl?.id?.toLowerCase().includes(q) ||
+                          activeSection?.name?.toLowerCase().includes(q) ||
+                          activeSection?.id?.toLowerCase().includes(q)
+                        ) {
+                          return true;
+                        }
+
+                        const text =
+                          typeof point === "string"
+                            ? point.trim()
+                            : point?.name || point?.point || "";
+                        return text.toLowerCase().includes(q);
+                      })
+                      .map((point, i) => (
+                        <div
+                          key={point.id ?? i}
+                          className="bg-card rounded border border-border hover:border-primary/30 hover:shadow-sm transition-all"
+                        >
+                          <div className="flex gap-2 p-2">
+                            <div className="w-5 h-5 rounded bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                              {i + 1}
+                            </div>
+                            <p className="text-xs text-foreground/90 leading-relaxed text-justify">
+                              {typeof point === "string"
+                                ? point.trim()
+                                : point?.name || point?.point}
+                            </p>
                           </div>
-                          <p className="text-xs text-foreground/90 leading-relaxed text-justify">
-                            {typeof point === "string"
-                              ? point.trim()
-                              : point.name}
-                          </p>
                         </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
                 )}
               </div>
@@ -493,9 +499,8 @@ export default function ControlsPanel({
   showOrgSpecificBadge = false,
   isDeploymentFramework = false,
   frameworkApprovalStatus = "",
+  globalSearch = "",
 }) {
-  const [sectionSearch, setSectionSearch] = useState("");
-  const [controlSearch, setControlSearch] = useState("");
   const [searchParams, setSearchParams] = useSearchParams();
 
   const activeSectionId = searchParams.get("section");
@@ -619,12 +624,41 @@ export default function ControlsPanel({
 
   // Filter sections by search query
   const filteredSections = useMemo(() => {
-    if (!sectionSearch) return sections;
-    const q = sectionSearch.toLowerCase();
-    return sections.filter(
-      (s) => s.name.toLowerCase().includes(q) || s.id.toLowerCase().includes(q)
-    );
-  }, [sections, sectionSearch]);
+    if (!globalSearch?.trim()) return sections;
+    const q = globalSearch.toLowerCase().trim();
+
+    return sections.filter((s) => {
+      if (
+        s?.name?.toLowerCase().includes(q) ||
+        s?.id?.toLowerCase().includes(q)
+      )
+        return true;
+
+      return (s?.controls || []).some((c) => {
+        if (
+          c?.name?.toLowerCase().includes(q) ||
+          c?.id?.toLowerCase().includes(q)
+        )
+          return true;
+
+        let dps = [];
+        if (c?.deployment_points) {
+          if (Array.isArray(c.deployment_points)) {
+            dps = c.deployment_points;
+          } else if (typeof c.deployment_points === "string") {
+            dps = c.deployment_points
+              .split(/^\d+\.\s+/m)
+              .filter((p) => p.trim());
+          }
+        }
+        return dps.some((dp) => {
+          const text =
+            typeof dp === "string" ? dp : dp?.point || dp?.name || "";
+          return text.toLowerCase().includes(q);
+        });
+      });
+    });
+  }, [sections, globalSearch]);
 
   // Resolve active section — default to first
   const resolvedSectionId = useMemo(() => {
@@ -645,12 +679,38 @@ export default function ControlsPanel({
   // Filter controls within active section by search query
   const filteredControls = useMemo(() => {
     const list = activeSection?.controls ?? [];
-    if (!controlSearch) return list;
-    const q = controlSearch.toLowerCase();
-    return list.filter(
-      (c) => c.name.toLowerCase().includes(q) || c.id.toLowerCase().includes(q)
-    );
-  }, [activeSection, controlSearch]);
+    if (!globalSearch?.trim()) return list;
+    const q = globalSearch.toLowerCase().trim();
+
+    // If the active section itself matches the search query, show all its controls!
+    if (
+      activeSection?.name?.toLowerCase().includes(q) ||
+      activeSection?.id?.toLowerCase().includes(q)
+    ) {
+      return list;
+    }
+
+    return list.filter((c) => {
+      if (
+        c?.name?.toLowerCase().includes(q) ||
+        c?.id?.toLowerCase().includes(q)
+      )
+        return true;
+
+      let dps = [];
+      if (c?.deployment_points) {
+        if (Array.isArray(c.deployment_points)) {
+          dps = c.deployment_points;
+        } else if (typeof c.deployment_points === "string") {
+          dps = c.deployment_points.split(/^\d+\.\s+/m).filter((p) => p.trim());
+        }
+      }
+      return dps.some((dp) => {
+        const text = typeof dp === "string" ? dp : dp?.point || dp?.name || "";
+        return text.toLowerCase().includes(q);
+      });
+    });
+  }, [activeSection, globalSearch]);
 
   // Resolve active control — default to first
   const resolvedControlId = useMemo(() => {
@@ -806,8 +866,6 @@ export default function ControlsPanel({
         totalSections={totalSections}
         sections={sections}
         totalControls={totalControls}
-        sectionSearch={sectionSearch}
-        setSectionSearch={setSectionSearch}
       />
 
       {/* MIDDLE PANEL: CONTROLS */}
@@ -859,20 +917,6 @@ export default function ControlsPanel({
                 </div>
               )}
             </div>
-          </div>
-          <div className="relative">
-            <Icon
-              name="search"
-              size="14px"
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            />
-            <input
-              type="text"
-              placeholder="Search controls..."
-              value={controlSearch}
-              onChange={(e) => setControlSearch(e.target.value)}
-              className="w-full bg-background border border-border rounded pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
-            />
           </div>
         </div>
 
@@ -1023,6 +1067,7 @@ export default function ControlsPanel({
         isCustomControl={isCustomControl}
         setShowAddModal={setShowAddModal}
         activeSection={activeSection}
+        globalSearch={globalSearch}
       />
 
       {/* ADD CONTROL MODAL */}

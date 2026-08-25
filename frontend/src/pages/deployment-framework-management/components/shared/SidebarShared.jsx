@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 
 import Icon from "@/components/custom/Icon";
-import SearchInput from "@/components/custom/SearchInput";
 import { capitalizeFirst } from "@/utils/commonUtils";
 
 /**
@@ -64,9 +63,6 @@ export function SectionButton({ section, isActive, count, onClick }) {
  * Props:
  *   sectionsList      – array of { id, name }
  *   resolvedSectionId – currently active section id
- *   sectionSearch     – current search string
- *   onSearchChange    – (value: string) => void
- *   onSearchClear     – () => void
  *   getSectionCount   – (section) => number
  *   onSectionClick    – (sectionId: string) => void
  *   totalCount        – number shown in the header badge
@@ -74,9 +70,6 @@ export function SectionButton({ section, isActive, count, onClick }) {
 export function SectionsSidebar({
   sectionsList,
   resolvedSectionId,
-  sectionSearch,
-  onSearchChange,
-  onSearchClear,
   getSectionCount,
   onSectionClick,
   totalCount,
@@ -95,13 +88,6 @@ export function SectionsSidebar({
             {totalCount}
           </div>
         </div>
-        <SearchInput
-          value={sectionSearch}
-          onChange={onSearchChange}
-          onClear={onSearchClear}
-          placeholder="Search sections..."
-          className="w-full bg-card"
-        />
       </div>
 
       <div className="relative flex-1 min-h-0">
