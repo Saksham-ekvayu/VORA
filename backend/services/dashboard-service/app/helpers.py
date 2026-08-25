@@ -1044,9 +1044,8 @@ def process_gap_analyses(
                 "name": fw_name,
                 "version": fw_version,
                 "readiness": fw_health,
-                "weight_score": fw_weight_score,
-                "trend": trend_abs,
-                "trendUp": trend_up,
+                "total_dps": fw_total_dps,
+                "implemented_dps": fw_implemented_dps,
             }
         )
 
