@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import DataTable from "@/components/data-table/DataTable";
 import CustomBadge from "@/components/custom/CustomBadge";
 import Icon from "@/components/custom/Icon";
@@ -9,6 +9,7 @@ import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
 
 import { useTableData } from "@/components/data-table/hooks/useTableData";
 import { getAuditorControlsPassing } from "@/services/dashboardService";
+import FrameworkMiniCard from "@/components/custom/FrameworkMiniCard";
 
 // ─── Stat Box ─────────────────────────────────────────────────────────────────
 
@@ -66,28 +67,14 @@ export default function ControlsPassing() {
   const columns = [
     {
       key: "frameworkVersion",
-      label: "Version",
+      label: "Framework",
       sortable: false,
       render: (value, row) => (
-        <Link
-          to={`/deployment-frameworks/${row.id}`}
-          className="hover:underline hover:text-primary"
-        >
-          {value}
-        </Link>
-      ),
-    },
-    {
-      key: "frameworkName",
-      label: "Framework Name",
-      sortable: false,
-      render: (value, row) => (
-        <Link
-          to={`/deployment-frameworks/${row.id}`}
-          className="hover:underline hover:text-primary"
-        >
-          {value}
-        </Link>
+        <FrameworkMiniCard
+          name={row.frameworkName}
+          description={row.frameworkVersion}
+          link={`/deployment-frameworks/${row.id}`}
+        />
       ),
     },
     {
@@ -120,11 +107,11 @@ export default function ControlsPassing() {
       sortable: false,
       align: "center",
       render: (value, row) => {
-        let color = "text-emerald-500";
-        if (row.status === "Failing") color = "text-red-500";
+        let color = "text-primary";
+        if (row.status === "Failing") color = "text-destructive";
         else if (row.status === "Warning") color = "text-amber-500";
         return (
-          <span className={`text-sm font-bold ${color}`}>
+          <span className={`text-sm font-semibold ${color}`}>
             {value}%
           </span>
         );

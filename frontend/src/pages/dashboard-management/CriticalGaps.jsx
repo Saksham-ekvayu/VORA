@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import DataTable from "@/components/data-table/DataTable";
 import CustomBadge from "@/components/custom/CustomBadge";
 import Icon from "@/components/custom/Icon";
@@ -7,6 +7,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
 import { useTableData } from "@/components/data-table/hooks/useTableData";
 import { getAuditorCriticalGaps } from "@/services/dashboardService";
+import FrameworkMiniCard from "@/components/custom/FrameworkMiniCard";
 
 // ─── Stat Box ─────────────────────────────────────────────────────────────────
 
@@ -70,28 +71,14 @@ export default function CriticalGaps() {
   const columns = [
     {
       key: "frameworkVersion",
-      label: "Framework Version",
+      label: "Framework",
       sortable: false,
       render: (value, row) => (
-        <Link
-          to={`/deployment-frameworks/${row.id}`}
-          className="hover:underline hover:text-primary"
-        >
-          {value}
-        </Link>
-      ),
-    },
-    {
-      key: "frameworkName",
-      label: "Framework Name",
-      sortable: false,
-      render: (value, row) => (
-        <Link
-          to={`/deployment-frameworks/${row.id}`}
-          className="hover:underline hover:text-primary"
-        >
-          {value}
-        </Link>
+        <FrameworkMiniCard
+          name={row.frameworkName}
+          description={row.frameworkVersion}
+          link={`/deployment-frameworks/${row.id}`}
+        />
       ),
     },
     {
