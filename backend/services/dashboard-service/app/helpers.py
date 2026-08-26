@@ -22,7 +22,7 @@ from vora_shared.models import (
 )
 
 UNKNOWN_FRAMEWORK = "Unknown Framework"
-MAX_ACTIVE_GAPS = 100
+MAX_ACTIVE_GAPS = 50
 
 
 def utcnow() -> datetime:
@@ -315,6 +315,7 @@ def extract_expected_controls(merge_doc: Any, custom_controls: dict[str, bool]) 
                     "description": _get(ctrl, "description", ""),
                     "required_dps": len(_get(ctrl, "deployment_points") or []),
                     "is_extra": custom_controls.get(ctrl_id, False),
+                    "sectionId": _get(sec, "id", ""),
                 }
     return expected_controls
 
@@ -415,6 +416,7 @@ def _create_active_gap(
         "version": fw_version,
         "packageVersion": pkg_version,
         "control": expected["name"],
+        "sectionId": expected.get("sectionId", ""),
         "description": expected["description"],
         "instances": req_dps,
         "failing": failing_percentage,
@@ -460,6 +462,8 @@ def evaluate_controls(
                     "control": expected["name"],
                     "frameworkVersion": fw_version,
                     "frameworkName": fw_name,
+                    "packageVersion": pkg_version,
+                    "sectionId": expected.get("sectionId", ""),
                     "deploymentPoints": req_dps,
                 }
             )
@@ -529,38 +533,65 @@ def calculate_framework_weight(
     return weight_val, allocated_weight
 
 
-def get_framework_status(readiness: float, settings: Any) -> str:
+def get_framework_status(readiness: float) -> str:
     """Determine framework compliance status based on score."""
-    if readiness < (settings.compliance_score_low * 100):
+    if readiness < 50:
         return "At Risk"
-    if readiness <= (settings.compliance_score_medium * 100):
+    if readiness <= 80:
         return "Needs Attention"
     return "On Track"
 
 
-def build_overall_protection_rows(framework_health: list[dict], settings: Any) -> list[dict]:
+def calculate_fw_weight_score_from_merge(merge_doc: Any) -> float:
+    if not merge_doc:
+        return 0.0
+
+    fw_weight_score = 0.0
+    count = 0
+    controls_data = get_nested(merge_doc.controls or {}, "controls_data") or []
+    
+    for section in controls_data:
+        for control in get_nested(section, "controls") or []:
+            for dp in get_nested(control, "deployment_points") or []:
+                fw_weight_score += float(get_nested(dp, "weightage") or 0.0)
+                count += 1
+                
+    if count == 0:
+        return 0.0
+        
+    avg_weightage = fw_weight_score / count
+    # Scale 0-10 to 0-100%
+    return round(avg_weightage * 10, 2)
+
+
+def build_overall_protection_rows(
+    framework_health: list[dict], latest_packages: list[dict], merges: list[Any]
+) -> list[dict]:
     """Transform framework health into table rows with dynamic weight and status."""
     rows = []
-    fw_count = len(framework_health)
-    total_weight_score = sum(fw.get("weight_score", 0) for fw in framework_health)
 
-    allocated_weight = 0
-    for idx, fw in enumerate(framework_health):
+    for fw in framework_health:
         readiness = fw.get("readiness", 0)
-        ws = fw.get("weight_score", 0)
-        weight_val, allocated_weight = calculate_framework_weight(
-            ws, total_weight_score, idx, fw_count, allocated_weight
-        )
-        status = get_framework_status(readiness, settings)
+        fw_id = fw.get("id")
+        lp = next((lp for lp in latest_packages if str(lp["df"].id) == fw_id), None)
+        ws = 0.0
+        pkg_version = ""
+        if lp:
+            merge_id = str(get_nested(lp["pkg"], "mergeDocument") or "")
+            merge_doc = next((m for m in merges if str(m.id) == merge_id), None)
+            ws = calculate_fw_weight_score_from_merge(merge_doc)
+            pkg_version = str(get_nested(lp["pkg"], "packageVersion") or "")
+
+        status = get_framework_status(readiness)
 
         rows.append(
             {
                 "id": fw.get("id"),
                 "version": fw.get("version", ""),
                 "framework": fw.get("name", ""),
-                "weight": weight_val,
-                "rawScore": readiness,
-                "contribution": round(weight_val * readiness / 100, 2),
+                "packageVersion": pkg_version,
+                "weightage": ws,
+                "implementation": readiness,
                 "trend": fw.get("trend", 0),
                 "trendUp": fw.get("trendUp", True),
                 "status": status,
@@ -597,8 +628,10 @@ def build_critical_gaps_response(
                 "id": g.get("frameworkId"),
                 "frameworkVersion": g["version"],
                 "frameworkName": g["framework"],
+                "packageVersion": g.get("packageVersion", ""),
                 "ctrlNo": g["id"],
                 "controlName": g["control"],
+                "sectionId": g.get("sectionId", ""),
                 "instances": g["instances"],
                 "failingPct": f"{g['failing']}%",
                 "failingRaw": g["failing"],
@@ -693,6 +726,7 @@ def _process_package_controls(
     fw_id: str,
     fw_name: str,
     fw_version: str,
+    pkg_version: str,
     ga_created_at: Any,
     stats: dict,
 ) -> list[dict]:
@@ -718,7 +752,8 @@ def _process_package_controls(
                 "control": expected["name"],
                 "frameworkVersion": fw_version,
                 "frameworkName": fw_name,
-                "section": expected.get("section", "General"),
+                "packageVersion": pkg_version,
+                "sectionId": expected.get("sectionId", ""),
                 "instances": req_dps,
                 "passRate": pass_rate,
                 "status": status,
@@ -787,6 +822,7 @@ def build_controls_passing_response(
         fw_assignment_id = get_nested(gap_data, "framework_assignment_id")
         fw_name = lp["df"].frameworkName or UNKNOWN_FRAMEWORK
         fw_version = lp["df"].frameworkVersion or ""
+        pkg_version = str(get_nested(lp["pkg"], "packageVersion") or "")
 
         custom_controls = extract_custom_controls(fw_assignment_id, assignments)
         expected_controls = extract_expected_controls(merge_doc, custom_controls)
@@ -801,6 +837,7 @@ def build_controls_passing_response(
                 str(lp["df"].id),
                 fw_name,
                 fw_version,
+                pkg_version,
                 ga.createdAt if ga else None,
                 stats,
             )
@@ -1016,6 +1053,7 @@ def process_gap_analyses(
     merges: list[DeploymentPackageMerge],
     assignments: list[FrameworkAssignment],
     settings: Any,
+    active_gaps_limit: int | None = None,
 ) -> tuple:
     """Extract and calculate gap analysis metrics."""
     totals = [0, 0, 0, [], 0, [], [], 0, 0, 0]
@@ -1027,7 +1065,7 @@ def process_gap_analyses(
             merges,
             assignments,
             settings,
-            MAX_ACTIVE_GAPS - len(totals[5]),
+            (active_gaps_limit - len(totals[5]) if active_gaps_limit is not None else None),
         )
         if package is None:
             continue

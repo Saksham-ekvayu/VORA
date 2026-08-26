@@ -7,6 +7,8 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
 import { useTableData } from "@/components/data-table/hooks/useTableData";
 import { getAuditorCriticalGaps } from "@/services/dashboardService";
+import FrameworkMiniCard from "@/components/custom/FrameworkMiniCard";
+import { capitalizeFirstLetter } from "@/utils/stringUtils";
 
 // ─── Stat Box ─────────────────────────────────────────────────────────────────
 
@@ -70,34 +72,21 @@ export default function CriticalGaps() {
   const columns = [
     {
       key: "frameworkVersion",
-      label: "Framework Version",
+      label: "Framework",
       sortable: false,
       render: (value, row) => (
-        <Link
-          to={`/deployment-frameworks/${row.id}`}
-          className="hover:underline hover:text-primary"
-        >
-          {value}
-        </Link>
-      ),
-    },
-    {
-      key: "frameworkName",
-      label: "Framework Name",
-      sortable: false,
-      render: (value, row) => (
-        <Link
-          to={`/deployment-frameworks/${row.id}`}
-          className="hover:underline hover:text-primary"
-        >
-          {value}
-        </Link>
+        <FrameworkMiniCard
+          name={row.frameworkName}
+          description={row.frameworkVersion}
+          link={`/deployment-frameworks/${row.id}`}
+        />
       ),
     },
     {
       key: "ctrlNo",
       label: "Ctrl ID",
       sortable: false,
+      align: "center",
       render: (value) => (
         <span className="font-mono font-bold text-secondary bg-muted px-2 py-1 rounded whitespace-nowrap">
           {value}
@@ -108,28 +97,36 @@ export default function CriticalGaps() {
       key: "controlName",
       label: "Control Name",
       sortable: false,
-      render: (value) => <span className="capitalize">{value}</span>,
+      render: (value, row) => (
+        <Link
+          to={`/deployment-frameworks/${row.id}/comparison-and-gap-analysis?package-version=${row.packageVersion}&tab=controls&control=${row.ctrlNo}&section=${row.sectionId}`}
+          className="hover:underline hover:text-primary"
+        >
+          {capitalizeFirstLetter(value)}
+        </Link>
+      ),
     },
     {
       key: "instances",
       label: "Instances",
       sortable: false,
-      render: (value) => <span className="text-center block">{value}</span>,
+      align: "center",
+      render: (value) => <span className="">{value}</span>,
     },
     {
       key: "failingPct",
       label: "% Failing",
       sortable: false,
+      align: "center",
       render: (value) => (
-        <span className="font-semibold text-red-400 text-center block">
-          {value}
-        </span>
+        <span className="font-semibold text-red-400">{value}</span>
       ),
     },
     {
       key: "severity",
       label: "Severity",
       sortable: false,
+      align: "right",
       render: (value) => <CustomBadge severity={value} size="xs" />,
     },
   ];

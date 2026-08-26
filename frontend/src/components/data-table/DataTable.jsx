@@ -175,7 +175,13 @@ export default function DataTable({
         {columns.map((column) => (
           <TableCell
             key={column.key}
-            className="px-4 py-2.5 text-sm text-foreground align-middle"
+            className={`px-4 py-2.5 text-sm text-foreground align-middle ${
+              column.align === "center"
+                ? "text-center"
+                : column.align === "right"
+                  ? "text-right"
+                  : "text-left"
+            }`}
           >
             {column.render
               ? column.render(row[column.key], row)
@@ -246,13 +252,27 @@ export default function DataTable({
                 <TableHead
                   key={column.key}
                   onClick={() => handleSort(column.key)}
-                  className={`px-4 py-2.5 text-left border-b border-border font-semibold text-xs text-muted-foreground uppercase tracking-wider whitespace-nowrap bg-muted ${
+                  className={`px-4 py-2.5 border-b border-border font-semibold text-xs text-muted-foreground uppercase tracking-wider whitespace-nowrap bg-muted ${
+                    column.align === "center"
+                      ? "text-center"
+                      : column.align === "right"
+                        ? "text-right"
+                        : "text-left"
+                  } ${
                     column.sortable
                       ? "cursor-pointer select-none transition-all duration-200 hover:bg-accent/50 hover:text-primary"
                       : ""
                   }`}
                 >
-                  <div className="flex items-center gap-2">
+                  <div
+                    className={`flex items-center gap-2 ${
+                      column.align === "center"
+                        ? "justify-center"
+                        : column.align === "right"
+                          ? "justify-end"
+                          : ""
+                    }`}
+                  >
                     <span>{column.label}</span>
                     {renderSortIndicator(column)}
                   </div>

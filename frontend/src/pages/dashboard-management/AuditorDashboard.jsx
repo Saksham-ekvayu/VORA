@@ -397,7 +397,7 @@ export default function AuditorDashboard() {
                 <span>SL.</span>
                 <span>Framework</span>
                 <span className="text-center">Ctrl No.</span>
-                <span className="text-center">Inst.</span>
+                <span className="text-center">Instance</span>
                 <span className="text-center">% Failing</span>
                 <span className="text-right">Last NC Date</span>
               </div>
@@ -442,20 +442,11 @@ export default function AuditorDashboard() {
                       <span className="text-xs text-center text-foreground font-medium">
                         {gap.instances}
                       </span>
-                      <div className="flex items-center justify-center gap-1">
-                        <Icon
-                          name={gap.trend === "up" ? "arrow-up" : "arrow-down"}
-                          size="12px"
-                          className={
-                            gap.trend === "up"
-                              ? "text-emerald-500"
-                              : "text-destructive"
-                          }
-                        />
+                      <div className="flex items-center justify-end gap-1">
                         <span
                           className={`text-xs font-bold ${gap.trend === "up" ? "text-emerald-500" : "text-destructive"}`}
                         >
-                          {gap.failing}
+                          {gap.failing}%
                         </span>
                       </div>
                       <span className="text-xs text-right text-muted-foreground">
