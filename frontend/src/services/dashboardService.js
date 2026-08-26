@@ -64,7 +64,10 @@ export async function getAuditorDashboardAnalytics(dateRange) {
  * @returns {Promise} Framework details data
  */
 export async function getAuditorFrameworkDetails(deploymentFrameworkId) {
-  return apiRequest(`${AUDITOR_BASE}/framework-details/${deploymentFrameworkId}`, true);
+  return apiRequest(
+    `${AUDITOR_BASE}/framework-details/${deploymentFrameworkId}`,
+    true
+  );
 }
 
 /**

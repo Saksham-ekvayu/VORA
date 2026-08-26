@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import Icon from "@/components/custom/Icon";
 import { Shield } from "lucide-react";
 import { SectionsSidebar } from "../shared/SidebarShared";
-import SearchInput from "@/components/custom/SearchInput";
 import { useAuth } from "@/context/authContext/useAuth";
 import {
   getReviewIcon,
@@ -368,6 +367,7 @@ const GapPointCard = ({
   return (
     <div className="border border-border rounded overflow-hidden bg-card">
       <button
+        type="button"
         className="w-full flex items-center justify-between p-2 cursor-pointer hover:bg-muted/50 transition-colors text-left min-w-0"
         onClick={onToggle}
       >
@@ -375,7 +375,7 @@ const GapPointCard = ({
           <span className="text-xs font-mono bg-muted px-2 py-1 rounded whitespace-nowrap shrink-0">
             Point {index + 1}
           </span>
-          <span className="text-sm font-medium flex-1 leading-relaxed break-words">
+          <span className="text-sm font-medium flex-1 leading-relaxed wrap-break-word">
             {capitalizeFirst(point.assigned_dp?.point)}
           </span>
           {/* <StatusBadge status={point.implementation_status} /> */}
@@ -440,6 +440,7 @@ const StatsCard = ({
   onClick,
 }) => (
   <button
+    type="button"
     onClick={onClick}
     className={`flex items-center justify-between p-2 rounded bg-card border cursor-pointer transition-colors ${
       activeFilter === filterValue ? borderActiveClass : "border-border"
@@ -460,15 +461,13 @@ export default function GapsTable({
   deploymentGaps,
   onRefresh,
   packageStatus,
+  globalSearch = "",
 }) {
   const { user } = useAuth();
   const [filterStatus, setFilterStatus] = useState("all");
-  const [sectionSearch, setSectionSearch] = useState("");
-  const [controlSearch, setControlSearch] = useState("");
   const [activeSectionId, setActiveSectionId] = useState(null);
   const [activeControlId, setActiveControlId] = useState(null);
   const [expandedPoints, setExpandedPoints] = useState(new Set());
-  const [globalSearch, setGlobalSearch] = useState("");
 
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [selectedPoint, setSelectedPoint] = useState(null);
@@ -495,12 +494,22 @@ export default function GapsTable({
 
   const sectionsList = useMemo(() => {
     const list = Object.values(sectionsMap);
-    if (!sectionSearch) return list;
-    const q = sectionSearch.toLowerCase();
-    return list.filter(
-      (s) => s.name.toLowerCase().includes(q) || s.id.toLowerCase().includes(q)
-    );
-  }, [sectionsMap, sectionSearch]);
+    if (!globalSearch) return list;
+    const q = globalSearch.toLowerCase();
+
+    return list.filter((s) => {
+      if (s.name.toLowerCase().includes(q) || s.id.toLowerCase().includes(q))
+        return true;
+      return s.controls.some((c) => {
+        if (
+          c.controlName.toLowerCase().includes(q) ||
+          c.controlId.toLowerCase().includes(q)
+        )
+          return true;
+        return c.points.some((p) => pointMatchesSearch(p, q));
+      });
+    });
+  }, [sectionsMap, globalSearch]);
 
   const resolvedSectionId = useMemo(() => {
     if (sectionsList.length === 0) return null;
@@ -515,26 +524,26 @@ export default function GapsTable({
 
   const filteredControls = useMemo(() => {
     if (!activeSection) return [];
-    const qGlobal = globalSearch.toLowerCase();
-    const qControl = controlSearch.toLowerCase();
+    const q = globalSearch.toLowerCase();
 
     return activeSection.controls
-      .filter(
-        (ctrl) =>
-          !qControl ||
-          ctrl.controlId.toLowerCase().includes(qControl) ||
-          ctrl.controlName.toLowerCase().includes(qControl)
-      )
+      .filter((ctrl) => {
+        if (!q) return true;
+        if (
+          ctrl.controlId.toLowerCase().includes(q) ||
+          ctrl.controlName.toLowerCase().includes(q)
+        )
+          return true;
+        return ctrl.points.some((p) => pointMatchesSearch(p, q));
+      })
       .map((ctrl) => ({
         ...ctrl,
         points: ctrl.points.filter(
-          (p) =>
-            pointMatchesStatus(p, filterStatus) &&
-            pointMatchesSearch(p, qGlobal)
+          (p) => pointMatchesStatus(p, filterStatus) && pointMatchesSearch(p, q)
         ),
       }))
       .filter((ctrl) => ctrl.points.length > 0);
-  }, [activeSection, filterStatus, globalSearch, controlSearch]);
+  }, [activeSection, filterStatus, globalSearch]);
 
   const selectedControl = useMemo(() => {
     if (!activeSection || activeSection.controls.length === 0) return null;
@@ -675,9 +684,6 @@ export default function GapsTable({
           <SectionsSidebar
             sectionsList={sectionsList}
             resolvedSectionId={resolvedSectionId}
-            sectionSearch={sectionSearch}
-            onSearchChange={setSectionSearch}
-            onSearchClear={() => setSectionSearch("")}
             getSectionCount={getSectionCount}
             onSectionClick={setActiveSectionId}
             totalCount={sectionsList.length}
@@ -687,25 +693,16 @@ export default function GapsTable({
         {/* MIDDLE: Controls list */}
         <div className="lg:col-span-3 flex flex-col rounded border border-border bg-card shadow-sm overflow-hidden h-full">
           <div className="px-2 py-3 border-b border-border bg-primary/5 shrink-0">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2">
-                <Shield className="w-4 h-4 text-primary" />
-                <h3 className="font-bold text-foreground text-sm truncate max-w-full">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <Shield className="w-4 h-4 text-primary shrink-0" />
+                <h3 className="font-bold text-foreground text-sm truncate">
                   {capitalizeFirst(activeSection?.name)}
                 </h3>
               </div>
-              <span className="text-xs font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                {filteredControls.length} Controls
+              <span className="text-xs font-semibold text-primary-foreground bg-primary px-2 py-0.5 rounded shrink-0">
+                {filteredControls.length}
               </span>
-            </div>
-            <div className="mt-2.5">
-              <SearchInput
-                value={controlSearch}
-                onChange={setControlSearch}
-                onClear={() => setControlSearch("")}
-                placeholder="Search controls..."
-                className="w-full h-8 text-xs bg-card"
-              />
             </div>
           </div>
 
@@ -721,6 +718,7 @@ export default function GapsTable({
                     selectedControl?.controlId === ctrl.controlId;
                   return (
                     <button
+                      type="button"
                       key={ctrl.controlId}
                       onClick={() => setActiveControlId(ctrl.controlId)}
                       className={`w-full flex flex-col p-2.5 rounded border text-left cursor-pointer transition-all ${
@@ -781,19 +779,6 @@ export default function GapsTable({
                       {capitalizeFirst(selectedControl.controlName)}
                     </h3>
                   </div>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-2 mt-1">
-                  <div className="flex items-center gap-1.5 flex-1 min-w-40">
-                    <SearchInput
-                      value={globalSearch}
-                      onChange={setGlobalSearch}
-                      onClear={() => setGlobalSearch("")}
-                      placeholder="Search points..."
-                      className="w-full h-8 text-xs bg-card"
-                    />
-                  </div>
-
                   <div className="flex items-center gap-1 shrink-0">
                     <Button
                       variant="ghost"

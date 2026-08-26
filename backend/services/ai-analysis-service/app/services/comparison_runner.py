@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from datetime import datetime, timezone
@@ -19,10 +20,6 @@ from vora_shared.models import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-_st_model = None
-_st_tried = False
 
 
 def _utcnow() -> datetime:
@@ -48,22 +45,29 @@ def _string_similarity(a: str, b: str) -> float:
     return round(0.6 * seq + 0.4 * jaccard, 4)
 
 
-def _get_embedder():
-    global _st_model, _st_tried
-    if _st_tried:
-        return _st_model
-    _st_tried = True
-    try:
-        from sentence_transformers import SentenceTransformer  # type: ignore
-        from vora_shared.config import get_settings
+_st_model = None
+_st_lock = asyncio.Lock()
 
-        settings = get_settings()
-        model_name = settings.sentence_transformer_model
-        _st_model = SentenceTransformer(model_name)
-        logger.info(f"Loaded sentence-transformers model {model_name}")
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("sentence-transformers unavailable, using string fallback: %s", exc)
-        _st_model = None
+
+async def _get_embedder_async():
+    global _st_model
+    if _st_model is not None:
+        return _st_model
+
+    async with _st_lock:
+        if _st_model is not None:
+            return _st_model
+        try:
+            from sentence_transformers import SentenceTransformer  # type: ignore
+            from vora_shared.config import get_settings
+
+            settings = get_settings()
+            model_name = settings.sentence_transformer_model
+            _st_model = await asyncio.to_thread(SentenceTransformer, model_name)
+            logger.info(f"Loaded sentence-transformers model {model_name}")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("sentence-transformers unavailable, using string fallback: %s", exc)
+            _st_model = None
     return _st_model
 
 
@@ -78,15 +82,39 @@ def _cosine(u: list[float], v: list[float]) -> float:
     return float(dot / (nu * nv))
 
 
-def _similarity(a: str, b: str) -> float:
-    model = _get_embedder()
+async def _similarity(a: str, b: str) -> float:
+    model = await _get_embedder_async()
     if model is None:
         return _string_similarity(a, b)
     try:
-        emb = model.encode([a or "", b or ""], normalize_embeddings=True)
+        emb = await asyncio.to_thread(model.encode, [a or "", b or ""], normalize_embeddings=True)
         return round(float(_cosine(list(emb[0]), list(emb[1]))), 4)
     except Exception:  # noqa: BLE001
         return _string_similarity(a, b)
+
+
+async def _batch_encode(texts: list[str]) -> list[list[float]]:
+    """Encode multiple texts in a single batch for efficiency."""
+    model = await _get_embedder_async()
+    if model is None:
+        return [[0.0] * 384 for _ in texts]  # Fallback: dummy vectors
+    try:
+        embeddings = await asyncio.to_thread(model.encode, texts, normalize_embeddings=True)
+        return [list(e) for e in embeddings]
+    except Exception:  # noqa: BLE001
+        return [[0.0] * 384 for _ in texts]
+
+
+def _batch_similarity(emb_a: list[float], embeddings_b: list[list[float]]) -> tuple[float, int]:
+    """Find best match and return score + index."""
+    best_score = 0.0
+    best_idx = -1
+    for idx, emb_b in enumerate(embeddings_b):
+        score = _cosine(emb_a, emb_b)
+        if score > best_score:
+            best_score = score
+            best_idx = idx
+    return round(best_score, 4), best_idx
 
 
 def _flatten_controls(sections: list[Any], is_assignment: bool = False) -> list[dict[str, Any]]:
@@ -211,18 +239,37 @@ async def _load_assignment_sections(session, assignment_id: str) -> list[dict[st
     return []
 
 
-def _find_best_match(
+async def _find_best_match_batch(
+    fa_controls: list[dict[str, Any]], df_controls: list[dict[str, Any]]
+) -> list[tuple[float, dict[str, Any]]]:
+    """Batch encode all texts and find best match for each FA control."""
+    if not fa_controls or not df_controls:
+        return [(0.0, {}) for _ in fa_controls]
+
+    # Extract all texts
+    fa_texts = [_control_text(ctrl) for ctrl in fa_controls]
+    df_texts = [_control_text(ctrl) for ctrl in df_controls]
+
+    # Batch encode all texts at once
+    fa_embeddings = await _batch_encode(fa_texts)
+    df_embeddings = await _batch_encode(df_texts)
+
+    # Find best match for each FA control
+    results = []
+    for fa_idx, fa_emb in enumerate(fa_embeddings):
+        score, best_idx = _batch_similarity(fa_emb, df_embeddings)
+        best_df = df_controls[best_idx] if best_idx >= 0 else {}
+        results.append((score, best_df))
+
+    return results
+
+
+async def _find_best_match(
     fa_ctrl: dict[str, Any], df_controls: list[dict[str, Any]]
 ) -> tuple[float, dict[str, Any]]:
-    best_score = 0.0
-    best_df: dict[str, Any] = {}
-    fa_text = _control_text(fa_ctrl)
-    for df_ctrl in df_controls:
-        score = _similarity(fa_text, _control_text(df_ctrl))
-        if score > best_score:
-            best_score = score
-            best_df = df_ctrl
-    return best_score, best_df
+    """Fallback single-item wrapper for backward compatibility."""
+    results = await _find_best_match_batch([fa_ctrl], df_controls)
+    return results[0] if results else (0.0, {})
 
 
 def _build_comparison_item(
@@ -242,12 +289,20 @@ def _build_comparison_item(
     }
 
 
-def _build_comparison_results(df_sections: list, assignment_sections: list) -> list[dict[str, Any]]:
+async def _build_comparison_results(df_sections: list, assignment_sections: list) -> list[dict[str, Any]]:
+    """Build comparison results using batch encoding for efficiency."""
     df_controls = _flatten_controls(df_sections, is_assignment=False)
     fa_controls = _flatten_controls(assignment_sections, is_assignment=True)
 
+    if not fa_controls or not df_controls:
+        return []
+
+    # Batch encode all controls once
+    best_matches = await _find_best_match_batch(fa_controls, df_controls)
+
+    # Build sections and items
     section_map: dict[str, dict[str, Any]] = {}
-    for fa_ctrl in fa_controls:
+    for fa_ctrl, (best_score, best_df) in zip(fa_controls, best_matches):
         sid = str(fa_ctrl.get("_section_id") or new_id())
         if sid not in section_map:
             section_map[sid] = {
@@ -256,7 +311,6 @@ def _build_comparison_results(df_sections: list, assignment_sections: list) -> l
                 "controls": [],
             }
 
-        best_score, best_df = _find_best_match(fa_ctrl, df_controls)
         item = _build_comparison_item(fa_ctrl, best_df, best_score)
         section_map[sid]["controls"].append(item)
 
@@ -347,7 +401,7 @@ async def run_comparison(
 
     try:
         logger.info("[COMPARISON-RUNNER] Loading model...")
-        model = _get_embedder()
+        model = await _get_embedder_async()
         if model:
             logger.info("[COMPARISON-RUNNER] Model loaded successfully")
         else:
@@ -386,7 +440,8 @@ async def run_comparison(
             )
             logger.info("[COMPARISON-RUNNER] Starting similarity scoring...")
 
-            grouped = _build_comparison_results(df_sections, assignment_sections)
+            # Run async similarity scoring
+            grouped = await _build_comparison_results(df_sections, assignment_sections)
             elapsed = (_utcnow() - started).total_seconds()
 
             comparison_payload = {

@@ -273,13 +273,13 @@ export default function AuditorDashboard() {
           <div className="grid xl:grid-cols-3 gap-3 items-stretch">
             {/* Framework Health */}
             <CardWrapper title="Framework Health" className="flex flex-col">
-              <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border pb-1.5 mb-2 shrink-0">
+              <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border pb-1.5 shrink-0">
                 <span>Framework</span>
                 <span>IMPLEMENTED / TOTAL POINTS</span>
               </div>
 
               <div
-                className="overflow-y-auto space-y-2.5 flex-1 pr-0.5"
+                className="overflow-y-auto flex-1 pr-0.5"
                 style={{ maxHeight: "220px" }}
               >
                 {(isLoading || !dashboardData) &&
@@ -323,6 +323,9 @@ export default function AuditorDashboard() {
                       </div>
                       <span className="text-xs font-bold text-foreground w-9 text-right shrink-0 group-hover:text-primary transition-colors">
                         {fw.readiness}%
+                      </span>
+                      <span className="text-xs ">
+                        ({fw.implemented_dps}/{fw.total_dps})
                       </span>
                     </Link>
                   ))}
@@ -389,12 +392,22 @@ export default function AuditorDashboard() {
                         {dp.version || dp.name}
                       </span>
                       {/* Bar chart */}
-                      <div className="flex-1 h-4">
-                        <div
-                          className={`h-full rounded-full ${DASHBOARD_CONFIG.getFrameworkConfig(dp.version).barColor}`}
-                          style={{
-                            width: `${Math.max((dp.count / Math.max(...(dashboardData?.deploymentPoints?.map((d) => d.count) || [1]))) * 100, 5)}%`,
-                          }}
+                      <div className="flex-1">
+                        <ProgressBar
+                          value={Math.max(
+                            (dp.count /
+                              Math.max(
+                                ...(dashboardData?.deploymentPoints?.map(
+                                  (d) => d.count
+                                ) || [1])
+                              )) *
+                              100,
+                            5
+                          )}
+                          color={
+                            DASHBOARD_CONFIG.getFrameworkConfig(dp.version)
+                              .barColor
+                          }
                         />
                       </div>
                       {/* Count */}

@@ -26,7 +26,7 @@ import UserMiniCard from "@/components/custom/UserMiniCard";
 import ActionDropdown from "@/components/custom/ActionDropdown";
 import { useAuth } from "@/context/authContext/useAuth";
 import { useTableData } from "@/components/data-table/hooks/useTableData";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 export default function Customers() {
   const { user } = useAuth();
@@ -143,9 +143,12 @@ export default function Customers() {
       label: "Customer / Organization",
       sortable: true,
       render: (value, row) => (
-        <Link to={`/customers/${row.id}`} className="max-w-60">
-          <UserMiniCard name={value} email={row.email} avatar={row.avatar} />
-        </Link>
+        <UserMiniCard
+          name={value}
+          email={row.email}
+          avatar={row.avatar}
+          link={`/customers/${row.id}`}
+        />
       ),
     },
     {

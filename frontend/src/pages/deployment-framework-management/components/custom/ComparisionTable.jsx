@@ -11,7 +11,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SectionsSidebar } from "../shared/SidebarShared";
-import SearchInput from "@/components/custom/SearchInput";
 import { useAuth } from "@/context/authContext/useAuth";
 import {
   getReviewIcon,
@@ -222,10 +221,9 @@ export default function ComparisonsTable({
   comparisonDataSource,
   onRefresh,
   packageStatus,
+  globalSearch = "",
 }) {
   const { user } = useAuth();
-  const [sectionSearch, setSectionSearch] = useState("");
-  const [controlSearch, setControlSearch] = useState("");
   const [sortOrder, setSortOrder] = useState("High to Low");
   const [activeSection, setActiveSection] = useState(null);
   const [openDpRowIds, setOpenDpRowIds] = useState(() => new Set());
@@ -294,12 +292,33 @@ export default function ComparisonsTable({
   /** Filtered sidebar list */
   const sectionsList = useMemo(() => {
     const list = Object.values(sectionsMap);
-    if (!sectionSearch) return list;
-    const q = sectionSearch.toLowerCase();
-    return list.filter(
-      (s) => s.name.toLowerCase().includes(q) || s.id.toLowerCase().includes(q)
-    );
-  }, [sectionsMap, sectionSearch]);
+    if (!globalSearch) return list;
+    const q = globalSearch.toLowerCase();
+
+    return list.filter((s) => {
+      if (s.name.toLowerCase().includes(q) || s.id.toLowerCase().includes(q))
+        return true;
+      return s.items.some((c) => {
+        if (
+          c.assigned.name.toLowerCase().includes(q) ||
+          c.deployment.name.toLowerCase().includes(q) ||
+          c.assigned.desc.toLowerCase().includes(q) ||
+          c.deployment.desc.toLowerCase().includes(q)
+        )
+          return true;
+        const assignedMatch = c.assigned.dps.some((dp) => {
+          const text = typeof dp === "string" ? dp : dp.point || dp.name || "";
+          return text.toLowerCase().includes(q);
+        });
+        if (assignedMatch) return true;
+        const deploymentMatch = c.deployment.dps.some((dp) => {
+          const text = typeof dp === "string" ? dp : dp.point || dp.name || "";
+          return text.toLowerCase().includes(q);
+        });
+        return deploymentMatch;
+      });
+    });
+  }, [sectionsMap, globalSearch]);
 
   /** Active section id — fallback to first */
   const resolvedSectionId = useMemo(() => {
@@ -315,36 +334,61 @@ export default function ComparisonsTable({
 
   const getSectionCount = useCallback(
     (section) => {
-      if (!controlSearch) return section.items.length;
-      const q = controlSearch.toLowerCase();
-      return section.items.filter(
-        (c) =>
+      if (!globalSearch) return section.items.length;
+      const q = globalSearch.toLowerCase();
+      return section.items.filter((c) => {
+        if (
           c.assigned.name.toLowerCase().includes(q) ||
           c.deployment.name.toLowerCase().includes(q) ||
           c.assigned.desc.toLowerCase().includes(q) ||
           c.deployment.desc.toLowerCase().includes(q)
-      ).length;
+        )
+          return true;
+        const assignedMatch = c.assigned.dps.some((dp) => {
+          const text = typeof dp === "string" ? dp : dp.point || dp.name || "";
+          return text.toLowerCase().includes(q);
+        });
+        if (assignedMatch) return true;
+        const deploymentMatch = c.deployment.dps.some((dp) => {
+          const text = typeof dp === "string" ? dp : dp.point || dp.name || "";
+          return text.toLowerCase().includes(q);
+        });
+        return deploymentMatch;
+      }).length;
     },
-    [controlSearch]
+    [globalSearch]
   );
 
   const filteredControls = useMemo(() => {
     if (!resolvedSectionId || !sectionsMap[resolvedSectionId]) return [];
     return sectionsMap[resolvedSectionId].items
       .filter((c) => {
-        if (!controlSearch) return true;
-        const q = controlSearch.toLowerCase();
-        return (
+        if (!globalSearch) return true;
+        const q = globalSearch.toLowerCase();
+
+        if (
           c.assigned.name.toLowerCase().includes(q) ||
           c.deployment.name.toLowerCase().includes(q) ||
           c.assigned.desc.toLowerCase().includes(q) ||
           c.deployment.desc.toLowerCase().includes(q)
-        );
+        )
+          return true;
+
+        const assignedMatch = c.assigned.dps.some((dp) => {
+          const text = typeof dp === "string" ? dp : dp.point || dp.name || "";
+          return text.toLowerCase().includes(q);
+        });
+        if (assignedMatch) return true;
+        const deploymentMatch = c.deployment.dps.some((dp) => {
+          const text = typeof dp === "string" ? dp : dp.point || dp.name || "";
+          return text.toLowerCase().includes(q);
+        });
+        return deploymentMatch;
       })
       .sort((a, b) =>
         sortOrder === "High to Low" ? b.score - a.score : a.score - b.score
       );
-  }, [controlSearch, sectionsMap, resolvedSectionId, sortOrder]);
+  }, [globalSearch, sectionsMap, resolvedSectionId, sortOrder]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 h-[calc(100vh-400px)] min-h-125 overflow-hidden">
@@ -353,9 +397,6 @@ export default function ComparisonsTable({
         <SectionsSidebar
           sectionsList={sectionsList}
           resolvedSectionId={resolvedSectionId}
-          sectionSearch={sectionSearch}
-          onSearchChange={setSectionSearch}
-          onSearchClear={() => setSectionSearch("")}
           getSectionCount={getSectionCount}
           onSectionClick={setActiveSection}
           totalCount={sectionsList.length}
@@ -374,15 +415,6 @@ export default function ComparisonsTable({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Search */}
-            <SearchInput
-              value={controlSearch}
-              onChange={setControlSearch}
-              onClear={() => setControlSearch("")}
-              placeholder="Search controls..."
-              className="w-60 bg-card"
-            />
-
             {/* Sort order */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

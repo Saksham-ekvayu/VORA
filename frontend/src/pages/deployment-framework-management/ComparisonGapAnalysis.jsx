@@ -40,6 +40,7 @@ import ControlsPanel from "@/components/custom/ControlsPanel";
 import AnalysisActions from "./components/AnalysisActions";
 import { useAssignedFrameworks } from "@/hooks/useAssignedFrameworks";
 import { useStatusPolling } from "@/hooks/useStatusPolling";
+import SearchInput from "@/components/custom/SearchInput";
 
 const StatusPlaceholder = ({ status, message, type }) => {
   const getStatusConfig = (status) => {
@@ -123,6 +124,7 @@ export default function ComparisonGapAnalysis() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const showAuditorActions = isAuditor(user?.role);
+  const [globalSearch, setGlobalSearch] = useState("");
 
   const [activelyExtractingFileIds, setActivelyExtractingFileIds] = useState(
     new Map()
@@ -437,6 +439,15 @@ export default function ComparisonGapAnalysis() {
                 <span className="text-base font-semibold">Merged Controls</span>
               </div>
               <div className="flex items-center gap-2">
+                <div className="shrink-0">
+                  <SearchInput
+                    value={globalSearch}
+                    onChange={setGlobalSearch}
+                    onClear={() => setGlobalSearch("")}
+                    placeholder="Search Sections, Controls & DPs..."
+                    className="w-72 bg-background h-8 text-xs"
+                  />
+                </div>
                 <AnalysisActions
                   frameworkId={id}
                   currentPackage={activePackage}
@@ -466,6 +477,7 @@ export default function ComparisonGapAnalysis() {
                   }
                   canModify={false}
                   showApplicability={false}
+                  globalSearch={globalSearch}
                 />
               ) : (
                 <StatusPlaceholder
@@ -488,6 +500,15 @@ export default function ComparisonGapAnalysis() {
                 </span>
               </div>
               <div className="flex items-center gap-2">
+                <div className="shrink-0">
+                  <SearchInput
+                    value={globalSearch}
+                    onChange={setGlobalSearch}
+                    onClear={() => setGlobalSearch("")}
+                    placeholder="Search Sections, Controls & DPs..."
+                    className="w-72 bg-background h-8 text-xs"
+                  />
+                </div>
                 <AnalysisActions
                   frameworkId={id}
                   currentPackage={activePackage}
@@ -507,6 +528,7 @@ export default function ComparisonGapAnalysis() {
                   comparisonDataSource={comparisonData}
                   packageStatus={activePackage?.status}
                   onRefresh={() => fetchDetails(false)}
+                  globalSearch={globalSearch}
                 />
               ) : (
                 <StatusPlaceholder
@@ -527,6 +549,15 @@ export default function ComparisonGapAnalysis() {
                 <span className="text-base font-semibold">Gap Analysis</span>
               </div>
               <div className="flex items-center gap-2">
+                <div className="shrink-0">
+                  <SearchInput
+                    value={globalSearch}
+                    onChange={setGlobalSearch}
+                    onClear={() => setGlobalSearch("")}
+                    placeholder="Search Sections, Controls & DPs..."
+                    className="w-72 bg-background h-8 text-xs"
+                  />
+                </div>
                 <AnalysisActions
                   frameworkId={id}
                   currentPackage={activePackage}
@@ -545,6 +576,7 @@ export default function ComparisonGapAnalysis() {
                   deploymentGaps={gapAnalysisData}
                   packageStatus={activePackage?.status}
                   onRefresh={() => fetchDetails(false)}
+                  globalSearch={globalSearch}
                 />
               ) : (
                 <StatusPlaceholder

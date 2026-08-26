@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import Icon from "@/components/custom/Icon";
+import CustomBadge from "@/components/custom/CustomBadge";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -25,6 +26,7 @@ export default function McpMonitoring() {
   const [logs, setLogs] = useState([]);
   const [isPolling, setIsPolling] = useState(true);
   const [isFetchingLogs, setIsFetchingLogs] = useState(false);
+  const [isDownloadingLogs, setIsDownloadingLogs] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
   const scrollRef = useRef(null);
 
@@ -50,7 +52,7 @@ export default function McpMonitoring() {
     setIsFetchingLogs(true);
     try {
       const res = await getMcpSchedulerLiveLogs();
-      if (res && res.status && Array.isArray(res.logs)) {
+      if (res?.status && Array.isArray(res.logs)) {
         setLogs(res.logs);
       }
     } catch (error) {
@@ -59,6 +61,34 @@ export default function McpMonitoring() {
       setIsFetchingLogs(false);
     }
   }, []);
+
+  const handleDownloadLogs = async () => {
+    if (logs.length === 0 || isDownloadingLogs) return;
+
+    setIsDownloadingLogs(true);
+    await new Promise((resolve) => {
+      requestAnimationFrame(resolve);
+    });
+
+    try {
+      const logContent = logs
+        .map((log, index) => `[${String(index + 1).padStart(3, "0")}] ${log}`)
+        .join("\n");
+      const blob = new Blob([logContent], { type: "text/plain;charset=utf-8" });
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const timestamp = new Date().toISOString().replace(/[.:]/g, "-");
+
+      link.href = downloadUrl;
+      link.download = `mcp-logs-${timestamp}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(downloadUrl);
+    } finally {
+      setIsDownloadingLogs(false);
+    }
+  };
 
   const handleStop = async () => {
     setIsStopping(true);
@@ -99,6 +129,20 @@ export default function McpMonitoring() {
     }
   }, [logs]);
 
+  let mcpStatusColor = "gray";
+  if (isFetchingMcpStatus) {
+    mcpStatusColor = "yellow";
+  } else if (mcpStatus?.running) {
+    mcpStatusColor = "emerald";
+  }
+
+  let mcpStatusLabel = "Stopped";
+  if (isFetchingMcpStatus) {
+    mcpStatusLabel = "Checking...";
+  } else if (mcpStatus?.running) {
+    mcpStatusLabel = "Running";
+  }
+
   return (
     <div className="space-y-4 my-2">
       {/* Header */}
@@ -117,39 +161,19 @@ export default function McpMonitoring() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex flex-col items-end mr-1">
-            <span className="text-[10px] text-muted-foreground leading-none mb-1">
-              MCP Service
-            </span>
-            <div className="flex items-center gap-1.5">
-              <span
-                className={cn(
-                  "w-2 h-2 rounded-full",
-                  mcpStatus?.running
-                    ? "bg-emerald-500"
-                    : isFetchingMcpStatus
-                      ? "bg-yellow-500 animate-pulse"
-                      : "bg-gray-400"
-                )}
-              />
-              <span className="text-xs font-medium">
-                {isFetchingMcpStatus
-                  ? "Checking..."
-                  : mcpStatus?.running
-                    ? "Running"
-                    : "Stopped"}
-              </span>
-            </div>
-          </div>
-
+          <CustomBadge
+            label={mcpStatusLabel}
+            color={mcpStatusColor}
+            size="md"
+            animateDot={mcpStatus?.running && !isFetchingMcpStatus}
+          />
           <Button
             variant="outline"
             size="sm"
-            onClick={() => navigate("/mcp-server/monitoring-setup")}
+            onClick={() => setIsSchedulerModalOpen(true)}
             className="text-xs font-medium border-border bg-accent hover:border-primary hover:bg-primary/10"
           >
-            <Icon name="settings" size="14px" className="mr-1" /> Monitoring
-            Setup
+            <Icon name="clock" size="14px" className="mr-1" /> MCP Scheduler
           </Button>
 
           {mcpStatus?.running && (
@@ -172,16 +196,17 @@ export default function McpMonitoring() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setIsSchedulerModalOpen(true)}
+            onClick={() => navigate("/mcp-server/monitoring-setup")}
             className="text-xs font-medium border-border bg-accent hover:border-primary hover:bg-primary/10"
           >
-            <Icon name="clock" size="14px" className="mr-1" /> MCP Scheduler
+            <Icon name="settings" size="14px" className="mr-1" /> Monitoring
+            Setup
           </Button>
         </div>
       </div>
 
       {/* Main Content */}
-      <Card className="border-border shadow-sm p-0">
+      <Card className="border-border shadow-sm p-0 gap-0">
         <CardHeader className="flex flex-row items-center justify-between py-3 border-b border-border bg-accent/30">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
             <Icon name="list" size="16px" className="text-primary" />
@@ -217,10 +242,25 @@ export default function McpMonitoring() {
               />
               {isFetchingLogs ? "Refreshing..." : "Refresh"}
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs font-medium"
+              onClick={handleDownloadLogs}
+              disabled={logs.length === 0 || isDownloadingLogs}
+              title="Download all logs as a text file"
+            >
+              <Icon
+                name="download"
+                size="12px"
+                className={cn("mr-1", isDownloadingLogs && "animate-spin")}
+              />
+              {isDownloadingLogs ? "Preparing..." : "Download Logs"}
+            </Button>
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <ScrollArea className="h-auto max-h-[65vh] min-h-50 w-full bg-muted/20">
+          <ScrollArea className="h-[65vh] min-h-50 w-full bg-muted/20">
             <div className="p-4 font-mono text-[13px] flex flex-col gap-1.5">
               {logs.length === 0 ? (
                 <div className="text-muted-foreground text-center py-10 italic">
@@ -243,7 +283,7 @@ export default function McpMonitoring() {
 
                   return (
                     <div
-                      key={idx}
+                      key={idx + 1}
                       className={cn(
                         "py-0.5 border-b border-border/40 wrap-break-word leading-relaxed",
                         textColor

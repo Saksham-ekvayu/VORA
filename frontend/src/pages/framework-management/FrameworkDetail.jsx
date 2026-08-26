@@ -56,6 +56,7 @@ import { useStatusPolling } from "@/hooks/useStatusPolling";
 import LoadingSpinner from "@/components/custom/Loader/LoadingSpinner";
 import UserAvatar from "@/components/custom/UserAvatar";
 import FileTypeCard from "@/components/custom/FileTypeCard";
+import SearchInput from "@/components/custom/SearchInput";
 
 function FrameworkDetail() {
   const { user } = useAuth();
@@ -64,6 +65,7 @@ function FrameworkDetail() {
   const navigate = useNavigate();
   const [framework, setFramework] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [globalSearch, setGlobalSearch] = useState("");
 
   const [versionToDelete, setVersionToDelete] = useState(null);
   const [activeAction, setActiveAction] = useState(null); // 'ai'
@@ -783,6 +785,16 @@ function FrameworkDetail() {
                             )}
                           </Button>
                         )}
+                      {ver.aiExtraction?.controls?.controls_data?.length >
+                        0 && (
+                        <SearchInput
+                          value={globalSearch}
+                          onChange={setGlobalSearch}
+                          onClear={() => setGlobalSearch("")}
+                          placeholder="Search Sections, Controls & DPs..."
+                          className="w-70 h-8 text-xs"
+                        />
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -819,6 +831,7 @@ function FrameworkDetail() {
                             !isApprovalApproved
                           }
                           showApplicability={false}
+                          globalSearch={globalSearch}
                         />
                       </div>
                     )}

@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     compliance_model_name: str = "gpt-4o-mini"
     allowed_extensions: str = "pdf,doc,docx"
     max_file_size: float = 10.0
+    tesseract_cmd_path: str | None = None
 
     # AI Configuration
     sentence_transformer_model: str = "all-MiniLM-L6-v2"

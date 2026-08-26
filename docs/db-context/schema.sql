@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 3fjPhwFIpkgJOSGUhrbvfdW3Y4hQNffMpx2PZ3G6QRwnpy8fWCuXcBEk6XEmgWZ
+\restrict UU7oOx8q7XC9yeJDj3797kAh5UWVcYCZf4uQPd9IUjGeDVRdpb0Ml2oZpKdQN5V
 
 -- Dumped from database version 18.4
 -- Dumped by pg_dump version 18.4
@@ -265,6 +265,7 @@ CREATE TABLE public.gap_threshold_config (
 
 CREATE TABLE public.package_comparisons (
     id character varying(24) NOT NULL,
+    "deploymentFrameworkId" character varying(24),
     "fileHashes" jsonb NOT NULL,
     comparison jsonb NOT NULL,
     "createdAt" timestamp with time zone NOT NULL,
@@ -278,6 +279,7 @@ CREATE TABLE public.package_comparisons (
 
 CREATE TABLE public.package_gap_analyses (
     id character varying(24) NOT NULL,
+    "deploymentFrameworkId" character varying(24),
     "fileHashes" jsonb NOT NULL,
     "gapAnalysis" jsonb NOT NULL,
     "createdAt" timestamp with time zone NOT NULL,
@@ -909,5 +911,5 @@ ALTER TABLE ONLY public.source_credentials
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 3fjPhwFIpkgJOSGUhrbvfdW3Y4hQNffMpx2PZ3G6QRwnpy8fWCuXcBEk6XEmgWZ
+\unrestrict UU7oOx8q7XC9yeJDj3797kAh5UWVcYCZf4uQPd9IUjGeDVRdpb0Ml2oZpKdQN5V
 

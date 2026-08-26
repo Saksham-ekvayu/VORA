@@ -89,10 +89,10 @@ export default function ExpertReviewModal({
 
   const title = isApprove ? "Approve Package" : "Return Package";
   const description = isApprove
-    ? "Confirm approval of this deployment package. It will be marked as deployed and go live."
+    ? "Confirm approval of this deployment package. It will be marked as approved."
     : "Return this package to the auditor for revision. Please provide feedback below.";
   const icon = isApprove ? "check-circle" : "warning";
-  const actionLabel = isApprove ? "Approve & Deploy" : "Return for Revision";
+  const actionLabel = isApprove ? "Approve" : "Return for Revision";
   const actionIcon = isApprove ? "check" : "x-circle";
 
   const comparisonStats = useMemo(
@@ -188,8 +188,7 @@ export default function ExpertReviewModal({
             <div className="text-[11px] text-emerald-700 dark:text-emerald-400 flex items-start gap-1.5 bg-emerald-50 dark:bg-emerald-950/20 p-2.5 rounded border border-emerald-200/60 dark:border-emerald-900/30">
               <span className="shrink-0 mt-0.5">✓</span>
               <span>
-                This will deploy the package as the live version. Any previously
-                live package will be marked as superseded.
+                This will mark the package as approved by the expert.
               </span>
             </div>
           ) : (

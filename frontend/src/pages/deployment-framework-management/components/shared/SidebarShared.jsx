@@ -1,9 +1,7 @@
 /* eslint-disable react/prop-types */
 
 import Icon from "@/components/custom/Icon";
-import SearchInput from "@/components/custom/SearchInput";
 import { capitalizeFirst } from "@/utils/commonUtils";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 /**
  * Reusable section sidebar button.
@@ -17,6 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 export function SectionButton({ section, isActive, count, onClick }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className={`w-full flex flex-col p-2.5 rounded border text-left cursor-pointer transition-all duration-200 ${
         isActive
@@ -65,9 +64,6 @@ export function SectionButton({ section, isActive, count, onClick }) {
  * Props:
  *   sectionsList      – array of { id, name }
  *   resolvedSectionId – currently active section id
- *   sectionSearch     – current search string
- *   onSearchChange    – (value: string) => void
- *   onSearchClear     – () => void
  *   getSectionCount   – (section) => number
  *   onSectionClick    – (sectionId: string) => void
  *   totalCount        – number shown in the header badge
@@ -75,15 +71,12 @@ export function SectionButton({ section, isActive, count, onClick }) {
 export function SectionsSidebar({
   sectionsList,
   resolvedSectionId,
-  sectionSearch,
-  onSearchChange,
-  onSearchClear,
   getSectionCount,
   onSectionClick,
   totalCount,
 }) {
   return (
-    <div className="shrink-0 bg-card border border-border rounded flex flex-col overflow-hidden w-full shadow-sm">
+    <div className="h-full bg-card border border-border rounded flex flex-col overflow-hidden w-full shadow-sm">
       <div className="px-2 pt-3 pb-2.5 flex flex-col items-start gap-2 border-b border-border bg-primary/5">
         <div className="w-full flex items-center justify-between">
           <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
@@ -96,17 +89,10 @@ export function SectionsSidebar({
             {totalCount}
           </div>
         </div>
-        <SearchInput
-          value={sectionSearch}
-          onChange={onSearchChange}
-          onClear={onSearchClear}
-          placeholder="Search sections..."
-          className="w-full bg-card"
-        />
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className="p-2 space-y-1">
+      <div className="relative flex-1 min-h-0">
+        <div className="absolute inset-0 overflow-y-auto p-2 space-y-1">
           {sectionsList.length === 0 ? (
             <div className="text-center py-8 text-sm text-muted-foreground">
               No sections found.
@@ -123,7 +109,7 @@ export function SectionsSidebar({
             ))
           )}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

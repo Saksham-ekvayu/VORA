@@ -3,6 +3,7 @@
 import Icon from "@/components/custom/Icon";
 import UserAvatar from "@/components/custom/UserAvatar";
 import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
+import { Link } from "react-router-dom";
 
 const UserMiniCard = ({
   name,
@@ -13,6 +14,7 @@ const UserMiniCard = ({
   isSelf = false,
   isEmailVerified,
   isRequestPending = false,
+  link,
 }) => {
   if (isSelf) {
     return (
@@ -60,14 +62,24 @@ const UserMiniCard = ({
         </div>
       )}
 
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 group">
         <div className="flex items-center gap-2">
-          <span
-            className="font-semibold text-foreground truncate block capitalize"
-            title={name}
-          >
-            {name}
-          </span>
+          {link ? (
+            <Link
+              to={link}
+              className="font-semibold text-foreground group-hover:text-primary group-hover:underline truncate block capitalize transition-colors"
+              title={name}
+            >
+              {name}
+            </Link>
+          ) : (
+            <span
+              className="font-semibold text-foreground truncate block capitalize"
+              title={name}
+            >
+              {name}
+            </span>
+          )}
           {isEmailVerified !== undefined && (
             <span
               className={`w-2 h-2 rounded-full cursor-pointer shrink-0 ${isEmailVerified ? "bg-green-500" : "bg-yellow-500"}`}
