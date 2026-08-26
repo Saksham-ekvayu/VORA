@@ -26,6 +26,7 @@ export default function McpMonitoring() {
   const [logs, setLogs] = useState([]);
   const [isPolling, setIsPolling] = useState(true);
   const [isFetchingLogs, setIsFetchingLogs] = useState(false);
+  const [isDownloadingLogs, setIsDownloadingLogs] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
   const scrollRef = useRef(null);
 
@@ -60,6 +61,34 @@ export default function McpMonitoring() {
       setIsFetchingLogs(false);
     }
   }, []);
+
+  const handleDownloadLogs = async () => {
+    if (logs.length === 0 || isDownloadingLogs) return;
+
+    setIsDownloadingLogs(true);
+    await new Promise((resolve) => {
+      requestAnimationFrame(resolve);
+    });
+
+    try {
+      const logContent = logs
+        .map((log, index) => `[${String(index + 1).padStart(3, "0")}] ${log}`)
+        .join("\n");
+      const blob = new Blob([logContent], { type: "text/plain;charset=utf-8" });
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const timestamp = new Date().toISOString().replace(/[.:]/g, "-");
+
+      link.href = downloadUrl;
+      link.download = `mcp-logs-${timestamp}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(downloadUrl);
+    } finally {
+      setIsDownloadingLogs(false);
+    }
+  };
 
   const handleStop = async () => {
     setIsStopping(true);
@@ -212,6 +241,21 @@ export default function McpMonitoring() {
                 className={cn("mr-1", isFetchingLogs && "animate-spin")}
               />
               {isFetchingLogs ? "Refreshing..." : "Refresh"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs font-medium"
+              onClick={handleDownloadLogs}
+              disabled={logs.length === 0 || isDownloadingLogs}
+              title="Download all logs as a text file"
+            >
+              <Icon
+                name="download"
+                size="12px"
+                className={cn("mr-1", isDownloadingLogs && "animate-spin")}
+              />
+              {isDownloadingLogs ? "Preparing..." : "Download Logs"}
             </Button>
           </div>
         </CardHeader>
