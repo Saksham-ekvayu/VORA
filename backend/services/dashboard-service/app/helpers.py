@@ -529,7 +529,7 @@ def calculate_framework_weight(
     return weight_val, allocated_weight
 
 
-def get_framework_status(readiness: float, settings: Any) -> str:
+def get_framework_status(readiness: float) -> str:
     """Determine framework compliance status based on score."""
     if readiness < 50:
         return "At Risk"
@@ -555,15 +555,13 @@ def calculate_fw_weight_score_from_merge(merge_doc: Any) -> float:
         return round(avg_weightage * 10, 2)
     return 0.0
 
+
 def build_overall_protection_rows(
-    framework_health: list[dict], 
-    settings: Any, 
-    latest_packages: list[dict], 
-    merges: list[Any]
+    framework_health: list[dict], latest_packages: list[dict], merges: list[Any]
 ) -> list[dict]:
     """Transform framework health into table rows with dynamic weight and status."""
     rows = []
-    
+
     for fw in framework_health:
         readiness = fw.get("readiness", 0)
         fw_id = fw.get("id")
@@ -573,8 +571,8 @@ def build_overall_protection_rows(
             merge_id = str(get_nested(lp["pkg"], "mergeDocument") or "")
             merge_doc = next((m for m in merges if str(m.id) == merge_id), None)
             ws = calculate_fw_weight_score_from_merge(merge_doc)
-        
-        status = get_framework_status(readiness, settings)
+
+        status = get_framework_status(readiness)
 
         rows.append(
             {
