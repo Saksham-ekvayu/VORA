@@ -177,7 +177,7 @@ export default function McpMonitoring() {
       </div>
 
       {/* Main Content */}
-      <Card className="border-border shadow-sm p-0">
+      <Card className="border-border shadow-sm p-0 gap-0">
         <CardHeader className="flex flex-row items-center justify-between py-3 border-b border-border bg-accent/30">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
             <Icon name="list" size="16px" className="text-primary" />
@@ -216,7 +216,7 @@ export default function McpMonitoring() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <ScrollArea className="h-auto max-h-[65vh] min-h-50 w-full bg-muted/20">
+          <ScrollArea className="h-[65vh] min-h-50 w-full bg-muted/20">
             <div className="p-4 font-mono text-[13px] flex flex-col gap-1.5">
               {logs.length === 0 ? (
                 <div className="text-muted-foreground text-center py-10 italic">
