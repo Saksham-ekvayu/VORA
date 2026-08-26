@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import Icon from "@/components/custom/Icon";
+import CustomBadge from "@/components/custom/CustomBadge";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -50,7 +51,7 @@ export default function McpMonitoring() {
     setIsFetchingLogs(true);
     try {
       const res = await getMcpSchedulerLiveLogs();
-      if (res && res.status && Array.isArray(res.logs)) {
+      if (res?.status && Array.isArray(res.logs)) {
         setLogs(res.logs);
       }
     } catch (error) {
@@ -99,6 +100,20 @@ export default function McpMonitoring() {
     }
   }, [logs]);
 
+  let mcpStatusColor = "gray";
+  if (isFetchingMcpStatus) {
+    mcpStatusColor = "yellow";
+  } else if (mcpStatus?.running) {
+    mcpStatusColor = "emerald";
+  }
+
+  let mcpStatusLabel = "Stopped";
+  if (isFetchingMcpStatus) {
+    mcpStatusLabel = "Checking...";
+  } else if (mcpStatus?.running) {
+    mcpStatusLabel = "Running";
+  }
+
   return (
     <div className="space-y-4 my-2">
       {/* Header */}
@@ -117,39 +132,19 @@ export default function McpMonitoring() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex flex-col items-end mr-1">
-            <span className="text-[10px] text-muted-foreground leading-none mb-1">
-              MCP Service
-            </span>
-            <div className="flex items-center gap-1.5">
-              <span
-                className={cn(
-                  "w-2 h-2 rounded-full",
-                  mcpStatus?.running
-                    ? "bg-emerald-500"
-                    : isFetchingMcpStatus
-                      ? "bg-yellow-500 animate-pulse"
-                      : "bg-gray-400"
-                )}
-              />
-              <span className="text-xs font-medium">
-                {isFetchingMcpStatus
-                  ? "Checking..."
-                  : mcpStatus?.running
-                    ? "Running"
-                    : "Stopped"}
-              </span>
-            </div>
-          </div>
-
+          <CustomBadge
+            label={mcpStatusLabel}
+            color={mcpStatusColor}
+            size="md"
+            animateDot={mcpStatus?.running && !isFetchingMcpStatus}
+          />
           <Button
             variant="outline"
             size="sm"
-            onClick={() => navigate("/mcp-server/monitoring-setup")}
+            onClick={() => setIsSchedulerModalOpen(true)}
             className="text-xs font-medium border-border bg-accent hover:border-primary hover:bg-primary/10"
           >
-            <Icon name="settings" size="14px" className="mr-1" /> Monitoring
-            Setup
+            <Icon name="clock" size="14px" className="mr-1" /> MCP Scheduler
           </Button>
 
           {mcpStatus?.running && (
@@ -172,10 +167,11 @@ export default function McpMonitoring() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setIsSchedulerModalOpen(true)}
+            onClick={() => navigate("/mcp-server/monitoring-setup")}
             className="text-xs font-medium border-border bg-accent hover:border-primary hover:bg-primary/10"
           >
-            <Icon name="clock" size="14px" className="mr-1" /> MCP Scheduler
+            <Icon name="settings" size="14px" className="mr-1" /> Monitoring
+            Setup
           </Button>
         </div>
       </div>
@@ -243,7 +239,7 @@ export default function McpMonitoring() {
 
                   return (
                     <div
-                      key={idx}
+                      key={idx + 1}
                       className={cn(
                         "py-0.5 border-b border-border/40 wrap-break-word leading-relaxed",
                         textColor

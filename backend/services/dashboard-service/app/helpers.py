@@ -999,13 +999,13 @@ def process_gap_analyses(
         (
             fw_total_controls,
             fw_passing_controls,
-            fw_total_dps,
-            fw_implemented_dps,
+            _eval_total_dps,
+            _eval_impl_dps,
             fw_extra_controls,
             fw_extra_controls_list,
             fw_critical_gaps,
             fw_active_gaps,
-            fw_prev_implemented_dps,
+            _eval_prev_impl_dps,
         ) = evaluate_controls(
             expected_controls,
             actual_implemented,
@@ -1018,16 +1018,23 @@ def process_gap_analyses(
             settings,
         )
 
+        fw_total_dps = len(gap_results)
+        fw_implemented_dps = sum(
+            1 for res in gap_results
+            if str(get_nested(res, "implementation_status") or "").lower() in ["implemented", "compliant", "passed", "fully implemented"]
+        )
+        if prev_actual_implemented is not None:
+            fw_prev_implemented_dps = sum(prev_actual_implemented.values())
+        else:
+            fw_prev_implemented_dps = fw_implemented_dps
+
         total_controls_overall += fw_total_controls
         passing_controls_overall += fw_passing_controls
         extra_controls_overall += fw_extra_controls
         extra_controls_list.extend(fw_extra_controls_list)
         total_dps_overall += fw_total_dps
         implemented_dps_overall += fw_implemented_dps
-        if prev_actual_implemented is not None:
-            prev_implemented_dps_overall += fw_prev_implemented_dps
-        else:
-            prev_implemented_dps_overall += fw_implemented_dps
+        prev_implemented_dps_overall += fw_prev_implemented_dps
 
         critical_gaps += fw_critical_gaps
         active_gaps.extend(fw_active_gaps)

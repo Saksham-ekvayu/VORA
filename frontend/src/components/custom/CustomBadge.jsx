@@ -150,6 +150,7 @@ const CustomBadge = ({
   isActive,
   status,
   severity,
+  animateDot = false,
 }) => {
   let displayLabel = label;
   let displayColor = color;
@@ -176,7 +177,11 @@ const CustomBadge = ({
       className={`inline-flex items-center rounded font-semibold capitalize border whitespace-nowrap
       ${c.bg} ${c.text} ${c.border} ${s.container} ${className}`}
     >
-      <span className={`rounded-full shrink-0 ${c.dot} ${s.dot}`} />
+      <span
+        className={`rounded-full shrink-0 ${c.dot} ${s.dot} ${
+          animateDot ? "animate-ping" : ""
+        }`}
+      />
       <span className="truncate">{displayLabel || "N/A"}</span>
     </span>
   );
