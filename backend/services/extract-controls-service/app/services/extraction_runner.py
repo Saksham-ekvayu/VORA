@@ -12,6 +12,7 @@ from typing import Any
 from app.services.control_extractor import (
     convert_to_section_structure,
     extract_framework_controls,
+    extract_deployment_controls,
 )
 from app.services.control_merger import (
     get_framework_previous_controls,
@@ -722,7 +723,7 @@ async def run_deployment_framework_extraction(df_id: str, pkg_ver: str, file_id:
 
         # Extract controls using AI (client controls for deployment frameworks)
         logger.info("[DEPLOYMENT-EXTRACT] Step 3: Running AI extraction...")
-        controls_flat = await asyncio.to_thread(extract_framework_controls, chunks, df_id, True)
+        controls_flat = await asyncio.to_thread(extract_deployment_controls, chunks, df_id)
         logger.info(
             f"[DEPLOYMENT-EXTRACT] Framework ai extraction complete: {len(controls_flat)} controls extracted"
         )
@@ -1269,7 +1270,7 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
 
         # Extract controls using AI (client controls for deployment documents)
         logger.info("[DD-EXTRACT] Step 3: Running AI extraction...")
-        controls_flat = await asyncio.to_thread(extract_framework_controls, chunks, dd_id, True)
+        controls_flat = await asyncio.to_thread(extract_deployment_controls, chunks, dd_id)
         logger.info(
             f"[DD-EXTRACT]  Framework ai extraction complete: {len(controls_flat)} controls extracted"
         )
