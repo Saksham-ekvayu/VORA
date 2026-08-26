@@ -31,6 +31,12 @@ logger = logging.getLogger(__name__)
 async def lifespan(_: FastAPI):
     settings = get_settings()
     connect_db(settings.resolved_database_url())
+    
+    # Pre-load the SentenceTransformer model in the background on startup
+    import asyncio
+    from app.services.comparison_runner import _get_embedder_async
+    asyncio.create_task(_get_embedder_async())
+    
     yield
     await disconnect_db()
     logger.info("AI Analysis Service stopped")
