@@ -20,6 +20,7 @@ export default function DocumentControlsModal({
   const [localDocument, setLocalDocument] = useState(initialDocument);
   const [editingControl, setEditingControl] = useState(null);
   const [deletingControl, setDeletingControl] = useState(null);
+  const [globalSearch, setGlobalSearch] = useState("");
 
   useEffect(() => {
     setLocalDocument(initialDocument);
@@ -188,6 +189,10 @@ export default function DocumentControlsModal({
             title="Extracted Controls"
             description={`${localDocument.originalFileName}`}
             className="shrink-0 pl-3 pr-8"
+            globalSearch={globalSearch}
+            setGlobalSearch={setGlobalSearch}
+            placeholder="Search Sections, Controls & DPs..."
+            isGlobalSearch={true}
           />
           <div className="flex-1 overflow-hidden p-2">
             <ControlsPanel
@@ -198,6 +203,7 @@ export default function DocumentControlsModal({
               onAdd={handleAddControl}
               onEdit={(control) => setEditingControl(control)}
               onDelete={(control) => setDeletingControl(control)}
+              globalSearch={globalSearch}
             />
           </div>
         </DialogContent>

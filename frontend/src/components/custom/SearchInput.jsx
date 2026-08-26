@@ -60,9 +60,14 @@ export default function SearchInput({
   const isSearching = debounced ? displayIsSearching : false;
   const hasValue = Boolean(inputValue);
 
-  const handleChange = debounced
-    ? handleSearchChange
-    : (e) => onChange?.(e.target.value);
+  const handleChange = (e) => {
+    const val = e.target.value.trimStart();
+    if (debounced) {
+      handleSearchChange({ target: { value: val } });
+    } else {
+      onChange?.(val);
+    }
+  };
 
   const handleClear = debounced ? clearSearch : () => onClear?.();
 
