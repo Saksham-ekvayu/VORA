@@ -531,7 +531,8 @@ export function deployDeploymentPackage(frameworkId, packageVersion) {
     `${FRAMEWORK_BASE}/${frameworkId}/packages/${packageVersion}/deploy`,
     {
       method: "PATCH",
-    }
+    },
+    true
   );
 }
 

@@ -739,6 +739,14 @@ function AssignedFrameworkDetails() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      {ver.aiExtraction?.length > 0 && (
+                        <SearchInput
+                          value={globalSearch}
+                          onChange={setGlobalSearch}
+                          onClear={() => setGlobalSearch("")}
+                          placeholder="Search Sections, Controls & DPs..."
+                        />
+                      )}
                       <SearchInput
                         value={globalSearch}
                         onChange={setGlobalSearch}

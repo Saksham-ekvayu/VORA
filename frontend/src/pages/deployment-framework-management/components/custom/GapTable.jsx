@@ -367,6 +367,7 @@ const GapPointCard = ({
   return (
     <div className="border border-border rounded overflow-hidden bg-card">
       <button
+        type="button"
         className="w-full flex items-center justify-between p-2 cursor-pointer hover:bg-muted/50 transition-colors text-left min-w-0"
         onClick={onToggle}
       >
@@ -374,7 +375,7 @@ const GapPointCard = ({
           <span className="text-xs font-mono bg-muted px-2 py-1 rounded whitespace-nowrap shrink-0">
             Point {index + 1}
           </span>
-          <span className="text-sm font-medium flex-1 leading-relaxed break-words">
+          <span className="text-sm font-medium flex-1 leading-relaxed wrap-break-word">
             {capitalizeFirst(point.assigned_dp?.point)}
           </span>
           {/* <StatusBadge status={point.implementation_status} /> */}
@@ -439,6 +440,7 @@ const StatsCard = ({
   onClick,
 }) => (
   <button
+    type="button"
     onClick={onClick}
     className={`flex items-center justify-between p-2 rounded bg-card border cursor-pointer transition-colors ${
       activeFilter === filterValue ? borderActiveClass : "border-border"
@@ -716,6 +718,7 @@ export default function GapsTable({
                     selectedControl?.controlId === ctrl.controlId;
                   return (
                     <button
+                      type="button"
                       key={ctrl.controlId}
                       onClick={() => setActiveControlId(ctrl.controlId)}
                       className={`w-full flex flex-col p-2.5 rounded border text-left cursor-pointer transition-all ${

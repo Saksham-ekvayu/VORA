@@ -691,7 +691,6 @@ def _process_package_controls(
     fw_name: str,
     fw_version: str,
     ga_created_at: Any,
-    settings: Any,
     stats: dict,
 ) -> list[dict]:
     formatted = []
@@ -761,7 +760,6 @@ def build_controls_passing_response(
     latest_packages: list[dict],
     merges: list[DeploymentPackageMerge],
     assignments: list[FrameworkAssignment],
-    settings: Any,
     search: str,
     status_filter: str,
     sort_by: str,
@@ -801,7 +799,6 @@ def build_controls_passing_response(
                 fw_name,
                 fw_version,
                 ga.createdAt if ga else None,
-                settings,
                 stats,
             )
         )
@@ -896,35 +893,6 @@ def get_latest_packages(dfs: list[DeploymentFramework]) -> tuple[list[dict], lis
     return latest_packages, gap_analysis_ids, merge_doc_ids
 
 
-def _extract_control_weight(ctrl: Any) -> float:
-    """Extract customer weightage from a control object."""
-    custom = get_nested(ctrl, "customization") or {}
-    weight_obj = get_nested(custom, "weightage") or {}
-    return float(get_nested(weight_obj, "customer_weightage", 10.0))
-
-
-def calculate_fw_weight_score(
-    fw_assignment_id: str, assignments: list[FrameworkAssignment]
-) -> float:
-    """Calculate dynamic framework weight based on assigned controls' customer_weightage."""
-    fw_weight_score = 0.0
-    if not fw_assignment_id:
-        return fw_weight_score
-
-    assignment = next((a for a in assignments if str(a.id) == fw_assignment_id), None)
-    if not assignment or not assignment.fileVersions:
-        return fw_weight_score
-
-    latest_fv = assignment.fileVersions[-1]
-    ai_ext = get_nested(latest_fv, "aiExtraction") or []
-
-    for sec in ai_ext:
-        for ctrl in get_nested(sec, "controls") or []:
-            fw_weight_score += _extract_control_weight(ctrl)
-
-    return fw_weight_score
-
-
 def calculate_fw_health_and_trend(
     fw_implemented_dps: int,
     fw_total_dps: int,
@@ -948,6 +916,96 @@ def calculate_fw_health_and_trend(
     return fw_health, trend_abs, trend_up
 
 
+def _process_gap_analysis_package(
+    lp: dict,
+    gap_analyses: list[PackageGapAnalysis],
+    historical_gap_analyses: list[PackageGapAnalysis],
+    merges: list[DeploymentPackageMerge],
+    assignments: list[FrameworkAssignment],
+    settings: Any,
+) -> dict[str, Any] | None:
+    ga_id = str(get_nested(lp["pkg"], "gapAnalysis"))
+    merge_id = str(get_nested(lp["pkg"], "mergeDocument"))
+    ga = next((g for g in gap_analyses if str(g.id) == ga_id), None)
+    merge_doc = next((m for m in merges if str(m.id) == merge_id), None)
+    if not ga or not merge_doc:
+        return None
+
+    gap_data = ga.gapAnalysis or {}
+    df = lp["df"]
+    fw_assignment_id = get_nested(gap_data, "framework_assignment_id")
+    fw_name = df.frameworkName or UNKNOWN_FRAMEWORK
+    fw_version = df.frameworkVersion or ""
+    custom_controls = extract_custom_controls(fw_assignment_id, assignments)
+    expected_controls = extract_expected_controls(merge_doc, custom_controls)
+    gap_results = get_nested(gap_data, "deployment_gap_results") or []
+    actual_implemented = extract_actual_implemented(gap_results)
+    previous_implemented = extract_historical_implemented(
+        get_nested(gap_data, "deployment_framework_id"),
+        ga.createdAt,
+        historical_gap_analyses,
+    )
+
+    evaluated = evaluate_controls(
+        expected_controls,
+        actual_implemented,
+        previous_implemented,
+        ga,
+        str(df.id),
+        fw_name,
+        fw_version,
+        str(get_nested(lp["pkg"], "packageVersion") or ""),
+        settings,
+    )
+    (
+        total_controls,
+        passing_controls,
+        _,
+        _,
+        extra_controls,
+        extra_controls_list,
+        critical_gaps,
+        active_gaps,
+        _,
+    ) = evaluated
+
+    implemented_dps = sum(
+        1
+        for result in gap_results
+        if str(get_nested(result, "implementation_status") or "").lower()
+        in ["implemented", "compliant", "passed", "fully implemented"]
+    )
+    previous_dps = (
+        sum(previous_implemented.values())
+        if previous_implemented is not None
+        else implemented_dps
+    )
+    total_dps = len(gap_results)
+    fw_health, _, _ = calculate_fw_health_and_trend(
+        implemented_dps, total_dps, previous_implemented, previous_dps
+    )
+
+    return {
+        "total_controls": total_controls,
+        "passing_controls": passing_controls,
+        "extra_controls": extra_controls,
+        "extra_controls_list": extra_controls_list,
+        "critical_gaps": critical_gaps,
+        "active_gaps": active_gaps,
+        "framework_health": {
+            "id": str(df.id),
+            "name": fw_name,
+            "version": fw_version,
+            "readiness": fw_health,
+            "total_dps": total_dps,
+            "implemented_dps": implemented_dps,
+        },
+        "total_dps": total_dps,
+        "implemented_dps": implemented_dps,
+        "previous_dps": previous_dps,
+    }
+
+
 def process_gap_analyses(
     gap_analyses: list[PackageGapAnalysis],
     latest_packages: list[dict],
@@ -957,110 +1015,24 @@ def process_gap_analyses(
     settings: Any,
 ) -> tuple:
     """Extract and calculate gap analysis metrics."""
-    total_controls_overall = 0
-    passing_controls_overall = 0
-    extra_controls_overall = 0
-    extra_controls_list = []
-    critical_gaps = 0
-    active_gaps = []
-    framework_health = []
-    total_dps_overall = 0
-    implemented_dps_overall = 0
-    prev_implemented_dps_overall = 0
-
+    totals = [0, 0, 0, [], 0, [], [], 0, 0, 0]
     for lp in latest_packages:
-        ga_id = str(get_nested(lp["pkg"], "gapAnalysis"))
-        merge_id = str(get_nested(lp["pkg"], "mergeDocument"))
-
-        ga = next((g for g in gap_analyses if str(g.id) == ga_id), None)
-        merge_doc = next((m for m in merges if str(m.id) == merge_id), None)
-
-        if not ga or not merge_doc:
+        package = _process_gap_analysis_package(
+            lp, gap_analyses, historical_gap_analyses, merges, assignments, settings
+        )
+        if package is None:
             continue
-
-        gap_data = ga.gapAnalysis or {}
-        df_id = get_nested(gap_data, "deployment_framework_id")
-        fw_assignment_id = get_nested(gap_data, "framework_assignment_id")
-
-        fw_name = lp["df"].frameworkName or UNKNOWN_FRAMEWORK
-        fw_version = lp["df"].frameworkVersion or ""
-        pkg_version = str(get_nested(lp["pkg"], "packageVersion") or "")
-
-        custom_controls = extract_custom_controls(fw_assignment_id, assignments)
-        expected_controls = extract_expected_controls(merge_doc, custom_controls)
-
-        gap_results = get_nested(gap_data, "deployment_gap_results") or []
-        actual_implemented = extract_actual_implemented(gap_results)
-
-        prev_actual_implemented = extract_historical_implemented(
-            df_id, ga.createdAt, historical_gap_analyses
-        )
-
-        (
-            fw_total_controls,
-            fw_passing_controls,
-            fw_total_dps,
-            fw_implemented_dps,
-            fw_extra_controls,
-            fw_extra_controls_list,
-            fw_critical_gaps,
-            fw_active_gaps,
-            fw_prev_implemented_dps,
-        ) = evaluate_controls(
-            expected_controls,
-            actual_implemented,
-            prev_actual_implemented,
-            ga,
-            str(lp["df"].id),
-            fw_name,
-            fw_version,
-            pkg_version,
-            settings,
-        )
-
-        total_controls_overall += fw_total_controls
-        passing_controls_overall += fw_passing_controls
-        extra_controls_overall += fw_extra_controls
-        extra_controls_list.extend(fw_extra_controls_list)
-        total_dps_overall += fw_total_dps
-        implemented_dps_overall += fw_implemented_dps
-        if prev_actual_implemented is not None:
-            prev_implemented_dps_overall += fw_prev_implemented_dps
-        else:
-            prev_implemented_dps_overall += fw_implemented_dps
-
-        critical_gaps += fw_critical_gaps
-        active_gaps.extend(fw_active_gaps)
-
-        fw_health, trend_abs, trend_up = calculate_fw_health_and_trend(
-            fw_implemented_dps, fw_total_dps, prev_actual_implemented, fw_prev_implemented_dps
-        )
-
-        fw_weight_score = calculate_fw_weight_score(fw_assignment_id, assignments)
-
-        framework_health.append(
-            {
-                "id": str(lp["df"].id),
-                "name": fw_name,
-                "version": fw_version,
-                "readiness": fw_health,
-                "total_dps": fw_total_dps,
-                "implemented_dps": fw_implemented_dps,
-            }
-        )
-
-    return (
-        total_controls_overall,
-        passing_controls_overall,
-        extra_controls_overall,
-        extra_controls_list,
-        critical_gaps,
-        active_gaps,
-        framework_health,
-        total_dps_overall,
-        implemented_dps_overall,
-        prev_implemented_dps_overall,
-    )
+        totals[0] += package["total_controls"]
+        totals[1] += package["passing_controls"]
+        totals[2] += package["extra_controls"]
+        totals[3].extend(package["extra_controls_list"])
+        totals[4] += package["critical_gaps"]
+        totals[5].extend(package["active_gaps"])
+        totals[6].append(package["framework_health"])
+        totals[7] += package["total_dps"]
+        totals[8] += package["implemented_dps"]
+        totals[9] += package["previous_dps"]
+    return tuple(totals)
 
 
 def _iter_evidence_records(ev: EvidenceOutput):
@@ -1137,6 +1109,14 @@ def _get_dp_count_for_merge(pm: DeploymentPackageMerge) -> int:
     return dp_count
 
 
+def _count_embedded_deployment_points(merged_controls: Any) -> int:
+    return sum(
+        len(get_nested(control, "deployment_points") or [])
+        for section in get_nested(merged_controls, "controls_data") or []
+        for control in get_nested(section, "controls") or []
+    )
+
+
 def process_deployment_points(
     merges: list[DeploymentPackageMerge], latest_packages: list[dict]
 ) -> list[dict]:
@@ -1150,15 +1130,10 @@ def process_deployment_points(
         
         merge_id = str(get_nested(pkg, "mergeDocument"))
         
-        # Check if the package has embedded mergedControls (some versions may have this)
         merged_controls = get_nested(pkg, "mergedControls")
         if merged_controls and get_nested(merged_controls, "controls_data"):
-            dp_count = 0
-            for sec in get_nested(merged_controls, "controls_data") or []:
-                for ctrl in get_nested(sec, "controls") or []:
-                    dp_count += len(get_nested(ctrl, "deployment_points") or [])
+            dp_count = _count_embedded_deployment_points(merged_controls)
         else:
-            # Fallback to the DeploymentPackageMerge document
             pm = next((m for m in merges if str(m.id) == merge_id), None)
             dp_count = _get_dp_count_for_merge(pm) if pm else 0
             

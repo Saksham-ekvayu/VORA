@@ -446,8 +446,6 @@ async def get_auditor_controls_passing(
 ):
     """Get auditor controls passing for dashboard table."""
     try:
-        settings = get_settings()
-        
         async with session_scope() as session:
             dfs = list((await session.execute(
                 select(DeploymentFramework).where(DeploymentFramework.tenantId == ctx.tenant_id)
@@ -478,7 +476,6 @@ async def get_auditor_controls_passing(
                 latest_packages,
                 merges,
                 assignments,
-                settings,
                 search,
                 status_filter,
                 sort_by,
