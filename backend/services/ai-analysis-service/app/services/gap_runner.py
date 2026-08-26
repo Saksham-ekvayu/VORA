@@ -111,11 +111,31 @@ async def _load_comparison_grouped(session, df: DeploymentFramework, pkg_ver: st
     if not comparison_id:
         return []
 
-    pc = await session.get(PackageComparison, str(comparison_id))
-    if pc and isinstance(pc.comparison, dict):
-        result = pc.comparison.get("comparison_result") or []
-        if result:
-            return result
+    # Polling wait logic if comparison is currently running in parallel
+    max_attempts = 45
+    for attempt in range(max_attempts):
+        pc = await session.get(PackageComparison, str(comparison_id))
+        if not pc:
+            break
+        
+        comp_data = pc.comparison or {}
+        status = comp_data.get("status", "")
+        
+        if status == "completed":
+            result = comp_data.get("comparison_result") or []
+            if result:
+                logger.info(f"[GAP-RUNNER] Successfully loaded completed comparison results on attempt {attempt+1}")
+                return result
+            break
+        elif status == "failed":
+            logger.error(f"[GAP-RUNNER] Comparison task failed, aborting wait: {comp_data.get('message')}")
+            break
+        else:
+            # Status is 'processing' or empty/pending
+            logger.info(f"[GAP-RUNNER] Comparison is in status '{status}' (attempt {attempt+1}/{max_attempts}). Waiting...")
+            await asyncio.sleep(1.0)
+            await session.refresh(pc)
+
     return []
 
 
@@ -185,11 +205,15 @@ def _build_merged_control_map(merge_controls: list[dict[str, Any]]) -> dict[str,
     merged_control_map = {}
     for section in merge_controls:
         for ctrl in _extract_controls_from_section(section):
+            ctrl_id = str(ctrl.get("id") or ctrl.get("Control_id") or "").strip().upper()
+            if ctrl_id:
+                merged_control_map[f"id:{ctrl_id}"] = ctrl
             ctrl_name = (ctrl.get("name") or "").strip().lower()
             if ctrl_name:
-                dps_count = len(ctrl.get("deployment_points") or [])
-                merged_control_map[ctrl_name] = ctrl
-                logger.info(f"[GAP-RUNNER] 📌 Indexed control '{ctrl_name}' with {dps_count} DPs")
+                merged_control_map[f"name:{ctrl_name}"] = ctrl
+                
+            dps_count = len(ctrl.get("deployment_points") or [])
+            logger.info(f"[GAP-RUNNER] 📌 Indexed control ID='{ctrl_id}', Name='{ctrl_name}' with {dps_count} DPs")
     return merged_control_map
 
 
@@ -202,9 +226,18 @@ def _process_assignment_control_for_synthesis(ctrl: dict, merged_control_map: di
     df_control_description = ""
     merged_dps = []  # ✅ Initialize as empty list
     
+    ctrl_id = str(ctrl.get("id") or ctrl.get("Control_id") or "").strip().upper()
     ctrl_name_lower = (ctrl.get("name") or "").strip().lower()
-    if ctrl_name_lower in merged_control_map:
-        matched_merged = merged_control_map[ctrl_name_lower]
+    
+    matched_merged = None
+    if f"id:{ctrl_id}" in merged_control_map:
+        matched_merged = merged_control_map[f"id:{ctrl_id}"]
+        logger.info(f"[GAP-RUNNER]  Matched by ID '{ctrl_id}'")
+    elif f"name:{ctrl_name_lower}" in merged_control_map:
+        matched_merged = merged_control_map[f"name:{ctrl_name_lower}"]
+        logger.info(f"[GAP-RUNNER]  Matched by Name '{ctrl_name_lower}'")
+
+    if matched_merged:
         df_control_id = str(matched_merged.get("id") or "")
         df_control_name = matched_merged.get("name") or ""
         df_control_description = matched_merged.get("description") or ""
@@ -214,11 +247,11 @@ def _process_assignment_control_for_synthesis(ctrl: dict, merged_control_map: di
             for dp in raw_dps
             if isinstance(dp, dict)
         ]
-        logger.info(f"[GAP-RUNNER]  Matched '{ctrl_name_lower}': {len(merged_dps)} DPs")
+        logger.info(f"[GAP-RUNNER]   Resolved: {len(merged_dps)} DPs")
         for dp in merged_dps:
             logger.info(f"              └─ {dp['point']}")
     else:
-        logger.info(f"[GAP-RUNNER]   No match for '{ctrl_name_lower}'")
+        logger.info(f"[GAP-RUNNER]   No match for ID '{ctrl_id}' or Name '{ctrl_name_lower}'")
 
     return {
         "assigned_framework_control_id": str(ctrl.get("id") or ""),
@@ -274,7 +307,7 @@ async def _synthesize_comparison_sections(
     return comparison_sections
 
 
-def _find_best_dp_match(af_dp_text: str, deployment_dps: list[dict[str, Any]]) -> tuple[float, str, str]:
+async def _find_best_dp_match(af_dp_text: str, deployment_dps: list[dict[str, Any]]) -> tuple[float, str, str]:
     """Find best DP match using batch encoding."""
     best_df_dp_id = ""
     best_df_dp_text = ""
@@ -290,8 +323,9 @@ def _find_best_dp_match(af_dp_text: str, deployment_dps: list[dict[str, Any]]) -
         return 0.0, "", ""
 
     # Batch encode all DPs at once
-    af_emb = _batch_encode([af_dp_text])[0]
-    dp_embeddings = _batch_encode(dp_texts)
+    af_emb_list = await _batch_encode([af_dp_text])
+    af_emb = af_emb_list[0]
+    dp_embeddings = await _batch_encode(dp_texts)
 
     # Find best match
     dp_score, best_idx = _batch_similarity(af_emb, dp_embeddings)
@@ -304,7 +338,7 @@ def _find_best_dp_match(af_dp_text: str, deployment_dps: list[dict[str, Any]]) -
     return dp_score_pct, best_df_dp_id, best_df_dp_text
 
 
-def _process_control_item(
+async def _process_control_item(
     item: dict, section_id: str, section_name: str, thresholds: dict, statuses: dict
 ) -> list[dict]:
     assigned_id = str(
@@ -330,9 +364,15 @@ def _process_control_item(
 
         af_dp_id = str(af_dp.get("id") or "")
         af_dp_text = af_dp.get("point") or ""
-        best_dp_score, best_df_dp_id, best_df_dp_text = _find_best_dp_match(af_dp_text, deployment_dps)
+        best_dp_score, best_df_dp_id, best_df_dp_text = await _find_best_dp_match(af_dp_text, deployment_dps)
 
         impl_status = _status_for_score(best_dp_score / 100.0, thresholds, statuses)
+        
+        logger.info(
+            f"  [DP-MATCH] AF DP '{af_dp_id}' ({af_dp_text[:50]}...) "
+            f"matched with DF Control '{df_control_name}' DP '{best_df_dp_id}' ({best_df_dp_text[:50]}...) "
+            f"| Score: {best_dp_score}% | Status: {impl_status}"
+        )
 
         results.append(
             {
@@ -355,7 +395,7 @@ def _process_control_item(
     return results
 
 
-def _calculate_gap_results(
+async def _calculate_gap_results(
     comparison_sections: list[dict[str, Any]], thresholds: dict[str, Any], statuses: dict[str, Any]
 ) -> list[dict[str, Any]]:
     """Calculate gap results with DP-to-DP semantic similarity comparison."""
@@ -374,7 +414,7 @@ def _calculate_gap_results(
             if not isinstance(item, dict):
                 continue
 
-            item_results = _process_control_item(item, section_id, section_name, thresholds, statuses)
+            item_results = await _process_control_item(item, section_id, section_name, thresholds, statuses)
             for row in item_results:
                 gap_results.append(row)
 
@@ -505,9 +545,9 @@ async def run_gap(
                     logger.error("No comparison results or controls available for gap analysis")
                     return
 
-            logger.info("[GAP-RUNNER] Starting DP-to-DP matching (offloading to thread pool)...")
-            # Offload CPU-intensive DP matching to thread pool to avoid blocking event loop
-            gap_results = await asyncio.to_thread(_calculate_gap_results, comparison_sections, thresholds, statuses)
+            logger.info("[GAP-RUNNER] Starting DP-to-DP matching...")
+            # Run async DP-to-DP matching
+            gap_results = await _calculate_gap_results(comparison_sections, thresholds, statuses)
 
             pga = await _save_gap_analysis_result(session, df_id, str(fa_id), pkg_ver, gap_id, gap_results)
 
