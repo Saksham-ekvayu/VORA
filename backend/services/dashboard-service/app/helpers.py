@@ -22,7 +22,7 @@ from vora_shared.models import (
 )
 
 UNKNOWN_FRAMEWORK = "Unknown Framework"
-MAX_ACTIVE_GAPS = 100
+MAX_ACTIVE_GAPS = 50
 
 
 def utcnow() -> datetime:
@@ -1016,6 +1016,7 @@ def process_gap_analyses(
     merges: list[DeploymentPackageMerge],
     assignments: list[FrameworkAssignment],
     settings: Any,
+    active_gaps_limit: int | None = None,
 ) -> tuple:
     """Extract and calculate gap analysis metrics."""
     totals = [0, 0, 0, [], 0, [], [], 0, 0, 0]
@@ -1027,7 +1028,7 @@ def process_gap_analyses(
             merges,
             assignments,
             settings,
-            MAX_ACTIVE_GAPS - len(totals[5]),
+            (active_gaps_limit - len(totals[5]) if active_gaps_limit is not None else None),
         )
         if package is None:
             continue
