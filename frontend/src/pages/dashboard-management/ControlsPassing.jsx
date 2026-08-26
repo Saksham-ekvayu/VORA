@@ -94,6 +94,7 @@ export default function ControlsPassing() {
       key: "ctrlId",
       label: "Ctrl ID",
       sortable: false,
+      align: "center",
       render: (value) => (
         <span className="font-mono text-xs font-bold text-secondary bg-muted px-2 py-1 rounded whitespace-nowrap">
           {value}
@@ -110,18 +111,20 @@ export default function ControlsPassing() {
       key: "instances",
       label: "Instances",
       sortable: false,
-      render: (value) => <span className="text-center block">{value}</span>,
+      align: "center",
+      render: (value) => <span className="">{value}</span>,
     },
     {
       key: "passRate",
       label: "Pass Rate",
       sortable: false,
+      align: "center",
       render: (value, row) => {
         let color = "text-emerald-500";
         if (row.status === "Failing") color = "text-red-500";
         else if (row.status === "Warning") color = "text-amber-500";
         return (
-          <span className={`text-sm font-bold block text-center ${color}`}>
+          <span className={`text-sm font-bold ${color}`}>
             {value}%
           </span>
         );
@@ -131,12 +134,14 @@ export default function ControlsPassing() {
       key: "status",
       label: "Status",
       sortable: false,
+      align: "center",
       render: (value) => <CustomBadge status={value} size="sm" />,
     },
     {
       key: "lastRun",
       label: "Last Run",
       sortable: false,
+      align: "right",
       render: (value) => (
         <span className="whitespace-nowrap">
           {formatDateWithMonthNameAndTime(value)}

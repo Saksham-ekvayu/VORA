@@ -98,6 +98,7 @@ export default function CriticalGaps() {
       key: "ctrlNo",
       label: "Ctrl ID",
       sortable: false,
+      align: "center",
       render: (value) => (
         <span className="font-mono font-bold text-secondary bg-muted px-2 py-1 rounded whitespace-nowrap">
           {value}
@@ -114,14 +115,16 @@ export default function CriticalGaps() {
       key: "instances",
       label: "Instances",
       sortable: false,
-      render: (value) => <span className="text-center block">{value}</span>,
+      align: "center",
+      render: (value) => <span className="">{value}</span>,
     },
     {
       key: "failingPct",
       label: "% Failing",
       sortable: false,
+      align: "center",
       render: (value) => (
-        <span className="font-semibold text-red-400 text-center block">
+        <span className="font-semibold text-red-400">
           {value}
         </span>
       ),
@@ -130,6 +133,7 @@ export default function CriticalGaps() {
       key: "severity",
       label: "Severity",
       sortable: false,
+      align: "right",
       render: (value) => <CustomBadge severity={value} size="xs" />,
     },
   ];

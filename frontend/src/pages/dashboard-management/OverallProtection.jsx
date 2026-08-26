@@ -91,21 +91,24 @@ export default function OverallProtection() {
       key: "weightage",
       label: "Weightage",
       sortable: false,
+      align: "center",
       render: (value) => <span className="">{value}%</span>,
     },
     {
       key: "implementation",
       label: "Implement",
       sortable: false,
+      align: "center",
       render: (value) => <span className="">{value}%</span>,
     },
     {
       key: "trend",
       label: "Trend",
       sortable: false,
+      align: "center",
       render: (value, row) => (
         <span
-          className={`flex items-center gap-1 ${row.trendUp ? "text-emerald-400" : "text-red-400"
+          className={`flex justify-center items-center gap-1 ${row.trendUp ? "text-emerald-400" : "text-red-400"
             }`}
         >
           <Icon
@@ -121,6 +124,7 @@ export default function OverallProtection() {
       key: "status",
       label: "Status",
       sortable: false,
+      align: "right",
       render: (value) => <CustomBadge status={value} size="sm" />,
     },
   ];
