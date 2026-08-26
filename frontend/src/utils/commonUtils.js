@@ -583,3 +583,25 @@ export const capitalizeFirst = (text) => {
   if (typeof text !== "string" || !text) return "";
   return text.charAt(0).toUpperCase() + text.slice(1);
 };
+
+export const getFrameworkHealthConfig = (readiness = 0) => {
+  if (readiness >= 80) {
+    return { tagClass: "bg-primary", barColor: "bg-primary" };
+  }
+  if (readiness >= 50) {
+    return { tagClass: "bg-yellow-500", barColor: "bg-yellow-500" };
+  }
+  return { tagClass: "bg-destructive", barColor: "bg-destructive" };
+};
+
+export function getStreamDotColor(status) {
+  if (status === "pass") return "bg-emerald-500";
+  if (status === "warn") return "bg-amber-500";
+  return "bg-destructive";
+}
+
+export function getStreamTextColor(status) {
+  if (status === "pass") return "text-emerald-500";
+  if (status === "warn") return "text-amber-500";
+  return "text-destructive";
+}

@@ -22,6 +22,7 @@ from vora_shared.models import (
 )
 
 UNKNOWN_FRAMEWORK = "Unknown Framework"
+MAX_ACTIVE_GAPS = 100
 
 
 def utcnow() -> datetime:
@@ -433,6 +434,7 @@ def evaluate_controls(
     fw_version: str,
     pkg_version: str,
     settings: Any,
+    active_gaps_limit: int | None = None,
 ) -> tuple[int, int, int, int, int, int, int, list[dict], int]:
     """Evaluate controls against implemented DPs and return aggregated metrics."""
     fw_total_controls = 0
@@ -463,7 +465,7 @@ def evaluate_controls(
             )
 
         impl_dps = actual_implemented.get(ctrl_id, 0)
-        
+
         prev_impl = (
             prev_actual_implemented.get(ctrl_id, 0) if prev_actual_implemented is not None else 0
         )
@@ -475,26 +477,27 @@ def evaluate_controls(
         failing_percentage = 100
         if req_dps > 0:
             failing_percentage = round(((req_dps - min(impl_dps, req_dps)) / req_dps) * 100)
-            
+
         if failing_percentage <= 0:
             fw_passing_controls += 1
         else:
             fw_critical_gaps += 1
-            fw_active_gaps.append(
-                _create_active_gap(
-                    ctrl_id,
-                    expected,
-                    req_dps,
-                    min(impl_dps, req_dps),
-                    prev_actual_implemented,
-                    ga,
-                    fw_id,
-                    fw_name,
-                    fw_version,
-                    pkg_version,
-                    settings,
+            if active_gaps_limit is None or len(fw_active_gaps) < active_gaps_limit:
+                fw_active_gaps.append(
+                    _create_active_gap(
+                        ctrl_id,
+                        expected,
+                        req_dps,
+                        min(impl_dps, req_dps),
+                        prev_actual_implemented,
+                        ga,
+                        fw_id,
+                        fw_name,
+                        fw_version,
+                        pkg_version,
+                        settings,
+                    )
                 )
-            )
 
     return (
         fw_total_controls,
@@ -877,7 +880,7 @@ def get_latest_packages(dfs: list[DeploymentFramework]) -> tuple[list[dict], lis
     for df in dfs:
         if not df.packages:
             continue
-            
+
         latest_pkg = max(df.packages, key=lambda p: get_nested(p, "createdAt") or "")
 
         latest_packages.append({"df": df, "pkg": latest_pkg})
@@ -923,6 +926,7 @@ def _process_gap_analysis_package(
     merges: list[DeploymentPackageMerge],
     assignments: list[FrameworkAssignment],
     settings: Any,
+    active_gaps_limit: int | None = None,
 ) -> dict[str, Any] | None:
     ga_id = str(get_nested(lp["pkg"], "gapAnalysis"))
     merge_id = str(get_nested(lp["pkg"], "mergeDocument"))
@@ -956,6 +960,7 @@ def _process_gap_analysis_package(
         fw_version,
         str(get_nested(lp["pkg"], "packageVersion") or ""),
         settings,
+        active_gaps_limit,
     )
     (
         total_controls,
@@ -976,9 +981,7 @@ def _process_gap_analysis_package(
         in ["implemented", "compliant", "passed", "fully implemented"]
     )
     previous_dps = (
-        sum(previous_implemented.values())
-        if previous_implemented is not None
-        else implemented_dps
+        sum(previous_implemented.values()) if previous_implemented is not None else implemented_dps
     )
     total_dps = len(gap_results)
     fw_health, _, _ = calculate_fw_health_and_trend(
@@ -1018,7 +1021,13 @@ def process_gap_analyses(
     totals = [0, 0, 0, [], 0, [], [], 0, 0, 0]
     for lp in latest_packages:
         package = _process_gap_analysis_package(
-            lp, gap_analyses, historical_gap_analyses, merges, assignments, settings
+            lp,
+            gap_analyses,
+            historical_gap_analyses,
+            merges,
+            assignments,
+            settings,
+            MAX_ACTIVE_GAPS - len(totals[5]),
         )
         if package is None:
             continue
@@ -1127,18 +1136,18 @@ def process_deployment_points(
         pkg = lp["pkg"]
         fw_name = df.frameworkName or UNKNOWN_FRAMEWORK
         fw_version = df.frameworkVersion or ""
-        
+
         merge_id = str(get_nested(pkg, "mergeDocument"))
-        
+
         merged_controls = get_nested(pkg, "mergedControls")
         if merged_controls and get_nested(merged_controls, "controls_data"):
             dp_count = _count_embedded_deployment_points(merged_controls)
         else:
             pm = next((m for m in merges if str(m.id) == merge_id), None)
             dp_count = _get_dp_count_for_merge(pm) if pm else 0
-            
+
         deployment_points.append({"name": fw_name, "version": fw_version, "count": dp_count})
-        
+
     return deployment_points
 
 
@@ -1153,7 +1162,7 @@ def _calculate_control_percentages(
         total_dps += req_dps
 
         impl_dps = actual_implemented.get(ctrl_id, 0)
-        
+
         pct = 100
         if req_dps > 0:
             pct = round((min(impl_dps, req_dps) / req_dps) * 100)
@@ -1314,15 +1323,13 @@ def _update_auditor_control_metrics(
     else:
         val = round(score * 100)
 
-    metrics["gap_analysis"].append(
-        {"id": ctrl_id, "name": ctrl_name, "value": val}
-    )
+    metrics["gap_analysis"].append({"id": ctrl_id, "name": ctrl_name, "value": val})
 
 
 def _calculate_gap_scores(gap_doc) -> dict:
     if not gap_doc or not gap_doc.gapAnalysis:
         return {}
-    
+
     gap_results = gap_doc.gapAnalysis.get("deployment_gap_results", [])
     control_gaps = {}
     for res in gap_results:
@@ -1335,8 +1342,9 @@ def _calculate_gap_scores(gap_doc) -> dict:
 
 def _natural_sort_key(item, key_name):
     import re
+
     val = item.get(key_name, "")
-    return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', val)]
+    return [int(text) if text.isdigit() else text.lower() for text in re.split(r"(\d+)", val)]
 
 
 def _calculate_auditor_metrics(
@@ -1372,7 +1380,7 @@ def _calculate_auditor_metrics(
 
     metrics["gap_analysis"].sort(key=lambda x: _natural_sort_key(x, "id"))
     metrics["non_compliant_list"].sort(key=lambda x: _natural_sort_key(x, "ctrlNo"))
-    
+
     for idx, item in enumerate(metrics["non_compliant_list"]):
         item["sl"] = idx + 1
 
@@ -1398,8 +1406,12 @@ async def get_auditor_framework_details_helper(
         if not df:
             return None
 
-        package = max(df.packages, key=lambda p: get_nested(p, "createdAt") or "") if df.packages else None
-        
+        package = (
+            max(df.packages, key=lambda p: get_nested(p, "createdAt") or "")
+            if df.packages
+            else None
+        )
+
         comparison_id = None
         ga_id = None
         if package:
@@ -1421,6 +1433,7 @@ async def get_auditor_framework_details_helper(
         gap_doc = None
         if ga_id:
             from vora_shared.models import PackageGapAnalysis
+
             gap_doc = (
                 await session.execute(
                     select(PackageGapAnalysis).where(PackageGapAnalysis.id == str(ga_id))
@@ -1430,7 +1443,9 @@ async def get_auditor_framework_details_helper(
         source_map, applicable_map = await _build_framework_assignment_maps(
             session, df.assignedFrameworkId
         )
-        m = _calculate_auditor_metrics(comparison_doc, gap_doc, source_map, applicable_map, comp_threshold)
+        m = _calculate_auditor_metrics(
+            comparison_doc, gap_doc, source_map, applicable_map, comp_threshold
+        )
 
         return {
             "id": str(df.id),
