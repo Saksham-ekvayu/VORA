@@ -539,21 +539,25 @@ def get_framework_status(readiness: float) -> str:
 
 
 def calculate_fw_weight_score_from_merge(merge_doc: Any) -> float:
+    if not merge_doc:
+        return 0.0
+
     fw_weight_score = 0.0
     count = 0
-    if merge_doc:
-        controls_data = get_nested(merge_doc.controls or {}, "controls_data") or []
-        for section in controls_data:
-            for control in get_nested(section, "controls") or []:
-                dps = get_nested(control, "deployment_points") or []
-                for dp in dps:
-                    fw_weight_score += float(get_nested(dp, "weightage") or 0.0)
-                    count += 1
-    if count > 0:
-        avg_weightage = fw_weight_score / count
-        # Scale 0-10 to 0-100%
-        return round(avg_weightage * 10, 2)
-    return 0.0
+    controls_data = get_nested(merge_doc.controls or {}, "controls_data") or []
+    
+    for section in controls_data:
+        for control in get_nested(section, "controls") or []:
+            for dp in get_nested(control, "deployment_points") or []:
+                fw_weight_score += float(get_nested(dp, "weightage") or 0.0)
+                count += 1
+                
+    if count == 0:
+        return 0.0
+        
+    avg_weightage = fw_weight_score / count
+    # Scale 0-10 to 0-100%
+    return round(avg_weightage * 10, 2)
 
 
 def build_overall_protection_rows(

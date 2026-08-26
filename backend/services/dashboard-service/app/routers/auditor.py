@@ -330,7 +330,7 @@ async def get_auditor_overall_protection(
 
             overall_trend_abs = abs(overall_trend_val)
             # Build rows
-            rows = build_overall_protection_rows(framework_health, settings, latest_packages, merges)
+            rows = build_overall_protection_rows(framework_health, latest_packages, merges)
 
             # Apply filters and sorting
             rows = filter_and_sort_rows(rows, search, status_filter, sort_by, sort_order)
