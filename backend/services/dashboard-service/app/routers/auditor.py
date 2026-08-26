@@ -330,7 +330,7 @@ async def get_auditor_overall_protection(
 
             overall_trend_abs = abs(overall_trend_val)
             # Build rows
-            rows = build_overall_protection_rows(framework_health, settings)
+            rows = build_overall_protection_rows(framework_health, settings, latest_packages, merges)
 
             # Apply filters and sorting
             rows = filter_and_sort_rows(rows, search, status_filter, sort_by, sort_order)
@@ -350,7 +350,6 @@ async def get_auditor_overall_protection(
                     "score": overall_protection,
                     "trend": overall_trend_abs,
                     "trendUp": overall_trend_up,
-                    "frameworksActive": len(framework_health),
                     "controlsEvaluated": total_controls_overall,
                     "deploymentPoints": total_dps_overall,
                 },

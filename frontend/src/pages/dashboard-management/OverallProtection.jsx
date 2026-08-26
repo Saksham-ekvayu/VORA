@@ -88,14 +88,14 @@ export default function OverallProtection() {
       ),
     },
     {
-      key: "weight",
-      label: "Weight",
+      key: "weightage",
+      label: "Weightage",
       sortable: false,
-      render: (value) => <span className="">{value}</span>,
+      render: (value) => <span className="">{value}%</span>,
     },
     {
       key: "implementation",
-      label: "Implementation",
+      label: "Implement",
       sortable: false,
       render: (value) => <span className="">{value}%</span>,
     },
@@ -105,9 +105,8 @@ export default function OverallProtection() {
       sortable: false,
       render: (value, row) => (
         <span
-          className={`flex items-center gap-1 ${
-            row.trendUp ? "text-emerald-400" : "text-red-400"
-          }`}
+          className={`flex items-center gap-1 ${row.trendUp ? "text-emerald-400" : "text-red-400"
+            }`}
         >
           <Icon
             name={row.trendUp ? "trending-up" : "trending-down"}
@@ -187,11 +186,6 @@ export default function OverallProtection() {
             <Icon name="arrow-left" size="13px" /> Back to Dashboard
           </Button>
           <div className="flex items-center gap-2 flex-wrap justify-end">
-            <MiniStatBox
-              label="Frameworks Active"
-              value={statsToUse.frameworksActive}
-              valueColor="text-primary"
-            />
             <MiniStatBox
               label="Controls Evaluated"
               value={statsToUse.controlsEvaluated}

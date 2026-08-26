@@ -538,13 +538,42 @@ def get_framework_status(readiness: float, settings: Any) -> str:
     return "On Track"
 
 
-def build_overall_protection_rows(framework_health: list[dict], settings: Any) -> list[dict]:
+def calculate_fw_weight_score_from_merge(merge_doc: Any) -> float:
+    fw_weight_score = 0.0
+    count = 0
+    if merge_doc:
+        controls_data = get_nested(merge_doc.controls or {}, "controls_data") or []
+        for section in controls_data:
+            for control in get_nested(section, "controls") or []:
+                dps = get_nested(control, "deployment_points") or []
+                for dp in dps:
+                    fw_weight_score += float(get_nested(dp, "weightage") or 0.0)
+                    count += 1
+    if count > 0:
+        avg_weightage = fw_weight_score / count
+        # Scale 0-10 to 0-100%
+        return round(avg_weightage * 10, 2)
+    return 0.0
+
+def build_overall_protection_rows(
+    framework_health: list[dict], 
+    settings: Any, 
+    latest_packages: list[dict], 
+    merges: list[Any]
+) -> list[dict]:
     """Transform framework health into table rows with dynamic weight and status."""
     rows = []
     
     for fw in framework_health:
         readiness = fw.get("readiness", 0)
-        weight_val = fw.get("weight_score", 0)
+        fw_id = fw.get("id")
+        lp = next((lp for lp in latest_packages if str(lp["df"].id) == fw_id), None)
+        ws = 0.0
+        if lp:
+            merge_id = str(get_nested(lp["pkg"], "mergeDocument") or "")
+            merge_doc = next((m for m in merges if str(m.id) == merge_id), None)
+            ws = calculate_fw_weight_score_from_merge(merge_doc)
+        
         status = get_framework_status(readiness, settings)
 
         rows.append(
@@ -552,7 +581,7 @@ def build_overall_protection_rows(framework_health: list[dict], settings: Any) -
                 "id": fw.get("id"),
                 "version": fw.get("version", ""),
                 "framework": fw.get("name", ""),
-                "weight": weight_val,
+                "weightage": ws,
                 "implementation": readiness,
                 "trend": fw.get("trend", 0),
                 "trendUp": fw.get("trendUp", True),
