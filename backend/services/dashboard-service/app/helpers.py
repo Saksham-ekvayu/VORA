@@ -315,6 +315,7 @@ def extract_expected_controls(merge_doc: Any, custom_controls: dict[str, bool]) 
                     "description": _get(ctrl, "description", ""),
                     "required_dps": len(_get(ctrl, "deployment_points") or []),
                     "is_extra": custom_controls.get(ctrl_id, False),
+                    "sectionId": _get(sec, "id", ""),
                 }
     return expected_controls
 
@@ -415,6 +416,7 @@ def _create_active_gap(
         "version": fw_version,
         "packageVersion": pkg_version,
         "control": expected["name"],
+        "sectionId": expected.get("sectionId", ""),
         "description": expected["description"],
         "instances": req_dps,
         "failing": failing_percentage,
@@ -460,6 +462,8 @@ def evaluate_controls(
                     "control": expected["name"],
                     "frameworkVersion": fw_version,
                     "frameworkName": fw_name,
+                    "packageVersion": pkg_version,
+                    "sectionId": expected.get("sectionId", ""),
                     "deploymentPoints": req_dps,
                 }
             )
@@ -571,10 +575,12 @@ def build_overall_protection_rows(
         fw_id = fw.get("id")
         lp = next((lp for lp in latest_packages if str(lp["df"].id) == fw_id), None)
         ws = 0.0
+        pkg_version = ""
         if lp:
             merge_id = str(get_nested(lp["pkg"], "mergeDocument") or "")
             merge_doc = next((m for m in merges if str(m.id) == merge_id), None)
             ws = calculate_fw_weight_score_from_merge(merge_doc)
+            pkg_version = str(get_nested(lp["pkg"], "packageVersion") or "")
 
         status = get_framework_status(readiness)
 
@@ -583,6 +589,7 @@ def build_overall_protection_rows(
                 "id": fw.get("id"),
                 "version": fw.get("version", ""),
                 "framework": fw.get("name", ""),
+                "packageVersion": pkg_version,
                 "weightage": ws,
                 "implementation": readiness,
                 "trend": fw.get("trend", 0),
@@ -621,8 +628,10 @@ def build_critical_gaps_response(
                 "id": g.get("frameworkId"),
                 "frameworkVersion": g["version"],
                 "frameworkName": g["framework"],
+                "packageVersion": g.get("packageVersion", ""),
                 "ctrlNo": g["id"],
                 "controlName": g["control"],
+                "sectionId": g.get("sectionId", ""),
                 "instances": g["instances"],
                 "failingPct": f"{g['failing']}%",
                 "failingRaw": g["failing"],
@@ -717,6 +726,7 @@ def _process_package_controls(
     fw_id: str,
     fw_name: str,
     fw_version: str,
+    pkg_version: str,
     ga_created_at: Any,
     stats: dict,
 ) -> list[dict]:
@@ -742,7 +752,8 @@ def _process_package_controls(
                 "control": expected["name"],
                 "frameworkVersion": fw_version,
                 "frameworkName": fw_name,
-                "section": expected.get("section", "General"),
+                "packageVersion": pkg_version,
+                "sectionId": expected.get("sectionId", ""),
                 "instances": req_dps,
                 "passRate": pass_rate,
                 "status": status,
@@ -811,6 +822,7 @@ def build_controls_passing_response(
         fw_assignment_id = get_nested(gap_data, "framework_assignment_id")
         fw_name = lp["df"].frameworkName or UNKNOWN_FRAMEWORK
         fw_version = lp["df"].frameworkVersion or ""
+        pkg_version = str(get_nested(lp["pkg"], "packageVersion") or "")
 
         custom_controls = extract_custom_controls(fw_assignment_id, assignments)
         expected_controls = extract_expected_controls(merge_doc, custom_controls)
@@ -825,6 +837,7 @@ def build_controls_passing_response(
                 str(lp["df"].id),
                 fw_name,
                 fw_version,
+                pkg_version,
                 ga.createdAt if ga else None,
                 stats,
             )

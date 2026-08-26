@@ -6,6 +6,8 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
 import { getAuditorExtraControls } from "@/services/dashboardService";
 import { useTableData } from "@/components/data-table/hooks/useTableData";
+import { capitalizeFirstLetter } from "@/utils/stringUtils";
+import FrameworkMiniCard from "@/components/custom/FrameworkMiniCard";
 
 export default function ExtraControls() {
   usePageTitle("extra-controls", "Extra Controls");
@@ -32,31 +34,18 @@ export default function ExtraControls() {
       label: "Version",
       sortable: false,
       render: (value, row) => (
-        <Link
-          to={`/dashboard/framework/${row.id}`}
-          className="hover:underline hover:text-primary"
-        >
-          {value}
-        </Link>
-      ),
-    },
-    {
-      key: "frameworkName",
-      label: "Framework",
-      sortable: false,
-      render: (value, row) => (
-        <Link
-          to={`/dashboard/framework/${row.id}`}
-          className="hover:underline hover:text-primary"
-        >
-          {value}
-        </Link>
+        <FrameworkMiniCard
+          name={row.frameworkName}
+          description={row.frameworkVersion}
+          link={`/dashboard/framework/${row.id}`}
+        />
       ),
     },
     {
       key: "ctrlId",
       label: "Ctrl ID",
       sortable: false,
+      align: "center",
       render: (value) => (
         <span className="font-mono text-xs font-bold text-secondary bg-muted px-2 py-1 rounded whitespace-nowrap">
           {value}
@@ -67,12 +56,20 @@ export default function ExtraControls() {
       key: "control",
       label: "control",
       sortable: false,
-      render: (value) => <span className="">{value}</span>,
+      render: (value, row) => (
+        <Link
+          to={`/deployment-frameworks/${row.id}/comparison-and-gap-analysis?package-version=${row.packageVersion}&tab=controls&control=${row.ctrlNo}&section=${row.sectionId}`}
+          className="hover:underline hover:text-primary"
+        >
+          {capitalizeFirstLetter(value)}
+        </Link>
+      ),
     },
     {
       key: "deploymentPoints",
       label: "Points",
       sortable: false,
+      align: "center",
       render: (value) => <span className="">{value}</span>,
     },
   ];

@@ -43,8 +43,8 @@ const STATUS_COLOR = {
   "not implemented": "red",
   active: "green",
   inactive: "red",
-  passing: "emerald",
-  failing: "red",
+  passing: "primary",
+  failing: "destructive",
   warning: "yellow",
   "not evaluated": "gray",
   "on track": "emerald",
@@ -68,6 +68,18 @@ const SEVERITY_COLOR = {
 };
 
 const COLOR_VARIANTS = {
+  primary: {
+    bg: "bg-primary/10",
+    text: "text-primary",
+    border: "border-primary/20",
+    dot: "bg-primary",
+  },
+  destructive: {
+    bg: "bg-destructive/10",
+    text: "text-destructive",
+    border: "border-destructive/20",
+    dot: "bg-destructive",
+  },
   red: {
     bg: "bg-red-50 dark:bg-red-500/10",
     text: "text-red-800 dark:text-red-300",

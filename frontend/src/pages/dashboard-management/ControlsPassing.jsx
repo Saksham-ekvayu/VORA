@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import DataTable from "@/components/data-table/DataTable";
 import CustomBadge from "@/components/custom/CustomBadge";
 import Icon from "@/components/custom/Icon";
@@ -10,6 +10,7 @@ import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
 import { useTableData } from "@/components/data-table/hooks/useTableData";
 import { getAuditorControlsPassing } from "@/services/dashboardService";
 import FrameworkMiniCard from "@/components/custom/FrameworkMiniCard";
+import { capitalizeFirstLetter } from "@/utils/stringUtils";
 
 // ─── Stat Box ─────────────────────────────────────────────────────────────────
 
@@ -92,7 +93,14 @@ export default function ControlsPassing() {
       key: "control",
       label: "Control",
       sortable: false,
-      render: (value) => <span className="capitalize">{value}</span>,
+      render: (value, row) => (
+        <Link
+          to={`/deployment-frameworks/${row.id}/comparison-and-gap-analysis?package-version=${row.packageVersion}&tab=controls&control=${row.ctrlNo}&section=${row.sectionId}`}
+          className="hover:underline hover:text-primary"
+        >
+          {capitalizeFirstLetter(value)}
+        </Link>
+      ),
     },
     {
       key: "instances",
@@ -111,9 +119,7 @@ export default function ControlsPassing() {
         if (row.status === "Failing") color = "text-destructive";
         else if (row.status === "Warning") color = "text-amber-500";
         return (
-          <span className={`text-sm font-semibold ${color}`}>
-            {value}%
-          </span>
+          <span className={`text-sm font-semibold ${color}`}>{value}%</span>
         );
       },
     },

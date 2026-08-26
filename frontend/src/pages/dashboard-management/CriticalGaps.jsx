@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import DataTable from "@/components/data-table/DataTable";
 import CustomBadge from "@/components/custom/CustomBadge";
 import Icon from "@/components/custom/Icon";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useTableData } from "@/components/data-table/hooks/useTableData";
 import { getAuditorCriticalGaps } from "@/services/dashboardService";
 import FrameworkMiniCard from "@/components/custom/FrameworkMiniCard";
+import { capitalizeFirstLetter } from "@/utils/stringUtils";
 
 // ─── Stat Box ─────────────────────────────────────────────────────────────────
 
@@ -96,7 +97,14 @@ export default function CriticalGaps() {
       key: "controlName",
       label: "Control Name",
       sortable: false,
-      render: (value) => <span className="capitalize">{value}</span>,
+      render: (value, row) => (
+        <Link
+          to={`/deployment-frameworks/${row.id}/comparison-and-gap-analysis?package-version=${row.packageVersion}&tab=controls&control=${row.ctrlNo}&section=${row.sectionId}`}
+          className="hover:underline hover:text-primary"
+        >
+          {capitalizeFirstLetter(value)}
+        </Link>
+      ),
     },
     {
       key: "instances",
@@ -111,9 +119,7 @@ export default function CriticalGaps() {
       sortable: false,
       align: "center",
       render: (value) => (
-        <span className="font-semibold text-red-400">
-          {value}
-        </span>
+        <span className="font-semibold text-red-400">{value}</span>
       ),
     },
     {

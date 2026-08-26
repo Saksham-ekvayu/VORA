@@ -21,11 +21,11 @@ const FrameworkMiniCard = ({ name, description, link }) => {
         </div>
       </div>
 
-      <div className="flex flex-col group">
+      <div className="flex flex-col">
         {link ? (
           <Link
             to={link}
-            className="font-medium text-foreground line-clamp-1 group-hover:underline group-hover:text-primary"
+            className="font-medium text-foreground line-clamp-1 hover:underline hover:text-primary"
             title={name}
           >
             {name}

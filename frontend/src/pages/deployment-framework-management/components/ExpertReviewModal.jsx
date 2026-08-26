@@ -187,9 +187,7 @@ export default function ExpertReviewModal({
           {isApprove ? (
             <div className="text-[11px] text-emerald-700 dark:text-emerald-400 flex items-start gap-1.5 bg-emerald-50 dark:bg-emerald-950/20 p-2.5 rounded border border-emerald-200/60 dark:border-emerald-900/30">
               <span className="shrink-0 mt-0.5">✓</span>
-              <span>
-                This will mark the package as approved by the expert.
-              </span>
+              <span>This will mark the package as approved by the expert.</span>
             </div>
           ) : (
             <div className="text-[11px] text-amber-700 dark:text-amber-400 flex items-start gap-1.5 bg-amber-50 dark:bg-amber-950/20 p-2.5 rounded border border-amber-200/60 dark:border-amber-900/30">
