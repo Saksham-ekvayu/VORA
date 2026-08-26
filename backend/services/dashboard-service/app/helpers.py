@@ -531,9 +531,9 @@ def calculate_framework_weight(
 
 def get_framework_status(readiness: float, settings: Any) -> str:
     """Determine framework compliance status based on score."""
-    if readiness < (settings.compliance_score_low * 100):
+    if readiness < 50:
         return "At Risk"
-    if readiness <= (settings.compliance_score_medium * 100):
+    if readiness <= 80:
         return "Needs Attention"
     return "On Track"
 
@@ -541,16 +541,10 @@ def get_framework_status(readiness: float, settings: Any) -> str:
 def build_overall_protection_rows(framework_health: list[dict], settings: Any) -> list[dict]:
     """Transform framework health into table rows with dynamic weight and status."""
     rows = []
-    fw_count = len(framework_health)
-    total_weight_score = sum(fw.get("weight_score", 0) for fw in framework_health)
-
-    allocated_weight = 0
-    for idx, fw in enumerate(framework_health):
+    
+    for fw in framework_health:
         readiness = fw.get("readiness", 0)
-        ws = fw.get("weight_score", 0)
-        weight_val, allocated_weight = calculate_framework_weight(
-            ws, total_weight_score, idx, fw_count, allocated_weight
-        )
+        weight_val = fw.get("weight_score", 0)
         status = get_framework_status(readiness, settings)
 
         rows.append(
@@ -559,8 +553,7 @@ def build_overall_protection_rows(framework_health: list[dict], settings: Any) -
                 "version": fw.get("version", ""),
                 "framework": fw.get("name", ""),
                 "weight": weight_val,
-                "rawScore": readiness,
-                "contribution": round(weight_val * readiness / 100, 2),
+                "implementation": readiness,
                 "trend": fw.get("trend", 0),
                 "trendUp": fw.get("trendUp", True),
                 "status": status,
