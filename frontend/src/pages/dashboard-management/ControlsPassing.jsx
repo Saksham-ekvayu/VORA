@@ -9,6 +9,8 @@ import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
 
 import { useTableData } from "@/components/data-table/hooks/useTableData";
 import { getAuditorControlsPassing } from "@/services/dashboardService";
+import FrameworkMiniCard from "@/components/custom/FrameworkMiniCard";
+import { capitalizeFirstLetter } from "@/utils/stringUtils";
 
 // ─── Stat Box ─────────────────────────────────────────────────────────────────
 
@@ -66,34 +68,21 @@ export default function ControlsPassing() {
   const columns = [
     {
       key: "frameworkVersion",
-      label: "Version",
+      label: "Framework",
       sortable: false,
       render: (value, row) => (
-        <Link
-          to={`/deployment-frameworks/${row.id}`}
-          className="hover:underline hover:text-primary"
-        >
-          {value}
-        </Link>
-      ),
-    },
-    {
-      key: "frameworkName",
-      label: "Framework Name",
-      sortable: false,
-      render: (value, row) => (
-        <Link
-          to={`/deployment-frameworks/${row.id}`}
-          className="hover:underline hover:text-primary"
-        >
-          {value}
-        </Link>
+        <FrameworkMiniCard
+          name={row.frameworkName}
+          description={row.frameworkVersion}
+          link={`/deployment-frameworks/${row.id}`}
+        />
       ),
     },
     {
       key: "ctrlId",
       label: "Ctrl ID",
       sortable: false,
+      align: "center",
       render: (value) => (
         <span className="font-mono text-xs font-bold text-secondary bg-muted px-2 py-1 rounded whitespace-nowrap">
           {value}
@@ -104,26 +93,33 @@ export default function ControlsPassing() {
       key: "control",
       label: "Control",
       sortable: false,
-      render: (value) => <span className="capitalize">{value}</span>,
+      render: (value, row) => (
+        <Link
+          to={`/deployment-frameworks/${row.id}/comparison-and-gap-analysis?package-version=${row.packageVersion}&tab=controls&control=${row.ctrlNo}&section=${row.sectionId}`}
+          className="hover:underline hover:text-primary"
+        >
+          {capitalizeFirstLetter(value)}
+        </Link>
+      ),
     },
     {
       key: "instances",
       label: "Instances",
       sortable: false,
-      render: (value) => <span className="text-center block">{value}</span>,
+      align: "center",
+      render: (value) => <span className="">{value}</span>,
     },
     {
       key: "passRate",
       label: "Pass Rate",
       sortable: false,
+      align: "center",
       render: (value, row) => {
-        let color = "text-emerald-500";
-        if (row.status === "Failing") color = "text-red-500";
+        let color = "text-primary";
+        if (row.status === "Failing") color = "text-destructive";
         else if (row.status === "Warning") color = "text-amber-500";
         return (
-          <span className={`text-sm font-bold block text-center ${color}`}>
-            {value}%
-          </span>
+          <span className={`text-sm font-semibold ${color}`}>{value}%</span>
         );
       },
     },
@@ -131,12 +127,14 @@ export default function ControlsPassing() {
       key: "status",
       label: "Status",
       sortable: false,
+      align: "center",
       render: (value) => <CustomBadge status={value} size="sm" />,
     },
     {
       key: "lastRun",
       label: "Last Run",
       sortable: false,
+      align: "right",
       render: (value) => (
         <span className="whitespace-nowrap">
           {formatDateWithMonthNameAndTime(value)}

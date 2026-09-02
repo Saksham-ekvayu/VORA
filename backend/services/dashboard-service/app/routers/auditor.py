@@ -15,6 +15,7 @@ from app.helpers import (
     process_deployment_points,
     process_deployment_points_detailed,
     build_deployment_points_response,
+    MAX_ACTIVE_GAPS,
 )
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import desc, select
@@ -154,7 +155,13 @@ async def get_auditor_dashboard_analytics(
                 implemented_dps_overall,
                 _, # Ignore prev_implemented_dps_overall
             ) = process_gap_analyses(
-                gap_analyses, latest_packages, historical_gap_analyses, merges, assignments, settings
+                gap_analyses,
+                latest_packages,
+                historical_gap_analyses,
+                merges,
+                assignments,
+                settings,
+                active_gaps_limit=MAX_ACTIVE_GAPS,
             )
             overall_protection = (
                 round((implemented_dps_overall / total_dps_overall) * 100)
@@ -323,7 +330,7 @@ async def get_auditor_overall_protection(
 
             overall_trend_abs = abs(overall_trend_val)
             # Build rows
-            rows = build_overall_protection_rows(framework_health, settings)
+            rows = build_overall_protection_rows(framework_health, latest_packages, merges)
 
             # Apply filters and sorting
             rows = filter_and_sort_rows(rows, search, status_filter, sort_by, sort_order)
@@ -343,7 +350,6 @@ async def get_auditor_overall_protection(
                     "score": overall_protection,
                     "trend": overall_trend_abs,
                     "trendUp": overall_trend_up,
-                    "frameworksActive": len(framework_health),
                     "controlsEvaluated": total_controls_overall,
                     "deploymentPoints": total_dps_overall,
                 },

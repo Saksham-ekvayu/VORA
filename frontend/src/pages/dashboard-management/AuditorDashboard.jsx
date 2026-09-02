@@ -8,50 +8,16 @@ import ProgressBar from "../../components/custom/ProgressBar";
 import Icon from "@/components/custom/Icon";
 import { useDateFilter } from "./hooks/useDateFilter";
 import { useAuth } from "@/context/authContext/useAuth";
-import { getRoleLabel } from "@/utils/commonUtils";
+import {
+  getFrameworkHealthConfig,
+  getRoleLabel,
+  getStreamDotColor,
+  getStreamTextColor,
+} from "@/utils/commonUtils";
 import DateFilter from "./components/DateFilter";
 import { getAuditorDashboardAnalytics } from "@/services/dashboardService";
 import { formatDateOnly } from "@/utils/dateFormatter";
 import { Skeleton } from "@/components/ui/skeleton";
-
-// ─── Dynamic Frontend Configuration ──────────────────────────────────────────
-const COLORS = [
-  { tagColor: "#3b82f6", barColor: "bg-blue-500" },
-  { tagColor: "#22c55e", barColor: "bg-green-500" },
-  { tagColor: "#8b5cf6", barColor: "bg-violet-500" },
-  { tagColor: "#ef4444", barColor: "bg-red-500" },
-  { tagColor: "#f59e0b", barColor: "bg-amber-500" },
-  { tagColor: "#06b6d4", barColor: "bg-cyan-500" },
-  { tagColor: "#ec4899", barColor: "bg-pink-500" },
-  { tagColor: "#14b8a6", barColor: "bg-teal-500" },
-];
-
-const getHashIndex = (str, max) => {
-  if (!str) return 0;
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.codePointAt(i) + ((hash << 5) - hash);
-  }
-  return Math.abs(hash) % max;
-};
-
-const DASHBOARD_CONFIG = {
-  getFrameworkConfig: (name) => COLORS[getHashIndex(name, COLORS.length)],
-};
-
-// ─── Small reusable pieces ───────────────────────────────────────────────────
-
-function getStreamDotColor(status) {
-  if (status === "pass") return "bg-emerald-500";
-  if (status === "warn") return "bg-amber-500";
-  return "bg-red-500";
-}
-
-function getStreamTextColor(status) {
-  if (status === "pass") return "text-emerald-500";
-  if (status === "warn") return "text-amber-500";
-  return "text-red-500";
-}
 
 function TopStatCard({
   icon,
@@ -188,7 +154,7 @@ export default function AuditorDashboard() {
       </div>
 
       {error ? (
-        <div className="bg-red-500/10 border border-red-500/20 text-red-600 rounded-md p-6 my-4 flex flex-col items-center justify-center gap-2">
+        <div className="bg-destructive/10 border border-destructive/20 text-destructive rounded-md p-6 my-4 flex flex-col items-center justify-center gap-2">
           <Icon name="triangle-alert" size="32px" />
           <span className="font-medium text-lg">{error}</span>
           <p className="text-sm opacity-80">
@@ -218,15 +184,15 @@ export default function AuditorDashboard() {
             <TopStatCard
               title="Critical Gaps"
               icon="warning"
-              iconColor="text-red-500"
-              iconBg="bg-red-500/10"
-              borderColor="border-red-500/40"
+              iconColor="text-destructive"
+              iconBg="bg-destructive/10"
+              borderColor="border-destructive/40"
               navigation="/dashboard/critical-gaps"
             >
               {isLoading || !dashboardData ? (
                 <Skeleton className="h-10 w-24 mt-1" />
               ) : (
-                <p className="text-4xl font-bold text-red-500 group-hover:opacity-80 transition-opacity">
+                <p className="text-4xl font-bold text-destructive group-hover:opacity-80 transition-opacity">
                   {dashboardData?.criticalGaps || 0}
                 </p>
               )}
@@ -303,12 +269,10 @@ export default function AuditorDashboard() {
                       className="flex items-center gap-3 w-full group cursor-pointer py-1.5 border-b border-border last:border-0"
                     >
                       <span
-                        className="text-[11px] font-semibold px-1 py-0.3 rounded text-white shrink-0 min-w-24 text-center group-hover:opacity-80 transition-opacity"
-                        style={{
-                          backgroundColor: DASHBOARD_CONFIG.getFrameworkConfig(
-                            fw.version
-                          ).tagColor,
-                        }}
+                        className={cn(
+                          "text-[11px] font-semibold px-1 py-0.3 rounded text-white shrink-0 min-w-24 text-center group-hover:opacity-80 transition-opacity",
+                          getFrameworkHealthConfig(fw.readiness).tagClass
+                        )}
                       >
                         {fw.version || fw.name}
                       </span>
@@ -316,8 +280,7 @@ export default function AuditorDashboard() {
                         <ProgressBar
                           value={fw.readiness}
                           color={
-                            DASHBOARD_CONFIG.getFrameworkConfig(fw.version)
-                              .barColor
+                            getFrameworkHealthConfig(fw.readiness).barColor
                           }
                         />
                       </div>
@@ -381,14 +344,7 @@ export default function AuditorDashboard() {
                       className="flex items-center gap-3 w-full group"
                     >
                       {/* Colored pill tag */}
-                      <span
-                        className="text-[11px] font-semibold px-1 py-0.3 rounded text-white shrink-0 min-w-24 text-center group-hover:opacity-80 transition-opacity"
-                        style={{
-                          backgroundColor: DASHBOARD_CONFIG.getFrameworkConfig(
-                            dp.version
-                          ).tagColor,
-                        }}
-                      >
+                      <span className="text-[11px] font-semibold px-1 py-0.3 rounded text-white bg-primary shrink-0 min-w-24 text-center group-hover:opacity-80 transition-opacity">
                         {dp.version || dp.name}
                       </span>
                       {/* Bar chart */}
@@ -404,10 +360,7 @@ export default function AuditorDashboard() {
                               100,
                             5
                           )}
-                          color={
-                            DASHBOARD_CONFIG.getFrameworkConfig(dp.version)
-                              .barColor
-                          }
+                          color={"bg-primary"}
                         />
                       </div>
                       {/* Count */}
@@ -444,7 +397,7 @@ export default function AuditorDashboard() {
                 <span>SL.</span>
                 <span>Framework</span>
                 <span className="text-center">Ctrl No.</span>
-                <span className="text-center">Inst.</span>
+                <span className="text-center">Instance</span>
                 <span className="text-center">% Failing</span>
                 <span className="text-right">Last NC Date</span>
               </div>
@@ -489,20 +442,11 @@ export default function AuditorDashboard() {
                       <span className="text-xs text-center text-foreground font-medium">
                         {gap.instances}
                       </span>
-                      <div className="flex items-center justify-center gap-1">
-                        <Icon
-                          name={gap.trend === "up" ? "arrow-up" : "arrow-down"}
-                          size="12px"
-                          className={
-                            gap.trend === "up"
-                              ? "text-emerald-500"
-                              : "text-red-500"
-                          }
-                        />
+                      <div className="flex items-center justify-end gap-1">
                         <span
-                          className={`text-xs font-bold ${gap.trend === "up" ? "text-emerald-500" : "text-red-500"}`}
+                          className={`text-xs font-bold ${gap.trend === "up" ? "text-emerald-500" : "text-destructive"}`}
                         >
-                          {gap.failing}
+                          {gap.failing}%
                         </span>
                       </div>
                       <span className="text-xs text-right text-muted-foreground">

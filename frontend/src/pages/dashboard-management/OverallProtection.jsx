@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import DataTable from "@/components/data-table/DataTable";
 import CustomBadge from "@/components/custom/CustomBadge";
 import Icon from "@/components/custom/Icon";
@@ -7,6 +7,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
 import { useTableData } from "@/components/data-table/hooks/useTableData";
 import { getAuditorOverallProtection } from "@/services/dashboardService";
+import FrameworkMiniCard from "@/components/custom/FrameworkMiniCard";
 
 // ─── Stat Mini Box ────────────────────────────────────────────────────────────
 
@@ -62,56 +63,39 @@ export default function OverallProtection() {
   // ── Column definitions ──────────────────────────────────────────────────────
   const columns = [
     {
-      key: "version",
-      label: "Framework Version",
-      sortable: false,
-      render: (value, row) => (
-        <Link
-          to={`/deployment-frameworks/${row.id}`}
-          className="hover:underline hover:text-primary"
-        >
-          {value}
-        </Link>
-      ),
-    },
-    {
       key: "framework",
-      label: "Framework Name",
+      label: "Framework",
       sortable: false,
       render: (value, row) => (
-        <Link
-          to={`/deployment-frameworks/${row.id}`}
-          className="hover:underline hover:text-primary"
-        >
-          {value}
-        </Link>
+        <FrameworkMiniCard
+          name={row.framework}
+          description={row.version}
+          link={`/deployment-frameworks/${row.id}`}
+        />
       ),
     },
     {
-      key: "weight",
-      label: "Weight",
+      key: "weightage",
+      label: "Weightage",
       sortable: false,
+      align: "center",
       render: (value) => <span className="">{value}%</span>,
     },
     {
-      key: "rawScore",
-      label: "Raw Score",
+      key: "implementation",
+      label: "Implement",
       sortable: false,
-      render: (value) => <span className="">{value}%</span>,
-    },
-    {
-      key: "contribution",
-      label: "Contribution",
-      sortable: false,
+      align: "center",
       render: (value) => <span className="">{value}%</span>,
     },
     {
       key: "trend",
       label: "Trend",
       sortable: false,
+      align: "center",
       render: (value, row) => (
         <span
-          className={`flex items-center gap-1 ${
+          className={`flex justify-center items-center gap-1 ${
             row.trendUp ? "text-emerald-400" : "text-red-400"
           }`}
         >
@@ -128,6 +112,7 @@ export default function OverallProtection() {
       key: "status",
       label: "Status",
       sortable: false,
+      align: "right",
       render: (value) => <CustomBadge status={value} size="sm" />,
     },
   ];
@@ -193,11 +178,6 @@ export default function OverallProtection() {
             <Icon name="arrow-left" size="13px" /> Back to Dashboard
           </Button>
           <div className="flex items-center gap-2 flex-wrap justify-end">
-            <MiniStatBox
-              label="Frameworks Active"
-              value={statsToUse.frameworksActive}
-              valueColor="text-primary"
-            />
             <MiniStatBox
               label="Controls Evaluated"
               value={statsToUse.controlsEvaluated}
