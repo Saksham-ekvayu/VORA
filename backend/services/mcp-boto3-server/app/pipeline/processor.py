@@ -13,10 +13,7 @@ from app.db.queries import (
 from app.pipeline.helpers import extract_deployment_points
 from app.services.agent_client import call_agent
 from app.services.downloader import download_file
-from app.services.agent_client import call_agent
 from app.utils.live_logs import add_live_log
-
-from app.pipeline.helpers import extract_deployment_points
 
 
 def run_pipeline(source: str = "local"):
@@ -70,11 +67,7 @@ async def _run_pipeline(source: str):
     # ------------------------------------------------
     # STEP 3: FILTER PATHS FOR CURRENT SOURCE
     # ------------------------------------------------
-    source_paths = [
-        dp["path"]
-        for dp in deployment_points
-        if dp["source"].lower() == source.lower()
-    ]
+    source_paths = [dp["path"] for dp in deployment_points if dp["source"].lower() == source.lower()]
 
     logging.info(f"Source paths: {source_paths}")
     add_live_log(f"Source paths: {source_paths}")
@@ -135,7 +128,7 @@ async def _run_pipeline(source: str):
 
                 logging.info(f"Saved file: {saved_path}")
                 add_live_log(f"Saved file: {saved_path}")
-            
+
                 # ------------------------------------------------
                 # SAVE INTO deployment_documents TABLE
                 # ------------------------------------------------
@@ -148,12 +141,8 @@ async def _run_pipeline(source: str):
 
                 document_id = deployment_document.id
 
-                logging.info(
-                    f"Deployment document id: {document_id}"
-                )
-                add_live_log(
-                    f"Deployment document id: {document_id}"
-                )
+                logging.info(f"Deployment document id: {document_id}")
+                add_live_log(f"Deployment document id: {document_id}")
 
                 # ------------------------------------------------
                 # TRIGGER AI EXTRACTION
@@ -161,12 +150,8 @@ async def _run_pipeline(source: str):
                 print("checking")
                 ai_response = trigger_ai_extraction(document_id)
 
-                logging.info(
-                    f"AI Extraction Response: {ai_response}"
-                )
-                add_live_log(
-                    f"AI Extraction Response: {ai_response}"
-                )
+                logging.info(f"AI Extraction Response: {ai_response}")
+                add_live_log(f"AI Extraction Response: {ai_response}")
 
                 # ------------------------------------------------
                 # OPTIONAL: CALL COMPLIANCE AUDIT AGENT
@@ -196,10 +181,5 @@ async def _run_pipeline(source: str):
                 await mark_processed(db, path)
 
             except Exception as e:
-                logging.exception(
-                    f"Error processing {path}: {e}"
-                )
-                add_live_log(
-                    f"Error processing {path}: {e}"
-                )
-
+                logging.exception(f"Error processing {path}: {e}")
+                add_live_log(f"Error processing {path}: {e}")

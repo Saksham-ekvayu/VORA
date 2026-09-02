@@ -13,9 +13,9 @@ from pathlib import Path
 from typing import Any
 
 from app.services.control_merger import clean_section_name
+from app.services.pdf_loader_patch import load_pdf_document
 from dotenv import load_dotenv
 from openai import OpenAI
-from app.services.pdf_loader_patch import load_pdf_document
 
 logger = logging.getLogger(__name__)
 
@@ -105,13 +105,9 @@ def _log_llm_call(tag: str, response: Any, elapsed: float):
         finish_reason = response.choices[0].finish_reason
         usage = getattr(response, "usage", None)
         usage_str = (
-            f" | tokens(prompt={usage.prompt_tokens},completion={usage.completion_tokens})"
-            if usage
-            else ""
+            f" | tokens(prompt={usage.prompt_tokens},completion={usage.completion_tokens})" if usage else ""
         )
-        logger.info(
-            f"[{tag}] LLM call done in {elapsed:.1f}s | finish_reason={finish_reason}{usage_str}"
-        )
+        logger.info(f"[{tag}] LLM call done in {elapsed:.1f}s | finish_reason={finish_reason}{usage_str}")
         if finish_reason == "length":
             logger.warning(f"[{tag}] Response truncated — hit max_tokens limit")
         elif finish_reason == "content_filter":
@@ -333,9 +329,7 @@ def _drop_parent_prefix_duplicates(controls: list) -> list:
     control language).
     """
     ids = {
-        str(c.get("Control_id", "")).strip()
-        for c in controls
-        if isinstance(c, dict) and c.get("Control_id")
+        str(c.get("Control_id", "")).strip() for c in controls if isinstance(c, dict) and c.get("Control_id")
     }
 
     def has_child(cid: str) -> bool:
@@ -386,10 +380,7 @@ def _fix_flattened_category_ids(controls: list) -> list:
     for prefix, group in by_2part.items():
         if len(group) < 2:
             continue
-        if any(
-            _looks_like_objective_only(str(g.get("Control_description", "")))
-            for g in group
-        ):
+        if any(_looks_like_objective_only(str(g.get("Control_description", ""))) for g in group):
             continue
         first_id = str(group[0].get("Control_id", "")).strip()
         anchor_parts = _split_id(first_id)
@@ -428,9 +419,7 @@ def _flag_singleton_fabricated_children(controls: list) -> list:
     human to spot-check.
     """
     ids = {
-        str(c.get("Control_id", "")).strip()
-        for c in controls
-        if isinstance(c, dict) and c.get("Control_id")
+        str(c.get("Control_id", "")).strip() for c in controls if isinstance(c, dict) and c.get("Control_id")
     }
 
     by_parent = defaultdict(list)
@@ -936,7 +925,9 @@ def _run_stage1_call(prompt: str, tag: str) -> list:
                 parsed = json.loads(raw_content)
                 if isinstance(parsed, list):
                     return parsed
-                logger.warning(f"[EXTRACT] {tag} attempt {attempt}: parsed JSON was not a list — treating as empty")
+                logger.warning(
+                    f"[EXTRACT] {tag} attempt {attempt}: parsed JSON was not a list — treating as empty"
+                )
                 return []
             except json.JSONDecodeError as e:
                 logger.warning(
@@ -1018,8 +1009,7 @@ def _validate_deployment_points(raw: Any, control_name: str = "") -> str:
         points = points[:5]
     elif len(points) < 5:
         default_texts = [
-            re.sub(r"^\d+\.\s*", "", d)
-            for d in _generate_default_deployment_points(control_name).split("\n")
+            re.sub(r"^\d+\.\s*", "", d) for d in _generate_default_deployment_points(control_name).split("\n")
         ]
         i = 0
         while len(points) < 5 and i < len(default_texts):
@@ -1032,9 +1022,7 @@ def _validate_deployment_points(raw: Any, control_name: str = "") -> str:
     return "\n".join(f"{i+1}. {p}" for i, p in enumerate(points))
 
 
-def extract_framework_controls(
-    chunks: list, framework_id: str, is_deployment: bool = False
-) -> list:
+def extract_framework_controls(chunks: list, framework_id: str, is_deployment: bool = False) -> list:
     """
     Extract controls from framework document using AI.
     Three-stage extraction:
@@ -1254,7 +1242,9 @@ slice you were given.
     # A.6.1.3, ...) instead of whatever order extraction/completeness
     # rounds/batches happened to produce them in. Does not change which
     # controls exist — only their order.
-    controls.sort(key=lambda c: _natural_sort_key(str(c.get("Control_id", ""))) if isinstance(c, dict) else [])
+    controls.sort(
+        key=lambda c: _natural_sort_key(str(c.get("Control_id", ""))) if isinstance(c, dict) else []
+    )
 
     # ------------------------------------------------------------------
     # STAGE 2 — Deployment points. Generated for EVERY control, no
@@ -1319,9 +1309,7 @@ Return ONLY JSON. No markdown."""
                 timeout=3600,
             )
             elapsed = (datetime.now() - t_start).total_seconds()
-            finish_reason = _log_llm_call(
-                f"EXTRACT-STAGE2-batch{batch_num}", response, elapsed
-            )
+            finish_reason = _log_llm_call(f"EXTRACT-STAGE2-batch{batch_num}", response, elapsed)
 
             batch_result = json.loads(response.choices[0].message.content)
 
@@ -1356,21 +1344,19 @@ Return ONLY JSON. No markdown."""
                 )
             # Even on total failure, every control still gets 5 default points.
             for ctrl in batch:
-                ctrl["Deployment_points"] = _validate_deployment_points(
-                    "", str(ctrl.get("Control_name", ""))
-                )
+                ctrl["Deployment_points"] = _validate_deployment_points("", str(ctrl.get("Control_name", "")))
             final_controls.extend(batch)
 
         except Exception as e:
             logger.exception(f"[EXTRACT] DP Batch {batch_num} API error: {e}")
             for ctrl in batch:
-                ctrl["Deployment_points"] = _validate_deployment_points(
-                    "", str(ctrl.get("Control_name", ""))
-                )
+                ctrl["Deployment_points"] = _validate_deployment_points("", str(ctrl.get("Control_name", "")))
             final_controls.extend(batch)
 
     # Final cosmetic sort by natural ID order
-    final_controls.sort(key=lambda c: _natural_sort_key(str(c.get("Control_id", ""))) if isinstance(c, dict) else [])
+    final_controls.sort(
+        key=lambda c: _natural_sort_key(str(c.get("Control_id", ""))) if isinstance(c, dict) else []
+    )
 
     logger.info(
         f"[EXTRACT] Stage 2 complete: {len(final_controls)} controls — every single one has "
@@ -1380,9 +1366,7 @@ Return ONLY JSON. No markdown."""
     return final_controls
 
 
-def extract_deployment_controls(
-    chunks: list, framework_id: str, is_deployment: bool = True
-) -> list:
+def extract_deployment_controls(chunks: list, framework_id: str, is_deployment: bool = True) -> list:
     """
     Extract deployment controls from deployment documents/frameworks using AI.
     Specifically designed to parse pre-structured deployment frameworks containing
@@ -1446,7 +1430,9 @@ Return ONLY JSON. No markdown. No text outside JSON."""
             _log_llm_call(f"DEPLOYMENT-EXTRACT-BATCH{i}", response, elapsed)
 
             batch_controls = json.loads(response.choices[0].message.content)
-            logger.info(f"[DEPLOYMENT-EXTRACT] Batch {i}/{len(batches)} parsed: {len(batch_controls)} controls")
+            logger.info(
+                f"[DEPLOYMENT-EXTRACT] Batch {i}/{len(batches)} parsed: {len(batch_controls)} controls"
+            )
             all_batch_results.append(batch_controls)
 
         except json.JSONDecodeError as e:
@@ -1467,21 +1453,17 @@ Return ONLY JSON. No markdown. No text outside JSON."""
             c_id = str(ctrl.get("Control_id", "")).strip()
             c_name = str(ctrl.get("Control_name", "")).strip()
             raw_dp = ctrl.get("Deployment_points", "")
-            
+
             # Enforce exactly 5 points
             ctrl["Deployment_points"] = _validate_deployment_points(raw_dp, c_name)
             final_controls.append(ctrl)
-    
+
     # Sort naturally by Control_id
-    final_controls.sort(key=lambda c: _natural_sort_key(str(c.get("Control_id", ""))) if isinstance(c, dict) else [])
+    final_controls.sort(
+        key=lambda c: _natural_sort_key(str(c.get("Control_id", ""))) if isinstance(c, dict) else []
+    )
     logger.info(f"[DEPLOYMENT-EXTRACT] Saved and sorted total: {len(final_controls)} controls")
     return final_controls
-
-
-
-
-
-
 
 
 def convert_to_section_structure(controls: list, resource_type: str = "framework") -> list:
@@ -1540,9 +1522,7 @@ def convert_to_section_structure(controls: list, resource_type: str = "framework
             section_name = str(ctrl.get("Section_name") or "").strip()
         else:
             ctrl_id = str(ctrl.get("Control_id") or f"CTR-{idx+1:03d}").strip()
-            ctrl_name = str(
-                ctrl.get("Client_control_name") or ctrl.get("Control_name") or ""
-            ).strip()
+            ctrl_name = str(ctrl.get("Client_control_name") or ctrl.get("Control_name") or "").strip()
             ctrl_desc = str(
                 ctrl.get("Client_control_description") or ctrl.get("Control_description") or ""
             ).strip()
@@ -1587,9 +1567,7 @@ def convert_to_section_structure(controls: list, resource_type: str = "framework
         if sec_key and sec_key not in sections:
             sections[sec_key] = {
                 "id": sec_key,
-                "name": (
-                    clean_section_name(sec_display).title() if sec_display else f"Section {sec_key}"
-                ),
+                "name": (clean_section_name(sec_display).title() if sec_display else f"Section {sec_key}"),
                 "controls": [],
             }
 

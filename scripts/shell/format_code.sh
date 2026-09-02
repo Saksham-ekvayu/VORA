@@ -4,7 +4,7 @@
 # Uses Black for code formatting and Isort for imports
 # =====================================================
 
-BACKEND_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+BACKEND_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../backend" && pwd)"
 
 echo ""
 echo "====================================================="

@@ -735,6 +735,7 @@ async def delete_deployment_framework(id: str, ctx: Annotated[RequestContext, De
                 )
 
         from sqlalchemy import delete
+
         await session.execute(
             delete(PackageComparison).where(PackageComparison.deploymentFrameworkId == str(id))
         )

@@ -1,6 +1,11 @@
-import os
+import hashlib
 import json
+import logging
+import os
 
+# =========================================
+# PROCESSED FILES
+# =========================================
 # =========================================
 # PROCESSED FILES
 # =========================================
@@ -9,25 +14,21 @@ from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from vora_shared.ids import new_id
 from vora_shared.models import (
-    ProcessedFile,
-    SourceConfig,
-    SourceCredential,
     DeploymentDocument,
     DeploymentFramework,
     DeploymentPackageMerge,
+    ProcessedFile,
+    SourceConfig,
+    SourceCredential,
 )
-import hashlib
 from vora_shared.models.deployment_document import DeploymentFrameworkDocument
-from vora_shared.ids import new_id
-import logging
-# =========================================
-# PROCESSED FILES
-# =========================================
-import sys
-from pathlib import Path
+
 shared_path = Path(__file__).resolve().parents[3] / "shared"
 sys.path.insert(0, str(shared_path))
+
+
 def generate_file_hash(file_path: str) -> str:
     sha256 = hashlib.sha256()
 
@@ -36,6 +37,7 @@ def generate_file_hash(file_path: str) -> str:
             sha256.update(chunk)
 
     return sha256.hexdigest()
+
 
 async def get_deployment_document_by_hash(
     db: AsyncSession,
@@ -50,6 +52,8 @@ async def get_deployment_document_by_hash(
             return doc
 
     return None
+
+
 async def get_deployment_document_by_hash(db: AsyncSession, file_hash: str):
     result = await db.execute(select(DeploymentDocument))
     documents = result.scalars().all()
@@ -59,6 +63,8 @@ async def get_deployment_document_by_hash(db: AsyncSession, file_hash: str):
             return doc
 
     return None
+
+
 async def save_deployment_document(
     db: AsyncSession,
     framework: dict,
@@ -108,11 +114,11 @@ async def save_deployment_document(
     await db.commit()
     await db.refresh(deployment_document)
 
-    logging.info(
-        f"Deployment document saved successfully: {deployment_document.id}"
-    )
+    logging.info(f"Deployment document saved successfully: {deployment_document.id}")
 
     return deployment_document
+
+
 async def is_processed(db: AsyncSession, file_path: str):
     result = await db.execute(select(ProcessedFile).where(ProcessedFile.file_path == file_path))
     return result.scalar_one_or_none() is not None

@@ -1,7 +1,7 @@
-from contextlib import asynccontextmanager
 import logging
-import sys
 import os
+import sys
+from contextlib import asynccontextmanager
 
 from app.routers import extract as extract_router
 from fastapi import FastAPI

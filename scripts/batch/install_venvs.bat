@@ -6,7 +6,7 @@ REM =====================================================
 setlocal enabledelayedexpansion
 
 REM Calculate the ROOT directory
-pushd "%~dp0..\\.."
+pushd "%~dp0..\..\backend"
 set "ROOT=%cd%"
 popd
 
@@ -35,7 +35,7 @@ if not exist "%ROOT%\shared" (
 echo.
 echo [2/3] Creating virtual environments for all services...
 cd /d "%ROOT%"
-python scripts\create_venvs.py
+python "%~dp0..\create_venvs.py"
 if errorlevel 1 (
     echo ERROR: Failed to create virtual environments.
     pause

@@ -4,7 +4,7 @@
 # Uses Ruff or Pylint based on user selection
 # =====================================================
 
-BACKEND_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+BACKEND_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../backend" && pwd)"
 
 echo ""
 echo "====================================================="
@@ -58,7 +58,7 @@ case "$choice" in
     echo "[2/2] Running Pylint Linter..."
     echo "Linting Python files..."
     # Pylint works best when pointed at packages/modules, ignore virtual envs and use multi-processing
-    python3 -m pylint services shared gateway scripts --ignore=.venv,__pycache__ -j 0
+    python3 -m pylint services shared gateway --ignore=.venv,__pycache__ -j 0
     if [ $? -ne 0 ]; then
         echo "ERROR: Linter found issues in the code."
         exit 1

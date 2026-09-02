@@ -18,8 +18,8 @@ from sqlalchemy import func, select
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
 from vora_shared.models import (
-    DocumentExtraction,
     DeploymentDocument,
+    DocumentExtraction,
     Framework,
 )
 from vora_shared.query_builder import build_pagination_meta, clamp_limit, clamp_page
@@ -113,9 +113,7 @@ async def extract_framework_controls(framework_id: str, file_id: str):
                             },
                         )
                     doc_extraction_id = existing.id
-                    logger.info(
-                        f"[API] Using existing document_extraction | id={doc_extraction_id}"
-                    )
+                    logger.info(f"[API] Using existing document_extraction | id={doc_extraction_id}")
                 else:
                     doc_extraction = DocumentExtraction(
                         id=new_id(),
@@ -239,9 +237,7 @@ async def extract_deployment_framework_controls(df_id: str, pkg_ver: str, file_i
                             },
                         )
                     doc_extraction_id = existing.id
-                    logger.info(
-                        f"[API] Using existing document_extraction | id={doc_extraction_id}"
-                    )
+                    logger.info(f"[API] Using existing document_extraction | id={doc_extraction_id}")
                 else:
                     doc_extraction = DocumentExtraction(
                         id=new_id(),
@@ -403,9 +399,7 @@ async def extract_deployment_document_controls(dd_id: str):
                             },
                         )
                     doc_extraction_id = existing.id
-                    logger.info(
-                        f"[API] Using existing document_extraction | id={doc_extraction_id}"
-                    )
+                    logger.info(f"[API] Using existing document_extraction | id={doc_extraction_id}")
                 else:
                     doc_extraction = DocumentExtraction(
                         id=new_id(),
@@ -529,9 +523,7 @@ async def get_document_extraction(file_hash: str):
 
             ai_data = doc_extraction.aiExtraction or {}
             status = ai_data.get("status", "pending")
-            logger.info(
-                f"[GET-EXTRACTION] Retrieved extraction | id={doc_extraction.id} | status={status}"
-            )
+            logger.info(f"[GET-EXTRACTION] Retrieved extraction | id={doc_extraction.id} | status={status}")
 
             return success(
                 message="Document extraction data retrieved successfully",
@@ -568,9 +560,7 @@ async def list_document_extractions(page: int = 1, page_size: int = 10):
 
         logger.info(f"[LIST-EXTRACTIONS] Listing extractions | page={page} | page_size={page_size}")
         async with session_scope() as session:
-            total = (
-                await session.execute(select(func.count()).select_from(DocumentExtraction))
-            ).scalar_one()
+            total = (await session.execute(select(func.count()).select_from(DocumentExtraction))).scalar_one()
 
             rows = (
                 (
@@ -589,9 +579,7 @@ async def list_document_extractions(page: int = 1, page_size: int = 10):
             for doc in rows:
                 ai_data = doc.aiExtraction or {}
                 controls = ai_data.get("controls", {})
-                total_controls = (
-                    controls.get("total_controls", 0) if isinstance(controls, dict) else 0
-                )
+                total_controls = controls.get("total_controls", 0) if isinstance(controls, dict) else 0
 
                 items.append(
                     {
@@ -648,7 +636,7 @@ async def retry_extraction(extraction_id: str):
             stmt = select(DocumentExtraction).where(DocumentExtraction.id == extraction_id)
             result = await session.execute(stmt)
             doc_extraction = result.scalar_one_or_none()
-            
+
             if not doc_extraction:
                 return not_found(f"Extraction not found: {extraction_id}")
 
@@ -782,4 +770,3 @@ async def retry_deployment_document_extraction(dd_id: str):
         logger.error(f"[RETRY-DD] ❌ Error for dd_id={dd_id}: {exc}")
         logger.exception("retry_deployment_document_extraction error")
         return server_error(str(exc))
-

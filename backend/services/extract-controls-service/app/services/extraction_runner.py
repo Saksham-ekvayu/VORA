@@ -11,8 +11,8 @@ from typing import Any
 
 from app.services.control_extractor import (
     convert_to_section_structure,
-    extract_framework_controls,
     extract_deployment_controls,
+    extract_framework_controls,
 )
 from app.services.control_merger import (
     get_framework_previous_controls,
@@ -59,9 +59,7 @@ def _status_history(
             "history": history,
         }
     completed = completed or _iso()
-    history.append(
-        {"status": "completed", "timestamp": completed, "message": MSG_EXTRACTION_COMPLETED}
-    )
+    history.append({"status": "completed", "timestamp": completed, "message": MSG_EXTRACTION_COMPLETED})
     try:
         start = datetime.fromisoformat(uploaded.replace("Z", "+00:00"))
         end = datetime.fromisoformat(completed.replace("Z", "+00:00"))
@@ -145,8 +143,7 @@ def _load_document_chunks(file_path: str, chunk_size: int = 1000) -> list[str]:
                     doc.close()
                 except ImportError:
                     logger.warning(
-                        "[LOAD] PyMuPDF not installed — skipping Attempt 1.5. "
-                        "Run: pip install PyMuPDF"
+                        "[LOAD] PyMuPDF not installed — skipping Attempt 1.5. " "Run: pip install PyMuPDF"
                     )
                 except Exception as e:
                     logger.warning(f"[LOAD] PyMuPDF attempt failed: {e}")
@@ -179,9 +176,7 @@ def _load_document_chunks(file_path: str, chunk_size: int = 1000) -> list[str]:
                                 logger.warning(f"[LOAD] Page {page_num} OCR failed: {page_err}")
 
                         if text_extracted:
-                            logger.info(
-                                f"[LOAD]  OCR extraction complete: {len(text_lines)} total lines"
-                            )
+                            logger.info(f"[LOAD]  OCR extraction complete: {len(text_lines)} total lines")
                     else:
                         logger.error("[LOAD]  pdf2image returned no images")
 
@@ -407,7 +402,6 @@ async def _update_deployment_framework_mergeDocument_status(
         session.add(df)
 
 
-
 async def run_framework_extraction(framework_id: str, file_id: str) -> None:
     """Load Framework, extract controls using AI, save to document_extraction table"""
     framework_id = str(framework_id).strip()
@@ -489,9 +483,7 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
         # Extract controls using AI
         logger.info("[EXTRACT] Step 4: Running AI extraction...")
         controls_flat = await asyncio.to_thread(extract_framework_controls, chunks, framework_id)
-        logger.info(
-            f"[EXTRACT] Framework ai extraction complete: {len(controls_flat)} controls extracted"
-        )
+        logger.info(f"[EXTRACT] Framework ai extraction complete: {len(controls_flat)} controls extracted")
 
         # Convert to section structure
         logger.info("[EXTRACT] Step 5: Converting to section structure...")
@@ -733,9 +725,7 @@ async def run_deployment_framework_extraction(df_id: str, pkg_ver: str, file_id:
         controls_structured = await asyncio.to_thread(
             convert_to_section_structure, controls_flat, resource_type="deployment"
         )
-        logger.info(
-            f"[DEPLOYMENT-EXTRACT] Structure converted: {len(controls_structured)} sections"
-        )
+        logger.info(f"[DEPLOYMENT-EXTRACT] Structure converted: {len(controls_structured)} sections")
 
         # Build controls payload
         total_controls = sum(len(s.get("controls", [])) for s in controls_structured)
@@ -892,9 +882,7 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
                     else (ai_extraction.get("id") if isinstance(ai_extraction, dict) else None)
                 )
 
-                doc_ext = (
-                    await session.get(DocumentExtraction, existing_id) if existing_id else None
-                )
+                doc_ext = await session.get(DocumentExtraction, existing_id) if existing_id else None
                 ai_ext_data = doc_ext.aiExtraction if doc_ext else None
 
                 status = ai_ext_data.get("status") if isinstance(ai_ext_data, dict) else None
@@ -993,9 +981,7 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
             # Save to deployment_package_merges table
             logger.info("[PACKAGE-MERGE] Step 2: Saving to database...")
             # Still passing file_ids array to this helper if needed, but it's okay to pass empty or omit
-            await _save_merge_to_framework_merge(
-                session, file_hashes, merged_controls, merge_summary
-            )
+            await _save_merge_to_framework_merge(session, file_hashes, merged_controls, merge_summary)
 
             if existing_merge:
                 logger.info("[PACKAGE-MERGE] Updating existing package merge...")
@@ -1008,15 +994,11 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
             await session.flush()
             await session.commit()
 
-
-
             # Step 4: Clear stale comparison results so they get recalculated
             logger.info("[PACKAGE-MERGE] Step 4: Clearing stale comparison results...")
             await _clear_deployment_framework_comparison_results(session, df_id, pkg_ver)
             await session.commit()
-            logger.info(
-                "[PACKAGE-MERGE]  Cleared stale comparisons - will be recalculated on next run"
-            )
+            logger.info("[PACKAGE-MERGE]  Cleared stale comparisons - will be recalculated on next run")
 
             logger.info(f"{'='*80}")
             logger.info("[PACKAGE-MERGE-SUCCESS] Package merge complete!")
@@ -1039,7 +1021,7 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
             async with session_scope() as session:
                 df = await session.get(DeploymentFramework, df_id)
                 if df:
-                    for pkg in (df.packages or []):
+                    for pkg in df.packages or []:
                         if isinstance(pkg, dict) and pkg.get("packageVersion") == pkg_ver:
                             merge_id = pkg.get("mergeDocument")
                             if merge_id:
@@ -1054,9 +1036,7 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
             logger.error(f"[PACKAGE-MERGE] Failed to update failure status: {db_exc}")
 
 
-async def _clear_deployment_framework_comparison_results(
-    session: Any, df_id: str, pkg_ver: str
-) -> None:
+async def _clear_deployment_framework_comparison_results(session: Any, df_id: str, pkg_ver: str) -> None:
     """Clear/reset stale comparison results after merge so they get recalculated."""
     try:
         from vora_shared.models import PackageComparison
@@ -1065,9 +1045,7 @@ async def _clear_deployment_framework_comparison_results(
         comparisons = (
             (
                 await session.execute(
-                    select(PackageComparison).where(
-                        PackageComparison.deploymentFrameworkId == df_id
-                    )
+                    select(PackageComparison).where(PackageComparison.deploymentFrameworkId == df_id)
                 )
             )
             .scalars()
@@ -1085,9 +1063,7 @@ async def _clear_deployment_framework_comparison_results(
                 cleared_count += 1
 
         if cleared_count > 0:
-            logger.info(
-                f"[PACKAGE-MERGE] Cleared {cleared_count} comparison records for recalculation"
-            )
+            logger.info(f"[PACKAGE-MERGE] Cleared {cleared_count} comparison records for recalculation")
         await session.flush()
 
     except Exception as e:
@@ -1103,9 +1079,7 @@ async def _get_or_create_doc_extraction(
             return row
     if file_hash:
         row = (
-            await session.execute(
-                select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash)
-            )
+            await session.execute(select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash))
         ).scalar_one_or_none()
         if row:
             return row
@@ -1125,11 +1099,7 @@ async def _save_merge_to_framework_merge(
     sorted_hashes = sorted(file_hashes)
 
     existing = (
-        (
-            await session.execute(
-                select(FrameworkMerge).where(FrameworkMerge.mergeHashes == sorted_hashes)
-            )
-        )
+        (await session.execute(select(FrameworkMerge).where(FrameworkMerge.mergeHashes == sorted_hashes)))
         .scalars()
         .first()
     )
@@ -1322,7 +1292,9 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
                 "fileUrl": file_path,
                 "fileSize": file_info.get("fileSize") if isinstance(file_info, dict) else None,
                 "fileType": file_info.get("fileType") if isinstance(file_info, dict) else None,
-                "originalFileName": file_info.get("originalFileName") if isinstance(file_info, dict) else None,
+                "originalFileName": (
+                    file_info.get("originalFileName") if isinstance(file_info, dict) else None
+                ),
                 "uploadedAt": file_info.get("uploadedAt") if isinstance(file_info, dict) else None,
             }
             extraction_data["document"] = meta
@@ -1342,7 +1314,7 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
             )
             logger.info("[DD-EXTRACT]  Deployment document updated")
 
-             # Save to document_extraction table (by fileHash) - PRIMARY TABLE
+            # Save to document_extraction table (by fileHash) - PRIMARY TABLE
             if file_hash:
                 logger.info("[DD-EXTRACT] 5b: Saving to document_extraction table...")
                 doc_extraction = await _get_or_create_doc_extraction(session, file_hash, None)
@@ -1356,17 +1328,24 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
                 logger.info(f"  FileHash: {file_hash}")
                 logger.info("  Status: extracted")
                 logger.info(f"  Total Controls: {total_controls}")
-                
+
                 # Trigger compliance evaluation automatically in the background
                 try:
                     import httpx
+
                     logger.info(f"[DD-EXTRACT] Triggering compliance agent evaluation for dd_id: {dd_id}...")
                     async with httpx.AsyncClient(timeout=60.0) as client:
-                        resp = await client.post(f"http://localhost:7008/api/compliance-agent/evaluate/{dd_id}")
+                        resp = await client.post(
+                            f"http://localhost:7008/api/compliance-agent/evaluate/{dd_id}"
+                        )
                         if resp.status_code in (200, 201, 202):
-                            logger.info(f"[DD-EXTRACT] Successfully triggered compliance agent for dd_id: {dd_id}")
+                            logger.info(
+                                f"[DD-EXTRACT] Successfully triggered compliance agent for dd_id: {dd_id}"
+                            )
                         else:
-                            logger.warning(f"[DD-EXTRACT] Failed to trigger compliance agent, status: {resp.status_code}")
+                            logger.warning(
+                                f"[DD-EXTRACT] Failed to trigger compliance agent, status: {resp.status_code}"
+                            )
                 except Exception as e:
                     logger.warning(f"[DD-EXTRACT] Could not reach compliance agent service: {e}")
             else:
@@ -1445,7 +1424,9 @@ async def _update_deployment_document_ai_status(
     # Attempt to update the parent framework package entry. If that does not
     # find the package/document, fall back to updating the DeploymentDocument row.
     try:
-        await _update_deployment_framework_ai_status(session, df_id, pkg_ver, file_id, status_data, replace=replace)
+        await _update_deployment_framework_ai_status(
+            session, df_id, pkg_ver, file_id, status_data, replace=replace
+        )
     except Exception:
         try:
             # Fallback to updating DeploymentDocument.document.aiExtraction
@@ -1469,9 +1450,7 @@ async def _get_or_create_doc_extraction(
 ) -> DocumentExtraction:
     """Get or create a DocumentExtraction record by file hash"""
     existing = (
-        await session.execute(
-            select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash)
-        )
+        await session.execute(select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash))
     ).scalar_one_or_none()
 
     if existing:

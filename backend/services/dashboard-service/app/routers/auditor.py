@@ -2,20 +2,20 @@ import logging
 from typing import Annotated
 
 from app.helpers import (
+    MAX_ACTIVE_GAPS,
     build_controls_passing_response,
     build_critical_gaps_response,
+    build_deployment_points_response,
     build_extra_controls_response,
     build_overall_protection_rows,
     filter_and_sort_rows,
     get_latest_packages,
     get_nested,
-    process_gap_analyses,
-    process_live_streams,
     process_ai_insights,
     process_deployment_points,
     process_deployment_points_detailed,
-    build_deployment_points_response,
-    MAX_ACTIVE_GAPS,
+    process_gap_analyses,
+    process_live_streams,
 )
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import desc, select
@@ -34,6 +34,7 @@ from vora_shared.security import RequestContext, get_context
 
 router = APIRouter(tags=["auditor-dashboard"])
 logger = logging.getLogger(__name__)
+
 
 @router.get("/analytics")
 async def get_auditor_dashboard_analytics(
@@ -59,9 +60,7 @@ async def get_auditor_dashboard_analytics(
                 list(
                     (
                         await session.execute(
-                            select(PackageGapAnalysis).where(
-                                PackageGapAnalysis.id.in_(gap_analysis_ids)
-                            )
+                            select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_analysis_ids))
                         )
                     )
                     .scalars()
@@ -75,9 +74,7 @@ async def get_auditor_dashboard_analytics(
                 list(
                     (
                         await session.execute(
-                            select(DeploymentPackageMerge).where(
-                                DeploymentPackageMerge.id.in_(merge_doc_ids)
-                            )
+                            select(DeploymentPackageMerge).where(DeploymentPackageMerge.id.in_(merge_doc_ids))
                         )
                     )
                     .scalars()
@@ -97,9 +94,7 @@ async def get_auditor_dashboard_analytics(
                 list(
                     (
                         await session.execute(
-                            select(FrameworkAssignment).where(
-                                FrameworkAssignment.id.in_(assignment_ids)
-                            )
+                            select(FrameworkAssignment).where(FrameworkAssignment.id.in_(assignment_ids))
                         )
                     )
                     .scalars()
@@ -110,11 +105,7 @@ async def get_auditor_dashboard_analytics(
             )
 
             evidence_outputs = list(
-                (
-                    await session.execute(
-                        select(EvidenceOutput).order_by(desc(EvidenceOutput.createdAt))
-                    )
-                )
+                (await session.execute(select(EvidenceOutput).order_by(desc(EvidenceOutput.createdAt))))
                 .scalars()
                 .all()
             )
@@ -147,13 +138,13 @@ async def get_auditor_dashboard_analytics(
                 total_controls_overall,
                 passing_controls_overall,
                 extra_controls_overall,
-                _, # Ignore extra_controls_list
+                _,  # Ignore extra_controls_list
                 critical_gaps,
                 active_gaps,
                 framework_health,
                 total_dps_overall,
                 implemented_dps_overall,
-                _, # Ignore prev_implemented_dps_overall
+                _,  # Ignore prev_implemented_dps_overall
             ) = process_gap_analyses(
                 gap_analyses,
                 latest_packages,
@@ -164,9 +155,7 @@ async def get_auditor_dashboard_analytics(
                 active_gaps_limit=MAX_ACTIVE_GAPS,
             )
             overall_protection = (
-                round((implemented_dps_overall / total_dps_overall) * 100)
-                if total_dps_overall > 0
-                else 0
+                round((implemented_dps_overall / total_dps_overall) * 100) if total_dps_overall > 0 else 0
             )
 
             live_streams = process_live_streams(evidence_outputs)
@@ -185,9 +174,7 @@ async def get_auditor_dashboard_analytics(
                 "aiInsights": ai_insights,
             }
 
-            return success(
-                response_data, message="Auditor dashboard analytics retrieved successfully"
-            )
+            return success(response_data, message="Auditor dashboard analytics retrieved successfully")
 
     except Exception:
         logger.exception("Error in auditor dashboard analytics")
@@ -224,9 +211,7 @@ async def get_auditor_overall_protection(
                 list(
                     (
                         await session.execute(
-                            select(PackageGapAnalysis).where(
-                                PackageGapAnalysis.id.in_(gap_analysis_ids)
-                            )
+                            select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_analysis_ids))
                         )
                     )
                     .scalars()
@@ -240,9 +225,7 @@ async def get_auditor_overall_protection(
                 list(
                     (
                         await session.execute(
-                            select(DeploymentPackageMerge).where(
-                                DeploymentPackageMerge.id.in_(merge_doc_ids)
-                            )
+                            select(DeploymentPackageMerge).where(DeploymentPackageMerge.id.in_(merge_doc_ids))
                         )
                     )
                     .scalars()
@@ -262,9 +245,7 @@ async def get_auditor_overall_protection(
                 list(
                     (
                         await session.execute(
-                            select(FrameworkAssignment).where(
-                                FrameworkAssignment.id.in_(assignment_ids)
-                            )
+                            select(FrameworkAssignment).where(FrameworkAssignment.id.in_(assignment_ids))
                         )
                     )
                     .scalars()
@@ -303,7 +284,7 @@ async def get_auditor_overall_protection(
                 _,
                 _,
                 _,
-                _, # Ignore extra_controls_list
+                _,  # Ignore extra_controls_list
                 _,
                 framework_health,
                 total_dps_overall,
@@ -314,9 +295,7 @@ async def get_auditor_overall_protection(
             )
 
             overall_protection = (
-                round((implemented_dps_overall / total_dps_overall) * 100)
-                if total_dps_overall > 0
-                else 0
+                round((implemented_dps_overall / total_dps_overall) * 100) if total_dps_overall > 0 else 0
             )
             overall_prev_protection = (
                 round((prev_implemented_dps_overall / total_dps_overall) * 100)
@@ -379,20 +358,47 @@ async def get_auditor_critical_gaps(
     """Get auditor critical gaps for dashboard table."""
     try:
         from app.helpers import build_critical_gaps_response
+
         async with session_scope() as session:
-            dfs = list((await session.execute(
-                select(DeploymentFramework).where(DeploymentFramework.tenantId == ctx.tenant_id)
-            )).scalars().all())
+            dfs = list(
+                (
+                    await session.execute(
+                        select(DeploymentFramework).where(DeploymentFramework.tenantId == ctx.tenant_id)
+                    )
+                )
+                .scalars()
+                .all()
+            )
 
             latest_packages, gap_analysis_ids, merge_doc_ids = get_latest_packages(dfs)
 
-            gap_analyses = list((await session.execute(
-                select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_analysis_ids))
-            )).scalars().all()) if gap_analysis_ids else []
+            gap_analyses = (
+                list(
+                    (
+                        await session.execute(
+                            select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_analysis_ids))
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                if gap_analysis_ids
+                else []
+            )
 
-            merges = list((await session.execute(
-                select(DeploymentPackageMerge).where(DeploymentPackageMerge.id.in_(merge_doc_ids))
-            )).scalars().all()) if merge_doc_ids else []
+            merges = (
+                list(
+                    (
+                        await session.execute(
+                            select(DeploymentPackageMerge).where(DeploymentPackageMerge.id.in_(merge_doc_ids))
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                if merge_doc_ids
+                else []
+            )
 
             assignment_ids = [
                 get_nested(ga.gapAnalysis or {}, "framework_assignment_id")
@@ -400,9 +406,19 @@ async def get_auditor_critical_gaps(
                 if get_nested(ga.gapAnalysis or {}, "framework_assignment_id")
             ]
 
-            assignments = list((await session.execute(
-                select(FrameworkAssignment).where(FrameworkAssignment.id.in_(assignment_ids))
-            )).scalars().all()) if assignment_ids else []
+            assignments = (
+                list(
+                    (
+                        await session.execute(
+                            select(FrameworkAssignment).where(FrameworkAssignment.id.in_(assignment_ids))
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                if assignment_ids
+                else []
+            )
 
             historical_gap_analysis_ids = [
                 get_nested(pkg, "gapAnalysis")
@@ -411,11 +427,21 @@ async def get_auditor_critical_gaps(
                 if get_nested(pkg, "gapAnalysis")
             ]
 
-            historical_gap_analyses = list((await session.execute(
-                select(PackageGapAnalysis)
-                .where(PackageGapAnalysis.id.in_(historical_gap_analysis_ids))
-                .order_by(desc(PackageGapAnalysis.createdAt))
-            )).scalars().all()) if historical_gap_analysis_ids else []
+            historical_gap_analyses = (
+                list(
+                    (
+                        await session.execute(
+                            select(PackageGapAnalysis)
+                            .where(PackageGapAnalysis.id.in_(historical_gap_analysis_ids))
+                            .order_by(desc(PackageGapAnalysis.createdAt))
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                if historical_gap_analysis_ids
+                else []
+            )
 
             settings = get_settings()
             # We only need active_gaps, but process_gap_analyses returns a big tuple
@@ -428,11 +454,11 @@ async def get_auditor_critical_gaps(
             data, total_items = build_critical_gaps_response(
                 active_gaps, search, severity_filter, sort_by, sort_order, page, limit
             )
-            
+
             return paginated(
                 data,
                 build_pagination_meta(clamp_page(page), clamp_limit(limit), total_items),
-                "Critical gaps retrieved successfully"
+                "Critical gaps retrieved successfully",
             )
 
     except Exception:
@@ -453,19 +479,45 @@ async def get_auditor_controls_passing(
     """Get auditor controls passing for dashboard table."""
     try:
         async with session_scope() as session:
-            dfs = list((await session.execute(
-                select(DeploymentFramework).where(DeploymentFramework.tenantId == ctx.tenant_id)
-            )).scalars().all())
+            dfs = list(
+                (
+                    await session.execute(
+                        select(DeploymentFramework).where(DeploymentFramework.tenantId == ctx.tenant_id)
+                    )
+                )
+                .scalars()
+                .all()
+            )
 
             latest_packages, gap_analysis_ids, merge_doc_ids = get_latest_packages(dfs)
 
-            gap_analyses = list((await session.execute(
-                select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_analysis_ids))
-            )).scalars().all()) if gap_analysis_ids else []
+            gap_analyses = (
+                list(
+                    (
+                        await session.execute(
+                            select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_analysis_ids))
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                if gap_analysis_ids
+                else []
+            )
 
-            merges = list((await session.execute(
-                select(DeploymentPackageMerge).where(DeploymentPackageMerge.id.in_(merge_doc_ids))
-            )).scalars().all()) if merge_doc_ids else []
+            merges = (
+                list(
+                    (
+                        await session.execute(
+                            select(DeploymentPackageMerge).where(DeploymentPackageMerge.id.in_(merge_doc_ids))
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                if merge_doc_ids
+                else []
+            )
 
             assignment_ids = [
                 get_nested(ga.gapAnalysis or {}, "framework_assignment_id")
@@ -473,9 +525,19 @@ async def get_auditor_controls_passing(
                 if get_nested(ga.gapAnalysis or {}, "framework_assignment_id")
             ]
 
-            assignments = list((await session.execute(
-                select(FrameworkAssignment).where(FrameworkAssignment.id.in_(assignment_ids))
-            )).scalars().all()) if assignment_ids else []
+            assignments = (
+                list(
+                    (
+                        await session.execute(
+                            select(FrameworkAssignment).where(FrameworkAssignment.id.in_(assignment_ids))
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                if assignment_ids
+                else []
+            )
 
             data, total_items = build_controls_passing_response(
                 gap_analyses,
@@ -487,13 +549,13 @@ async def get_auditor_controls_passing(
                 sort_by,
                 sort_order,
                 page,
-                limit
+                limit,
             )
-            
+
             return paginated(
                 data,
                 build_pagination_meta(clamp_page(page), clamp_limit(limit), total_items),
-                "Controls passing retrieved successfully"
+                "Controls passing retrieved successfully",
             )
 
     except Exception:
@@ -513,21 +575,47 @@ async def get_auditor_extra_controls(
     """Get auditor extra controls for dashboard table."""
     try:
         settings = get_settings()
-        
+
         async with session_scope() as session:
-            dfs = list((await session.execute(
-                select(DeploymentFramework).where(DeploymentFramework.tenantId == ctx.tenant_id)
-            )).scalars().all())
+            dfs = list(
+                (
+                    await session.execute(
+                        select(DeploymentFramework).where(DeploymentFramework.tenantId == ctx.tenant_id)
+                    )
+                )
+                .scalars()
+                .all()
+            )
 
             latest_packages, gap_analysis_ids, merge_doc_ids = get_latest_packages(dfs)
 
-            gap_analyses = list((await session.execute(
-                select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_analysis_ids))
-            )).scalars().all()) if gap_analysis_ids else []
+            gap_analyses = (
+                list(
+                    (
+                        await session.execute(
+                            select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_analysis_ids))
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                if gap_analysis_ids
+                else []
+            )
 
-            merges = list((await session.execute(
-                select(DeploymentPackageMerge).where(DeploymentPackageMerge.id.in_(merge_doc_ids))
-            )).scalars().all()) if merge_doc_ids else []
+            merges = (
+                list(
+                    (
+                        await session.execute(
+                            select(DeploymentPackageMerge).where(DeploymentPackageMerge.id.in_(merge_doc_ids))
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                if merge_doc_ids
+                else []
+            )
 
             assignment_ids = [
                 get_nested(ga.gapAnalysis or {}, "framework_assignment_id")
@@ -535,28 +623,37 @@ async def get_auditor_extra_controls(
                 if get_nested(ga.gapAnalysis or {}, "framework_assignment_id")
             ]
 
-            assignments = list((await session.execute(
-                select(FrameworkAssignment).where(FrameworkAssignment.id.in_(assignment_ids))
-            )).scalars().all()) if assignment_ids else []
-
-            res = process_gap_analyses(
-                gap_analyses, latest_packages, [], merges, assignments, settings
+            assignments = (
+                list(
+                    (
+                        await session.execute(
+                            select(FrameworkAssignment).where(FrameworkAssignment.id.in_(assignment_ids))
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                if assignment_ids
+                else []
             )
+
+            res = process_gap_analyses(gap_analyses, latest_packages, [], merges, assignments, settings)
             extra_controls_list = res[3]
 
             data, total_items = build_extra_controls_response(
                 extra_controls_list, search, sort_by, sort_order, page, limit
             )
-            
+
             return paginated(
                 data,
                 build_pagination_meta(clamp_page(page), clamp_limit(limit), total_items),
-                "Extra controls retrieved successfully"
+                "Extra controls retrieved successfully",
             )
 
     except Exception:
         logger.exception("Error in extra controls")
         return server_error("Failed to fetch extra controls")
+
 
 @router.get("/deployment-points")
 async def get_auditor_deployment_points(
@@ -569,19 +666,45 @@ async def get_auditor_deployment_points(
     """Get detailed deployment points with control percentages."""
     try:
         async with session_scope() as session:
-            dfs = list((await session.execute(
-                select(DeploymentFramework).where(DeploymentFramework.tenantId == ctx.tenant_id)
-            )).scalars().all())
+            dfs = list(
+                (
+                    await session.execute(
+                        select(DeploymentFramework).where(DeploymentFramework.tenantId == ctx.tenant_id)
+                    )
+                )
+                .scalars()
+                .all()
+            )
 
             latest_packages, gap_analysis_ids, merge_doc_ids = get_latest_packages(dfs)
 
-            gap_analyses = list((await session.execute(
-                select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_analysis_ids))
-            )).scalars().all()) if gap_analysis_ids else []
+            gap_analyses = (
+                list(
+                    (
+                        await session.execute(
+                            select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(gap_analysis_ids))
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                if gap_analysis_ids
+                else []
+            )
 
-            merges = list((await session.execute(
-                select(DeploymentPackageMerge).where(DeploymentPackageMerge.id.in_(merge_doc_ids))
-            )).scalars().all()) if merge_doc_ids else []
+            merges = (
+                list(
+                    (
+                        await session.execute(
+                            select(DeploymentPackageMerge).where(DeploymentPackageMerge.id.in_(merge_doc_ids))
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                if merge_doc_ids
+                else []
+            )
 
             assignment_ids = [
                 get_nested(ga.gapAnalysis or {}, "framework_assignment_id")
@@ -589,25 +712,30 @@ async def get_auditor_deployment_points(
                 if get_nested(ga.gapAnalysis or {}, "framework_assignment_id")
             ]
 
-            assignments = list((await session.execute(
-                select(FrameworkAssignment).where(FrameworkAssignment.id.in_(assignment_ids))
-            )).scalars().all()) if assignment_ids else []
-
-            data = process_deployment_points_detailed(
-                gap_analyses, latest_packages, merges, assignments
+            assignments = (
+                list(
+                    (
+                        await session.execute(
+                            select(FrameworkAssignment).where(FrameworkAssignment.id.in_(assignment_ids))
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                if assignment_ids
+                else []
             )
-            
+
+            data = process_deployment_points_detailed(gap_analyses, latest_packages, merges, assignments)
+
             paginated_data, total_items, total_instances = build_deployment_points_response(
                 data, search, framework_filter, page, limit
             )
-            
+
             return paginated(
-                {
-                    "results": paginated_data,
-                    "totalInstances": total_instances
-                },
+                {"results": paginated_data, "totalInstances": total_instances},
                 build_pagination_meta(clamp_page(page), clamp_limit(limit), total_items),
-                "Deployment points retrieved successfully"
+                "Deployment points retrieved successfully",
             )
 
     except Exception:
@@ -617,21 +745,20 @@ async def get_auditor_deployment_points(
 
 @router.get("/framework-details/{deployment_framework_id}")
 async def get_auditor_framework_details(
-    deployment_framework_id: str,
-    ctx: Annotated[RequestContext, Depends(get_context)]
+    deployment_framework_id: str, ctx: Annotated[RequestContext, Depends(get_context)]
 ):
     try:
         tenant_id = ctx.tenant_id
         from app.helpers import get_auditor_framework_details_helper
-        
+
         settings = get_settings()
         data = await get_auditor_framework_details_helper(
             deployment_framework_id, tenant_id, settings.compliance_score_threshold
         )
-        
+
         if not data:
             return server_error("Framework not found")
-            
+
         return success(data, "Framework details retrieved successfully")
 
     except Exception:

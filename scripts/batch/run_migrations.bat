@@ -11,7 +11,7 @@ if "%MIGRATION_MSG%"=="" (
 )
 
 :: Navigate to the shared directory relative to the batch script location
-cd /d "%~dp0..\..\shared"
+cd /d "%~dp0..\..\backend\shared"
 
 echo.
 echo ========================================================

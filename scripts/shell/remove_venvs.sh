@@ -3,7 +3,7 @@
 # VORA Backend - Remove Virtual Environments Script
 # =====================================================
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../backend" && pwd)"
 
 echo ""
 echo "====================================================="
@@ -11,7 +11,7 @@ echo "Removing Virtual Environments"
 echo "====================================================="
 echo ""
 
-python3 "$ROOT/scripts/remove_venvs.py"
+python3 "$(dirname "${BASH_SOURCE[0]}")/../remove_venvs.py"
 
 if [ $? -ne 0 ]; then
     echo ""
