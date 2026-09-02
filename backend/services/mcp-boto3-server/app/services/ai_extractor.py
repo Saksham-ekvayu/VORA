@@ -1,15 +1,10 @@
-
 import requests
-
 
 BASE_URL = "http://localhost:7007"
 
 
 def trigger_ai_extraction(document_id: str):
-    url = (
-        f"{BASE_URL}/api/extract/deployment-document/"
-        f"{document_id}/ai-extract"
-    )
+    url = f"{BASE_URL}/api/extract/deployment-document/" f"{document_id}/ai-extract"
 
     response = requests.post(
         url,
@@ -24,4 +19,3 @@ def trigger_ai_extraction(document_id: str):
             "status_code": response.status_code,
             "text": response.text,
         }
-

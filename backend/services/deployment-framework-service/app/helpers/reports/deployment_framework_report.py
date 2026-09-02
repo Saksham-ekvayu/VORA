@@ -117,11 +117,11 @@ def _build_dp_data(gap_results: list[dict[str, Any]]) -> dict[str, list[dict[str
     for row in gap_results or []:
         assign_id = row.get("assigned_framework_control_id") or ""
         dep_id = row.get("deployment_framework_control_id") or ""
-        
+
         composite_key = f"{assign_id}::{dep_id}"
         if composite_key == "::":
             continue
-            
+
         dp_data.setdefault(composite_key, [])
         dp_data[composite_key].append(_map_dp_row(row, len(dp_data[composite_key])))
     return dp_data
@@ -146,9 +146,9 @@ def _process_comparison_control(
     assign_id = ctrl.get("assigned_framework_control_id") or ""
     dep_id = ctrl.get("deployment_framework_control_id") or ""
     composite_key = f"{assign_id}::{dep_id}"
-    
+
     control_id = dep_id or assign_id
-    
+
     raw_score = ctrl.get("comparison_score") or 0
     score = round(raw_score * 100) if raw_score <= 1 else round(raw_score)
 

@@ -15,7 +15,7 @@ echo [A] Ruff (Blazing fast, modern standard)
 echo [B] Pylint (Deep static analysis, strict)
 echo.
 
-choice /c AB /m "Enter your choice"
+choice /c AB /n /m "Enter your choice (A/B): "
 if errorlevel 2 goto run_pylint
 if errorlevel 1 goto run_ruff
 
@@ -30,7 +30,7 @@ if errorlevel 1 (
 )
 
 REM Navigate to the backend root directory
-set BACKEND_DIR=%~dp0..\..
+set BACKEND_DIR=%~dp0..\..\backend
 cd /d "%BACKEND_DIR%"
 
 echo.
@@ -56,14 +56,14 @@ if errorlevel 1 (
 )
 
 REM Navigate to the backend root directory
-set BACKEND_DIR=%~dp0..\..
+set BACKEND_DIR=%~dp0..\..\backend
 cd /d "%BACKEND_DIR%"
 
 echo.
 echo [2/2] Running Pylint...
 echo Linting Python files...
 REM Run Pylint on backend directories (ignoring virtual envs and using all CPU cores)
-python -m pylint services shared gateway scripts --ignore=.venv,__pycache__ -j 0
+python -m pylint services shared gateway --ignore=.venv,__pycache__ -j 0
 if errorlevel 1 (
     echo ERROR: Linter found issues in the code.
     pause

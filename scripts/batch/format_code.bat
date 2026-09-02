@@ -19,7 +19,7 @@ if errorlevel 1 (
 )
 
 REM Navigate to the backend root directory
-set BACKEND_DIR=%~dp0..\..
+set BACKEND_DIR=%~dp0..\..\backend
 cd /d "%BACKEND_DIR%"
 
 echo.

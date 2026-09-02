@@ -3,7 +3,7 @@
 # VORA Backend - Install Virtual Environments Script
 # =====================================================
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../backend" && pwd)"
 
 echo ""
 echo "====================================================="
@@ -28,7 +28,7 @@ fi
 echo ""
 echo "[2/3] Creating virtual environments for all services..."
 cd "$ROOT"
-python3 scripts/create_venvs.py
+python3 "$(dirname "${BASH_SOURCE[0]}")/../create_venvs.py"
 if [ $? -ne 0 ]; then
     echo "ERROR: Failed to create virtual environments."
     exit 1
