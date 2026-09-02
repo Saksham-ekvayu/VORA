@@ -4,9 +4,9 @@ FastAPI microservices for VORA.
 
 ## Structure
 
-- `services/`: Contains all domain and AI microservices.
-- `shared/`: Shared package used across services.
-- `gateway/`: API Gateway.
+- `backend/services/`: Contains all domain and AI microservices.
+- `backend/shared/`: Shared package used across services.
+- `backend/gateway/`: API Gateway.
 - `scripts/`: Python and Batch scripts for environment setup and running.
 
 ## Local Run
@@ -18,7 +18,7 @@ The platform is designed to be run using the provided batch (`.bat`) or shell (`
 **For Windows:**
 Create virtual environments for all services:
 ```cmd
-python scripts\batch\create_service_venvs.bat
+python scripts\batch\create_venvs.bat
 ```
 Install requirements across all virtual environments:
 ```cmd
@@ -48,7 +48,7 @@ Open your terminal and run the following commands sequentially:
 
 1. Navigate to the shared directory:
    ```cmd
-   cd shared
+   cd backend\shared
    ```
 2. Generate the migration script (this detects all tables/changes):
    ```cmd

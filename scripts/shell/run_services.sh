@@ -3,7 +3,7 @@
 # VORA Backend - Run All Services Script (Parallel)
 # =====================================================
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../backend" && pwd)"
 
 echo "Checking if virtual environments are set up..."
 if [ ! -d "$ROOT/gateway/.venv" ]; then

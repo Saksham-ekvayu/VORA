@@ -6,8 +6,8 @@ REM =====================================================
 
 setlocal enabledelayedexpansion
 
-REM Calculate the ROOT directory (go up 2 levels from batch file location: scripts\batch -> root)
-pushd "%~dp0..\.."
+REM Calculate the ROOT directory (go up 2 levels from batch file location: scripts\batch -> root, then to backend)
+pushd "%~dp0..\..\backend"
 set "ROOT=%cd%"
 popd
 

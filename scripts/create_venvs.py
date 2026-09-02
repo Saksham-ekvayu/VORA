@@ -110,7 +110,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--root",
-        default="..",
+        default="backend",
         help="Path to the vora_fastapi repository root from this script location.",
     )
     return parser.parse_args()
@@ -118,7 +118,12 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    root = (Path(__file__).resolve().parent / args.root).resolve()
+    script_dir = Path(__file__).resolve().parent
+    # If --root is relative, resolve it from the parent directory of scripts
+    if not Path(args.root).is_absolute():
+        root = (script_dir.parent / args.root).resolve()
+    else:
+        root = Path(args.root).resolve()
 
     print()
     print("=" * 60)

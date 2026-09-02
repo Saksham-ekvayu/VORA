@@ -127,12 +127,12 @@ def _flatten_controls(sections: list[Any], is_assignment: bool = False) -> list[
         for control in section.get("controls") or []:
             if not isinstance(control, dict):
                 continue
-            
+
             if is_assignment:
                 customization = control.get("customization") or {}
                 if not customization.get("is_applicable", True):
                     continue
-                    
+
             item = dict(control)
             item["_section_id"] = section_id
             item["_section_name"] = section_name

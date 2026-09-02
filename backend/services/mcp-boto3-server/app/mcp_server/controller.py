@@ -8,9 +8,9 @@ from app.db.queries import (
     mark_processed,
     save_deployment_document,
 )
-from app.services.ai_extractor import trigger_ai_extraction
 from app.pipeline.helpers import extract_source_paths
 from app.services.agent_client import call_agent
+from app.services.ai_extractor import trigger_ai_extraction
 from app.services.downloader import download_file
 from app.utils.live_logs import add_live_log
 from vora_shared.database import session_scope

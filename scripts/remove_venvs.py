@@ -42,9 +42,9 @@ def remove_venvs(base_dir):
 
 
 if __name__ == "__main__":
-    # Get the parent directory of 'scripts', which should be 'vora_fastapi'
+    # Get the parent directory of 'scripts' (which is the root) and append 'backend'
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.dirname(script_dir)
+    project_root = os.path.join(os.path.dirname(script_dir), "backend")
 
     # Execute the cleanup
     remove_venvs(project_root)

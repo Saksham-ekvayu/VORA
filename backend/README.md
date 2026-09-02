@@ -15,9 +15,10 @@ backend/
 │   ├── extract-controls-service/   (Port 7007)
 │   ├── compliance-agent-service/   (Port 7008)
 │   └── ai-analysis-service/        (Port 7009)
-├── scripts/             # Setup and management scripts
 └── shared/              # Shared Python package
 ```
+
+**Note:** Setup and management scripts are now located in the root `scripts/` directory.
 
 ## Quick Start
 
@@ -26,7 +27,7 @@ backend/
 Run this to create `.venv` folders for all services:
 
 ```bash
-cd backend/scripts/batch
+cd scripts/batch
 create_venvs.bat
 ```
 
@@ -35,7 +36,7 @@ create_venvs.bat
 Install all service dependencies automatically:
 
 ```bash
-cd backend/scripts/batch
+cd scripts/batch
 install_venvs.bat
 ```
 
@@ -52,7 +53,7 @@ This script will:
 Start all microservices and the API Gateway:
 
 ```bash
-cd backend/scripts/batch
+cd scripts/batch
 run_services.bat
 ```
 
@@ -77,7 +78,7 @@ run_services.bat
 
 ### Batch Scripts (Windows)
 
-Located in `backend/scripts/batch/`:
+Located in `scripts/batch/`:
 
 - **`create_venvs.bat`** - Create virtual environments for all services
 - **`install_venvs.bat`** - Install all dependencies in virtual environments
@@ -87,7 +88,7 @@ Located in `backend/scripts/batch/`:
 
 ### Python Scripts
 
-Located in `backend/scripts/`:
+Located in `scripts/`:
 
 - **`create_venvs.py`** - Python script to create virtual environments
   - Options: `--install`, `--install-shared`, `--python`, `--root`
@@ -147,7 +148,7 @@ Replace `7001` with the appropriate port from the reference table above.
 Keep code formatted with Black and Isort:
 
 ```bash
-cd backend/scripts/batch
+cd scripts/batch
 format_code.bat
 ```
 
@@ -191,7 +192,7 @@ If `.venv` folders are corrupted or outdated:
 
 ```bash
 # Remove all venvs
-cd backend/scripts/batch
+cd scripts/batch
 remove_venvs.bat
 
 # Recreate and reinstall
