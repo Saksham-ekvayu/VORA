@@ -324,19 +324,19 @@ export default function AuditorDashboard() {
               className="flex flex-col"
             >
               {/* Column headers */}
-              <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border pb-1.5 mb-2 shrink-0">
+              <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border pb-1.5 shrink-0">
                 <span>Framework</span>
                 <span>TOTAL POINTS</span>
               </div>
               <div
-                className="overflow-y-auto flex-1 space-y-4 pr-0.5"
+                className="overflow-y-auto flex-1 pr-0.5"
                 style={{ maxHeight: "220px" }}
               >
                 {(isLoading || !dashboardData) &&
                   Array.from({ length: 4 }).map((_, i) => (
                     <div
                       key={i}
-                      className="flex items-center gap-3 w-full py-1"
+                      className="flex items-center gap-3 w-full group py-1.5 border-b border-border last:border-0"
                     >
                       <Skeleton className="h-5 w-24 shrink-0" />
                       <Skeleton className="h-4 flex-1 rounded-full" />
@@ -349,7 +349,7 @@ export default function AuditorDashboard() {
                   dashboardData?.deploymentPoints?.map((dp) => (
                     <div
                       key={`${dp.name}-${dp.version}`}
-                      className="flex items-center gap-3 w-full group"
+                      className="flex items-center gap-3 w-full group py-1.5 border-b border-border last:border-0"
                     >
                       {/* Colored pill tag */}
                       <span className="text-[11px] font-semibold px-1 py-0.3 rounded text-white bg-primary shrink-0 min-w-24 text-center group-hover:opacity-80 transition-opacity">
@@ -365,7 +365,7 @@ export default function AuditorDashboard() {
                                   (d) => d.count
                                 ) || [1])
                               )) *
-                              100,
+                            100,
                             5
                           )}
                           color={"bg-primary"}
