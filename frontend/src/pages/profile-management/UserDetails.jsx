@@ -237,10 +237,7 @@ export default function UserDetails() {
     );
   }
 
-  const displayAddress = [
-    ROLE_EXPERT,
-    ROLE_ADMIN,
-  ].includes(user.role)
+  const displayAddress = [ROLE_EXPERT, ROLE_ADMIN].includes(user.role)
     ? user.address
     : user.customer?.address;
 

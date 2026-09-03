@@ -136,7 +136,9 @@ export default function GridCardView({
         <div className="flex flex-col items-center justify-center py-16 bg-muted/20 border border-dashed border-border/80 rounded animate-in zoom-in duration-300 p-1">
           <div
             className={`w-16 h-16 rounded shadow-sm flex items-center justify-center mb-4 ring-8 ring-muted/5 ${
-              error ? "bg-red-500/10 text-red-500" : "bg-card text-muted-foreground/30"
+              error
+                ? "bg-red-500/10 text-red-500"
+                : "bg-card text-muted-foreground/30"
             }`}
           >
             {error ? (
@@ -158,7 +160,7 @@ export default function GridCardView({
             }`}
           >
             {error
-              ? "Please check your backend logs or try again later"
+              ? ""
               : "No results match your search. Try adjusting filters and try again."}
           </p>
         </div>

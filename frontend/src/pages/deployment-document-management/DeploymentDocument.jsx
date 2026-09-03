@@ -206,7 +206,7 @@ function DeploymentDocument() {
         id: `ai-upload-${row.fileInfo?.versionFileId}`,
         label:
           row.aiUpload?.status === "failed" ||
-            row.aiUpload?.status === "skipped"
+          row.aiUpload?.status === "skipped"
             ? "Retry AI Upload"
             : "Upload to AI",
         icon: "upload-cloud",

@@ -29,7 +29,7 @@ import { useDateFilter } from "./hooks/useDateFilter";
 import DateFilter from "./components/DateFilter";
 import { getExpertDashboardAnalytics } from "@/services/frameworkService";
 import LoadingSpinner from "@/components/custom/Loader/LoadingSpinner";
-import Icon from "@/components/custom/Icon";
+import DashboardError from "./components/DashboardError";
 import {
   STATUS_APPROVED,
   STATUS_PENDING,
@@ -105,8 +105,9 @@ function buildStats(stats) {
     {
       title: "Framework Approval Progress",
       value: `${stats.approvalProgress || 0}%`,
-      description: `${stats.approvedUploads || 0} approved out of ${stats.totalUploads || 0
-        } uploaded frameworks`,
+      description: `${stats.approvedUploads || 0} approved out of ${
+        stats.totalUploads || 0
+      } uploaded frameworks`,
       action: "View Approval Details",
       actionPath: "/frameworks?approvalStatus=approved",
       icon: Award,
@@ -613,26 +614,10 @@ export default function ExpertDashboard() {
 
   if (loadError || !dashboardData) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-100px)]">
-        <div className="text-center p-8 rounded border border-border bg-card shadow-2xl max-w-md w-full">
-          <div className="w-16 h-16 bg-red-500/10 rounded flex items-center justify-center mx-auto mb-4">
-            <Icon name="error" size="36px" className="text-red-500" />
-          </div>
-          <h2 className="text-lg font-bold mb-2">Error Loading Dashboard</h2>
-          <p className="text-sm text-muted-foreground mb-6">
-            {loadError || "We couldn't retrieve your dashboard data at this time."}
-          </p>
-          <div className="flex justify-center">
-            <Button
-              onClick={() => fetchDashboardData({ startDate, endDate })}
-              variant="primary"
-              className="px-8 gap-2"
-            >
-              <Icon name="refresh" size="16px" /> Retry
-            </Button>
-          </div>
-        </div>
-      </div>
+      <DashboardError
+        error={loadError}
+        onRetry={() => fetchDashboardData({ startDate, endDate })}
+      />
     );
   }
 

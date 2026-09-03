@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import CardWrapper from "./components/CardWrapper";
@@ -18,6 +18,7 @@ import DateFilter from "./components/DateFilter";
 import { getAuditorDashboardAnalytics } from "@/services/dashboardService";
 import { formatDateOnly } from "@/utils/dateFormatter";
 import { Skeleton } from "@/components/ui/skeleton";
+import DashboardError from "./components/DashboardError";
 
 function TopStatCard({
   icon,
@@ -89,26 +90,27 @@ export default function AuditorDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const res = await getAuditorDashboardAnalytics({ startDate, endDate });
-        if (res?.success === false) {
-          setError(res?.message || "Failed to fetch analytics");
-        } else {
-          setDashboardData(res.data);
-        }
-      } catch (err) {
-        console.error("Failed to fetch auditor analytics", err);
-        setError(err?.message || "Failed to fetch analytics");
-      } finally {
-        setIsLoading(false);
+  const fetchDashboardData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await getAuditorDashboardAnalytics({ startDate, endDate });
+      if (res?.success === false) {
+        setError(res?.message || "Failed to fetch analytics");
+      } else {
+        setDashboardData(res.data);
       }
-    };
-    fetchData();
+    } catch (err) {
+      console.error("Failed to fetch auditor analytics", err);
+      setError(err?.message || "Failed to fetch analytics");
+    } finally {
+      setIsLoading(false);
+    }
   }, [startDate, endDate]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -154,13 +156,7 @@ export default function AuditorDashboard() {
       </div>
 
       {error ? (
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive rounded-md p-6 my-4 flex flex-col items-center justify-center gap-2">
-          <Icon name="triangle-alert" size="32px" />
-          <span className="font-medium text-lg">{error}</span>
-          <p className="text-sm opacity-80">
-            Please try refreshing the page or checking your backend logs.
-          </p>
-        </div>
+        <DashboardError error={error} onRetry={fetchDashboardData} />
       ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

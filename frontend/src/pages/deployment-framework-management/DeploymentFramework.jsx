@@ -206,13 +206,13 @@ function DeploymentFramework() {
         disabled: isDownloading,
       },
       (isAuditor(user.role) || isCustomerAdmin(user.role)) &&
-      row.requestReview?.status !== "approved" && {
-        id: `delete-${row.id}`,
-        label: "Delete Framework",
-        icon: "trash",
-        variant: "destructive",
-        onClick: () => handleDeleteFramework(row),
-      },
+        row.requestReview?.status !== "approved" && {
+          id: `delete-${row.id}`,
+          label: "Delete Framework",
+          icon: "trash",
+          variant: "destructive",
+          onClick: () => handleDeleteFramework(row),
+        },
     ].filter(Boolean);
 
     return (
