@@ -80,6 +80,7 @@ function Framework() {
   const {
     data: frameworks,
     loading,
+    error,
     emptyMessage,
     pagination,
     searchTerm,
@@ -340,6 +341,7 @@ function Framework() {
         headerActions={getHeaderActions()}
         searchPlaceholder="Search framework name, code, or uploader..."
         emptyMessage={emptyMessage}
+        error={error}
       />
 
       {/* Upload Framework Modal */}

@@ -60,6 +60,7 @@ function FrameworkAccess() {
   const {
     data: frameworkAccessRecords,
     loading,
+    error,
     emptyMessage,
     pagination,
     searchTerm,
@@ -413,6 +414,7 @@ function FrameworkAccess() {
         headerActions={getHeaderActions()}
         searchPlaceholder="Search expert, framework, status..."
         emptyMessage={emptyMessage}
+        error={error}
       />
 
       {viewModalState.isOpen && viewModalState.accessRecord && (

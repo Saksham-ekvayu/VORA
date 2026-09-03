@@ -38,12 +38,12 @@ export default function OverallProtection() {
   const {
     data: rawData,
     loading,
+    error,
     pagination,
     searchTerm,
     onSearch,
     onFilterChange,
     emptyMessage,
-    error,
   } = useTableData(getAuditorOverallProtection, {
     defaultSortBy: "framework",
     defaultSortOrder: "asc",
@@ -95,9 +95,8 @@ export default function OverallProtection() {
       align: "center",
       render: (value, row) => (
         <span
-          className={`flex justify-center items-center gap-1 ${
-            row.trendUp ? "text-emerald-400" : "text-red-400"
-          }`}
+          className={`flex justify-center items-center gap-1 ${row.trendUp ? "text-emerald-400" : "text-red-400"
+            }`}
         >
           <Icon
             name={row.trendUp ? "trending-up" : "trending-down"}

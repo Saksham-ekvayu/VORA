@@ -59,6 +59,7 @@ export default function UserDetails() {
   const {
     data: accessRecords,
     loading: accessLoading,
+    error: tableError,
     emptyMessage: accessEmptyMessage,
     pagination: accessPagination,
     searchTerm: accessSearchTerm,
@@ -485,6 +486,7 @@ export default function UserDetails() {
             headerActions={getAccessHeaderActions()}
             searchPlaceholder="Search framework code..."
             emptyMessage={accessEmptyMessage}
+            error={tableError}
           />
         </div>
       )}

@@ -36,6 +36,7 @@ function DeploymentDocument() {
   const {
     data: deploymentDocuments,
     loading,
+    error,
     emptyMessage,
     pagination,
     searchTerm,
@@ -205,7 +206,7 @@ function DeploymentDocument() {
         id: `ai-upload-${row.fileInfo?.versionFileId}`,
         label:
           row.aiUpload?.status === "failed" ||
-          row.aiUpload?.status === "skipped"
+            row.aiUpload?.status === "skipped"
             ? "Retry AI Upload"
             : "Upload to AI",
         icon: "upload-cloud",
@@ -261,6 +262,7 @@ function DeploymentDocument() {
         headerActions={getHeaderActions()}
         searchPlaceholder="Search document name or uploader..."
         emptyMessage={emptyMessage}
+        error={error}
       />
 
       {uploadModalOpen && (

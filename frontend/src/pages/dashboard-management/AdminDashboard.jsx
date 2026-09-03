@@ -29,6 +29,7 @@ export default function AdminDashboard() {
   const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const { datePreset, startDate, endDate, handleDateChange } = useDateFilter();
@@ -39,12 +40,16 @@ export default function AdminDashboard() {
         if (!isBackgroundRefresh) {
           setLoading(true);
         }
+        setLoadError(null);
         const response = await getAdminDashboardAnalytics(dateRange);
         if (response?.data) {
           setDashboardData(response.data);
+        } else if (response?.message) {
+          setLoadError(response.message);
         }
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
+        setLoadError(error.message || "Failed to load dashboard data");
         if (!isBackgroundRefresh) {
           toast.error(error.message || "Failed to load dashboard data");
         }
@@ -74,19 +79,26 @@ export default function AdminDashboard() {
     return <LoadingSpinner className={"min-h-[calc(100vh-100px)]"} />;
   }
 
-  if (!dashboardData) {
+  if (loadError || !dashboardData) {
     return (
-      <div className="flex items-center justify-center min-h-100">
-        <div className="text-center">
-          <Icon
-            name="warning"
-            size="48px"
-            className="text-muted-foreground mb-4"
-          />
-          <p className="text-muted-foreground">Failed to load dashboard data</p>
-          <Button onClick={fetchDashboardData} className="mt-4">
-            Retry
-          </Button>
+      <div className="flex items-center justify-center min-h-[calc(100vh-100px)]">
+        <div className="text-center p-8 rounded border border-border bg-card shadow-2xl max-w-md w-full">
+          <div className="w-16 h-16 bg-red-500/10 rounded flex items-center justify-center mx-auto mb-4">
+            <Icon name="error" size="36px" className="text-red-500" />
+          </div>
+          <h2 className="text-lg font-bold mb-2">Error Loading Dashboard</h2>
+          <p className="text-sm text-muted-foreground mb-6">
+            {loadError || "Failed to load dashboard data."}
+          </p>
+          <div className="flex justify-center">
+            <Button
+              onClick={() => fetchDashboardData({ startDate, endDate })}
+              variant="primary"
+              className="px-8 gap-2"
+            >
+              <Icon name="refresh" size="16px" /> Retry
+            </Button>
+          </div>
         </div>
       </div>
     );

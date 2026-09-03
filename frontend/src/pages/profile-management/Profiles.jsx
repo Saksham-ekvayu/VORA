@@ -68,6 +68,7 @@ function Profiles() {
   const {
     data: users,
     loading,
+    error,
     emptyMessage,
     pagination,
     searchTerm,
@@ -439,6 +440,7 @@ function Profiles() {
         headerActions={getHeaderActions()}
         searchPlaceholder="Search users by name, email, or phone..."
         emptyMessage={emptyMessage}
+        error={error}
       />
 
       {/* User Modal */}

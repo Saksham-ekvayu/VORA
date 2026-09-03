@@ -17,6 +17,7 @@ export default function ExtraControls() {
   const {
     data: rawData,
     loading,
+    error,
     pagination,
     searchTerm,
     onSearch,
@@ -123,6 +124,7 @@ export default function ExtraControls() {
             ? "No controls match your filters"
             : "No extra controls found"
         }
+        error={error}
       />
     </div>
   );
