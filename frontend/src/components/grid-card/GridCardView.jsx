@@ -10,14 +10,13 @@ import {
 } from "../ui/dropdown-menu";
 import {
   ChevronDown,
-  Folder,
   RefreshCw,
   ChevronLeft,
   ChevronRight,
-  TriangleAlert,
 } from "lucide-react";
 import TableHeaderActions from "../custom/TableHeaderActions";
 import SearchInput from "../custom/SearchInput";
+import Icon from "../custom/Icon";
 
 /**
  * Premium GridCardView Component
@@ -135,29 +134,22 @@ export default function GridCardView({
       return (
         <div className="flex flex-col items-center justify-center py-16 bg-muted/20 border border-dashed border-border/80 rounded animate-in zoom-in duration-300 p-1">
           <div
-            className={`w-16 h-16 rounded shadow-sm flex items-center justify-center mb-4 ring-8 ring-muted/5 ${
-              error
-                ? "bg-red-500/10 text-red-500"
-                : "bg-card text-muted-foreground/30"
-            }`}
+            className={`w-16 h-16 rounded-full flex items-center justify-center ${error ? "bg-red-500/10 text-red-500" : "bg-muted"}`}
           >
-            {error ? (
-              <TriangleAlert size={30} className="text-red-500" />
-            ) : (
-              <Folder size={30} />
-            )}
+            <Icon
+              name={error ? "triangle-alert" : "folder"}
+              size="32px"
+              className={error ? "" : "opacity-50"}
+            />
           </div>
-          <h4
-            className={`text-lg font-bold tracking-tight mb-1 opacity-80 ${
-              error ? "text-red-500" : ""
-            }`}
+          <p
+            className={`text-base font-medium ${error ? "text-red-500" : "text-muted-foreground"}`}
           >
             {emptyMessage}
-          </h4>
+          </p>
           <p
-            className={`max-w-xs text-center text-xs font-medium leading-relaxed ${
-              error ? "text-red-500/80" : "text-muted-foreground"
-            }`}
+            className={`max-w-xs text-center text-xs font-medium leading-relaxed ${error ? "text-red-500/80" : "text-muted-foreground"
+              }`}
           >
             {error
               ? ""
