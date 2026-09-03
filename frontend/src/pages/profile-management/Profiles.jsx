@@ -18,14 +18,12 @@ import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
 import {
   getRoleFilterLabel,
   getStatusFilterLabel,
-  getRoleLabel,
   isAdmin,
   isExpert,
   isCustomerAdmin,
   ROLE_USER,
   ROLE_AUDITOR,
   ROLE_INTERNAL_EXPERT,
-  ROLE_EXPERT,
   ROLE_LABELS,
   STATUS_LABELS,
   STATUS_ACTIVE,
@@ -305,18 +303,16 @@ function Profiles() {
   ].filter(Boolean);
 
   const renderActions = (row) => {
-    const roleLabel = getRoleLabel(row.role);
-
     const actions = [
       isAdmin(user.role) && {
         id: `view-${row.id || row._id}`,
-        label: `View ${roleLabel}`,
+        label: "View",
         icon: "eye",
         onClick: () => navigate(`/profiles/${row.id || row._id}`),
       },
       {
         id: `edit-${row.id || row._id}`,
-        label: `Edit ${roleLabel}`,
+        label: "Edit",
         icon: "edit",
         disabled: !row.isActive,
         onClick: () => {
@@ -335,16 +331,14 @@ function Profiles() {
       },
       {
         id: `toggle-${row.id || row._id}`,
-        label: row.isActive
-          ? `Deactivate ${roleLabel}`
-          : `Activate ${roleLabel}`,
+        label: row.isActive ? "Deactivate" : "Activate",
         icon: "power",
         onClick: () => handleToggleStatus(row),
       },
 
       {
         id: `delete-${row.id || row._id}`,
-        label: `Delete ${roleLabel}`,
+        label: "Delete",
         icon: "trash",
         variant: "destructive",
         onClick: () => setDeleteModalState({ isOpen: true, user: row }),
@@ -382,31 +376,6 @@ function Profiles() {
           {
             label: ROLE_LABELS[ROLE_AUDITOR],
             onClick: () => handleRoleFilter(ROLE_AUDITOR),
-          },
-        ],
-      },
-      isAdmin(user.role) && {
-        type: "dropdown",
-        label: getRoleFilterLabel(roleFilter),
-        triggerClassName: "w-fit",
-        options: [
-          { label: "All Roles", onClick: () => handleRoleFilter("") },
-          {
-            label: ROLE_LABELS[ROLE_INTERNAL_EXPERT],
-            onClick: () => handleRoleFilter(ROLE_INTERNAL_EXPERT),
-            separatorBefore: true,
-          },
-          {
-            label: ROLE_LABELS[ROLE_USER],
-            onClick: () => handleRoleFilter(ROLE_USER),
-          },
-          {
-            label: ROLE_LABELS[ROLE_AUDITOR],
-            onClick: () => handleRoleFilter(ROLE_AUDITOR),
-          },
-          {
-            label: ROLE_LABELS[ROLE_EXPERT],
-            onClick: () => handleRoleFilter(ROLE_EXPERT),
           },
         ],
       },
