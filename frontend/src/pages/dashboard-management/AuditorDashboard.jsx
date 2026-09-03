@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import CardWrapper from "./components/CardWrapper";
 import ProgressBar from "../../components/custom/ProgressBar";
@@ -90,27 +91,38 @@ export default function AuditorDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchDashboardData = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await getAuditorDashboardAnalytics({ startDate, endDate });
-      if (res?.success === false) {
-        setError(res?.message || "Failed to fetch analytics");
-      } else {
-        setDashboardData(res.data);
+  const fetchDashboardData = useCallback(
+    async (dateRange, isBackgroundRefresh = false) => {
+      try {
+        if (!isBackgroundRefresh) {
+          setIsLoading(true);
+        }
+        setError(null);
+        const res = await getAuditorDashboardAnalytics(dateRange);
+        if (res?.success === false) {
+          setError(res?.message || "Failed to fetch analytics");
+        } else {
+          setDashboardData(res.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch auditor analytics", err);
+        setError(err?.message || "Failed to fetch analytics");
+        if (!isBackgroundRefresh) {
+          toast.error(err?.message || "Failed to fetch analytics");
+        }
+      } finally {
+        if (!isBackgroundRefresh) {
+          setIsLoading(false);
+        }
       }
-    } catch (err) {
-      console.error("Failed to fetch auditor analytics", err);
-      setError(err?.message || "Failed to fetch analytics");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [startDate, endDate]);
+    },
+    []
+  );
 
   useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
+    fetchDashboardData({ startDate, endDate }, dashboardData != null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startDate, endDate, fetchDashboardData]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -155,8 +167,8 @@ export default function AuditorDashboard() {
         </div>
       </div>
 
-      {error ? (
-        <DashboardError error={error} onRetry={fetchDashboardData} />
+      {error || !dashboardData ? (
+        <DashboardError error={error} onRetry={() => fetchDashboardData({ startDate, endDate })} />
       ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
