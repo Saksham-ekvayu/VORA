@@ -8,7 +8,7 @@ from app.db.queries import (
     mark_processed,
     save_deployment_document,
 )
-from app.pipeline.helpers import extract_source_paths
+from app.pipeline.helpers import group_paths_by_source
 from app.services.agent_client import call_agent
 from app.services.ai_extractor import trigger_ai_extraction
 from app.services.downloader import download_file
@@ -16,11 +16,11 @@ from app.utils.live_logs import add_live_log
 from vora_shared.database import session_scope
 
 
-async def run_pipeline(source: str = "aws"):
-    await _run_pipeline(source)
+async def run_pipeline():
+    await _run_pipeline()
 
 
-async def _run_pipeline(source: str):
+async def _run_pipeline():
     # STEP 1: Check LIVE framework
     async with session_scope() as db:
         framework = await get_live_framework(db)
@@ -50,19 +50,32 @@ async def _run_pipeline(source: str):
     # STEP 2: Deployment data from framework_merges
     deployment_data = merge_data["controls"]
 
-    # STEP 3: Extract paths for selected source
-    source_paths = extract_source_paths(deployment_data, source)
+    # STEP 3: Group paths by whatever source is recorded against each one
+    paths_by_source = group_paths_by_source(deployment_data)
 
-    logging.info(f"Source paths: {source_paths}")
-    add_live_log(f"Source paths: {source_paths}")
+    logging.info(f"Paths by source: {paths_by_source}")
+    add_live_log(f"Paths by source: {paths_by_source}")
 
-    if not source_paths:
-        logging.info(f"No paths found for source: {source}")
-        add_live_log(f"No paths found for source: {source}")
+    if not paths_by_source:
+        logging.info("No deployment points with path and source found")
+        add_live_log("No deployment points with path and source found")
         return
 
-    # STEP 4: Collect files
-    files = collect_files(source, {"paths": source_paths})
+    # STEP 4: Collect files per source
+    files = []
+
+    for source, source_paths in paths_by_source.items():
+        try:
+            source_files = collect_files(source, {"paths": source_paths})
+        except Exception as e:
+            logging.exception(f"Failed to collect files for source: {source}: {e}")
+            add_live_log(f"Failed to collect files for source: {source}: {e}")
+            continue
+
+        logging.info(f"Fetched {len(source_files)} files for source: {source}")
+        add_live_log(f"Fetched {len(source_files)} files for source: {source}")
+
+        files.extend(source_files)
 
     logging.info(f"Total files fetched: {len(files)}")
     add_live_log(f"Total files fetched: {len(files)}")
