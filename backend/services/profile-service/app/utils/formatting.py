@@ -108,6 +108,7 @@ def customer_summary(customer: Customer | None) -> dict | None:
         "name": customer.name,
         "email": customer.email,
         "phone": customer.phone,
+        "secondaryPhone": customer.secondaryPhone,
         "avatar": customer.avatar,
         "address": address_dict(customer.address),
     }

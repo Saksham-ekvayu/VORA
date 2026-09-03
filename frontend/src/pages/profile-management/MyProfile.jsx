@@ -157,6 +157,15 @@ const renderCustomerCard = (
             {customer.phone ? `+${customer.phone}` : "N/A"}
           </span>
         </div>
+
+        {customer.secondaryPhone && (
+          <div className="flex items-center gap-2.5">
+            <Icon name="phone" size="14px" className="text-muted-foreground opacity-60" />
+            <span className="text-xs font-medium text-muted-foreground">
+              +{customer.secondaryPhone}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
