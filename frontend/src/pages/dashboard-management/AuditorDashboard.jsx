@@ -1,7 +1,8 @@
 /* eslint-disable react/prop-types */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import CardWrapper from "./components/CardWrapper";
 import ProgressBar from "../../components/custom/ProgressBar";
@@ -18,6 +19,7 @@ import DateFilter from "./components/DateFilter";
 import { getAuditorDashboardAnalytics } from "@/services/dashboardService";
 import { formatDateOnly } from "@/utils/dateFormatter";
 import { Skeleton } from "@/components/ui/skeleton";
+import DashboardError from "./components/DashboardError";
 
 function TopStatCard({
   icon,
@@ -89,12 +91,14 @@ export default function AuditorDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      setError(null);
+  const fetchDashboardData = useCallback(
+    async (dateRange, isBackgroundRefresh = false) => {
       try {
-        const res = await getAuditorDashboardAnalytics({ startDate, endDate });
+        if (!isBackgroundRefresh) {
+          setIsLoading(true);
+        }
+        setError(null);
+        const res = await getAuditorDashboardAnalytics(dateRange);
         if (res?.success === false) {
           setError(res?.message || "Failed to fetch analytics");
         } else {
@@ -103,12 +107,22 @@ export default function AuditorDashboard() {
       } catch (err) {
         console.error("Failed to fetch auditor analytics", err);
         setError(err?.message || "Failed to fetch analytics");
+        if (!isBackgroundRefresh) {
+          toast.error(err?.message || "Failed to fetch analytics");
+        }
       } finally {
-        setIsLoading(false);
+        if (!isBackgroundRefresh) {
+          setIsLoading(false);
+        }
       }
-    };
-    fetchData();
-  }, [startDate, endDate]);
+    },
+    []
+  );
+
+  useEffect(() => {
+    fetchDashboardData({ startDate, endDate }, dashboardData != null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startDate, endDate, fetchDashboardData]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -153,14 +167,8 @@ export default function AuditorDashboard() {
         </div>
       </div>
 
-      {error ? (
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive rounded-md p-6 my-4 flex flex-col items-center justify-center gap-2">
-          <Icon name="triangle-alert" size="32px" />
-          <span className="font-medium text-lg">{error}</span>
-          <p className="text-sm opacity-80">
-            Please try refreshing the page or checking your backend logs.
-          </p>
-        </div>
+      {error || !dashboardData ? (
+        <DashboardError error={error} onRetry={() => fetchDashboardData({ startDate, endDate })} />
       ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -316,19 +324,19 @@ export default function AuditorDashboard() {
               className="flex flex-col"
             >
               {/* Column headers */}
-              <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border pb-1.5 mb-2 shrink-0">
+              <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border pb-1.5 shrink-0">
                 <span>Framework</span>
                 <span>TOTAL POINTS</span>
               </div>
               <div
-                className="overflow-y-auto flex-1 space-y-4 pr-0.5"
+                className="overflow-y-auto flex-1 pr-0.5"
                 style={{ maxHeight: "220px" }}
               >
                 {(isLoading || !dashboardData) &&
                   Array.from({ length: 4 }).map((_, i) => (
                     <div
                       key={i}
-                      className="flex items-center gap-3 w-full py-1"
+                      className="flex items-center gap-3 w-full group py-1.5 border-b border-border last:border-0"
                     >
                       <Skeleton className="h-5 w-24 shrink-0" />
                       <Skeleton className="h-4 flex-1 rounded-full" />
@@ -341,7 +349,7 @@ export default function AuditorDashboard() {
                   dashboardData?.deploymentPoints?.map((dp) => (
                     <div
                       key={`${dp.name}-${dp.version}`}
-                      className="flex items-center gap-3 w-full group"
+                      className="flex items-center gap-3 w-full group py-1.5 border-b border-border last:border-0"
                     >
                       {/* Colored pill tag */}
                       <span className="text-[11px] font-semibold px-1 py-0.3 rounded text-white bg-primary shrink-0 min-w-24 text-center group-hover:opacity-80 transition-opacity">
@@ -357,7 +365,7 @@ export default function AuditorDashboard() {
                                   (d) => d.count
                                 ) || [1])
                               )) *
-                              100,
+                            100,
                             5
                           )}
                           color={"bg-primary"}

@@ -9,7 +9,6 @@ import Icon from "@/components/custom/Icon";
 import { getAdminDashboardAnalytics } from "@/services/dashboardService";
 import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
 import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -24,11 +23,13 @@ import LoadingSpinner from "@/components/custom/Loader/LoadingSpinner";
 import DateFilter from "./components/DateFilter";
 import { useDateFilter } from "./hooks/useDateFilter";
 import CustomBadge from "@/components/custom/CustomBadge";
+import DashboardError from "./components/DashboardError";
 
 export default function AdminDashboard() {
   const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const { datePreset, startDate, endDate, handleDateChange } = useDateFilter();
@@ -39,12 +40,16 @@ export default function AdminDashboard() {
         if (!isBackgroundRefresh) {
           setLoading(true);
         }
+        setLoadError(null);
         const response = await getAdminDashboardAnalytics(dateRange);
         if (response?.data) {
           setDashboardData(response.data);
+        } else if (response?.message) {
+          setLoadError(response.message);
         }
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
+        setLoadError(error.message || "Failed to load dashboard data");
         if (!isBackgroundRefresh) {
           toast.error(error.message || "Failed to load dashboard data");
         }
@@ -74,21 +79,12 @@ export default function AdminDashboard() {
     return <LoadingSpinner className={"min-h-[calc(100vh-100px)]"} />;
   }
 
-  if (!dashboardData) {
+  if (loadError || !dashboardData) {
     return (
-      <div className="flex items-center justify-center min-h-100">
-        <div className="text-center">
-          <Icon
-            name="warning"
-            size="48px"
-            className="text-muted-foreground mb-4"
-          />
-          <p className="text-muted-foreground">Failed to load dashboard data</p>
-          <Button onClick={fetchDashboardData} className="mt-4">
-            Retry
-          </Button>
-        </div>
-      </div>
+      <DashboardError
+        error={loadError}
+        onRetry={() => fetchDashboardData({ startDate, endDate })}
+      />
     );
   }
 

@@ -15,7 +15,7 @@ import AddressFields from "@/components/custom/AddressFields";
 import { Country, State } from "country-state-city";
 import { AuthContext } from "@/context/authContext/AuthContext";
 import { useModalState } from "@/hooks/useModalState";
-import { ROLE_ADMIN, ROLE_EXPERT, ROLE_LABELS } from "@/utils/commonUtils";
+import { ROLE_ADMIN, ROLE_EXPERT } from "@/utils/commonUtils";
 
 // Helper function to format phone numbers
 const formatPhoneNumber = (phone) => {
@@ -146,11 +146,7 @@ function EditProfileModal({ isOpen, onClose, profileData, onUpdate }) {
       },
     ];
 
-    if (
-      [ROLE_LABELS[ROLE_EXPERT], ROLE_LABELS[ROLE_ADMIN]].includes(
-        profileData?.role
-      )
-    ) {
+    if ([ROLE_EXPERT, ROLE_ADMIN].includes(profileData?.role)) {
       validations.push(
         {
           condition: !formData.permanentCountry.trim(),
@@ -211,11 +207,7 @@ function EditProfileModal({ isOpen, onClose, profileData, onUpdate }) {
         : "",
     };
 
-    if (
-      [ROLE_LABELS[ROLE_EXPERT], ROLE_LABELS[ROLE_ADMIN]].includes(
-        profileData?.role
-      )
-    ) {
+    if ([ROLE_EXPERT, ROLE_ADMIN].includes(profileData?.role)) {
       payload.permanentAddress = {
         country: formData.permanentCountry,
         state: formData.permanentState,
@@ -443,9 +435,7 @@ function EditProfileModal({ isOpen, onClose, profileData, onUpdate }) {
                 />
               </div>
 
-              {[ROLE_LABELS[ROLE_EXPERT], ROLE_LABELS[ROLE_ADMIN]].includes(
-                profileData?.role
-              ) && (
+              {[ROLE_EXPERT, ROLE_ADMIN].includes(profileData?.role) && (
                 <>
                   {/* Permanent Address Section */}
                   <div className="col-span-12">

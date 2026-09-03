@@ -28,6 +28,7 @@ function AssignedFrameworks() {
   const {
     data: assignmentResults,
     loading,
+    error,
     emptyMessage,
     pagination,
     searchTerm,
@@ -246,6 +247,7 @@ function AssignedFrameworks() {
         headerActions={getHeaderActions()}
         searchPlaceholder="Search by framework name or code..."
         emptyMessage={emptyMessage}
+        error={error}
       />
     </div>
   );

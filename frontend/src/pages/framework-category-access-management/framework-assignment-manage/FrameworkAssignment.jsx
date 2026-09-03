@@ -37,6 +37,7 @@ function FrameworkAssignment() {
   const {
     data: assignments,
     loading,
+    error,
     emptyMessage,
     pagination,
     searchTerm,
@@ -254,6 +255,7 @@ function FrameworkAssignment() {
         headerActions={getHeaderActions()}
         searchPlaceholder="Search customer or framework..."
         emptyMessage={emptyMessage}
+        error={error}
       />
 
       {viewModalState.isOpen && viewModalState.assignment && (

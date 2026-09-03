@@ -35,6 +35,7 @@ export default function CriticalGaps() {
   const {
     data: rawData,
     loading,
+    error,
     pagination,
     searchTerm,
     onSearch,
@@ -217,6 +218,7 @@ export default function CriticalGaps() {
             ? "No gaps match your filters"
             : "No critical gaps found"
         }
+        error={error}
       />
     </div>
   );

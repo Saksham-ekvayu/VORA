@@ -260,14 +260,19 @@ export default function McpMonitoring() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <ScrollArea className="h-[65vh] min-h-50 w-full bg-muted/20">
-            <div className="p-4 font-mono text-[13px] flex flex-col gap-1.5">
-              {logs.length === 0 ? (
-                <div className="text-muted-foreground text-center py-10 italic">
-                  No logs available.
-                </div>
-              ) : (
-                logs.map((log, idx) => {
+          <ScrollArea
+            className={cn(
+              "w-full bg-muted/20 transition-all duration-300",
+              logs.length === 0 ? "h-32" : "h-[65vh] min-h-50"
+            )}
+          >
+            {logs.length === 0 ? (
+              <div className="h-32 flex items-center justify-center text-muted-foreground italic font-mono text-base">
+                No logs available.
+              </div>
+            ) : (
+              <div className="p-4 font-mono text-[13px] flex flex-col gap-1.5">
+                {logs.map((log, idx) => {
                   let textColor = "text-foreground/85";
                   if (
                     log.toLowerCase().includes("error") ||
@@ -295,10 +300,10 @@ export default function McpMonitoring() {
                       {log}
                     </div>
                   );
-                })
-              )}
-              <div ref={scrollRef} />
-            </div>
+                })}
+                <div ref={scrollRef} />
+              </div>
+            )}
           </ScrollArea>
         </CardContent>
       </Card>

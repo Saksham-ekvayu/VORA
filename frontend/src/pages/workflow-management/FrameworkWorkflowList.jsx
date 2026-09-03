@@ -57,6 +57,7 @@ export default function FrameworkWorkflowList() {
   const {
     data: workflows,
     loading,
+    error,
     emptyMessage,
     pagination,
     searchTerm,
@@ -211,6 +212,7 @@ export default function FrameworkWorkflowList() {
         headerActions={getHeaderActions()}
         searchPlaceholder="Search framework workflows..."
         emptyMessage={emptyMessage}
+        error={error}
       />
     </div>
   );

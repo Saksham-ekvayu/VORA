@@ -38,6 +38,7 @@ export default function ControlsPassing() {
   const {
     data: rawData,
     loading,
+    error,
     pagination,
     searchTerm,
     onSearch,
@@ -231,6 +232,7 @@ export default function ControlsPassing() {
         searchTerm={searchTerm}
         headerActions={getHeaderActions()}
         pagination={pagination}
+        error={error}
       />
     </div>
   );

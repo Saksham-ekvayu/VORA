@@ -47,6 +47,7 @@ export default function Customers() {
   const {
     data: customers,
     loading,
+    error,
     emptyMessage,
     pagination,
     searchTerm,
@@ -307,6 +308,7 @@ export default function Customers() {
         headerActions={getHeaderActions()}
         searchPlaceholder="Search customers by name, email, phone..."
         emptyMessage={emptyMessage}
+        error={error}
       />
 
       {/* Customer Create/Edit Modal */}

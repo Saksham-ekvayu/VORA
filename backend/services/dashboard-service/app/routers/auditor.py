@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from typing import Annotated
 
 from app.helpers import (
@@ -39,20 +40,20 @@ logger = logging.getLogger(__name__)
 @router.get("/analytics")
 async def get_auditor_dashboard_analytics(
     ctx: Annotated[RequestContext, Depends(get_context)],
+    start_date: Annotated[datetime | None, Query(alias="startDate")] = None,
+    end_date: Annotated[datetime | None, Query(alias="endDate")] = None,
 ):
     try:
         tenant_id = ctx.tenant_id
+        from app.helpers import apply_date_filters, to_naive_utc
+
+        start_date_utc = to_naive_utc(start_date)
+        end_date_utc = to_naive_utc(end_date)
 
         async with session_scope() as session:
-            dfs = list(
-                (
-                    await session.execute(
-                        select(DeploymentFramework).where(DeploymentFramework.tenantId == tenant_id)
-                    )
-                )
-                .scalars()
-                .all()
-            )
+            df_stmt = select(DeploymentFramework).where(DeploymentFramework.tenantId == tenant_id)
+            df_stmt = apply_date_filters(df_stmt, DeploymentFramework, start_date_utc, end_date_utc)
+            dfs = list((await session.execute(df_stmt)).scalars().all())
 
             latest_packages, gap_analysis_ids, merge_doc_ids = get_latest_packages(dfs)
 
@@ -104,11 +105,9 @@ async def get_auditor_dashboard_analytics(
                 else []
             )
 
-            evidence_outputs = list(
-                (await session.execute(select(EvidenceOutput).order_by(desc(EvidenceOutput.createdAt))))
-                .scalars()
-                .all()
-            )
+            eo_stmt = select(EvidenceOutput).order_by(desc(EvidenceOutput.createdAt))
+            eo_stmt = apply_date_filters(eo_stmt, EvidenceOutput, start_date_utc, end_date_utc)
+            evidence_outputs = list((await session.execute(eo_stmt)).scalars().all())
 
             historical_gap_analysis_ids = [
                 get_nested(pkg, "gapAnalysis")

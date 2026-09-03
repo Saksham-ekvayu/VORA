@@ -10,13 +10,13 @@ import {
 } from "../ui/dropdown-menu";
 import {
   ChevronDown,
-  Folder,
   RefreshCw,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 import TableHeaderActions from "../custom/TableHeaderActions";
 import SearchInput from "../custom/SearchInput";
+import Icon from "../custom/Icon";
 
 /**
  * Premium GridCardView Component
@@ -51,6 +51,7 @@ export default function GridCardView({
   emptyMessage = "No records found",
   entityName = "items",
   gridCols = "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3",
+  error = null,
 }) {
   const currentData = Array.isArray(data) ? data : [];
 
@@ -132,14 +133,27 @@ export default function GridCardView({
     if (currentData.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center py-16 bg-muted/20 border border-dashed border-border/80 rounded animate-in zoom-in duration-300 p-1">
-          <div className="w-16 h-16 rounded bg-card shadow-sm flex items-center justify-center mb-4 ring-8 ring-muted/5">
-            <Folder size={30} className="text-muted-foreground/30" />
+          <div
+            className={`w-16 h-16 rounded-full flex items-center justify-center ${error ? "bg-red-500/10 text-red-500" : "bg-muted"}`}
+          >
+            <Icon
+              name={error ? "triangle-alert" : "folder"}
+              size="32px"
+              className={error ? "" : "opacity-50"}
+            />
           </div>
-          <h4 className="text-lg font-bold tracking-tight mb-1 opacity-80">
+          <p
+            className={`text-base font-medium ${error ? "text-red-500" : "text-muted-foreground"}`}
+          >
             {emptyMessage}
-          </h4>
-          <p className="max-w-xs text-center text-xs text-muted-foreground font-medium leading-relaxed">
-            No results match your search. Try adjusting filters and try again.
+          </p>
+          <p
+            className={`max-w-xs text-center text-xs font-medium leading-relaxed ${error ? "text-red-500/80" : "text-muted-foreground"
+              }`}
+          >
+            {error
+              ? ""
+              : "No results match your search. Try adjusting filters and try again."}
           </p>
         </div>
       );

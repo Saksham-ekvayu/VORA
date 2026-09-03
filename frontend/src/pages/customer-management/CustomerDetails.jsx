@@ -73,6 +73,7 @@ export default function CustomerDetails() {
   const {
     data: usersData,
     loading,
+    error: tableError,
     emptyMessage,
     pagination,
     searchTerm,
@@ -517,6 +518,7 @@ export default function CustomerDetails() {
               emptyMessage={emptyMessage}
               renderActions={renderActions}
               headerActions={getHeaderActions()}
+              error={tableError}
             />
           </div>
         </div>

@@ -4,7 +4,8 @@ import logging
 from datetime import datetime, timezone
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends
+from app.helpers import apply_date_filters, to_naive_utc
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import or_, select
 from vora_shared.database import session_scope
 from vora_shared.models import (
@@ -769,51 +770,44 @@ def _collect_activity_user_ids(
 @router.get("/analytics")
 async def get_customer_admin_dashboard(
     ctx: Annotated[RequestContext, Depends(get_context)],
+    start_date: Annotated[datetime | None, Query(alias="startDate")] = None,
+    end_date: Annotated[datetime | None, Query(alias="endDate")] = None,
 ):
     try:
         logger.info(
-            f"[CUSTOMER-ANALYTICS] Dashboard request | tenant_id={ctx.tenant_id} | user_id={ctx.user.id}"
+            f"[CUSTOMER-ANALYTICS] Dashboard request | tenant_id={ctx.tenant_id} | user_id={ctx.user.id} | start_date={start_date} | end_date={end_date}"
         )
         tenant_id = ctx.tenant_id
         user = ctx.user
 
+        start_date_utc = to_naive_utc(start_date)
+        end_date_utc = to_naive_utc(end_date)
+
         async with session_scope() as session:
-            users = list(
-                (await session.execute(select(User).where(User.tenantId == tenant_id, User.id != user.id)))
-                .scalars()
-                .all()
-            )
-            customer = (
-                await session.execute(select(Customer).where(Customer.tenantId == tenant_id))
-            ).scalar_one_or_none()
-            deployment_frameworks = list(
-                (
-                    await session.execute(
-                        select(DeploymentFramework).where(DeploymentFramework.tenantId == tenant_id)
-                    )
+            user_stmt = select(User).where(User.tenantId == tenant_id, User.id != user.id)
+            user_stmt = apply_date_filters(user_stmt, User, start_date_utc, end_date_utc)
+            users = list((await session.execute(user_stmt)).scalars().all())
+
+            customer_stmt = select(Customer).where(Customer.tenantId == tenant_id)
+            customer_stmt = apply_date_filters(customer_stmt, Customer, start_date_utc, end_date_utc)
+            customer = (await session.execute(customer_stmt)).scalar_one_or_none()
+
+            df_stmt = select(DeploymentFramework).where(DeploymentFramework.tenantId == tenant_id)
+            df_stmt = apply_date_filters(df_stmt, DeploymentFramework, start_date_utc, end_date_utc)
+            deployment_frameworks = list((await session.execute(df_stmt)).scalars().all())
+
+            fa_stmt = select(FrameworkAssignment).where(
+                or_(
+                    FrameworkAssignment.tenantId == tenant_id,
+                    (
+                        FrameworkAssignment.customerId == str(getattr(user, "customerId", None) or "")
+                        if getattr(user, "customerId", None)
+                        else FrameworkAssignment.tenantId == tenant_id
+                    ),
                 )
-                .scalars()
-                .all()
             )
-            assignments = list(
-                (
-                    await session.execute(
-                        select(FrameworkAssignment).where(
-                            or_(
-                                FrameworkAssignment.tenantId == tenant_id,
-                                (
-                                    FrameworkAssignment.customerId
-                                    == str(getattr(user, "customerId", None) or "")
-                                    if getattr(user, "customerId", None)
-                                    else FrameworkAssignment.tenantId == tenant_id
-                                ),
-                            )
-                        )
-                    )
-                )
-                .scalars()
-                .all()
-            )
+            fa_stmt = apply_date_filters(fa_stmt, FrameworkAssignment, start_date_utc, end_date_utc)
+            assignments = list((await session.execute(fa_stmt)).scalars().all())
 
             file_hashes = {
                 _get(doc, "fileHash")

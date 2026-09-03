@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 
 import { useEffect, useState, useCallback } from "react";
-import { toast } from "sonner";
 import {
   Area,
   AreaChart,
@@ -30,6 +29,7 @@ import { useDateFilter } from "./hooks/useDateFilter";
 import DateFilter from "./components/DateFilter";
 import { getExpertDashboardAnalytics } from "@/services/frameworkService";
 import LoadingSpinner from "@/components/custom/Loader/LoadingSpinner";
+import DashboardError from "./components/DashboardError";
 import {
   STATUS_APPROVED,
   STATUS_PENDING,
@@ -591,7 +591,6 @@ export default function ExpertDashboard() {
       } catch (error) {
         console.error("Error fetching expert dashboard data:", error);
         if (!isBackgroundRefresh) {
-          toast.error(error.message || "Failed to load expert dashboard data");
           setLoadError(error.message || "Failed to load expert dashboard data");
         }
         setDashboardData(null);
@@ -615,19 +614,10 @@ export default function ExpertDashboard() {
 
   if (loadError || !dashboardData) {
     return (
-      <div className="flex min-h-[calc(100vh-100px)] items-center justify-center">
-        <div className="text-center">
-          <p className="text-muted-foreground">
-            {loadError || "Failed to load expert dashboard data"}
-          </p>
-          <Button
-            className="mt-4"
-            onClick={() => fetchDashboardData({ startDate, endDate })}
-          >
-            Retry
-          </Button>
-        </div>
-      </div>
+      <DashboardError
+        error={loadError}
+        onRetry={() => fetchDashboardData({ startDate, endDate })}
+      />
     );
   }
 

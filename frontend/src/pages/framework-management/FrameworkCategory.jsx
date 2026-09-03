@@ -30,6 +30,7 @@ function FrameworkCategory() {
   const {
     data: categories,
     loading,
+    error,
     emptyMessage,
     pagination,
     searchTerm,
@@ -204,6 +205,7 @@ function FrameworkCategory() {
         )}
         searchPlaceholder="Filter categories by name or code..."
         emptyMessage={emptyMessage}
+        error={error}
         gridCols="grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3"
       />
 

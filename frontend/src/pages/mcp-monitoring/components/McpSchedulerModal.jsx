@@ -16,9 +16,8 @@ import { ModalHeader } from "@/components/custom/modal";
 import Icon from "@/components/custom/Icon";
 
 export default function McpSchedulerModal({ isOpen, onClose, onStatusChange }) {
-  const [source, setSource] = useState("local");
   const [schedulerType, setSchedulerType] = useState("interval");
-  const [minutes, setMinutes] = useState(1);
+  const [minutes, setMinutes] = useState(10);
   const [hour, setHour] = useState(0);
   const [minute, setMinute] = useState(0);
   const [isStarting, setIsStarting] = useState(false);
@@ -28,7 +27,6 @@ export default function McpSchedulerModal({ isOpen, onClose, onStatusChange }) {
     setIsStarting(true);
     try {
       const res = await startMcpScheduler({
-        source,
         scheduler_type: schedulerType,
         minutes: Number(minutes),
         hour: Number(hour),
@@ -46,7 +44,7 @@ export default function McpSchedulerModal({ isOpen, onClose, onStatusChange }) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="p-0 overflow-hidden sm:max-w-lg">
+      <DialogContent className="p-0 overflow-hidden sm:max-w-md">
         <ModalHeader
           icon="clock"
           title="Configure MCP Scheduler"
@@ -55,33 +53,6 @@ export default function McpSchedulerModal({ isOpen, onClose, onStatusChange }) {
 
         <form onSubmit={handleStart} className="flex flex-col">
           <div className="flex flex-col gap-4 p-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="source">
-                Source <span className="text-red-500">*</span>
-              </Label>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-between font-normal text-sm h-10 px-3 border-input"
-                  >
-                    {source === "local" ? "Local" : "AWS"}
-                    <ChevronDownIcon className="size-4 opacity-50 ml-2" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  style={{ width: "var(--radix-dropdown-menu-trigger-width)" }}
-                >
-                  <DropdownMenuItem onClick={() => setSource("local")}>
-                    Local
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSource("aws")}>
-                    AWS
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
             <div className="space-y-1.5">
               <Label htmlFor="schedulerType">
                 Schedule Type <span className="text-red-500">*</span>

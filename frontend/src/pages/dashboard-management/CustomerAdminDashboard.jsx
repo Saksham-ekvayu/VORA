@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { toast } from "sonner";
 import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
@@ -14,6 +15,7 @@ import CardWrapper from "./components/CardWrapper";
 import DateFilter from "./components/DateFilter";
 import { useDateFilter } from "./hooks/useDateFilter";
 import LoadingSpinner from "@/components/custom/Loader/LoadingSpinner";
+import DashboardError from "./components/DashboardError";
 import Icon from "@/components/custom/Icon";
 import { useAuth } from "@/context/authContext/useAuth";
 import { getRoleLabel } from "@/utils/commonUtils";
@@ -147,8 +149,10 @@ function FrameworkSetupFilter({ frameworks = [], selectedId, onChange }) {
   const [open, setOpen] = useState(false);
   const activeId = selectedId || frameworks?.[0]?.id;
 
-  const getSelectedName = () =>
-    frameworks?.find((f) => f.id === activeId)?.frameworkVersion || "Select";
+  const getSelectedName = () => {
+    if (!frameworks?.length) return "No Frameworks";
+    return frameworks?.find((f) => f.id === activeId)?.frameworkVersion || "Select";
+  };
 
   const handleSelect = (id) => {
     onChange(id);
@@ -161,10 +165,12 @@ function FrameworkSetupFilter({ frameworks = [], selectedId, onChange }) {
         <Button
           variant="outline"
           size="sm"
+          disabled={!frameworks?.length}
           className={cn(
             "flex items-center gap-1.5 text-xs font-medium",
             "border-border bg-accent hover:border-primary hover:bg-primary/10",
-            open && "border-primary bg-primary/10"
+            open && "border-primary bg-primary/10",
+            !frameworks?.length && "opacity-50 cursor-not-allowed"
           )}
         >
           <span className="truncate max-w-32">{getSelectedName()}</span>
@@ -173,25 +179,31 @@ function FrameworkSetupFilter({ frameworks = [], selectedId, onChange }) {
       </PopoverTrigger>
       <PopoverContent align="end" sideOffset={6} className="w-37 p-1 shadow-xl">
         <div className="space-y-0.5">
-          {frameworks.map((f) => {
-            const active = activeId === f.id;
-            return (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => handleSelect(f.id)}
-                className={cn(
-                  "w-full flex items-center justify-between rounded px-2 py-1.5 text-xs text-left transition-colors cursor-pointer",
-                  active
-                    ? "bg-primary/15 text-primary font-medium"
-                    : "text-foreground hover:bg-accent"
-                )}
-              >
-                {f.frameworkVersion}
-                {active && <CheckIcon className="size-3 shrink-0" />}
-              </button>
-            );
-          })}
+          {frameworks?.length === 0 ? (
+            <div className="px-2 py-2 text-xs text-muted-foreground text-center">
+              No frameworks found
+            </div>
+          ) : (
+            frameworks.map((f) => {
+              const active = activeId === f.id;
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => handleSelect(f.id)}
+                  className={cn(
+                    "w-full flex items-center justify-between rounded px-2 py-1.5 text-xs text-left transition-colors cursor-pointer",
+                    active
+                      ? "bg-primary/15 text-primary font-medium"
+                      : "text-foreground hover:bg-accent"
+                  )}
+                >
+                  {f.frameworkVersion}
+                  {active && <CheckIcon className="size-3 shrink-0" />}
+                </button>
+              );
+            })
+          )}
         </div>
       </PopoverContent>
     </Popover>
@@ -484,7 +496,10 @@ export default function CustomerAdminDashboard() {
         }
       } catch (err) {
         console.error("Dashboard error:", err);
-        setLoadError(err.message);
+        setLoadError(err.message || "Failed to load dashboard data");
+        if (!isBackgroundRefresh) {
+          toast.error(err.message || "Failed to load dashboard data");
+        }
       } finally {
         if (!isBackgroundRefresh) {
           setLoading(false);
@@ -533,8 +548,8 @@ export default function CustomerAdminDashboard() {
     activeSetupProgress.percentage ??
     (activeSetupProgress.total
       ? Math.round(
-          (activeSetupProgress.configured / activeSetupProgress.total) * 100
-        )
+        (activeSetupProgress.configured / activeSetupProgress.total) * 100
+      )
       : 0);
 
   const getMonitoringSetupValue = () => {
@@ -551,21 +566,12 @@ export default function CustomerAdminDashboard() {
 
   if (loading) return <LoadingSpinner className="min-h-[70vh]" />;
 
-  if (loadError && !dashboardData) {
+  if (loadError || !dashboardData) {
     return (
-      <div className="flex items-center justify-center min-h-[80vh]">
-        <div className="text-center">
-          <Icon name="warning" size="48px" className="text-destructive mb-4" />
-          <p className="text-muted-foreground">{loadError}</p>
-          <Button
-            size="sm"
-            onClick={() => fetchDashboardData({ startDate, endDate })}
-            className="mt-4"
-          >
-            <Icon name="refresh" size="18px" /> Retry
-          </Button>
-        </div>
-      </div>
+      <DashboardError
+        error={loadError}
+        onRetry={() => fetchDashboardData({ startDate, endDate })}
+      />
     );
   }
 

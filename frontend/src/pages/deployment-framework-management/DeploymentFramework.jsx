@@ -44,6 +44,7 @@ function DeploymentFramework() {
   const {
     data: deploymentFrameworks,
     loading,
+    error,
     emptyMessage,
     pagination,
     searchTerm,
@@ -299,6 +300,7 @@ function DeploymentFramework() {
         headerActions={getHeaderActions()}
         searchPlaceholder="Search framework name, code, or uploader..."
         emptyMessage={emptyMessage}
+        error={error}
       />
 
       {uploadModalOpen && (

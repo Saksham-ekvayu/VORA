@@ -38,12 +38,12 @@ export default function OverallProtection() {
   const {
     data: rawData,
     loading,
+    error,
     pagination,
     searchTerm,
     onSearch,
     onFilterChange,
     emptyMessage,
-    error,
   } = useTableData(getAuditorOverallProtection, {
     defaultSortBy: "framework",
     defaultSortOrder: "asc",
