@@ -41,14 +41,16 @@
 
 /* =====================================
    🌞 LIGHT THEME (DEFAULT)
-   Based on OLD LIGHT THEME
 ===================================== */
 :root {
   --radius: 0.75rem;
 
-  /* Backgrounds */
+  /* -------------------------------------
+     Backgrounds
+  ------------------------------------- */
   --background: oklch(0.98 0 0);
   /* #fafaf9 */
+
   --foreground: oklch(0.2 0.01 240);
   /* text */
 
@@ -58,72 +60,109 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.2 0.01 240);
 
-  /* Primary – Teal */
+  /* -------------------------------------
+     Primary – Teal
+     #009994
+  ------------------------------------- */
   --primary: oklch(0.6 0.14 190);
-  /* #0d9488 */
   --primary-foreground: oklch(0.98 0 0);
 
-  /* Secondary – Purple */
-  --secondary: oklch(0.62 0.18 305);
-  /* #9333ea */
+  /* -------------------------------------
+     Secondary – Violet
+     #6C5CE7
+  ------------------------------------- */
+  --secondary: oklch(0.55 0.2 285);
   --secondary-foreground: oklch(0.98 0 0);
 
-  /* Muted / Text */
+  /* -------------------------------------
+     Muted / Text
+  ------------------------------------- */
   --muted: oklch(0.94 0 0);
   --muted-foreground: oklch(0.45 0 0);
 
+  /* -------------------------------------
+     Accent
+  ------------------------------------- */
   --accent: oklch(0.94 0 0);
   --accent-foreground: oklch(0.2 0.01 240);
 
-  /* Semantic */
+  /* -------------------------------------
+     Semantic
+  ------------------------------------- */
   --destructive: oklch(0.6 0.25 27);
+
   --warning: oklch(0.75 0.18 85);
   --warning-foreground: oklch(0.98 0 0);
+
   --border: oklch(0.88 0 0);
   --input: oklch(0.92 0 0);
+
+  /* Ring follows Primary */
   --ring: oklch(0.6 0.14 190);
 }
 
 /* =====================================
-   🌙 DARK THEME (OLD DARK STYLE)
+   🌙 DARK THEME
 ===================================== */
 .dark {
   --background: oklch(0.15 0.03 240);
   /* #0a1628 */
+
   --foreground: oklch(0.97 0.01 240);
 
   --card: oklch(0.18 0.04 240);
   /* bg-2 */
+
   --card-foreground: oklch(0.97 0.01 240);
 
   --popover: oklch(0.18 0.04 240);
   --popover-foreground: oklch(0.97 0.01 240);
 
-  /* Teal */
+  /* -------------------------------------
+     Primary – Teal
+     #14B8A6
+  ------------------------------------- */
   --primary: oklch(0.72 0.15 190);
-  /* #14b8a6 */
   --primary-foreground: oklch(0.98 0 0);
 
-  /* Purple */
-  --secondary: oklch(0.65 0.2 305);
-  /* #a855f7 */
+  /* -------------------------------------
+     Secondary – Soft Violet
+     #8B7CF6
+  ------------------------------------- */
+  --secondary: oklch(0.65 0.18 285);
   --secondary-foreground: oklch(0.98 0 0);
 
+  /* -------------------------------------
+     Muted
+  ------------------------------------- */
   --muted: oklch(0.3 0.03 240);
   --muted-foreground: oklch(0.75 0.02 240);
 
+  /* -------------------------------------
+     Accent
+  ------------------------------------- */
   --accent: oklch(0.25 0.04 240);
   --accent-foreground: oklch(0.97 0.01 240);
 
+  /* -------------------------------------
+     Semantic
+  ------------------------------------- */
   --destructive: oklch(0.63 0.25 27);
+
   --warning: oklch(0.8 0.15 85);
   --warning-foreground: oklch(0.15 0.03 240);
+
   --border: oklch(0.32 0.05 240);
   --input: oklch(0.32 0.05 240);
+
+  /* Ring follows Primary */
   --ring: oklch(0.72 0.15 190);
 }
 
-/* Sonner close button theme-aware hover */
+/* =====================================
+   SONNER CLOSE BUTTON
+   Theme-aware hover
+===================================== */
 [data-sonner-toast] [data-close-button] {
   background-color: var(--color-muted) !important;
   border: 1px solid var(--color-border) !important;
@@ -136,7 +175,9 @@
   color: var(--color-foreground) !important;
 }
 
-/* Sonner toast icon colors based on type */
+/* =====================================
+   SONNER TOAST ICON COLORS
+===================================== */
 [data-sonner-toast][data-type="success"] [data-icon] {
   color: var(--color-primary) !important;
 }
@@ -215,8 +256,9 @@
   }
 }
 
-/* 🔥 Disable browser autofill background color */
-/* Autofill for light & dark theme */
+/* =====================================
+   🔥 DISABLE BROWSER AUTOFILL BACKGROUND
+===================================== */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
@@ -224,12 +266,15 @@ textarea:-webkit-autofill,
 select:-webkit-autofill {
   -webkit-text-fill-color: var(--color-foreground) !important;
   caret-color: var(--color-foreground);
-  /* The transition delay prevents Chrome's autofill background from rendering */
+
   transition:
     background-color 9999s ease-in-out 0s,
     color 9999s ease-in-out 0s !important;
 }
 
+/* =====================================
+   ROTATE PATTERN
+===================================== */
 @keyframes rotatePattern {
   from {
     transform: rotate(0deg);
@@ -240,13 +285,18 @@ select:-webkit-autofill {
   }
 }
 
-/* Animation delay utility */
+/* =====================================
+   ANIMATION DELAY UTILITY
+===================================== */
 .animation-delay-150 {
   animation-delay: 150ms;
 }
 
-/* Enhanced loading animation */
+/* =====================================
+   ENHANCED LOADING ANIMATION
+===================================== */
 @keyframes pulse-glow {
+
   0%,
   100% {
     opacity: 1;
@@ -264,14 +314,11 @@ select:-webkit-autofill {
 ===================================== */
 .sidebar-scroll {
   scrollbar-width: thin;
-  /* Firefox */
   scrollbar-color: var(--border) transparent;
 }
 
-/* WebKit browsers (Chrome, Edge, Safari) */
 .sidebar-scroll::-webkit-scrollbar {
   width: 6px;
-  /* 👈 thin width */
 }
 
 .sidebar-scroll::-webkit-scrollbar-track {
@@ -283,7 +330,6 @@ select:-webkit-autofill {
   border-radius: 999px;
 }
 
-/* Hover effect */
 .sidebar-scroll::-webkit-scrollbar-thumb:hover {
   background-color: var(--primary);
 }
@@ -305,7 +351,6 @@ select:-webkit-autofill {
   outline: none !important;
 }
 
-/* Remove focus outline from all recharts elements */
 [class*="recharts-"] {
   outline: none !important;
 }
@@ -314,7 +359,11 @@ select:-webkit-autofill {
   outline: none !important;
 }
 
+/* =====================================
+   PULSE ANIMATION
+===================================== */
 @keyframes pulse {
+
   0%,
   100% {
     opacity: 1;
@@ -325,13 +374,18 @@ select:-webkit-autofill {
   }
 }
 
+/* =====================================
+   SPIN ANIMATION
+===================================== */
 @keyframes spin {
   to {
     transform: rotate(360deg);
   }
 }
 
-/* Sticky table column styling to prevent transparency during scroll and hover */
+/* =====================================
+   STICKY TABLE COLUMN STYLING
+===================================== */
 .sticky-sr-header {
   background-color: var(--color-muted) !important;
 }
@@ -340,11 +394,10 @@ select:-webkit-autofill {
   background-color: var(--color-card) !important;
 }
 
-/* On row hover, style the sticky cell with a solid color that matches bg-accent/60 on top of card background */
+/* On row hover, style the sticky cell with a solid color
+   that matches bg-accent/60 on top of card background */
 tr:hover .sticky-sr-col {
-  background-color: color-mix(
-    in srgb,
-    var(--color-accent) 100%,
-    var(--color-card)
-  ) !important;
+  background-color: color-mix(in srgb,
+      var(--color-accent) 100%,
+      var(--color-card)) !important;
 }
