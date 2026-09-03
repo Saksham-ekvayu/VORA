@@ -16,7 +16,6 @@ import {
   isCustomerAdmin,
   ROLE_ADMIN,
   ROLE_EXPERT,
-  ROLE_LABELS,
 } from "@/utils/commonUtils";
 import { uploadCustomerAvatarOwn } from "@/services/userService";
 import CustomerManageModal from "@/pages/customer-management/components/CustomerManageModal";
@@ -218,8 +217,8 @@ function MyProfile() {
   }
 
   const displayAddress = [
-    ROLE_LABELS[ROLE_EXPERT],
-    ROLE_LABELS[ROLE_ADMIN],
+    ROLE_EXPERT,
+    ROLE_ADMIN,
   ].includes(profileData.role)
     ? profileData.address
     : profileData.customer?.address;
