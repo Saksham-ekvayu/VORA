@@ -10,11 +10,10 @@ live_logs = []
 
 scheduler = AsyncIOScheduler()
 
-current_scheduler_config = {"source": "aws", "scheduler_type": "interval", "minutes": 1}
+current_scheduler_config = {"scheduler_type": "interval", "minutes": 1}
 
 
 async def start_dynamic_scheduler(payload: dict):
-    source = payload["source"]
     scheduler_type = payload.get("scheduler_type", "interval")
 
     scheduler.remove_all_jobs()
@@ -24,7 +23,6 @@ async def start_dynamic_scheduler(payload: dict):
             run_pipeline,
             "interval",
             minutes=payload.get("minutes", 1),
-            args=[source],
             id="mcp_pipeline",
             replace_existing=True,
         )
@@ -34,7 +32,6 @@ async def start_dynamic_scheduler(payload: dict):
             "cron",
             hour=payload.get("hour", 0),
             minute=payload.get("minute", 0),
-            args=[source],
             id="mcp_pipeline",
             replace_existing=True,
         )
@@ -48,7 +45,7 @@ async def start_dynamic_scheduler(payload: dict):
 
     return {
         "status": True,
-        "message": f"Scheduler started for {source}",
+        "message": "Scheduler started - sources are auto-detected from the LIVE deployment framework",
     }
 
 
