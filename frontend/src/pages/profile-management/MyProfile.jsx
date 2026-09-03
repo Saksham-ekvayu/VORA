@@ -16,7 +16,6 @@ import {
   isCustomerAdmin,
   ROLE_ADMIN,
   ROLE_EXPERT,
-  ROLE_LABELS,
 } from "@/utils/commonUtils";
 import { uploadCustomerAvatarOwn } from "@/services/userService";
 import CustomerManageModal from "@/pages/customer-management/components/CustomerManageModal";
@@ -158,6 +157,19 @@ const renderCustomerCard = (
             {customer.phone ? `+${customer.phone}` : "N/A"}
           </span>
         </div>
+
+        {customer.secondaryPhone && (
+          <div className="flex items-center gap-2.5">
+            <Icon
+              name="phone"
+              size="14px"
+              className="text-muted-foreground opacity-60"
+            />
+            <span className="text-xs font-medium text-muted-foreground">
+              +{customer.secondaryPhone}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -167,6 +179,7 @@ function MyProfile() {
   const {
     profile: profileData,
     loading,
+    error,
     fetchProfile: fetchProfileData,
   } = useProfile();
   const [showEditModal, setShowEditModal] = useState(false);
@@ -192,35 +205,31 @@ function MyProfile() {
     return <LoadingSpinner className={"min-h-[calc(100vh-100px)]"} />;
   }
 
-  if (!profileData) {
+  if (error || !profileData) {
     return (
-      <div className="flex items-center justify-center min-h-100">
-        <div className="text-center p-8 rounded border border-border bg-card shadow-2xl max-w-md">
-          <div className="w-20 h-20 bg-red-500/10 rounded flex items-center justify-center mx-auto mb-6">
-            <Icon name="error" size="40px" className="text-red-500" />
+      <div className="flex items-center justify-center min-h-[calc(100vh-180px)]">
+        <div className="text-center p-8 rounded border border-border bg-card max-w-md w-full">
+          <div className="w-16 h-16 bg-red-500/10 rounded flex items-center justify-center mx-auto mb-4">
+            <Icon name="error" size="36px" className="text-red-500" />
           </div>
-          <h2 className="text-xl font-bold mb-2">Profile Missing</h2>
-          <p className="text-muted-foreground mb-6">
-            We couldn't retrieve your profile information. This might be due to
-            a connection issue.
+          <p className="text-base font-medium text-destructive mb-6">
+            {error || "We couldn't retrieve your profile information."}
           </p>
-          <Button
-            onClick={fetchProfileData}
-            variant="primary"
-            className="w-full gap-2"
-          >
-            <Icon name="refresh" size="18px" />
-            Try Again
-          </Button>
+          <div className="flex justify-center">
+            <Button
+              onClick={fetchProfileData}
+              variant="outline"
+              className="px-8 gap-2"
+            >
+              <Icon name="refresh" size="16px" /> Retry
+            </Button>
+          </div>
         </div>
       </div>
     );
   }
 
-  const displayAddress = [
-    ROLE_LABELS[ROLE_EXPERT],
-    ROLE_LABELS[ROLE_ADMIN],
-  ].includes(profileData.role)
+  const displayAddress = [ROLE_EXPERT, ROLE_ADMIN].includes(profileData.role)
     ? profileData.address
     : profileData.customer?.address;
 

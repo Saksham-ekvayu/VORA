@@ -23,7 +23,6 @@ import {
   isExpert,
   ROLE_ADMIN,
   ROLE_EXPERT,
-  ROLE_LABELS,
   STATUS_APPROVED,
   STATUS_PENDING,
   STATUS_REJECTED,
@@ -60,6 +59,7 @@ export default function UserDetails() {
   const {
     data: accessRecords,
     loading: accessLoading,
+    error: tableError,
     emptyMessage: accessEmptyMessage,
     pagination: accessPagination,
     searchTerm: accessSearchTerm,
@@ -237,10 +237,7 @@ export default function UserDetails() {
     );
   }
 
-  const displayAddress = [
-    ROLE_LABELS[ROLE_EXPERT],
-    ROLE_LABELS[ROLE_ADMIN],
-  ].includes(user.role)
+  const displayAddress = [ROLE_EXPERT, ROLE_ADMIN].includes(user.role)
     ? user.address
     : user.customer?.address;
 
@@ -360,33 +357,8 @@ export default function UserDetails() {
       </div>
 
       {/* ─── MAIN GRID ─── */}
-      <div
-        className={`grid ${isExpert(user.role) ? "grid-cols-4" : "grid-cols-3"} gap-4`}
-      >
-        {user.customer?.id && (
-          <div className="p-4 rounded border border-border bg-card shadow-lg border-l-4 border-l-primary/80">
-            <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-3 pb-1 border-b border-border/40">
-              Customer Information
-            </h4>
-            <div className="space-y-3 text-sm">
-              <div className="p-2 rounded bg-muted/10 border border-border/30">
-                <UserMiniCard
-                  name={user.customer.name}
-                  email={user.customer.email}
-                  avatar={user.customer.avatar}
-                />
-              </div>
-              {user.customer.phone && (
-                <div className="flex items-center gap-2 pt-1 text-xs font-semibold text-foreground">
-                  <Icon name="phone" size="12px" className="text-primary/70" />
-                  <PhoneDisplay value={user.customer.phone} />
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div className="p-4 rounded border border-border bg-card shadow-lg border-l-4 border-l-primary/80">
+      <div className="grid grid-cols-13 gap-4">
+        <div className="col-span-5 p-4 rounded border border-border bg-card shadow-lg border-l-4 border-l-primary/80">
           <div className="flex items-center gap-2 mb-4 pb-2 border-b border-border/40">
             <div className="p-1 rounded bg-primary/10 text-primary flex items-center justify-center">
               <Icon name="home" size="16px" />
@@ -417,7 +389,7 @@ export default function UserDetails() {
           </div>
         </div>
 
-        <div className="p-4 rounded border border-border bg-card shadow-lg border-l-4 border-l-primary/80">
+        <div className="col-span-5 p-4 rounded border border-border bg-card shadow-lg border-l-4 border-l-primary/80">
           <div className="flex items-center gap-2 mb-4 pb-2 border-b border-border/40">
             <div className="p-1 rounded bg-primary/10 text-primary flex items-center justify-center">
               <Icon name="building" size="16px" />
@@ -448,44 +420,7 @@ export default function UserDetails() {
           </div>
         </div>
 
-        <div className="p-4 rounded border border-border bg-card shadow-lg border-l-4 border-l-primary/80">
-          <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-4 pb-1 border-b border-border/40">
-            Account Information
-          </h4>
-          <div className="space-y-4 text-sm">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest block opacity-70 mb-1">
-                  Role
-                </span>
-                <CustomBadge role={user.role} />
-              </div>
-              <div>
-                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest block opacity-70 mb-1">
-                  Designation
-                </span>
-                <span className="font-semibold text-foreground text-xs">
-                  {renderField(user.designation)}
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 pt-1">
-              <div
-                className={`w-5 h-5 rounded-full flex items-center justify-center ${user.isEmailVerified ? "bg-green-500/10 text-green-600" : "bg-yellow-500/10 text-yellow-600"}`}
-              >
-                <Icon
-                  name={user.isEmailVerified ? "check" : "clock"}
-                  size="12px"
-                />
-              </div>
-              <span className="text-xs font-semibold text-foreground">
-                Email {user.isEmailVerified ? "Verified" : "Not Verified"}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-4 rounded border border-border bg-card shadow-lg border-l-4 border-l-primary/80">
+        <div className="col-span-3 p-4 rounded border border-border bg-card shadow-lg border-l-4 border-l-primary/80">
           <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-3 pb-1 border-b border-border/40">
             System Logs &amp; History
           </h4>
@@ -511,10 +446,10 @@ export default function UserDetails() {
                   <Icon name={icon} size="14px" />
                 </div>
                 <div className="min-w-0">
-                  <span className="text-[9px] uppercase font-bold text-muted-foreground tracking-tighter block leading-none">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest block opacity-70">
                     {label}
                   </span>
-                  <span className="text-xs font-semibold text-foreground truncate block">
+                  <span className="text-sm font-semibold text-foreground wrap-break-words">
                     {formatDateWithMonthNameAndTime(date)}
                   </span>
                 </div>
@@ -548,6 +483,7 @@ export default function UserDetails() {
             headerActions={getAccessHeaderActions()}
             searchPlaceholder="Search framework code..."
             emptyMessage={accessEmptyMessage}
+            error={tableError}
           />
         </div>
       )}

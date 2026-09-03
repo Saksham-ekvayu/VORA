@@ -150,9 +150,7 @@ export default function DataTable({
                 <p
                   className={`text-sm mt-1 ${error ? "text-red-500/80" : "text-muted-foreground/70"}`}
                 >
-                  {error
-                    ? "Please check your backend logs or try again later"
-                    : "Try adjusting your search or filters"}
+                  {error ? "" : "Try adjusting your search or filters"}
                 </p>
               </div>
             </div>

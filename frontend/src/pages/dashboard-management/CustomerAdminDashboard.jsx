@@ -14,6 +14,7 @@ import CardWrapper from "./components/CardWrapper";
 import DateFilter from "./components/DateFilter";
 import { useDateFilter } from "./hooks/useDateFilter";
 import LoadingSpinner from "@/components/custom/Loader/LoadingSpinner";
+import DashboardError from "./components/DashboardError";
 import Icon from "@/components/custom/Icon";
 import { useAuth } from "@/context/authContext/useAuth";
 import { getRoleLabel } from "@/utils/commonUtils";
@@ -553,19 +554,10 @@ export default function CustomerAdminDashboard() {
 
   if (loadError && !dashboardData) {
     return (
-      <div className="flex items-center justify-center min-h-[80vh]">
-        <div className="text-center">
-          <Icon name="warning" size="48px" className="text-destructive mb-4" />
-          <p className="text-muted-foreground">{loadError}</p>
-          <Button
-            size="sm"
-            onClick={() => fetchDashboardData({ startDate, endDate })}
-            className="mt-4"
-          >
-            <Icon name="refresh" size="18px" /> Retry
-          </Button>
-        </div>
-      </div>
+      <DashboardError
+        error={loadError}
+        onRetry={() => fetchDashboardData({ startDate, endDate })}
+      />
     );
   }
 

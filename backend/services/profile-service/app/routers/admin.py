@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 import secrets
 from datetime import datetime, timezone
 from pathlib import Path
@@ -658,7 +658,9 @@ async def get_all_users(
 
     async with session_scope() as session:
         stmt = select(User).where(User.id != ctx.user.id)
-        if current_role != "admin":
+        if current_role == "admin":
+            stmt = stmt.where(User.role == "expert")
+        else:
             stmt = stmt.where(User.tenantId == tenant_id)
         if role:
             stmt = stmt.where(User.role == role)

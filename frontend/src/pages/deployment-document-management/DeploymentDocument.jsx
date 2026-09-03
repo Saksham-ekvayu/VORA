@@ -36,6 +36,7 @@ function DeploymentDocument() {
   const {
     data: deploymentDocuments,
     loading,
+    error,
     emptyMessage,
     pagination,
     searchTerm,
@@ -261,6 +262,7 @@ function DeploymentDocument() {
         headerActions={getHeaderActions()}
         searchPlaceholder="Search document name or uploader..."
         emptyMessage={emptyMessage}
+        error={error}
       />
 
       {uploadModalOpen && (
