@@ -116,7 +116,7 @@ const ALL_NAV_ITEMS = [
     description: "Frameworks assigned by admin",
     icon: "assignment",
     path: "/assigned-frameworks",
-    roles: [ROLE_INTERNAL_EXPERT, ROLE_CUSTOMER_ADMIN, ROLE_AUDITOR],
+    roles: [ROLE_CUSTOMER_ADMIN, ROLE_AUDITOR],
   },
   // {
   //   id: "framework-workflow",
