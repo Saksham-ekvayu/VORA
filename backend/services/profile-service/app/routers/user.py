@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 from datetime import datetime, timezone
 from typing import Annotated
 
@@ -10,7 +10,7 @@ from app.utils.formatting import (
     format_created_by,
     merge_address,
 )
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Body, Depends, File, HTTPException, UploadFile
 from sqlalchemy import select
 from vora_shared import messages as msg
 from vora_shared.auth import AuthenticatedUser, authenticate
@@ -83,7 +83,7 @@ async def get_profile(ctx: Annotated[AuthenticatedUser, Depends(authenticate)]):
 
 @router.patch("/update")
 async def edit_profile(
-    body: Annotated[ProfileUpdateRequest, Depends()], ctx: Annotated[AuthenticatedUser, Depends(authenticate)]
+    body: Annotated[ProfileUpdateRequest, Body()], ctx: Annotated[AuthenticatedUser, Depends(authenticate)]
 ):
     logger.info(
         f"[PATCH-PROFILE] Update profile request | user_id: {ctx.user.id} | fields: name={body.name} | phone={body.phone}"
@@ -128,7 +128,7 @@ def _has_profile_changes(body: ProfileUpdateRequest, user: User) -> bool:
         return True
     if body.phone is not None and body.phone != user.phone:
         return True
-    if body.secondaryPhone is not None:
+    if body.secondaryPhone is not None and body.secondaryPhone != user.secondaryPhone:
         return True
     if body.permanentAddress is not None or body.temporaryAddress is not None:
         return True
@@ -155,7 +155,7 @@ def _apply_profile_updates(db_user: User, body: ProfileUpdateRequest):
     if body.phone is not None and body.phone != db_user.phone:
         db_user.phone = body.phone
 
-    if body.secondaryPhone is not None:
+    if body.secondaryPhone is not None and body.secondaryPhone != db_user.secondaryPhone:
         db_user.secondaryPhone = body.secondaryPhone
 
     if body.permanentAddress is not None or body.temporaryAddress is not None:

@@ -361,7 +361,7 @@ export default function UserDetails() {
 
       {/* ─── MAIN GRID ─── */}
       <div
-        className={`grid ${isExpert(user.role) ? "grid-cols-4" : "grid-cols-3"} gap-4`}
+        className={`grid ${isExpert(user.role) ? "grid-cols-3" : "grid-cols-3"} gap-4`}
       >
         {user.customer?.id && (
           <div className="p-4 rounded border border-border bg-card shadow-lg border-l-4 border-l-primary/80">
@@ -444,43 +444,6 @@ export default function UserDetails() {
                   </span>
                 </div>
               ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="p-4 rounded border border-border bg-card shadow-lg border-l-4 border-l-primary/80">
-          <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-4 pb-1 border-b border-border/40">
-            Account Information
-          </h4>
-          <div className="space-y-4 text-sm">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest block opacity-70 mb-1">
-                  Role
-                </span>
-                <CustomBadge role={user.role} />
-              </div>
-              <div>
-                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest block opacity-70 mb-1">
-                  Designation
-                </span>
-                <span className="font-semibold text-foreground text-xs">
-                  {renderField(user.designation)}
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 pt-1">
-              <div
-                className={`w-5 h-5 rounded-full flex items-center justify-center ${user.isEmailVerified ? "bg-green-500/10 text-green-600" : "bg-yellow-500/10 text-yellow-600"}`}
-              >
-                <Icon
-                  name={user.isEmailVerified ? "check" : "clock"}
-                  size="12px"
-                />
-              </div>
-              <span className="text-xs font-semibold text-foreground">
-                Email {user.isEmailVerified ? "Verified" : "Not Verified"}
-              </span>
             </div>
           </div>
         </div>
