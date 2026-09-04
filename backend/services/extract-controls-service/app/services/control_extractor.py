@@ -1558,7 +1558,7 @@ def convert_to_section_structure(controls: list, resource_type: str = "framework
             parent_id = ".".join(parts[:-1])
             if parent_id in control_by_id:
                 added_as_sub += 1
-                logger.info(f"[STRUCTURE] {ctrl_id} → sub-control of {parent_id}")
+                logger.info(f"[STRUCTURE] {ctrl_id} -> sub-control of {parent_id}")
                 continue
 
         sec_key = _section_key_for_id(ctrl_id)
@@ -1596,14 +1596,14 @@ def convert_to_section_structure(controls: list, resource_type: str = "framework
                             "deployment_points": sub_obj["deployment_points"],
                         }
                     )
-                    logger.debug(f"[STRUCTURE] {other_id} → sub-control of {ctrl_id}")
+                    logger.debug(f"[STRUCTURE] {other_id} -> sub-control of {ctrl_id}")
 
         if sub_controls:
             ctrl_entry["controls"] = sub_controls
 
         sections[sec_key]["controls"].append(ctrl_entry)
         added_as_root += 1
-        logger.info(f"[STRUCTURE] {ctrl_id} → root control in section {sec_key}")
+        logger.info(f"[STRUCTURE] {ctrl_id} -> root control in section {sec_key}")
 
     result = list(sections.values())
     root_cnt = sum(len(s["controls"]) for s in result)
