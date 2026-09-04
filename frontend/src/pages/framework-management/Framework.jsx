@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 
 import { useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import DataTable from "@/components/data-table/DataTable";
@@ -326,6 +327,9 @@ function Framework() {
   /* ---------------- UI ---------------- */
   return (
     <div className="my-2">
+      <Helmet>
+        <title>VORA - Frameworks</title>
+      </Helmet>
       {/* Data Table */}
       <DataTable
         entityName="Frameworks"

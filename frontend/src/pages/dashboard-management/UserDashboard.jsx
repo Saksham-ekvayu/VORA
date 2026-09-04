@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 
 import { useEffect, useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { useAuth } from "@/context/authContext/useAuth";
 import { getRoleLabel } from "@/utils/commonUtils";
 
@@ -18,6 +19,9 @@ export default function UserDashboard() {
 
   return (
     <div className="space-y-4 my-4">
+      <Helmet>
+        <title>VORA - User Dashboard</title>
+      </Helmet>
       {/* Welcome Message with Live Clock */}
       <div className="rounded border border-border bg-card px-4 py-3">
         <div className="flex items-start justify-between">

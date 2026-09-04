@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 
 import { useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
 import DataTable from "@/components/data-table/DataTable";
 import Icon from "@/components/custom/Icon";
@@ -241,6 +242,9 @@ function FrameworkAssignment() {
   /* ---------------- UI ---------------- */
   return (
     <div className="mt-5 pb-5 space-y-8">
+      <Helmet>
+        <title>VORA - Framework Assignments</title>
+      </Helmet>
       <DataTable
         entityName="Assignments"
         columns={columns}

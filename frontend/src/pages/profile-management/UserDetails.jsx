@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { Helmet } from "react-helmet-async";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import Icon from "@/components/custom/Icon";
@@ -243,6 +244,9 @@ export default function UserDetails() {
 
   return (
     <div className="space-y-4 my-2">
+      <Helmet>
+        <title>VORA - User Details</title>
+      </Helmet>
       {/* ─── HEADER CARD ─── */}
       <div className="relative group">
         <div className="absolute -inset-1 bg-linear-to-r from-primary/20 to-primary/10 rounded blur-xl opacity-20 group-hover:opacity-30 transition" />

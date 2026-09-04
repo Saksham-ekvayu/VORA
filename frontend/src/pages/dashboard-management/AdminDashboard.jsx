@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 
 import { useState, useEffect, useCallback } from "react";
+import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
 import CardWrapper from "./components/CardWrapper";
 import MetricCard from "./components/MetricCard";
@@ -167,6 +168,9 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-3 my-2">
+      <Helmet>
+        <title>VORA - Admin Dashboard</title>
+      </Helmet>
       {/* Metrics */}
       <CardWrapper
         title={

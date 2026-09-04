@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 
 import { useEffect, useState, useCallback } from "react";
+import { Helmet } from "react-helmet-async";
 import {
   Area,
   AreaChart,
@@ -630,6 +631,9 @@ export default function ExpertDashboard() {
 
   return (
     <div className="space-y-2 mt-2">
+      <Helmet>
+        <title>VORA - Expert Dashboard</title>
+      </Helmet>
       <PageHeader
         datePreset={datePreset}
         startDate={startDate}
