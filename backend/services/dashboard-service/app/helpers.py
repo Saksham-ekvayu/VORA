@@ -29,15 +29,19 @@ def calculate_package_health(ga_results: list[Any]) -> int:
     """Calculate the health percentage based on gap analysis results."""
     if not ga_results:
         return 0
-        
+
     total_dps = len(ga_results)
     impl_dps = sum(
         1
         for result in ga_results
-        if str(result.get("implementation_status", "") if isinstance(result, dict) else getattr(result, "implementation_status", "")).lower()
+        if str(
+            result.get("implementation_status", "")
+            if isinstance(result, dict)
+            else getattr(result, "implementation_status", "")
+        ).lower()
         in ["implemented", "compliant", "passed", "fully implemented"]
     )
-    
+
     return round((impl_dps / total_dps) * 100) if total_dps > 0 else 0
 
 

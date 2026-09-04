@@ -33,7 +33,9 @@ def _extract_metrics_and_status(status: str) -> str:
     return "inReview"
 
 
-def _process_package(pkg, df, user_id, uploader, gas_by_id, merges_by_id, metrics, start_date=None, end_date=None):
+def _process_package(
+    pkg, df, user_id, uploader, gas_by_id, merges_by_id, metrics, start_date=None, end_date=None
+):
     if not isinstance(pkg, dict):
         return None
     expert_review = pkg.get("expertReview", {})
@@ -41,7 +43,7 @@ def _process_package(pkg, df, user_id, uploader, gas_by_id, merges_by_id, metric
         return None
 
     req_at = expert_review.get("requestedAt") or pkg.get("createdAt")
-    
+
     if start_date and str(req_at) < start_date:
         return None
     if end_date and str(req_at) > end_date:
@@ -77,24 +79,23 @@ def _process_package(pkg, df, user_id, uploader, gas_by_id, merges_by_id, metric
     }
 
 
-
 def _extract_package_ids(dfs, user_id: str) -> tuple[set, set]:
     ga_ids = set()
     merge_ids = set()
-    
+
     # Flatten valid packages
     valid_pkgs = (pkg for df in dfs for pkg in df.packages if isinstance(pkg, dict))
-    
+
     for pkg in valid_pkgs:
         if pkg.get("expertReview", {}).get("assignedExpert") != user_id:
             continue
-            
+
         if ga_id := pkg.get("gapAnalysis"):
             ga_ids.add(ga_id)
-            
+
         if merge_id := pkg.get("mergeDocument"):
             merge_ids.add(merge_id)
-            
+
     return ga_ids, merge_ids
 
 
@@ -102,14 +103,11 @@ async def _fetch_related_entities(session, dfs) -> dict:
     user_ids = {df.uploadedBy for df in dfs}
     users_by_id = {}
     if user_ids:
-        users = (
-            (await session.execute(select(User).where(User.id.in_(list(user_ids)))))
-            .scalars()
-            .all()
-        )
+        users = (await session.execute(select(User).where(User.id.in_(list(user_ids))))).scalars().all()
         users_by_id = {str(u.id): u for u in users}
 
     return users_by_id
+
 
 async def _fetch_gap_and_merge_data(session, ga_ids: set, merge_ids: set) -> tuple[dict, dict]:
     merges = []
@@ -117,9 +115,7 @@ async def _fetch_gap_and_merge_data(session, ga_ids: set, merge_ids: set) -> tup
         merges = (
             (
                 await session.execute(
-                    select(DeploymentPackageMerge).where(
-                        DeploymentPackageMerge.id.in_(list(merge_ids))
-                    )
+                    select(DeploymentPackageMerge).where(DeploymentPackageMerge.id.in_(list(merge_ids)))
                 )
             )
             .scalars()
@@ -129,16 +125,13 @@ async def _fetch_gap_and_merge_data(session, ga_ids: set, merge_ids: set) -> tup
     gas = []
     if ga_ids:
         gas = (
-            (
-                await session.execute(
-                    select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(list(ga_ids)))
-                )
-            )
+            (await session.execute(select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(list(ga_ids)))))
             .scalars()
             .all()
         )
 
     return {str(m.id): m for m in merges}, {str(g.id): g for g in gas}
+
 
 @router.get("/analytics")
 async def get_internal_expert_dashboard_analytics(
@@ -176,7 +169,9 @@ async def get_internal_expert_dashboard_analytics(
         for df in dfs:
             uploader = users_by_id.get(str(df.uploadedBy))
             for pkg in df.packages:
-                req = _process_package(pkg, df, user.id, uploader, gas_by_id, merges_by_id, metrics, start_date, end_date)
+                req = _process_package(
+                    pkg, df, user.id, uploader, gas_by_id, merges_by_id, metrics, start_date, end_date
+                )
                 if req:
                     review_requests.append(req)
 
