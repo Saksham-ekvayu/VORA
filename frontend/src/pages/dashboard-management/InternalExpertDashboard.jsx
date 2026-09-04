@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { CardContent, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import CustomBadge from "@/components/custom/CustomBadge";
 import { Button } from "@/components/ui/button";
 import CardWrapper from "./components/CardWrapper";
 import { getRoleLabel } from "@/utils/commonUtils";
@@ -89,47 +89,6 @@ const mockDashboardData = {
     },
   ],
 };
-
-const statusStyles = {
-  Pending: "border-amber-200 bg-amber-50 text-amber-700",
-  "In Review": "border-purple-200 bg-purple-50 text-purple-700",
-  Returned: "border-red-200 bg-red-50 text-red-700",
-  Approved: "border-green-200 bg-green-50 text-green-700",
-};
-
-const healthStyles = {
-  Good: "text-green-600",
-  Medium: "text-amber-600",
-  Critical: "text-destructive",
-};
-
-function StatusBadge({ status }) {
-  return (
-    <Badge
-      variant="outline"
-      className={`rounded-full px-3 py-1 text-xs font-medium ${statusStyles[status] ?? ""}`}
-    >
-      {status}
-    </Badge>
-  );
-}
-
-function HealthValue({ value, label }) {
-  return (
-    <div className="min-w-17.5">
-      <div
-        className={`text-lg font-semibold ${healthStyles[label] ?? "text-foreground"}`}
-      >
-        {value}%
-      </div>
-      <div
-        className={`text-xs ${healthStyles[label] ?? "text-muted-foreground"}`}
-      >
-        {label}
-      </div>
-    </div>
-  );
-}
 
 function MetricCard({
   icon,
@@ -301,7 +260,7 @@ export default function InternalExpertDashboard() {
                 <th className="px-5 py-3">Deployment Framework</th>
                 <th className="px-4 py-3">Package Version</th>
                 <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Overall Health</th>
+                <th className="px-4 py-3">Health</th>
                 <th className="px-4 py-3">Requested By</th>
                 <th className="px-4 py-3">Requested At</th>
                 <th className="px-5 py-3 text-right">Action</th>
@@ -324,10 +283,12 @@ export default function InternalExpertDashboard() {
                     <div className="font-medium">{item.packageVersion}</div>
                   </td>
                   <td className="px-4">
-                    <StatusBadge status={item.status} />
+                    <CustomBadge status={item.status} size="sm" />
                   </td>
                   <td className="px-4">
-                    <HealthValue value={item.health} label={item.healthLabel} />
+                    <div className="text-lg font-semibold text-foreground">
+                      {item.health}%
+                    </div>
                   </td>
                   <td className="px-4">
                     <UserMiniCard
