@@ -18,6 +18,14 @@ import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
 import DashboardError from "./components/DashboardError";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getInternalExpertDashboardAnalytics } from "@/services/dashboardService";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from "@/components/ui/table";
 
 function MetricCard({
   icon,
@@ -63,19 +71,27 @@ export default function InternalExpertDashboard() {
 
   const { datePreset, startDate, endDate, handleDateChange } = useDateFilter();
 
-  const fetchDashboardData = useCallback(async (filters = {}, background = false) => {
-    if (!background) setIsLoading(true);
-    setError(null);
-    try {
-      const response = await getInternalExpertDashboardAnalytics(filters);
-      setDashboardData(response.data);
-    } catch (err) {
-      console.error("Error fetching internal expert dashboard analytics:", err);
-      setError(err.response?.data?.message || "Failed to load dashboard data");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const fetchDashboardData = useCallback(
+    async (filters = {}, background = false) => {
+      if (!background) setIsLoading(true);
+      setError(null);
+      try {
+        const response = await getInternalExpertDashboardAnalytics(filters);
+        setDashboardData(response.data);
+      } catch (err) {
+        console.error(
+          "Error fetching internal expert dashboard analytics:",
+          err
+        );
+        setError(
+          err.response?.data?.message || "Failed to load dashboard data"
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     fetchDashboardData({ startDate, endDate }, dashboardData != null);
@@ -93,81 +109,81 @@ export default function InternalExpertDashboard() {
   const renderTableBody = () => {
     if (isLoading || !dashboardData) {
       return Array.from({ length: 3 }).map((_, i) => (
-        <tr key={i} className="border-b border-border/50">
-          <td className="px-5 py-4">
+        <TableRow key={i} className="border-b border-border/50">
+          <TableCell className="px-5 py-4">
             <Skeleton className="h-10 w-full" />
-          </td>
-          <td className="px-4 py-4">
+          </TableCell>
+          <TableCell className="px-4 py-4">
             <Skeleton className="h-4 w-16" />
-          </td>
-          <td className="px-4 py-4">
+          </TableCell>
+          <TableCell className="px-4 py-4">
             <Skeleton className="h-6 w-20" />
-          </td>
-          <td className="px-4 py-4">
+          </TableCell>
+          <TableCell className="px-4 py-4">
             <Skeleton className="h-6 w-12" />
-          </td>
-          <td className="px-4 py-4">
+          </TableCell>
+          <TableCell className="px-4 py-4">
             <Skeleton className="h-10 w-full" />
-          </td>
-          <td className="px-4 py-4">
+          </TableCell>
+          <TableCell className="px-4 py-4">
             <Skeleton className="h-4 w-24" />
-          </td>
-          <td className="px-5 py-4">
+          </TableCell>
+          <TableCell className="px-5 py-4">
             <Skeleton className="h-8 w-20 ml-auto" />
-          </td>
-        </tr>
+          </TableCell>
+        </TableRow>
       ));
     }
 
     if (dashboardData?.reviewRequests?.length === 0) {
       return (
-        <tr>
-          <td
+        <TableRow>
+          <TableCell
             colSpan={7}
             className="text-center py-8 text-muted-foreground"
           >
             No review requests found for the selected period.
-          </td>
-        </tr>
+          </TableCell>
+        </TableRow>
       );
     }
 
     return dashboardData?.reviewRequests?.map((item) => (
-      <tr
+      <TableRow
         key={item.id}
         className="border-b border-border/50 last:border-0 hover:bg-muted/30"
       >
-        <td className="px-5 py-3">
+        <TableCell className="px-5 py-3">
           <FrameworkMiniCard
             name={item.frameworkName}
             description={item.frameworkVersion}
             link={`/deployment-frameworks/${item.id}`}
           />
-        </td>
-        <td className="px-4 py-3">
+        </TableCell>
+        <TableCell className="px-4 py-3">
           <div className="font-medium">{item.packageVersion}</div>
-        </td>
-        <td className="px-4 py-3">
+        </TableCell>
+        <TableCell className="px-4 py-3">
           <CustomBadge status={item.reviewStatus} size="sm" />
-        </td>
-        <td className="px-4 py-3">
+        </TableCell>
+        <TableCell className="px-4 py-3">
           <div className="text-lg font-semibold text-foreground">
             {item.health}%
           </div>
-        </td>
-        <td className="px-4 py-3">
+        </TableCell>
+        <TableCell className="px-4 py-3">
           <UserMiniCard
             name={item.requestedBy.name}
             email={item.requestedBy.email}
             avatar={item.requestedBy.avatar}
           />
-        </td>
-        <td className="px-4 py-3">
+        </TableCell>
+        <TableCell className="px-4 py-3">
           <div className="font-medium">
             {formatDateWithMonthNameAndTime(item.requestedAt)}
           </div>
-        </td>
-        <td className="px-5 py-3 text-right">
+        </TableCell>
+        <TableCell className="px-5 py-3 text-right">
           <Button size="xs">
             <Link
               to={`/deployment-frameworks/${item.id}/comparison-and-gap-analysis?package-version=${item.packageVersion}`}
@@ -177,8 +193,8 @@ export default function InternalExpertDashboard() {
               <Icon name="chevron-right" size="16px" />
             </Link>
           </Button>
-        </td>
-      </tr>
+        </TableCell>
+      </TableRow>
     ));
   };
 
@@ -318,22 +334,24 @@ export default function InternalExpertDashboard() {
             }
           >
             <CardContent className="p-0">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border/60 bg-muted/40 text-left text-xs font-medium text-muted-foreground">
-                    <th className="px-5 py-3">Deployment Framework</th>
-                    <th className="px-4 py-3">Package Version</th>
-                    <th className="px-4 py-3">Review Status</th>
-                    <th className="px-4 py-3">Health</th>
-                    <th className="px-4 py-3">Requested By</th>
-                    <th className="px-4 py-3">Requested At</th>
-                    <th className="px-5 py-3 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {renderTableBody()}
-                </tbody>
-              </table>
+              <Table className="w-full text-sm">
+                <TableHeader>
+                  <TableRow className="border-b border-border/60 bg-muted/40 text-left text-xs font-medium text-muted-foreground">
+                    <TableHead className="px-5 py-3">
+                      Deployment Framework
+                    </TableHead>
+                    <TableHead className="px-4 py-3">Package Version</TableHead>
+                    <TableHead className="px-4 py-3">Review Status</TableHead>
+                    <TableHead className="px-4 py-3">Health</TableHead>
+                    <TableHead className="px-4 py-3">Requested By</TableHead>
+                    <TableHead className="px-4 py-3">Requested At</TableHead>
+                    <TableHead className="px-5 py-3 text-right">
+                      Action
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>{renderTableBody()}</TableBody>
+              </Table>
             </CardContent>
           </CardWrapper>
 
