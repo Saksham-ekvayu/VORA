@@ -2,7 +2,7 @@ import logoImage from "../assets/ekvayu_logo.png";
 
 function Footer() {
   return (
-    <footer className="w-full py-4 mt-8 border-t border-border bg-card/20 backdrop-blur-xs text-xs text-muted-foreground/60 transition-colors">
+    <footer className="w-full py-4 mt-4 border-t border-border bg-card/20 backdrop-blur-xs text-xs text-muted-foreground/60 transition-colors">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-2 max-w-7xl mx-auto px-4">
         <p className="font-medium">
           &copy; {new Date().getFullYear()} VORA. All rights reserved.
