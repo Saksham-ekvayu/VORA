@@ -90,6 +90,98 @@ export default function InternalExpertDashboard() {
     return () => clearInterval(timer);
   }, []);
 
+  const renderTableBody = () => {
+    if (isLoading || !dashboardData) {
+      return Array.from({ length: 3 }).map((_, i) => (
+        <tr key={i} className="border-b border-border/50">
+          <td className="px-5 py-4">
+            <Skeleton className="h-10 w-full" />
+          </td>
+          <td className="px-4 py-4">
+            <Skeleton className="h-4 w-16" />
+          </td>
+          <td className="px-4 py-4">
+            <Skeleton className="h-6 w-20" />
+          </td>
+          <td className="px-4 py-4">
+            <Skeleton className="h-6 w-12" />
+          </td>
+          <td className="px-4 py-4">
+            <Skeleton className="h-10 w-full" />
+          </td>
+          <td className="px-4 py-4">
+            <Skeleton className="h-4 w-24" />
+          </td>
+          <td className="px-5 py-4">
+            <Skeleton className="h-8 w-20 ml-auto" />
+          </td>
+        </tr>
+      ));
+    }
+
+    if (dashboardData?.reviewRequests?.length === 0) {
+      return (
+        <tr>
+          <td
+            colSpan={7}
+            className="text-center py-8 text-muted-foreground"
+          >
+            No review requests found for the selected period.
+          </td>
+        </tr>
+      );
+    }
+
+    return dashboardData?.reviewRequests?.map((item) => (
+      <tr
+        key={item.id}
+        className="border-b border-border/50 last:border-0 hover:bg-muted/30"
+      >
+        <td className="px-5 py-3">
+          <FrameworkMiniCard
+            name={item.frameworkName}
+            description={item.frameworkVersion}
+            link={`/deployment-frameworks/${item.id}`}
+          />
+        </td>
+        <td className="px-4 py-3">
+          <div className="font-medium">{item.packageVersion}</div>
+        </td>
+        <td className="px-4 py-3">
+          <CustomBadge status={item.status} size="sm" />
+        </td>
+        <td className="px-4 py-3">
+          <div className="text-lg font-semibold text-foreground">
+            {item.health}%
+          </div>
+        </td>
+        <td className="px-4 py-3">
+          <UserMiniCard
+            name={item.requestedBy.name}
+            email={item.requestedBy.email}
+            avatar={item.requestedBy.avatar}
+          />
+        </td>
+        <td className="px-4 py-3">
+          <div className="font-medium">
+            {formatDateWithMonthNameAndTime(item.requestedAt)}
+          </div>
+        </td>
+        <td className="px-5 py-3 text-right">
+          <Button size="xs">
+            <Link
+              to={`/deployment-frameworks/${item.id}/comparison-and-gap-analysis?package-version=${item.packageVersion}`}
+              className="flex items-center gap-1"
+            >
+              Review Now
+              <Icon name="chevron-right" size="16px" />
+            </Link>
+          </Button>
+        </td>
+      </tr>
+    ));
+  };
+
   return (
     <div className="space-y-3 my-2">
       {/* ── Header bar ────────────────────────────────────────────────────── */}
@@ -239,91 +331,7 @@ export default function InternalExpertDashboard() {
               </tr>
             </thead>
             <tbody>
-              {isLoading || !dashboardData ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <tr key={i} className="border-b border-border/50">
-                    <td className="px-5 py-4">
-                      <Skeleton className="h-10 w-full" />
-                    </td>
-                    <td className="px-4 py-4">
-                      <Skeleton className="h-4 w-16" />
-                    </td>
-                    <td className="px-4 py-4">
-                      <Skeleton className="h-6 w-20" />
-                    </td>
-                    <td className="px-4 py-4">
-                      <Skeleton className="h-6 w-12" />
-                    </td>
-                    <td className="px-4 py-4">
-                      <Skeleton className="h-10 w-full" />
-                    </td>
-                    <td className="px-4 py-4">
-                      <Skeleton className="h-4 w-24" />
-                    </td>
-                    <td className="px-5 py-4">
-                      <Skeleton className="h-8 w-20 ml-auto" />
-                    </td>
-                  </tr>
-                ))
-              ) : dashboardData?.reviewRequests?.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="text-center py-8 text-muted-foreground"
-                  >
-                    No review requests found for the selected period.
-                  </td>
-                </tr>
-              ) : (
-                dashboardData?.reviewRequests?.map((item) => (
-                  <tr
-                    key={item.id}
-                    className="border-b border-border/50 last:border-0 hover:bg-muted/30"
-                  >
-                    <td className="px-5 py-3">
-                      <FrameworkMiniCard
-                        name={item.frameworkName}
-                        description={item.frameworkVersion}
-                        link={`/deployment-frameworks/${item.id}`}
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium">{item.packageVersion}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <CustomBadge status={item.status} size="sm" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-lg font-semibold text-foreground">
-                        {item.health}%
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <UserMiniCard
-                        name={item.requestedBy.name}
-                        email={item.requestedBy.email}
-                        avatar={item.requestedBy.avatar}
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium">
-                        {formatDateWithMonthNameAndTime(item.requestedAt)}
-                      </div>
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <Button size="xs">
-                        <Link
-                          to={`/deployment-frameworks/${item.id}/comparison-and-gap-analysis?package-version=${item.packageVersion}`}
-                          className="flex items-center gap-1"
-                        >
-                          Review Now
-                          <Icon name="chevron-right" size="16px" />
-                        </Link>
-                      </Button>
-                    </td>
-                  </tr>
-                ))
-              )}
+              {renderTableBody()}
             </tbody>
           </table>
         </CardContent>

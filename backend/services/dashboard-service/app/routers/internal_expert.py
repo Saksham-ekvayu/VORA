@@ -16,15 +16,131 @@ from vora_shared.models import (
 )
 from vora_shared.responses import success
 
-from ..helpers import (
-    extract_actual_implemented,
-    extract_custom_controls,
-    extract_expected_controls,
-)
+from ..helpers import calculate_package_health
 
 router = APIRouter(tags=["internal-expert-dashboard"])
 logger = logging.getLogger(__name__)
 
+
+def _extract_metrics_and_status(status: str) -> tuple[str, str]:
+    status_lower = status.lower()
+    metric_key = "inReview"
+    if status_lower in ["requested"]:
+        metric_key = "pendingReview"
+    elif status_lower == "approved":
+        metric_key = "approved"
+    elif status_lower in ["rejected", "returned"]:
+        metric_key = "returned"
+
+    ui_status = "In Review" if status_lower in ["pending", "in_review"] else status.capitalize()
+    if status_lower == "requested":
+        ui_status = "Pending"
+    elif status_lower == "rejected":
+        ui_status = "Returned"
+
+    return metric_key, ui_status
+
+
+def _process_package(pkg, df, user_id, uploader, gas_by_id, merges_by_id, metrics):
+    if not isinstance(pkg, dict):
+        return None
+    expert_review = pkg.get("expertReview", {})
+    if expert_review.get("assignedExpert") != str(user_id):
+        return None
+
+    status = expert_review.get("status", "pending")
+    metric_key, ui_status = _extract_metrics_and_status(status)
+    metrics[metric_key] += 1
+
+    health = 0
+    ga_id = pkg.get("gapAnalysis")
+    merge_id = pkg.get("mergeDocument")
+    if ga_id and merge_id and ga_id in gas_by_id and merge_id in merges_by_id:
+        ga_doc = gas_by_id[ga_id]
+        ga_results = ga_doc.gapAnalysis.get("deployment_gap_results", []) if ga_doc.gapAnalysis else []
+        health = calculate_package_health(ga_results)
+
+    req_at = expert_review.get("requestedAt") or pkg.get("createdAt")
+    return {
+        "id": str(df.id),
+        "frameworkName": df.frameworkName,
+        "frameworkVersion": df.frameworkVersion,
+        "packageVersion": pkg.get("packageVersion", "1.0.0"),
+        "packageStatus": pkg.get("status", "pending"),
+        "requestedBy": {
+            "id": str(uploader.id) if uploader else "",
+            "name": uploader.name if uploader else "Unknown",
+            "email": uploader.email if uploader else "",
+            "avatar": uploader.avatar if uploader else "",
+        },
+        "requestedAt": req_at,
+        "status": ui_status,
+        "health": health,
+    }
+
+
+
+def _extract_package_ids(dfs, user_id: str) -> tuple[set, set]:
+    ga_ids = set()
+    merge_ids = set()
+    
+    # Flatten valid packages
+    valid_pkgs = (pkg for df in dfs for pkg in df.packages if isinstance(pkg, dict))
+    
+    for pkg in valid_pkgs:
+        if pkg.get("expertReview", {}).get("assignedExpert") != user_id:
+            continue
+            
+        if ga_id := pkg.get("gapAnalysis"):
+            ga_ids.add(ga_id)
+            
+        if merge_id := pkg.get("mergeDocument"):
+            merge_ids.add(merge_id)
+            
+    return ga_ids, merge_ids
+
+
+async def _fetch_related_entities(session, dfs) -> dict:
+    user_ids = {df.uploadedBy for df in dfs}
+    users_by_id = {}
+    if user_ids:
+        users = (
+            (await session.execute(select(User).where(User.id.in_(list(user_ids)))))
+            .scalars()
+            .all()
+        )
+        users_by_id = {str(u.id): u for u in users}
+
+    return users_by_id
+
+async def _fetch_gap_and_merge_data(session, ga_ids: set, merge_ids: set) -> tuple[dict, dict]:
+    merges = []
+    if merge_ids:
+        merges = (
+            (
+                await session.execute(
+                    select(DeploymentPackageMerge).where(
+                        DeploymentPackageMerge.id.in_(list(merge_ids))
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+    gas = []
+    if ga_ids:
+        gas = (
+            (
+                await session.execute(
+                    select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(list(ga_ids)))
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+    return {str(m.id): m for m in merges}, {str(g.id): g for g in gas}
 
 @router.get("/analytics")
 async def get_internal_expert_dashboard_analytics(
@@ -41,7 +157,9 @@ async def get_internal_expert_dashboard_analytics(
     async with session_scope() as session:
         # Fetch DeploymentFrameworks where any package has expertReview.assignedExpert == current user id
         stmt = select(DeploymentFramework).where(
-            text("packages @> CAST(:match AS jsonb)").bindparams(match=f'[{{"expertReview": {{"assignedExpert": "{user.id}"}}}}]')
+            text("packages @> CAST(:match AS jsonb)").bindparams(
+                match=f'[{{"expertReview": {{"assignedExpert": "{user.id}"}}}}]'
+            )
         )
         dfs = list((await session.execute(stmt)).scalars().all())
 
@@ -53,117 +171,23 @@ async def get_internal_expert_dashboard_analytics(
             "returned": 0,
         }
 
-        user_ids = {df.uploadedBy for df in dfs}
-        users_by_id = {}
-        if user_ids:
-            users = (await session.execute(select(User).where(User.id.in_(list(user_ids))))).scalars().all()
-            users_by_id = {str(u.id): u for u in users}
-
-        ga_ids = set()
-        merge_ids = set()
-        assignment_ids = set()
-
-        for df in dfs:
-            assignment_ids.add(df.assignedFrameworkId)
-            for pkg in df.packages:
-                if isinstance(pkg, dict):
-                    expert_review = pkg.get("expertReview", {})
-                    if expert_review.get("assignedExpert") == str(user.id):
-                        if pkg.get("gapAnalysis"):
-                            ga_ids.add(pkg["gapAnalysis"])
-                        if pkg.get("mergeDocument"):
-                            merge_ids.add(pkg["mergeDocument"])
-
-        merges = []
-        if merge_ids:
-            merges = (await session.execute(select(DeploymentPackageMerge).where(DeploymentPackageMerge.id.in_(list(merge_ids))))).scalars().all()
-
-        gas = []
-        if ga_ids:
-            gas = (await session.execute(select(PackageGapAnalysis).where(PackageGapAnalysis.id.in_(list(ga_ids))))).scalars().all()
-
-        assignments = []
-        if assignment_ids:
-            assignments = (await session.execute(select(FrameworkAssignment).where(FrameworkAssignment.id.in_(list(assignment_ids))))).scalars().all()
-
-        merges_by_id = {str(m.id): m for m in merges}
-        gas_by_id = {str(g.id): g for g in gas}
+        users_by_id = await _fetch_related_entities(session, dfs)
+        ga_ids, merge_ids = _extract_package_ids(dfs, str(user.id))
+        merges_by_id, gas_by_id = await _fetch_gap_and_merge_data(session, ga_ids, merge_ids)
 
         for df in dfs:
             uploader = users_by_id.get(str(df.uploadedBy))
-            custom_controls = extract_custom_controls(str(df.assignedFrameworkId), assignments)
-
             for pkg in df.packages:
-                if not isinstance(pkg, dict):
-                    continue
-                expert_review = pkg.get("expertReview", {})
-                if expert_review.get("assignedExpert") != str(user.id):
-                    continue
+                req = _process_package(pkg, df, user.id, uploader, gas_by_id, merges_by_id, metrics)
+                if req:
+                    review_requests.append(req)
 
-                status = expert_review.get("status", "pending")
-                status_lower = status.lower()
-
-                # Calculate metrics
-                if status_lower in ["requested"]:
-                    metrics["pendingReview"] += 1
-                elif status_lower in ["pending", "in_review"]:
-                    metrics["inReview"] += 1
-                elif status_lower == "approved":
-                    metrics["approved"] += 1
-                elif status_lower in ["rejected", "returned"]:
-                    metrics["returned"] += 1
-                else:
-                    metrics["inReview"] += 1 # fallback
-
-                # Format status for UI
-                ui_status = "In Review" if status_lower in ["pending", "in_review"] else status.capitalize()
-                if status_lower == "requested":
-                    ui_status = "Pending"
-                elif status_lower == "rejected":
-                    ui_status = "Returned"
-
-                # Compute health
-                health = 0
-                ga_id = pkg.get("gapAnalysis")
-                merge_id = pkg.get("mergeDocument")
-
-                if ga_id and merge_id and ga_id in gas_by_id and merge_id in merges_by_id:
-                    merge_doc = merges_by_id[merge_id]
-                    ga_doc = gas_by_id[ga_id]
-
-                    ga_results = ga_doc.gapAnalysis.get("deployment_gap_results", []) if ga_doc.gapAnalysis else []
-
-                    total_dps = len(ga_results)
-                    impl_dps = sum(
-                        1
-                        for result in ga_results
-                        if str(result.get("implementation_status") or "").lower()
-                        in ["implemented", "compliant", "passed", "fully implemented"]
-                    )
-
-                    if total_dps > 0:
-                        health = round((impl_dps / total_dps) * 100)
-
-                req_at = expert_review.get("requestedAt") or pkg.get("createdAt")
-
-                review_requests.append({
-                    "id": str(df.id),
-                    "frameworkName": df.frameworkName,
-                    "frameworkVersion": df.frameworkVersion,
-                    "packageVersion": pkg.get("packageVersion", "1.0.0"),
-                    "packageStatus": pkg.get("status", "pending"),
-                    "requestedBy": {
-                        "id": str(uploader.id) if uploader else "",
-                        "name": uploader.name if uploader else "Unknown",
-                        "email": uploader.email if uploader else "",
-                        "avatar": uploader.avatar if uploader else "",
-                    },
-                    "requestedAt": req_at,
-                    "status": ui_status,
-                    "health": health,
-                })
-
-    return success({
-        "metrics": metrics,
-        "reviewRequests": sorted(review_requests, key=lambda x: str(x.get("requestedAt", "")), reverse=True)
-    }, "Dashboard data retrieved successfully")
+    return success(
+        {
+            "metrics": metrics,
+            "reviewRequests": sorted(
+                review_requests, key=lambda x: str(x.get("requestedAt", "")), reverse=True
+            ),
+        },
+        "Dashboard data retrieved successfully",
+    )
