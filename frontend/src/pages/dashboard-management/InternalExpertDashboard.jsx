@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import CardWrapper from "./components/CardWrapper";
@@ -381,11 +381,8 @@ export default function InternalExpertDashboard() {
       </CardWrapper>
 
       <div className="grid gap-5 xl:grid-cols-[0.9fr_1.4fr]">
-        <Card className="border-border/70 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg">My Review Summary</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+        <CardWrapper title="My Review Summary">
+          <CardContent className="grid gap-3 grid-cols-3">
             <SummaryCard
               icon="check-circle"
               value="12"
@@ -408,14 +405,11 @@ export default function InternalExpertDashboard() {
               tone="secondary"
             />
           </CardContent>
-        </Card>
+        </CardWrapper>
 
-        <Card className="border-border/70 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg">Review Process</CardTitle>
-          </CardHeader>
+        <CardWrapper title="Review Process">
           <CardContent>
-            <div className="grid gap-5 md:grid-cols-5">
+            <div className="flex flex-row gap-5 justify-between">
               {[
                 [
                   "audit",
@@ -449,7 +443,7 @@ export default function InternalExpertDashboard() {
                 ],
               ].map(([iconName, title, text, tone], index) => (
                 <React.Fragment key={title}>
-                  <div className="flex gap-3 md:block">
+                  <div className="flex-1 flex gap-3 md:block">
                     <div
                       className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${tone}`}
                     >
@@ -463,17 +457,19 @@ export default function InternalExpertDashboard() {
                     </div>
                   </div>
                   {index < 4 && (
-                    <Icon
-                      name="chevron-right"
-                      size="24px"
-                      className="hidden self-center text-muted-foreground/60 md:block"
-                    />
+                    <div className="hidden md:flex shrink-0 pt-3">
+                      <Icon
+                        name="chevron-right"
+                        size="24px"
+                        className="text-muted-foreground/60"
+                      />
+                    </div>
                   )}
                 </React.Fragment>
               ))}
             </div>
           </CardContent>
-        </Card>
+        </CardWrapper>
       </div>
 
       <div className="flex items-start justify-center gap-2 px-2 text-center text-xs text-muted-foreground">
