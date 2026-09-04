@@ -148,8 +148,9 @@ export default function GridCardView({
             {emptyMessage}
           </p>
           <p
-            className={`max-w-xs text-center text-xs font-medium leading-relaxed ${error ? "text-red-500/80" : "text-muted-foreground"
-              }`}
+            className={`max-w-xs text-center text-xs font-medium leading-relaxed ${
+              error ? "text-red-500/80" : "text-muted-foreground"
+            }`}
           >
             {error
               ? ""

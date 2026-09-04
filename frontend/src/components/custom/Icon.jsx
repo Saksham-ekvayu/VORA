@@ -320,7 +320,7 @@ const iconMap = {
   pin: TiPin,
   "open-folder": FaFolderOpen,
   "rotate-ccw": RotateCcw,
-  back: Undo2
+  back: Undo2,
 };
 
 export default function Icon({

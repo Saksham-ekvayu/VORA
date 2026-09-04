@@ -15,72 +15,80 @@ import FrameworkMiniCard from "@/components/custom/FrameworkMiniCard";
 import UserMiniCard from "@/components/custom/UserMiniCard";
 import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
 
-const reviewRequests = [
-  {
-    id: "df-001",
-    frameworkName: "Deployment Framework",
-    frameworkVersion: "ISO27001:2022",
-    packageVersion: "2.1.0",
-    packageStatus: "In Review",
-    requestedBy: {
-      id: "auditor-001",
-      name: "Auditor John",
-      email: "auditor.john@acme.com",
-      avatar: "https://randomuser.me/api/portraits/men/1.jpg",
-    },
-    requestedAt: "2026-08-26T06:22:46.553644+00:00",
-    status: "In Review",
-    health: 68,
+const mockDashboardData = {
+  metrics: {
+    pendingReview: 7,
+    inReview: 33,
+    approved: 12345,
+    returned: 543,
   },
-  {
-    id: "df-002",
-    frameworkName: "QMS Framework",
-    frameworkVersion: "ISO9001:2015",
-    packageVersion: "1.3.0",
-    packageStatus: "Pending",
-    requestedBy: {
-      id: "auditor-002",
-      name: "Auditor Sarah",
-      email: "auditor.sarah@tech.com",
-      avatar: "https://randomuser.me/api/portraits/women/1.jpg",
+  reviewRequests: [
+    {
+      id: "df-001",
+      frameworkName: "Deployment Framework",
+      frameworkVersion: "ISO27001:2022",
+      packageVersion: "2.1.0",
+      packageStatus: "In Review",
+      requestedBy: {
+        id: "auditor-001",
+        name: "Auditor John",
+        email: "auditor.john@acme.com",
+        avatar: "https://randomuser.me/api/portraits/men/1.jpg",
+      },
+      requestedAt: "2026-08-26T06:22:46.553644+00:00",
+      status: "In Review",
+      health: 68,
     },
-    requestedAt: "2026-08-26T06:22:46.553644+00:00",
-    status: "Pending",
-    health: 82,
-  },
-  {
-    id: "df-003",
-    frameworkName: "Security Framework",
-    frameworkVersion: "SOC 2 Type II",
-    packageVersion: "3.0.0",
-    packageStatus: "In Review",
-    requestedBy: {
-      id: "auditor-003",
-      name: "Auditor Mike",
-      email: "auditor.mike@datasec.com",
-      avatar: "https://randomuser.me/api/portraits/men/2.jpg",
+    {
+      id: "df-002",
+      frameworkName: "QMS Framework",
+      frameworkVersion: "ISO9001:2015",
+      packageVersion: "1.3.0",
+      packageStatus: "Pending",
+      requestedBy: {
+        id: "auditor-002",
+        name: "Auditor Sarah",
+        email: "auditor.sarah@tech.com",
+        avatar: "https://randomuser.me/api/portraits/women/1.jpg",
+      },
+      requestedAt: "2026-08-26T06:22:46.553644+00:00",
+      status: "Pending",
+      health: 82,
     },
-    requestedAt: "2026-08-24T06:22:46.553644+00:00",
-    status: "In Review",
-    health: 55,
-  },
-  {
-    id: "df-004",
-    frameworkName: "Compliance Framework",
-    frameworkVersion: "GDPR:2021",
-    packageVersion: "1.0.0",
-    packageStatus: "Pending",
-    requestedBy: {
-      id: "auditor-004",
-      name: "Auditor Emma",
-      email: "auditor.emma@globalsys.com",
-      avatar: "https://randomuser.me/api/portraits/women/2.jpg",
+    {
+      id: "df-003",
+      frameworkName: "Security Framework",
+      frameworkVersion: "SOC 2 Type II",
+      packageVersion: "3.0.0",
+      packageStatus: "In Review",
+      requestedBy: {
+        id: "auditor-003",
+        name: "Auditor Mike",
+        email: "auditor.mike@datasec.com",
+        avatar: "https://randomuser.me/api/portraits/men/2.jpg",
+      },
+      requestedAt: "2026-08-24T06:22:46.553644+00:00",
+      status: "In Review",
+      health: 55,
     },
-    requestedAt: "2026-08-23T06:22:46.553644+00:00",
-    status: "Pending",
-    health: 72,
-  },
-];
+    {
+      id: "df-004",
+      frameworkName: "Compliance Framework",
+      frameworkVersion: "GDPR:2021",
+      packageVersion: "1.0.0",
+      packageStatus: "Pending",
+      requestedBy: {
+        id: "auditor-004",
+        name: "Auditor Emma",
+        email: "auditor.emma@globalsys.com",
+        avatar: "https://randomuser.me/api/portraits/women/2.jpg",
+      },
+      requestedAt: "2026-08-23T06:22:46.553644+00:00",
+      status: "Pending",
+      health: 72,
+    },
+  ],
+};
 
 const statusStyles = {
   Pending: "border-amber-200 bg-amber-50 text-amber-700",
@@ -222,9 +230,8 @@ export default function InternalExpertDashboard() {
             title="Pending Review Framework"
             navigation="/pending-reviews"
           >
-            {" "}
             <p className="text-4xl font-bold text-primary group-hover:opacity-80 transition-opacity">
-              7
+              {mockDashboardData.metrics.pendingReview}
             </p>
           </MetricCard>
           <MetricCard
@@ -235,9 +242,8 @@ export default function InternalExpertDashboard() {
             title="In Review Framework"
             navigation="/in-review"
           >
-            {" "}
             <p className="text-4xl font-bold text-secondary group-hover:opacity-80 transition-opacity">
-              33
+              {mockDashboardData.metrics.inReview}
             </p>
           </MetricCard>
           <MetricCard
@@ -248,9 +254,8 @@ export default function InternalExpertDashboard() {
             title="Approved Framework"
             navigation="/approved"
           >
-            {" "}
             <p className="text-4xl font-bold text-green-500 group-hover:opacity-80 transition-opacity">
-              12345
+              {mockDashboardData.metrics.approved}
             </p>
           </MetricCard>
           <MetricCard
@@ -261,9 +266,8 @@ export default function InternalExpertDashboard() {
             title="Returned Framework"
             navigation="/returned"
           >
-            {" "}
             <p className="text-4xl font-bold text-destructive group-hover:opacity-80 transition-opacity">
-              543
+              {mockDashboardData.metrics.returned}
             </p>
           </MetricCard>
         </div>
@@ -304,7 +308,7 @@ export default function InternalExpertDashboard() {
               </tr>
             </thead>
             <tbody>
-              {reviewRequests.map((item) => (
+              {mockDashboardData.reviewRequests.map((item) => (
                 <tr
                   key={item.id}
                   className="border-b border-border/50 last:border-0 hover:bg-muted/30"
