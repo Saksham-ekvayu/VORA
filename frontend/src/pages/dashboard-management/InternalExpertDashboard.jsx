@@ -1,18 +1,4 @@
 import React, { useEffect, useState } from "react";
-import {
-  FileCheck2,
-  History,
-  CheckCircle2,
-  RotateCcw,
-  BarChart3,
-  MessageSquare,
-  FileSearch,
-  ClipboardCheck,
-  Rocket,
-  ChevronRight,
-  ChevronDown,
-  Info,
-} from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +7,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import CardWrapper from "./components/CardWrapper";
@@ -28,6 +15,9 @@ import { getRoleLabel } from "@/utils/commonUtils";
 import { useAuth } from "@/context/authContext/useAuth";
 import DateFilter from "./components/DateFilter";
 import { useDateFilter } from "./hooks/useDateFilter";
+import { Link } from "react-router-dom";
+import { cn } from "@/lib/utils";
+import Icon from "@/components/custom/Icon";
 
 const reviewRequests = [
   {
@@ -122,45 +112,52 @@ function StatusBadge({ status }) {
 
 function HealthValue({ value, label }) {
   return (
-    <div className="min-w-[70px]">
-      <div className={`text-lg font-semibold ${healthStyles[label] ?? "text-foreground"}`}>
+    <div className="min-w-17.5">
+      <div
+        className={`text-lg font-semibold ${healthStyles[label] ?? "text-foreground"}`}
+      >
         {value}%
       </div>
-      <div className={`text-xs ${healthStyles[label] ?? "text-muted-foreground"}`}>
+      <div
+        className={`text-xs ${healthStyles[label] ?? "text-muted-foreground"}`}
+      >
         {label}
       </div>
     </div>
   );
 }
 
-function MetricCard({ icon: Icon, title, value, description, tone }) {
-  const tones = {
-    primary: "bg-primary/10 text-primary",
-    secondary: "bg-secondary/10 text-secondary",
-    success: "bg-green-50 text-green-600",
-    danger: "bg-destructive/10 text-destructive",
-  };
-
-  const valueColors = {
-    primary: "text-primary",
-    secondary: "text-secondary",
-    success: "text-green-600",
-    danger: "text-destructive",
-  };
-
+function MetricCard({
+  icon,
+  iconColor = "text-primary",
+  iconBg = "bg-primary/10",
+  borderColor = "border-primary/40",
+  title,
+  navigation,
+  children,
+}) {
   return (
-    <Card className="border-border/70 shadow-sm">
-      <CardContent className="flex items-center gap-4 p-5">
-        <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-xl ${tones[tone]}`}>
-          <Icon className="h-8 w-8" strokeWidth={1.8} />
-        </div>
-        <div>
-          <p className="text-sm font-medium text-foreground">{title}</p>
-          <p className={`mt-1 text-3xl font-semibold ${valueColors[tone]}`}>{value}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{description}</p>
-        </div>
-      </CardContent>
-    </Card>
+    <Link
+      to={navigation}
+      className="rounded border border-border bg-linear-to-br from-background to-card p-2.5 flex justify-between shadow-lg hover:shadow-xl transition-shadow duration-300 hover:border-primary/50 cursor-pointer"
+    >
+      <div className="flex flex-col gap-2 w-full">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          {title}
+        </p>
+        <div className="">{children}</div>
+      </div>
+      <span
+        className={cn(
+          "w-12 h-12 rounded shrink-0 flex items-center justify-center transition-transform duration-300 group-hover:scale-105 border",
+          borderColor,
+          iconBg,
+          iconColor
+        )}
+      >
+        <Icon name={icon} size="24px" />
+      </span>
+    </Link>
   );
 }
 
@@ -173,11 +170,15 @@ function SummaryCard({ icon: Icon, value, title, description, tone }) {
 
   return (
     <div className="flex items-center gap-4 rounded-xl border border-border/70 bg-card p-4">
-      <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl ${styles[tone][0]}`}>
-        <Icon className="h-7 w-7" strokeWidth={1.8} />
+      <div
+        className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl ${styles[tone][0]}`}
+      >
+        <Icon name={Icon} size="28px" />
       </div>
       <div>
-        <div className={`text-2xl font-semibold ${styles[tone][1]}`}>{value}</div>
+        <div className={`text-2xl font-semibold ${styles[tone][1]}`}>
+          {value}
+        </div>
         <div className="text-sm font-medium text-foreground">{title}</div>
         <div className="text-xs text-muted-foreground">{description}</div>
       </div>
@@ -242,77 +243,98 @@ export default function InternalExpertDashboard() {
         }
       >
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          <MetricCard icon={FileCheck2} title="Pending Review" value="7" description="Awaiting your review" tone="primary" />
-          <MetricCard icon={History} title="In Review" value="3" description="Currently under review" tone="secondary" />
-          <MetricCard icon={CheckCircle2} title="Approved" value="12" description="Approved packages" tone="success" />
-          <MetricCard icon={RotateCcw} title="Returned" value="5" description="Sent back for changes" tone="danger" />
+          <MetricCard
+            icon="document"
+            iconColor="text-primary"
+            iconBg="bg-primary/10"
+            borderColor="border-primary/40"
+            title="Pending Review Framework"
+            navigation="/pending-reviews"
+          >
+            {" "}
+            <p className="text-4xl font-bold text-primary group-hover:opacity-80 transition-opacity">
+              7
+            </p>
+          </MetricCard>
+          <MetricCard
+            icon="history"
+            iconColor="text-secondary"
+            iconBg="bg-secondary/10"
+            borderColor="border-secondary/40"
+            title="In Review Framework"
+            navigation="/in-review"
+          >
+            {" "}
+            <p className="text-4xl font-bold text-secondary group-hover:opacity-80 transition-opacity">
+              33
+            </p>
+          </MetricCard>
+          <MetricCard
+            icon="check-circle"
+            iconColor="text-green-500"
+            iconBg="bg-green-500/10"
+            borderColor="border-green-500/40"
+            title="Approved Framework"
+            navigation="/approved"
+          >
+            {" "}
+            <p className="text-4xl font-bold text-green-500 group-hover:opacity-80 transition-opacity">
+              12345
+            </p>
+          </MetricCard>
+          <MetricCard
+            icon="back"
+            iconColor="text-destructive"
+            iconBg="bg-destructive/10"
+            borderColor="border-destructive/40"
+            title="Returned Framework"
+            navigation="/returned"
+          >
+            {" "}
+            <p className="text-4xl font-bold text-destructive group-hover:opacity-80 transition-opacity">
+              543
+            </p>
+          </MetricCard>
         </div>
       </CardWrapper>
 
-      <Card className="overflow-hidden border-border/70 shadow-sm">
-        <CardHeader className="gap-4 border-b border-border/60 pb-4 md:flex-row md:items-center md:justify-between">
+      <CardWrapper
+        title={
           <div>
             <CardTitle className="text-lg">Review Requests</CardTitle>
             <p className="mt-1 text-xs text-muted-foreground">
               Deployment frameworks requested by auditors for expert review.
             </p>
           </div>
-
+        }
+        right={
           <div className="flex flex-wrap gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-[160px] bg-card justify-between font-normal text-muted-foreground">
-                  All Frameworks
-                  <ChevronDown className="h-4 w-4 opacity-50" />
+                <Button variant="outline" className="w-fit">
+                  Review Status
+                  <Icon
+                    name="chevron-down"
+                    size="16px"
+                    className="opacity-50"
+                  />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-[160px]">
-                <DropdownMenuItem>All Frameworks</DropdownMenuItem>
-                <DropdownMenuItem>ISO27001</DropdownMenuItem>
-                <DropdownMenuItem>ISO9001</DropdownMenuItem>
-                <DropdownMenuItem>SOC 2</DropdownMenuItem>
-                <DropdownMenuItem>GDPR</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-[165px] bg-card justify-between font-normal text-muted-foreground">
-                  Sort: Requested At
-                  <ChevronDown className="h-4 w-4 opacity-50" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-[165px]">
-                <DropdownMenuItem>Sort: Requested At</DropdownMenuItem>
-                <DropdownMenuItem>Sort: Health</DropdownMenuItem>
-                <DropdownMenuItem>Sort: Package Version</DropdownMenuItem>
+              <DropdownMenuContent className="w-fit">
+                <DropdownMenuItem>All Status</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>Pending</DropdownMenuItem>
+                <DropdownMenuItem>In Review</DropdownMenuItem>
+                <DropdownMenuItem>Returned</DropdownMenuItem>
+                <DropdownMenuItem>Approved</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        </CardHeader>
-
+        }
+      >
         <CardContent className="p-0">
-          <div className="flex gap-2 overflow-x-auto border-b border-border/60 px-5 py-3">
-            {[
-              ["All", 7, true],
-              ["Pending", 4],
-              ["In Review", 3],
-              ["Returned", 0],
-              ["Approved", 0],
-            ].map(([label, count, active]) => (
-              <Button
-                key={label}
-                variant={active ? "default" : "outline"}
-                size="sm"
-                className={active ? "rounded-md bg-primary text-primary-foreground hover:bg-primary/90" : "rounded-md"}
-              >
-                {label} ({count})
-              </Button>
-            ))}
-          </div>
-
           <div className="hidden overflow-x-auto md:block">
-            <table className="w-full min-w-[1100px] text-sm">
+            <table className="w-full min-w-275 text-sm">
               <thead>
                 <tr className="border-b border-border/60 bg-muted/40 text-left text-xs font-medium text-muted-foreground">
                   <th className="px-5 py-3">Deployment Framework</th>
@@ -327,40 +349,67 @@ export default function InternalExpertDashboard() {
               </thead>
               <tbody>
                 {reviewRequests.map((item) => (
-                  <tr key={item.id} className="border-b border-border/50 last:border-0 hover:bg-muted/30">
+                  <tr
+                    key={item.id}
+                    className="border-b border-border/50 last:border-0 hover:bg-muted/30"
+                  >
                     <td className="px-5 py-4">
                       <div className="flex items-start gap-3">
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-semibold text-primary">
                           {item.framework.split(" ")[0].slice(0, 4)}
                         </div>
                         <div>
-                          <div className="font-medium text-foreground">{item.framework}</div>
-                          <div className="mt-1 text-xs text-muted-foreground">{item.customer}</div>
+                          <div className="font-medium text-foreground">
+                            {item.framework}
+                          </div>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {item.customer}
+                          </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      <div className="font-medium">{item.assignedFramework}</div>
-                      <div className="mt-1 text-xs text-muted-foreground">{item.assignedVersion}</div>
+                      <div className="font-medium">
+                        {item.assignedFramework}
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {item.assignedVersion}
+                      </div>
                     </td>
                     <td className="px-4 py-4">
                       <div className="font-medium">{item.packageVersion}</div>
-                      <div className="mt-1"><StatusBadge status={item.packageStatus} /></div>
+                      <div className="mt-1">
+                        <StatusBadge status={item.packageStatus} />
+                      </div>
                     </td>
                     <td className="px-4 py-4">
                       <div className="font-medium">{item.requestedBy}</div>
-                      <div className="mt-1 max-w-[160px] truncate text-xs text-muted-foreground">{item.requesterEmail}</div>
+                      <div className="mt-1 max-w-40 truncate text-xs text-muted-foreground">
+                        {item.requesterEmail}
+                      </div>
                     </td>
                     <td className="px-4 py-4">
                       <div className="font-medium">{item.requestedAt}</div>
-                      <div className="mt-1 text-xs text-muted-foreground">{item.requestedDate}</div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {item.requestedDate}
+                      </div>
                     </td>
-                    <td className="px-4 py-4"><StatusBadge status={item.status} /></td>
-                    <td className="px-4 py-4"><HealthValue value={item.health} label={item.healthLabel} /></td>
+                    <td className="px-4 py-4">
+                      <StatusBadge status={item.status} />
+                    </td>
+                    <td className="px-4 py-4">
+                      <HealthValue
+                        value={item.health}
+                        label={item.healthLabel}
+                      />
+                    </td>
                     <td className="px-5 py-4 text-right">
-                      <Button size="sm" className="gap-1 bg-primary text-primary-foreground hover:bg-primary/90">
+                      <Button
+                        size="sm"
+                        className="gap-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                      >
                         Review Now
-                        <ChevronRight className="h-4 w-4" />
+                        <Icon name="chevron-right" size="16px" />
                       </Button>
                     </td>
                   </tr>
@@ -371,68 +420,152 @@ export default function InternalExpertDashboard() {
 
           <div className="space-y-3 p-4 md:hidden">
             {reviewRequests.map((item) => (
-              <div key={item.id} className="rounded-xl border border-border/70 bg-card p-4">
+              <div
+                key={item.id}
+                className="rounded-xl border border-border/70 bg-card p-4"
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex gap-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-semibold text-primary">
                       {item.framework.split(" ")[0].slice(0, 4)}
                     </div>
                     <div>
-                      <div className="text-sm font-medium">{item.framework}</div>
-                      <div className="mt-1 text-xs text-muted-foreground">{item.customer}</div>
+                      <div className="text-sm font-medium">
+                        {item.framework}
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {item.customer}
+                      </div>
                     </div>
                   </div>
                   <StatusBadge status={item.status} />
                 </div>
 
                 <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
-                  <div><span className="text-muted-foreground">Package</span><p className="mt-1 font-medium">{item.packageVersion}</p></div>
-                  <div><span className="text-muted-foreground">Requested By</span><p className="mt-1 font-medium">{item.requestedBy}</p></div>
-                  <div><span className="text-muted-foreground">Assigned Framework</span><p className="mt-1 font-medium">{item.assignedFramework}</p></div>
-                  <div><span className="text-muted-foreground">Health</span><div className="mt-1"><HealthValue value={item.health} label={item.healthLabel} /></div></div>
+                  <div>
+                    <span className="text-muted-foreground">Package</span>
+                    <p className="mt-1 font-medium">{item.packageVersion}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Requested By</span>
+                    <p className="mt-1 font-medium">{item.requestedBy}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">
+                      Assigned Framework
+                    </span>
+                    <p className="mt-1 font-medium">{item.assignedFramework}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Health</span>
+                    <div className="mt-1">
+                      <HealthValue
+                        value={item.health}
+                        label={item.healthLabel}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <Button className="mt-4 w-full bg-primary hover:bg-primary/90">
-                  Review Now <ChevronRight className="ml-1 h-4 w-4" />
+                  Review Now{" "}
+                  <Icon name="chevron-right" size="16px" className="ml-1" />
                 </Button>
               </div>
             ))}
           </div>
         </CardContent>
-      </Card>
+      </CardWrapper>
 
       <div className="grid gap-5 xl:grid-cols-[0.9fr_1.4fr]">
         <Card className="border-border/70 shadow-sm">
-          <CardHeader><CardTitle className="text-lg">My Review Summary</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-lg">My Review Summary</CardTitle>
+          </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-            <SummaryCard icon={CheckCircle2} value="12" title="Approved" description="Packages approved by you" tone="success" />
-            <SummaryCard icon={RotateCcw} value="5" title="Returned" description="Packages sent back for changes" tone="danger" />
-            <SummaryCard icon={MessageSquare} value="28" title="Remarks Added" description="Review remarks added by you" tone="secondary" />
+            <SummaryCard
+              icon="check-circle"
+              value="12"
+              title="Approved"
+              description="Packages approved by you"
+              tone="success"
+            />
+            <SummaryCard
+              icon="refresh"
+              value="5"
+              title="Returned"
+              description="Packages sent back for changes"
+              tone="danger"
+            />
+            <SummaryCard
+              icon="message-square"
+              value="28"
+              title="Remarks Added"
+              description="Review remarks added by you"
+              tone="secondary"
+            />
           </CardContent>
         </Card>
 
         <Card className="border-border/70 shadow-sm">
-          <CardHeader><CardTitle className="text-lg">Review Process</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-lg">Review Process</CardTitle>
+          </CardHeader>
           <CardContent>
             <div className="grid gap-5 md:grid-cols-5">
               {[
-                [FileSearch, "1. Review Request", "Auditor requests review for deployment framework.", "bg-primary/10 text-primary"],
-                [BarChart3, "2. Review & Analysis", "Review deployment points, comparison & gap analysis.", "bg-secondary/10 text-secondary"],
-                [MessageSquare, "3. Add Remark", "Add review remark for each deployment point.", "bg-orange-50 text-orange-600"],
-                [ClipboardCheck, "4. Approve / Return", "Approve if acceptable or return for changes.", "bg-amber-50 text-amber-600"],
-                [Rocket, "5. Next Steps", "Auditor updates and resubmits or package gets approved.", "bg-primary/10 text-primary"],
-              ].map(([Icon, title, text, tone], index) => (
+                [
+                  "audit",
+                  "1. Review Request",
+                  "Auditor requests review for deployment framework.",
+                  "bg-primary/10 text-primary",
+                ],
+                [
+                  "analytics",
+                  "2. Review & Analysis",
+                  "Review deployment points, comparison & gap analysis.",
+                  "bg-secondary/10 text-secondary",
+                ],
+                [
+                  "message-square",
+                  "3. Add Remark",
+                  "Add review remark for each deployment point.",
+                  "bg-orange-50 text-orange-600",
+                ],
+                [
+                  "report",
+                  "4. Approve / Return",
+                  "Approve if acceptable or return for changes.",
+                  "bg-amber-50 text-amber-600",
+                ],
+                [
+                  "rocket",
+                  "5. Next Steps",
+                  "Auditor updates and resubmits or package gets approved.",
+                  "bg-primary/10 text-primary",
+                ],
+              ].map(([iconName, title, text, tone], index) => (
                 <React.Fragment key={title}>
                   <div className="flex gap-3 md:block">
-                    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${tone}`}>
-                      <Icon className="h-6 w-6" strokeWidth={1.8} />
+                    <div
+                      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${tone}`}
+                    >
+                      <Icon name={iconName} size="24px" />
                     </div>
                     <div className="mt-0 md:mt-3">
                       <p className="text-sm font-semibold">{title}</p>
-                      <p className="mt-1 text-xs leading-5 text-muted-foreground">{text}</p>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                        {text}
+                      </p>
                     </div>
                   </div>
-                  {index < 4 && <ChevronRight className="hidden self-center text-muted-foreground/60 md:block" />}
+                  {index < 4 && (
+                    <Icon
+                      name="chevron-right"
+                      size="24px"
+                      className="hidden self-center text-muted-foreground/60 md:block"
+                    />
+                  )}
                 </React.Fragment>
               ))}
             </div>
@@ -441,8 +574,11 @@ export default function InternalExpertDashboard() {
       </div>
 
       <div className="flex items-start justify-center gap-2 px-2 text-center text-xs text-muted-foreground">
-        <Info className="mt-0.5 h-4 w-4 shrink-0" />
-        <span>Overall Health is calculated based on comparison and gap analysis of deployment points.</span>
+        <Icon name="info" size="16px" className="mt-0.5 shrink-0" />
+        <span>
+          Overall Health is calculated based on comparison and gap analysis of
+          deployment points.
+        </span>
       </div>
     </div>
   );
