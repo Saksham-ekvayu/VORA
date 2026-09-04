@@ -180,7 +180,7 @@ async def get_internal_expert_dashboard_analytics(
             "metrics": metrics,
             "reviewRequests": sorted(
                 review_requests, key=lambda x: str(x.get("requestedAt", "")), reverse=True
-            ),
+            )[:10],
         },
         "Dashboard data retrieved successfully",
     )
