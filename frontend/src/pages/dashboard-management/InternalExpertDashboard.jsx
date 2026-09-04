@@ -157,31 +157,6 @@ function MetricCard({
   );
 }
 
-function SummaryCard({ icon, value, title, description, tone }) {
-  const styles = {
-    success: ["bg-green-50 text-green-600", "text-green-600"],
-    danger: ["bg-destructive/10 text-destructive", "text-destructive"],
-    secondary: ["bg-secondary/10 text-secondary", "text-secondary"],
-  };
-
-  return (
-    <div className="flex items-center gap-4 rounded-xl border border-border/70 bg-card p-4">
-      <div
-        className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl ${styles[tone][0]}`}
-      >
-        <Icon name={icon} size="28px" />
-      </div>
-      <div>
-        <div className={`text-2xl font-semibold ${styles[tone][1]}`}>
-          {value}
-        </div>
-        <div className="text-sm font-medium text-foreground">{title}</div>
-        <div className="text-xs text-muted-foreground">{description}</div>
-      </div>
-    </div>
-  );
-}
-
 export default function InternalExpertDashboard() {
   const { user } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -380,33 +355,7 @@ export default function InternalExpertDashboard() {
         </CardContent>
       </CardWrapper>
 
-      <div className="grid gap-5 xl:grid-cols-[0.9fr_1.4fr]">
-        <CardWrapper title="My Review Summary">
-          <CardContent className="grid gap-3 grid-cols-3">
-            <SummaryCard
-              icon="check-circle"
-              value="12"
-              title="Approved"
-              description="Packages approved by you"
-              tone="success"
-            />
-            <SummaryCard
-              icon="back"
-              value="5"
-              title="Returned"
-              description="Packages sent back for changes"
-              tone="danger"
-            />
-            <SummaryCard
-              icon="document"
-              value="28"
-              title="Remarks Added"
-              description="Review remarks added by you"
-              tone="secondary"
-            />
-          </CardContent>
-        </CardWrapper>
-
+      <div className="flex flex-col gap-5">
         <CardWrapper title="Review Process">
           <CardContent>
             <div className="flex flex-row gap-5 justify-between">
@@ -457,11 +406,11 @@ export default function InternalExpertDashboard() {
                     </div>
                   </div>
                   {index < 4 && (
-                    <div className="hidden md:flex shrink-0 pt-3">
+                    <div className="hidden md:flex shrink-0 pt-3.5 px-1">
                       <Icon
                         name="chevron-right"
-                        size="24px"
-                        className="text-muted-foreground/60"
+                        size="20px"
+                        className="text-muted-foreground/40"
                       />
                     </div>
                   )}
