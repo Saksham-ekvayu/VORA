@@ -131,19 +131,18 @@ async def get_internal_expert_dashboard_analytics(
                     merge_doc = merges_by_id[merge_id]
                     ga_doc = gas_by_id[ga_id]
 
-                    expected_controls = extract_expected_controls(merge_doc, custom_controls)
                     ga_results = ga_doc.gapAnalysis.get("deployment_gap_results", []) if ga_doc.gapAnalysis else []
-                    actual_implemented = extract_actual_implemented(ga_results)
 
-                    req_dps = 0
-                    impl_dps = 0
-                    for ctrl_id, expected in expected_controls.items():
-                        req_c = expected.get("required_dps", 0)
-                        req_dps += req_c
-                        impl_dps += min(actual_implemented.get(ctrl_id, 0), req_c)
+                    total_dps = len(ga_results)
+                    impl_dps = sum(
+                        1
+                        for result in ga_results
+                        if str(result.get("implementation_status") or "").lower()
+                        in ["implemented", "compliant", "passed", "fully implemented"]
+                    )
 
-                    if req_dps > 0:
-                        health = round((impl_dps / req_dps) * 100)
+                    if total_dps > 0:
+                        health = round((impl_dps / total_dps) * 100)
 
                 req_at = expert_review.get("requestedAt") or pkg.get("createdAt")
 
