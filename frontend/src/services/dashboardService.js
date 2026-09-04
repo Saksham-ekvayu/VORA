@@ -9,6 +9,7 @@ const ADMIN_BASE = "/dashboard/admin";
 // const EXPERT_BASE = "/dashboard/expert";
 const CUSTOMER_BASE = "/dashboard/customer-admin";
 const AUDITOR_BASE = "/dashboard/auditor";
+const INTERNAL_EXPERT_BASE = "/dashboard/internal-expert";
 
 /**
  * Build a query string from an optional date range object.
@@ -157,4 +158,16 @@ export async function getCustomerAdminDashboardAnalytics(params) {
   }
 
   return apiRequest(`${CUSTOMER_BASE}/analytics${queryString}`, true);
+}
+
+/**
+ * Get Internal Expert Dashboard Analytics
+ * @param {{ startDate?: string, endDate?: string }} [dateRange]
+ * @returns {Promise} Dashboard analytics data
+ */
+export async function getInternalExpertDashboardAnalytics(dateRange) {
+  return apiRequest(
+    `${INTERNAL_EXPERT_BASE}/analytics${buildDateQuery(dateRange)}`,
+    true
+  );
 }
