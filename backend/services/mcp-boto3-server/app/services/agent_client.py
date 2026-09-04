@@ -2,19 +2,15 @@ import os
 
 import requests
 
-AGENT_API = os.getenv("AGENT_API", "http://localhost:7000/api/load/upload")
+# Routed through the API gateway to compliance-agent-service's
+# POST /api/compliance-agent/evaluate/{dd_id} endpoint.
+GATEWAY_URL = os.getenv("GATEWAY_URL", "http://localhost:8000")
 
 
-def call_agent(payload: dict, agent_name: str):
-    body = {
-        "id": payload["id"],
-        "agent_name": agent_name,
-        "framework_name": payload["framework_name"],
-        "package_version": payload["package_version"],
-        "merge_document": payload["merge_document"],
-        "deployment_framework": payload["deployment_framework"],
-        "file_path": payload["file_path"],
-    }
+def call_agent(payload: dict, _agent_name: str):
+    dd_id = payload["deployment_document_id"]
 
-    response = requests.post(AGENT_API, json=body, timeout=60)
+    url = f"{GATEWAY_URL}/api/compliance-agent/evaluate/{dd_id}"
+
+    response = requests.post(url, timeout=60)
     return response.json()

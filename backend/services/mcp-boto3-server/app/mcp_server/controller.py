@@ -151,11 +151,16 @@ async def _run_pipeline():
                     "deployment_document_id": document_id,
                 }
 
-                response = call_agent(payload, "Compliance_Audit_Agent")
+                try:
+                    response = call_agent(payload, "Compliance_Audit_Agent")
+                    logging.info(f"Agent Response: {response}")
+                    add_live_log(f"Agent Response: {response}")
+                except Exception as e:
+                    logging.exception(f"Compliance agent call failed for {path}: {e}")
+                    add_live_log(f"Compliance agent call failed for {path}: {e}")
 
-                logging.info(f"Agent Response: {response}")
-                add_live_log(f"Agent Response: {response}")
-
+                # Mark processed regardless of the agent-call outcome above, so this
+                # file (and its AI extraction) is never re-triggered on future runs.
                 await mark_processed(db, path)
 
             except Exception as e:
