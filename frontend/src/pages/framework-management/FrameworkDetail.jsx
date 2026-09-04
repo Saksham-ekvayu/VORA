@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
 import Icon from "@/components/custom/Icon";
 import DeleteVersionModal from "./components/DeleteVersionModal";
@@ -426,6 +427,9 @@ function FrameworkDetail() {
 
   return (
     <div className="my-5">
+      <Helmet>
+        <title>VORA - Framework Details</title>
+      </Helmet>
       <div className="space-y-2">
         {/* ===== FRAMEWORK OVERVIEW CARD ===== */}
         <div className="rounded overflow-hidden bg-card border border-border">

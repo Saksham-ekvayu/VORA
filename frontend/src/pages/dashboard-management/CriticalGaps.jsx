@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import { Link, useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import DataTable from "@/components/data-table/DataTable";
 import CustomBadge from "@/components/custom/CustomBadge";
 import Icon from "@/components/custom/Icon";
@@ -163,6 +163,9 @@ export default function CriticalGaps() {
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-3 my-2">
+      <Helmet>
+        <title>VORA - Critical Gaps</title>
+      </Helmet>
       {/* Hero summary banner */}
       <div className="rounded border border-border bg-linear-to-br from-background to-card p-3 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div className="flex-1 min-w-0">

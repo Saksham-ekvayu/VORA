@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 
 import { useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
 import {
   getAdminFrameworkCategory,
@@ -166,6 +167,9 @@ function Category() {
   /* ---------------- UI ---------------- */
   return (
     <div className="my-2">
+      <Helmet>
+        <title>VORA - Categories</title>
+      </Helmet>
       <GridCardView
         data={frameworkCategories}
         loading={loading}

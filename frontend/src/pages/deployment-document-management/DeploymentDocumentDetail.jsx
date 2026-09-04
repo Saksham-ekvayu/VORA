@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
 import Icon from "@/components/custom/Icon";
 import DeleteVersionModal from "./components/DeleteVersionModal";
@@ -155,6 +156,9 @@ function DeploymentDocumentDetail() {
 
   return (
     <div className="min-h-screen bg-background text-foreground my-5">
+      <Helmet>
+        <title>VORA - Deployment Document Details</title>
+      </Helmet>
       <div className="space-y-6">
         {/* Document Overview Card */}
         <div className="rounded overflow-hidden bg-card border border-border">

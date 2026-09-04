@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
 import {
   Tooltip,
@@ -198,6 +199,9 @@ export default function FrameworkWorkflowList() {
 
   return (
     <div className="mt-2">
+      <Helmet>
+        <title>VORA - Framework Workflow List</title>
+      </Helmet>
       <DataTable
         entityName="Workflows"
         columns={columns}

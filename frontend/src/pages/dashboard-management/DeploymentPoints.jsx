@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { getAuditorDeploymentPoints } from "@/services/dashboardService";
 import { Skeleton } from "@/components/ui/skeleton";
 import { capitalizeFirstLetter } from "@/utils/stringUtils";
+import { Helmet } from "react-helmet-async";
 
 // ─── Stat Mini Box ────────────────────────────────────────────────────────────
 
@@ -237,6 +238,9 @@ export default function DeploymentPoints() {
 
   return (
     <div className="space-y-3 my-2">
+      <Helmet>
+        <title>VORA - Deployment Points</title>
+      </Helmet>
       {/* Hero banner */}
       <div className="rounded border border-border bg-linear-to-br from-background to-card shadow-lg p-3 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div className="flex-1 min-w-0">

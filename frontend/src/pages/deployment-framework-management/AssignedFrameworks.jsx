@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useTableData } from "@/components/data-table/hooks/useTableData";
@@ -233,6 +234,9 @@ function AssignedFrameworks() {
   /* ---------------- UI ---------------- */
   return (
     <div className="my-2">
+      <Helmet>
+        <title>VORA - Assigned Frameworks</title>
+      </Helmet>
       <DataTable
         entityName="Assigned Frameworks"
         columns={columns}

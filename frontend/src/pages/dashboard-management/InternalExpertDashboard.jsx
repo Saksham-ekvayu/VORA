@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-
+import { Helmet } from "react-helmet-async";
 import { CardContent, CardTitle } from "@/components/ui/card";
 import CustomBadge from "@/components/custom/CustomBadge";
 import { Button } from "@/components/ui/button";
@@ -200,6 +200,9 @@ export default function InternalExpertDashboard() {
 
   return (
     <div className="space-y-3 my-2">
+      <Helmet>
+        <title>VORA - Internal Expert Dashboard</title>
+      </Helmet>
       {/* ── Header bar ────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between flex-wrap gap-2 px-1">
         <h2 className="text-lg font-semibold text-foreground">
