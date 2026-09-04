@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { CardContent, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -391,30 +391,28 @@ export default function InternalExpertDashboard() {
                   "bg-primary/10 text-primary",
                 ],
               ].map(([iconName, title, text, tone], index) => (
-                <React.Fragment key={title}>
-                  <div className="flex-1 flex gap-3 md:block">
-                    <div
-                      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${tone}`}
-                    >
-                      <Icon name={iconName} size="24px" />
-                    </div>
-                    <div className="mt-0 md:mt-3">
-                      <p className="text-sm font-semibold">{title}</p>
-                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                        {text}
-                      </p>
-                    </div>
+                <div
+                  key={title}
+                  className="flex-1 relative flex gap-3 md:block group"
+                >
+                  <div
+                    className={`relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${tone}`}
+                  >
+                    <Icon name={iconName} size="24px" />
+                  </div>
+                  <div className="mt-0 md:mt-3 relative z-10">
+                    <p className="text-sm font-semibold">{title}</p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      {text}
+                    </p>
                   </div>
                   {index < 4 && (
-                    <div className="hidden md:flex shrink-0 pt-3.5 px-1">
-                      <Icon
-                        name="chevron-right"
-                        size="20px"
-                        className="text-muted-foreground/40"
-                      />
-                    </div>
+                    <div
+                      className="hidden md:block absolute top-6 h-0.5 bg-border/80"
+                      style={{ left: "56px", width: "calc(100% - 44px)" }}
+                    />
                   )}
-                </React.Fragment>
+                </div>
               ))}
             </div>
           </CardContent>
