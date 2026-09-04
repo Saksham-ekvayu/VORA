@@ -7,6 +7,7 @@ from app.db.queries import (
     is_processed,
     mark_processed,
     save_deployment_document,
+    update_document_ai_extraction,
 )
 from app.pipeline.helpers import group_paths_by_source
 from app.services.agent_client import call_agent
@@ -125,6 +126,13 @@ async def _run_pipeline():
 
                     logging.info(f"AI Extraction Response: {ai_response}")
                     add_live_log(f"AI Extraction Response: {ai_response}")
+
+                    extraction_id = (ai_response or {}).get("data", {}).get("extraction_id")
+
+                    if extraction_id:
+                        await update_document_ai_extraction(db, document_id, extraction_id)
+                        logging.info(f"Stored AI extraction id on document: {extraction_id}")
+                        add_live_log(f"Stored AI extraction id on document: {extraction_id}")
 
                 except Exception as e:
                     logging.exception(f"Failed to save deployment document: {e}")
