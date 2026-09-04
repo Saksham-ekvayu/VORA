@@ -41,11 +41,18 @@ def _extract_metrics_and_status(status: str) -> tuple[str, str]:
     return metric_key, ui_status
 
 
-def _process_package(pkg, df, user_id, uploader, gas_by_id, merges_by_id, metrics):
+def _process_package(pkg, df, user_id, uploader, gas_by_id, merges_by_id, metrics, start_date=None, end_date=None):
     if not isinstance(pkg, dict):
         return None
     expert_review = pkg.get("expertReview", {})
     if expert_review.get("assignedExpert") != str(user_id):
+        return None
+
+    req_at = expert_review.get("requestedAt") or pkg.get("createdAt")
+    
+    if start_date and str(req_at) < start_date:
+        return None
+    if end_date and str(req_at) > end_date:
         return None
 
     status = expert_review.get("status", "pending")
@@ -60,7 +67,6 @@ def _process_package(pkg, df, user_id, uploader, gas_by_id, merges_by_id, metric
         ga_results = ga_doc.gapAnalysis.get("deployment_gap_results", []) if ga_doc.gapAnalysis else []
         health = calculate_package_health(ga_results)
 
-    req_at = expert_review.get("requestedAt") or pkg.get("createdAt")
     return {
         "id": str(df.id),
         "frameworkName": df.frameworkName,
@@ -178,7 +184,7 @@ async def get_internal_expert_dashboard_analytics(
         for df in dfs:
             uploader = users_by_id.get(str(df.uploadedBy))
             for pkg in df.packages:
-                req = _process_package(pkg, df, user.id, uploader, gas_by_id, merges_by_id, metrics)
+                req = _process_package(pkg, df, user.id, uploader, gas_by_id, merges_by_id, metrics, start_date, end_date)
                 if req:
                     review_requests.append(req)
 

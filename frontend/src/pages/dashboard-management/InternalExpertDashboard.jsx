@@ -296,118 +296,110 @@ export default function InternalExpertDashboard() {
             </MetricCard>
           </div>
 
-      <CardWrapper
-        title={
-          <div>
-            <CardTitle className="text-lg">Review Requests</CardTitle>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Deployment frameworks requested by auditors for expert review.
-            </p>
-          </div>
-        }
-        right={
-          <Button variant="link">
-            <Link
-              to="/deployment-frameworks"
-              className="flex items-center gap-1"
-            >
-              View All
-              <Icon name="chevron-right" size="16px" />
-            </Link>
-          </Button>
-        }
-      >
-        <CardContent className="p-0">
-          <table className="w-full min-w-275 text-sm">
-            <thead>
-              <tr className="border-b border-border/60 bg-muted/40 text-left text-xs font-medium text-muted-foreground">
-                <th className="px-5 py-3">Deployment Framework</th>
-                <th className="px-4 py-3">Package Version</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Health</th>
-                <th className="px-4 py-3">Requested By</th>
-                <th className="px-4 py-3">Requested At</th>
-                <th className="px-5 py-3 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {renderTableBody()}
-            </tbody>
-          </table>
-        </CardContent>
-      </CardWrapper>
-
-      <div className="flex flex-col gap-5">
-        <CardWrapper title="Review Process">
-          <CardContent>
-            <div className="flex flex-row gap-5 justify-between">
-              {[
-                [
-                  "audit",
-                  "1. Review Request",
-                  "Auditor requests review for deployment framework.",
-                  "bg-primary/10 text-primary",
-                ],
-                [
-                  "analytics",
-                  "2. Review & Analysis",
-                  "Review deployment points, comparison & gap analysis.",
-                  "bg-secondary/10 text-secondary",
-                ],
-                [
-                  "message-square",
-                  "3. Add Remark",
-                  "Add review remark for each deployment point.",
-                  "bg-orange-50 text-orange-600",
-                ],
-                [
-                  "report",
-                  "4. Approve / Return",
-                  "Approve if acceptable or return for changes.",
-                  "bg-amber-50 text-amber-600",
-                ],
-                [
-                  "rocket",
-                  "5. Next Steps",
-                  "Auditor updates and resubmits or package gets approved.",
-                  "bg-primary/10 text-primary",
-                ],
-              ].map(([iconName, title, text, tone], index) => (
-                <div
-                  key={title}
-                  className="flex-1 relative flex gap-3 md:block group"
+          <CardWrapper
+            title={
+              <div>
+                <CardTitle className="text-lg">Review Requests</CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Deployment frameworks requested by auditors for expert review.
+                </p>
+              </div>
+            }
+            right={
+              <Button variant="link">
+                <Link
+                  to="/deployment-frameworks"
+                  className="flex items-center gap-1"
                 >
-                  <div
-                    className={`relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${tone}`}
-                  >
-                    <Icon name={iconName} size="24px" />
-                  </div>
-                  <div className="mt-0 md:mt-3 relative z-10">
-                    <p className="text-sm font-semibold">{title}</p>
-                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                      {text}
-                    </p>
-                  </div>
-                  {index < 4 && (
-                    <div
-                      className="hidden md:block absolute top-6 h-0.5 bg-border/80"
-                      style={{ left: "56px", width: "calc(100% - 44px)" }}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </CardWrapper>
-      </div>
+                  View All
+                  <Icon name="chevron-right" size="16px" />
+                </Link>
+              </Button>
+            }
+          >
+            <CardContent className="p-0">
+              <table className="w-full min-w-275 text-sm">
+                <thead>
+                  <tr className="border-b border-border/60 bg-muted/40 text-left text-xs font-medium text-muted-foreground">
+                    <th className="px-5 py-3">Deployment Framework</th>
+                    <th className="px-4 py-3">Package Version</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Health</th>
+                    <th className="px-4 py-3">Requested By</th>
+                    <th className="px-4 py-3">Requested At</th>
+                    <th className="px-5 py-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {renderTableBody()}
+                </tbody>
+              </table>
+            </CardContent>
+          </CardWrapper>
 
-      <div className="flex items-start justify-center gap-2 px-2 text-center text-xs text-muted-foreground">
-        <Icon name="info" size="16px" className="mt-0.5 shrink-0" />
-        <span>
-          Health is calculated based on comparison and gap analysis of
-          deployment points (implemented vs total required).
-        </span>
-      </div>
+          <div className="flex flex-col gap-5">
+            <CardWrapper title="Review Process">
+              <CardContent>
+                <div className="flex flex-row gap-5 justify-between">
+                  {[
+                    [
+                      "audit",
+                      "1. Review Request",
+                      "Auditor requests review for deployment framework.",
+                      "bg-primary/10 text-primary",
+                    ],
+                    [
+                      "analytics",
+                      "2. Review & Analysis",
+                      "Review deployment points, comparison & gap analysis.",
+                      "bg-secondary/10 text-secondary",
+                    ],
+                    [
+                      "message-square",
+                      "3. Add Remark",
+                      "Add review remark for each deployment point.",
+                      "bg-orange-50 text-orange-600",
+                    ],
+                    [
+                      "report",
+                      "4. Approve / Return",
+                      "Approve if acceptable or return for changes.",
+                      "bg-amber-50 text-amber-600",
+                    ],
+                    [
+                      "rocket",
+                      "5. Next Steps",
+                      "Auditor updates and resubmits or package gets approved.",
+                      "bg-primary/10 text-primary",
+                    ],
+                  ].map(([iconName, title, text, tone], index) => (
+                    <div
+                      key={title}
+                      className="flex-1 relative flex gap-3 md:block group"
+                    >
+                      <div
+                        className={`relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${tone}`}
+                      >
+                        <Icon name={iconName} size="24px" />
+                      </div>
+                      <div className="mt-0 md:mt-3 relative z-10">
+                        <p className="text-sm font-semibold">{title}</p>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                          {text}
+                        </p>
+                      </div>
+                      {index < 4 && (
+                        <div
+                          className="hidden md:block absolute top-6 h-0.5 bg-border/80"
+                          style={{ left: "56px", width: "calc(100% - 44px)" }}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </CardWrapper>
+          </div>
         </>
       )}
     </div>
