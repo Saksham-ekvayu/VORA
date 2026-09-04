@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 
 import { useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { useProfile } from "@/context/profileContext/useProfile";
 import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
 import Icon from "@/components/custom/Icon";
@@ -235,6 +236,9 @@ function MyProfile() {
 
   return (
     <div className="space-y-2 my-2">
+      <Helmet>
+        <title>VORA - My Profile</title>
+      </Helmet>
       {/* Premium Profile Header Card */}
       <div className="relative group">
         <div className="absolute -inset-1 bg-linear-to-r from-primary/30 to-primary-2/30 rounded blur-xl opacity-25 group-hover:opacity-40 transition"></div>

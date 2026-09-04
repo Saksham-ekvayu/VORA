@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import ProgressBar from "../../components/custom/ProgressBar";
 import { getAuditorFrameworkDetails } from "@/services/dashboardService";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Helmet } from "react-helmet-async";
 
 const COMPLIANCE_COLORS = [
   "#0d9488", // green (Compliant)
@@ -205,6 +206,9 @@ export default function FrameworkDetailDashboard() {
 
   return (
     <div className="space-y-3 my-2">
+      <Helmet>
+        <title>VORA - Framework Details Dashboard</title>
+      </Helmet>
       {/* ── Premium Header ──── */}
       <div className="rounded border border-border/50 bg-card overflow-hidden shadow-sm relative">
         {/* Subtle Gradient Background */}

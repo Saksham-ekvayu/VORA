@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
 import Icon from "@/components/custom/Icon";
 import { downloadFrameworkFile } from "@/services/frameworkService";
@@ -572,6 +573,9 @@ function AssignedFrameworkDetails() {
 
   return (
     <div className="min-h-screen bg-background text-foreground my-5">
+      <Helmet>
+        <title>VORA - Assigned Framework Details</title>
+      </Helmet>
       <div className="space-y-4">
         {/* ===== ASSIGNMENT OVERVIEW ===== */}
         <section className="">

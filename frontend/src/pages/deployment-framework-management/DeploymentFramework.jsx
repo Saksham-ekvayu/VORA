@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { DeleteDeploymentFrameworkModal } from "@/components/custom/modal";
@@ -286,6 +287,9 @@ function DeploymentFramework() {
   /* ---------------- UI ---------------- */
   return (
     <div className="my-2">
+      <Helmet>
+        <title>VORA - Deployment Frameworks</title>
+      </Helmet>
       <DataTable
         entityName="Deployment Frameworks"
         columns={columns}

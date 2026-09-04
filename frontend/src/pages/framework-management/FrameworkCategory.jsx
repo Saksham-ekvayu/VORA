@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 
 import { useState } from "react";
+import { Helmet } from "react-helmet-async";
 import Icon from "@/components/custom/Icon";
 import { getFrameworkCategory } from "@/services/frameworkService";
 import RequestAccessModal from "./components/RequestAccessModal";
@@ -185,6 +186,9 @@ function FrameworkCategory() {
   /* ---------------- UI ---------------- */
   return (
     <div className="my-2">
+      <Helmet>
+        <title>VORA - Framework Categories</title>
+      </Helmet>
       <GridCardView
         data={categories}
         loading={loading}

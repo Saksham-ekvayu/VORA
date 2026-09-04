@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 
 import Icon from "@/components/custom/Icon";
+import { Helmet } from "react-helmet-async";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -469,6 +470,9 @@ const DeploymentFrameworkDetail = () => {
 
   return (
     <div className="space-y-2 my-2">
+      <Helmet>
+        <title>VORA - Deployment Framework Details</title>
+      </Helmet>
       {/* ── Revoked Banner ── */}
       <DeploymentFrameworkBanner assignedFramework={assignedFramework} />
 

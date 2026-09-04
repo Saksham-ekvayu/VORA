@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 
 import { useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
 import {
   getAdminFrameworkAccess,
@@ -399,6 +400,9 @@ function FrameworkAccess() {
   /* ---------------- UI ---------------- */
   return (
     <div className="mt-5 pb-5 space-y-8">
+      <Helmet>
+        <title>VORA - Framework Access</title>
+      </Helmet>
       {/* Data Table */}
       <DataTable
         entityName="Access Records"

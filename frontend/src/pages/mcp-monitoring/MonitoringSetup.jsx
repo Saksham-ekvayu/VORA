@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { Helmet } from "react-helmet-async";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Icon from "@/components/custom/Icon";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -548,6 +549,9 @@ export default function MonitoringSetup() {
 
   return (
     <div className="space-y-4 my-2">
+      <Helmet>
+        <title>VORA - Monitoring Setup</title>
+      </Helmet>
       {/* Header */}
       <div className="border border-border rounded bg-card p-2 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">

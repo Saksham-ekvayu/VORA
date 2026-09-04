@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 
 import { useState, useEffect, useCallback } from "react";
+import { Helmet } from "react-helmet-async";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -130,6 +131,9 @@ export default function AuditorDashboard() {
   }, []);
   return (
     <div className="space-y-3 mt-2">
+      <Helmet>
+        <title>VORA - Auditor Dashboard</title>
+      </Helmet>
       {/* ── Header bar ────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between flex-wrap gap-2 px-1">
         <h2 className="text-lg font-semibold text-foreground">
@@ -167,7 +171,7 @@ export default function AuditorDashboard() {
         </div>
       </div>
 
-      {error || !dashboardData ? (
+      {error ? (
         <DashboardError
           error={error}
           onRetry={() => fetchDashboardData({ startDate, endDate })}

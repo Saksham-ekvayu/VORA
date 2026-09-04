@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
 import Icon from "@/components/custom/Icon";
 import CustomBadge from "@/components/custom/CustomBadge";
@@ -270,6 +271,9 @@ export default function CustomerDetails() {
 
   return (
     <div className="space-y-4 my-2">
+      <Helmet>
+        <title>VORA - Customer Details</title>
+      </Helmet>
       {/* Customer Header Card */}
       <div className="relative group">
         <div className="absolute -inset-1 bg-linear-to-r from-primary/20 to-primary/10 rounded blur-xl opacity-20 group-hover:opacity-30 transition"></div>
