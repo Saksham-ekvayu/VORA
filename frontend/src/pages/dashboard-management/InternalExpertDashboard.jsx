@@ -148,7 +148,7 @@ export default function InternalExpertDashboard() {
           <div className="font-medium">{item.packageVersion}</div>
         </td>
         <td className="px-4 py-3">
-          <CustomBadge status={item.status} size="sm" />
+          <CustomBadge status={item.reviewStatus} size="sm" />
         </td>
         <td className="px-4 py-3">
           <div className="text-lg font-semibold text-foreground">
@@ -318,12 +318,12 @@ export default function InternalExpertDashboard() {
             }
           >
             <CardContent className="p-0">
-              <table className="w-full min-w-275 text-sm">
+              <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border/60 bg-muted/40 text-left text-xs font-medium text-muted-foreground">
                     <th className="px-5 py-3">Deployment Framework</th>
                     <th className="px-4 py-3">Package Version</th>
-                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Review Status</th>
                     <th className="px-4 py-3">Health</th>
                     <th className="px-4 py-3">Requested By</th>
                     <th className="px-4 py-3">Requested At</th>

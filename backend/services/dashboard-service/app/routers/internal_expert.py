@@ -22,23 +22,15 @@ router = APIRouter(tags=["internal-expert-dashboard"])
 logger = logging.getLogger(__name__)
 
 
-def _extract_metrics_and_status(status: str) -> tuple[str, str]:
+def _extract_metrics_and_status(status: str) -> str:
     status_lower = status.lower()
-    metric_key = "inReview"
     if status_lower in ["requested"]:
-        metric_key = "pendingReview"
+        return "pendingReview"
     elif status_lower == "approved":
-        metric_key = "approved"
+        return "approved"
     elif status_lower in ["rejected", "returned"]:
-        metric_key = "returned"
-
-    ui_status = "In Review" if status_lower in ["pending", "in_review"] else status.capitalize()
-    if status_lower == "requested":
-        ui_status = "Pending"
-    elif status_lower == "rejected":
-        ui_status = "Returned"
-
-    return metric_key, ui_status
+        return "returned"
+    return "inReview"
 
 
 def _process_package(pkg, df, user_id, uploader, gas_by_id, merges_by_id, metrics, start_date=None, end_date=None):
@@ -56,7 +48,7 @@ def _process_package(pkg, df, user_id, uploader, gas_by_id, merges_by_id, metric
         return None
 
     status = expert_review.get("status", "pending")
-    metric_key, ui_status = _extract_metrics_and_status(status)
+    metric_key = _extract_metrics_and_status(status)
     metrics[metric_key] += 1
 
     health = 0
@@ -73,6 +65,7 @@ def _process_package(pkg, df, user_id, uploader, gas_by_id, merges_by_id, metric
         "frameworkVersion": df.frameworkVersion,
         "packageVersion": pkg.get("packageVersion", "1.0.0"),
         "packageStatus": pkg.get("status", "pending"),
+        "reviewStatus": status,
         "requestedBy": {
             "id": str(uploader.id) if uploader else "",
             "name": uploader.name if uploader else "Unknown",
@@ -80,7 +73,6 @@ def _process_package(pkg, df, user_id, uploader, gas_by_id, merges_by_id, metric
             "avatar": uploader.avatar if uploader else "",
         },
         "requestedAt": req_at,
-        "status": ui_status,
         "health": health,
     }
 
