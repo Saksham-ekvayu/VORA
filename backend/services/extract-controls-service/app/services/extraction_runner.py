@@ -1131,7 +1131,7 @@ async def _save_merge_to_framework_merge(
 
 
 async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
-    """Load DeploymentDocument, extract controls using AI, save to document_extraction table"""
+    """Load DeploymentDocument, find linked DocumentExtraction, run AI extraction if pending/failed."""
     dd_id = str(dd_id).strip()
     file_id = str(file_id).strip()
     uploaded_ts = _iso()
@@ -1144,10 +1144,9 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
     logger.info(f"{'='*80}")
 
     try:
-        # Get deployment document and file info
         logger.info("[DD-EXTRACT] Step 1: Loading deployment document from database...")
         async with session_scope() as session:
-            from vora_shared.models import DeploymentDocument
+            from vora_shared.models import DeploymentDocument, DocumentExtraction
 
             dd = await session.get(DeploymentDocument, dd_id)
             if not dd:
@@ -1156,80 +1155,53 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
 
             logger.info(f"[DD-EXTRACT]  Deployment Document found: {dd.frameworkName}")
 
-            # Find package and file. DeploymentDocument doesn't store packages;
-            # load parent DeploymentFramework and look up the package by version.
-            pkg_info = None
-            try:
-                from vora_shared.models import DeploymentFramework
-
-                df = await session.get(DeploymentFramework, dd.deploymentFrameworkId)
-                if not df:
-                    logger.error(f"[DD-EXTRACT]  DeploymentFramework not found: {dd.deploymentFrameworkId}")
-                    return
-
-                packages = list(df.packages or [])
-                # package version may be stored on the deployment document or on the framework
-                pkg_ver = getattr(dd, "frameworkVersion", None) or getattr(df, "currentPackageVersion", None)
-
-                for pkg in packages:
-                    if isinstance(pkg, dict) and pkg.get("packageVersion") == pkg_ver:
-                        pkg_info = pkg
-                        break
-
-                if not pkg_info:
-                    logger.error(f"[DD-EXTRACT]  Package not found: {pkg_ver}")
-                    return
-
-                documents = pkg_info.get("documents") or []
-                file_info = None
-                for doc in documents:
-                    if isinstance(doc, dict) and str(doc.get("fileId")) == file_id:
-                        file_info = doc
-                        break
-
-                # If file not present in framework packages (e.g. reprocessed uploads
-                # or documents saved without updating the parent framework), fall
-                # back to using the file info stored directly on the
-                # DeploymentDocument.
-                if not file_info:
-                    doc_data = dd.document or {}
-                    if isinstance(doc_data, dict) and str(doc_data.get("fileId")) == file_id:
-                        file_info = dict(doc_data)
-                    else:
-                        logger.error(f"[DD-EXTRACT]  File not found in deployment package: {file_id}")
-                        return
-
-                file_path = file_info.get("fileUrl")
-            except Exception as e:
-                logger.error(f"[DD-EXTRACT] Error locating package/file: {e}")
+            doc_data = dd.document or {}
+            if not isinstance(doc_data, dict) or str(doc_data.get("fileId")) != file_id:
+                logger.error(f"[DD-EXTRACT]  File ID mismatch or invalid document data")
                 return
+
+            extraction_id = doc_data.get("aiExtraction")
+            if not extraction_id:
+                logger.error("[DD-EXTRACT]  No aiExtraction ID in deployment document")
+                return
+
+            doc_extraction = await session.get(DocumentExtraction, extraction_id)
+            if not doc_extraction:
+                logger.error(f"[DD-EXTRACT]  DocumentExtraction not found: {extraction_id}")
+                return
+
+            ai_ext = doc_extraction.aiExtraction or {}
+            status = ai_ext.get("status")
+
+            if status not in ("pending", "failed"):
+                logger.info(f"[DD-EXTRACT]  Extraction status is {status}, skipping.")
+                return
+
+            file_path = doc_data.get("fileUrl")
+            file_hash = doc_data.get("fileHash")
+
             if file_path and file_path.startswith("/uploads/"):
                 from pathlib import Path
-
                 from vora_shared.file_storage import UPLOAD_BASE_PATH
-
                 relative = file_path.replace("/uploads/", "", 1)
                 file_path = str((Path(UPLOAD_BASE_PATH) / relative).resolve())
 
-            file_hash = file_info.get("fileHash")
             logger.info("[DD-EXTRACT]  File found")
             logger.info(f"  File Path: {file_path}")
             logger.info(f"  File Hash: {file_hash}")
 
             logger.info("[DD-EXTRACT] Step 1.5: Updating status to 'processing'...")
-            await _update_deployment_document_ai_status(
-                session,
-                dd_id,
-                file_id,
-                {
-                    "status": "processing",
-                    "timestamp": uploaded_ts,
-                    "message": "Deployment document ai extraction in progress",
-                },
-            )
+            updated_ai_ext = dict(ai_ext)
+            updated_ai_ext.update({
+                "status": "processing",
+                "timestamp": uploaded_ts,
+                "message": "Deployment document ai extraction in progress",
+            })
+            doc_extraction.aiExtraction = updated_ai_ext
+            session.add(doc_extraction)
+            await session.commit()
             logger.info("[DD-EXTRACT]  Status updated to 'processing'")
 
-        # Load document from file
         logger.info("[DD-EXTRACT] Step 2: Loading document from disk...")
         chunks = await asyncio.to_thread(_load_document_chunks, file_path)
         if not chunks:
@@ -1238,21 +1210,16 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
 
         logger.info(f"[DD-EXTRACT]  Document loaded: {len(chunks)} chunks extracted")
 
-        # Extract controls using AI (client controls for deployment documents)
         logger.info("[DD-EXTRACT] Step 3: Running AI extraction...")
         controls_flat = await asyncio.to_thread(extract_deployment_controls, chunks, dd_id)
-        logger.info(
-            f"[DD-EXTRACT]  Framework ai extraction complete: {len(controls_flat)} controls extracted"
-        )
+        logger.info(f"[DD-EXTRACT]  Framework ai extraction complete: {len(controls_flat)} controls extracted")
 
-        # Convert to section structure
         logger.info("[DD-EXTRACT] Step 4: Converting to section structure...")
         controls_structured = await asyncio.to_thread(
             convert_to_section_structure, controls_flat, resource_type="deployment"
         )
         logger.info(f"[DD-EXTRACT]  Structure converted: {len(controls_structured)} sections")
 
-        # Build controls payload
         total_controls = sum(len(s.get("controls", [])) for s in controls_structured)
         controls_payload = {
             "total_controls": total_controls,
@@ -1264,7 +1231,6 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
         completed_ts = _iso()
         history = _status_history(uploaded_ts, uploaded_ts, completed_ts)
 
-        # Prepare extraction data
         extraction_data = {
             "status": "extracted",
             "timestamp": completed_ts,
@@ -1284,79 +1250,49 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
             "controls": controls_payload,
         }
 
-        # Attach document/file metadata so document_extraction rows include source info
         try:
             meta = {
                 "fileId": file_id,
                 "fileHash": file_hash,
                 "fileUrl": file_path,
-                "fileSize": file_info.get("fileSize") if isinstance(file_info, dict) else None,
-                "fileType": file_info.get("fileType") if isinstance(file_info, dict) else None,
-                "originalFileName": (
-                    file_info.get("originalFileName") if isinstance(file_info, dict) else None
-                ),
-                "uploadedAt": file_info.get("uploadedAt") if isinstance(file_info, dict) else None,
+                "fileSize": doc_data.get("fileSize"),
+                "fileType": doc_data.get("fileType"),
+                "originalFileName": doc_data.get("originalFileName"),
+                "uploadedAt": doc_data.get("uploadedAt"),
             }
             extraction_data["document"] = meta
         except Exception:
             pass
 
-        # Update deployment document with extracted data
         logger.info("[DD-EXTRACT] Step 5: Saving to database...")
         async with session_scope() as session:
-            logger.info("[DD-EXTRACT] 5a: Updating deployment document's aiExtraction...")
-            await _update_deployment_document_ai_status(
-                session,
-                dd_id,
-                file_id,
-                extraction_data,
-                replace=True,
-            )
-            logger.info("[DD-EXTRACT]  Deployment document updated")
-
-            # Save to document_extraction table (by fileHash) - PRIMARY TABLE
-            if file_hash:
-                logger.info("[DD-EXTRACT] 5b: Saving to document_extraction table...")
-                doc_extraction = await _get_or_create_doc_extraction(session, file_hash, None)
+            from vora_shared.models import DocumentExtraction
+            
+            doc_extraction = await session.get(DocumentExtraction, extraction_id)
+            if doc_extraction:
                 doc_extraction.aiExtraction = extraction_data
                 session.add(doc_extraction)
                 await session.flush()
                 await session.commit()
                 logger.info("[DD-EXTRACT]  Saved to document_extractions table")
-                logger.info("  Table: document_extractions")
-                logger.info(f"  ID: {doc_extraction.id}")
-                logger.info(f"  FileHash: {file_hash}")
-                logger.info("  Status: extracted")
-                logger.info(f"  Total Controls: {total_controls}")
-
-                # Trigger compliance evaluation automatically in the background
-                try:
-                    import httpx
-
-                    logger.info(f"[DD-EXTRACT] Triggering compliance agent evaluation for dd_id: {dd_id}...")
-                    async with httpx.AsyncClient(timeout=60.0) as client:
-                        resp = await client.post(
-                            f"http://localhost:7008/api/compliance-agent/evaluate/{dd_id}"
-                        )
-                        if resp.status_code in (200, 201, 202):
-                            logger.info(
-                                f"[DD-EXTRACT] Successfully triggered compliance agent for dd_id: {dd_id}"
-                            )
-                        else:
-                            logger.warning(
-                                f"[DD-EXTRACT] Failed to trigger compliance agent, status: {resp.status_code}"
-                            )
-                except Exception as e:
-                    logger.warning(f"[DD-EXTRACT] Could not reach compliance agent service: {e}")
-            else:
-                logger.warning("[DD-EXTRACT]  No fileHash - skipping document_extraction save")
+            
+            try:
+                import httpx
+                logger.info(f"[DD-EXTRACT] Triggering compliance agent evaluation for dd_id: {dd_id}...")
+                async with httpx.AsyncClient(timeout=60.0) as client:
+                    resp = await client.post(f"http://localhost:7008/api/compliance-agent/evaluate/{dd_id}")
+                    if resp.status_code in (200, 201, 202):
+                        logger.info(f"[DD-EXTRACT] Successfully triggered compliance agent for dd_id: {dd_id}")
+                    else:
+                        logger.warning(f"[DD-EXTRACT] Failed to trigger compliance agent, status: {resp.status_code}")
+            except Exception as e:
+                logger.warning(f"[DD-EXTRACT] Could not reach compliance agent service: {e}")
 
         logger.info(f"{'='*80}")
         logger.info("[DD-EXTRACT-SUCCESS]  Deployment document extraction complete!")
         logger.info(f"  Deployment Document ID: {dd_id}")
         logger.info(f"  File ID: {file_id}")
         logger.info(f"  Total Controls: {total_controls}")
-        logger.info(f"  Total Sections: {len(controls_structured)}")
         logger.info(f"  Processing Time: {history['processing_time_seconds']:.2f}s")
         logger.info("[DD-EXTRACT-SAVED]  Data saved to: document_extractions table")
         logger.info(f"{'='*80}")
@@ -1365,84 +1301,30 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
         logger.error(f"{'='*80}")
         logger.error("[DD-EXTRACT-ERROR]  Deployment document extraction failed!")
         logger.error(f"  Deployment Document ID: {dd_id}")
-        logger.error(f"  File ID: {file_id}")
         logger.error(f"  Error: {str(exc)}")
         logger.error(f"{'='*80}")
         logger.exception("[DD-EXTRACT] Exception traceback:")
 
-        fail_ts = _iso()
         try:
             async with session_scope() as session:
-                await _update_deployment_document_ai_status(
-                    session,
-                    dd_id,
-                    file_id,
-                    {
-                        "status": "failed",
-                        "timestamp": fail_ts,
-                        "message": f"Extraction failed: {str(exc)}",
-                    },
-                )
-                logger.info("[DD-EXTRACT] Updated status to 'failed' in database")
+                from vora_shared.models import DocumentExtraction
+                # If extraction_id was successfully retrieved earlier
+                if 'extraction_id' in locals() and extraction_id:
+                    doc_extraction = await session.get(DocumentExtraction, extraction_id)
+                    if doc_extraction:
+                        ai = dict(doc_extraction.aiExtraction or {})
+                        ai.update({
+                            "status": "failed",
+                            "timestamp": _iso(),
+                            "message": f"Extraction failed: {str(exc)}",
+                        })
+                        doc_extraction.aiExtraction = ai
+                        session.add(doc_extraction)
+                        await session.commit()
+                        logger.info("[DD-EXTRACT] Updated status to 'failed' in database")
         except Exception as db_exc:
             logger.error(f"[DD-EXTRACT] Failed to update status in database: {db_exc}")
 
-
-async def _update_deployment_document_ai_status(
-    session: Any, dd_id: str, file_id: str, status_data: dict[str, Any], replace: bool = False
-) -> None:
-    """Update deployment document's aiExtraction field in the packages structure"""
-    # DeploymentDocument does not store package lists; update the parent
-    # DeploymentFramework package entry instead.
-    from vora_shared.models import DeploymentDocument
-
-    dd = await session.get(DeploymentDocument, dd_id)
-    if not dd:
-        return
-
-    pkg_ver = getattr(dd, "frameworkVersion", None)
-    df_id = getattr(dd, "deploymentFrameworkId", None)
-    if not df_id or not pkg_ver:
-        # Nothing to update on framework side; try to update the DeploymentDocument's
-        # own `document.aiExtraction` field and return.
-        try:
-            doc_data = dd.document or {}
-            if isinstance(doc_data, dict):
-                if replace:
-                    doc_data["aiExtraction"] = status_data
-                else:
-                    ai = dict(doc_data.get("aiExtraction") or {})
-                    ai.update(status_data)
-                    doc_data["aiExtraction"] = ai
-                dd.document = doc_data
-                flag_modified(dd, "document")
-                session.add(dd)
-                return
-        except Exception:
-            return
-
-    # Attempt to update the parent framework package entry. If that does not
-    # find the package/document, fall back to updating the DeploymentDocument row.
-    try:
-        await _update_deployment_framework_ai_status(
-            session, df_id, pkg_ver, file_id, status_data, replace=replace
-        )
-    except Exception:
-        try:
-            # Fallback to updating DeploymentDocument.document.aiExtraction
-            doc_data = dd.document or {}
-            if isinstance(doc_data, dict):
-                if replace:
-                    doc_data["aiExtraction"] = status_data
-                else:
-                    ai = dict(doc_data.get("aiExtraction") or {})
-                    ai.update(status_data)
-                    doc_data["aiExtraction"] = ai
-                dd.document = doc_data
-                flag_modified(dd, "document")
-                session.add(dd)
-        except Exception:
-            return
 
 
 async def _get_or_create_doc_extraction(
