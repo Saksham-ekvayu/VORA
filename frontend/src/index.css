@@ -296,7 +296,6 @@ select:-webkit-autofill {
    ENHANCED LOADING ANIMATION
 ===================================== */
 @keyframes pulse-glow {
-
   0%,
   100% {
     opacity: 1;
@@ -363,7 +362,6 @@ select:-webkit-autofill {
    PULSE ANIMATION
 ===================================== */
 @keyframes pulse {
-
   0%,
   100% {
     opacity: 1;
@@ -397,7 +395,9 @@ select:-webkit-autofill {
 /* On row hover, style the sticky cell with a solid color
    that matches bg-accent/60 on top of card background */
 tr:hover .sticky-sr-col {
-  background-color: color-mix(in srgb,
-      var(--color-accent) 100%,
-      var(--color-card)) !important;
+  background-color: color-mix(
+    in srgb,
+    var(--color-accent) 100%,
+    var(--color-card)
+  ) !important;
 }

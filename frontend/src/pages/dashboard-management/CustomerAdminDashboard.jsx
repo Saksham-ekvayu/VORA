@@ -151,7 +151,9 @@ function FrameworkSetupFilter({ frameworks = [], selectedId, onChange }) {
 
   const getSelectedName = () => {
     if (!frameworks?.length) return "No Frameworks";
-    return frameworks?.find((f) => f.id === activeId)?.frameworkVersion || "Select";
+    return (
+      frameworks?.find((f) => f.id === activeId)?.frameworkVersion || "Select"
+    );
   };
 
   const handleSelect = (id) => {
@@ -548,8 +550,8 @@ export default function CustomerAdminDashboard() {
     activeSetupProgress.percentage ??
     (activeSetupProgress.total
       ? Math.round(
-        (activeSetupProgress.configured / activeSetupProgress.total) * 100
-      )
+          (activeSetupProgress.configured / activeSetupProgress.total) * 100
+        )
       : 0);
 
   const getMonitoringSetupValue = () => {
