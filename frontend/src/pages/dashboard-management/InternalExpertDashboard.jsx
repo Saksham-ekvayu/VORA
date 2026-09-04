@@ -157,7 +157,7 @@ function MetricCard({
   );
 }
 
-function SummaryCard({ icon: Icon, value, title, description, tone }) {
+function SummaryCard({ icon, value, title, description, tone }) {
   const styles = {
     success: ["bg-green-50 text-green-600", "text-green-600"],
     danger: ["bg-destructive/10 text-destructive", "text-destructive"],
@@ -169,7 +169,7 @@ function SummaryCard({ icon: Icon, value, title, description, tone }) {
       <div
         className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl ${styles[tone][0]}`}
       >
-        <Icon name={Icon} size="28px" />
+        <Icon name={icon} size="28px" />
       </div>
       <div>
         <div className={`text-2xl font-semibold ${styles[tone][1]}`}>
@@ -394,14 +394,14 @@ export default function InternalExpertDashboard() {
               tone="success"
             />
             <SummaryCard
-              icon="refresh"
+              icon="back"
               value="5"
               title="Returned"
               description="Packages sent back for changes"
               tone="danger"
             />
             <SummaryCard
-              icon="message-square"
+              icon="document"
               value="28"
               title="Remarks Added"
               description="Review remarks added by you"
