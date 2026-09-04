@@ -3,13 +3,6 @@ import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import CardWrapper from "./components/CardWrapper";
 import { getRoleLabel } from "@/utils/commonUtils";
 import { useAuth } from "@/context/authContext/useAuth";
@@ -18,71 +11,74 @@ import { useDateFilter } from "./hooks/useDateFilter";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import Icon from "@/components/custom/Icon";
+import FrameworkMiniCard from "@/components/custom/FrameworkMiniCard";
+import UserMiniCard from "@/components/custom/UserMiniCard";
+import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
 
 const reviewRequests = [
   {
     id: "df-001",
-    framework: "ISO27001:2022 - Deployment Framework",
-    customer: "Acme Corporation",
-    assignedFramework: "ISO27001:2022",
-    assignedVersion: "v1.0",
+    frameworkName: "Deployment Framework",
+    frameworkVersion: "ISO27001:2022",
     packageVersion: "2.1.0",
     packageStatus: "In Review",
-    requestedBy: "Auditor John",
-    requesterEmail: "auditor.john@acme.com",
-    requestedAt: "2 hours ago",
-    requestedDate: "08 May 2025",
+    requestedBy: {
+      id: "auditor-001",
+      name: "Auditor John",
+      email: "auditor.john@acme.com",
+      avatar: "https://randomuser.me/api/portraits/men/1.jpg",
+    },
+    requestedAt: "2026-08-26T06:22:46.553644+00:00",
     status: "In Review",
     health: 68,
-    healthLabel: "Medium",
   },
   {
     id: "df-002",
-    framework: "ISO9001:2015 - QMS Framework",
-    customer: "Tech Solutions Ltd.",
-    assignedFramework: "ISO9001:2015",
-    assignedVersion: "v2.0",
+    frameworkName: "QMS Framework",
+    frameworkVersion: "ISO9001:2015",
     packageVersion: "1.3.0",
     packageStatus: "Pending",
-    requestedBy: "Auditor Sarah",
-    requesterEmail: "auditor.sarah@tech.com",
-    requestedAt: "1 day ago",
-    requestedDate: "07 May 2025",
+    requestedBy: {
+      id: "auditor-002",
+      name: "Auditor Sarah",
+      email: "auditor.sarah@tech.com",
+      avatar: "https://randomuser.me/api/portraits/women/1.jpg",
+    },
+    requestedAt: "2026-08-26T06:22:46.553644+00:00",
     status: "Pending",
     health: 82,
-    healthLabel: "Good",
   },
   {
     id: "df-003",
-    framework: "SOC 2 Type II - Security Framework",
-    customer: "DataSecure Inc.",
-    assignedFramework: "SOC 2 Type II",
-    assignedVersion: "v1.0",
+    frameworkName: "Security Framework",
+    frameworkVersion: "SOC 2 Type II",
     packageVersion: "3.0.0",
     packageStatus: "In Review",
-    requestedBy: "Auditor Mike",
-    requesterEmail: "auditor.mike@datasec.com",
-    requestedAt: "2 days ago",
-    requestedDate: "06 May 2025",
+    requestedBy: {
+      id: "auditor-003",
+      name: "Auditor Mike",
+      email: "auditor.mike@datasec.com",
+      avatar: "https://randomuser.me/api/portraits/men/2.jpg",
+    },
+    requestedAt: "2026-08-24T06:22:46.553644+00:00",
     status: "In Review",
     health: 55,
-    healthLabel: "Medium",
   },
   {
     id: "df-004",
-    framework: "GDPR Compliance Framework",
-    customer: "Global Systems",
-    assignedFramework: "GDPR",
-    assignedVersion: "v1.1",
+    frameworkName: "Compliance Framework",
+    frameworkVersion: "GDPR:2021",
     packageVersion: "1.0.0",
     packageStatus: "Pending",
-    requestedBy: "Auditor Emma",
-    requesterEmail: "emma@globalsys.com",
-    requestedAt: "3 days ago",
-    requestedDate: "06 May 2025",
+    requestedBy: {
+      id: "auditor-004",
+      name: "Auditor Emma",
+      email: "auditor.emma@globalsys.com",
+      avatar: "https://randomuser.me/api/portraits/women/2.jpg",
+    },
+    requestedAt: "2026-08-23T06:22:46.553644+00:00",
     status: "Pending",
     health: 72,
-    healthLabel: "Good",
   },
 ];
 
@@ -308,172 +304,79 @@ export default function InternalExpertDashboard() {
           </div>
         }
         right={
-          <div className="flex flex-wrap gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-fit">
-                  Review Status
-                  <Icon
-                    name="chevron-down"
-                    size="16px"
-                    className="opacity-50"
-                  />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-fit">
-                <DropdownMenuItem>All Status</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>Pending</DropdownMenuItem>
-                <DropdownMenuItem>In Review</DropdownMenuItem>
-                <DropdownMenuItem>Returned</DropdownMenuItem>
-                <DropdownMenuItem>Approved</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          <Button variant="link">
+            <Link
+              to="/deployment-frameworks"
+              className="flex items-center gap-1"
+            >
+              View All
+              <Icon name="chevron-right" size="16px" />
+            </Link>
+          </Button>
         }
       >
         <CardContent className="p-0">
-          <div className="hidden overflow-x-auto md:block">
-            <table className="w-full min-w-275 text-sm">
-              <thead>
-                <tr className="border-b border-border/60 bg-muted/40 text-left text-xs font-medium text-muted-foreground">
-                  <th className="px-5 py-3">Deployment Framework</th>
-                  <th className="px-4 py-3">Assigned Framework</th>
-                  <th className="px-4 py-3">Package Version</th>
-                  <th className="px-4 py-3">Requested By</th>
-                  <th className="px-4 py-3">Requested At</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Overall Health</th>
-                  <th className="px-5 py-3 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reviewRequests.map((item) => (
-                  <tr
-                    key={item.id}
-                    className="border-b border-border/50 last:border-0 hover:bg-muted/30"
-                  >
-                    <td className="px-5 py-4">
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-semibold text-primary">
-                          {item.framework.split(" ")[0].slice(0, 4)}
-                        </div>
-                        <div>
-                          <div className="font-medium text-foreground">
-                            {item.framework}
-                          </div>
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            {item.customer}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="font-medium">
-                        {item.assignedFramework}
-                      </div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        {item.assignedVersion}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="font-medium">{item.packageVersion}</div>
-                      <div className="mt-1">
-                        <StatusBadge status={item.packageStatus} />
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="font-medium">{item.requestedBy}</div>
-                      <div className="mt-1 max-w-40 truncate text-xs text-muted-foreground">
-                        {item.requesterEmail}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="font-medium">{item.requestedAt}</div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        {item.requestedDate}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <StatusBadge status={item.status} />
-                    </td>
-                    <td className="px-4 py-4">
-                      <HealthValue
-                        value={item.health}
-                        label={item.healthLabel}
-                      />
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <Button
-                        size="sm"
-                        className="gap-1 bg-primary text-primary-foreground hover:bg-primary/90"
+          <table className="w-full min-w-275 text-sm">
+            <thead>
+              <tr className="border-b border-border/60 bg-muted/40 text-left text-xs font-medium text-muted-foreground">
+                <th className="px-5 py-3">Deployment Framework</th>
+                <th className="px-4 py-3">Package Version</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Overall Health</th>
+                <th className="px-4 py-3">Requested By</th>
+                <th className="px-4 py-3">Requested At</th>
+                <th className="px-5 py-3 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reviewRequests.map((item) => (
+                <tr
+                  key={item.id}
+                  className="border-b border-border/50 last:border-0 hover:bg-muted/30"
+                >
+                  <td className="px-5">
+                    <FrameworkMiniCard
+                      name={item.frameworkName}
+                      description={item.frameworkVersion}
+                      link={`/deployment-frameworks/${item.id}`}
+                    />
+                  </td>
+                  <td className="px-4">
+                    <div className="font-medium">{item.packageVersion}</div>
+                  </td>
+                  <td className="px-4">
+                    <StatusBadge status={item.status} />
+                  </td>
+                  <td className="px-4">
+                    <HealthValue value={item.health} label={item.healthLabel} />
+                  </td>
+                  <td className="px-4">
+                    <UserMiniCard
+                      name={item.requestedBy.name}
+                      email={item.requestedBy.email}
+                      avatar={item.requestedBy.avatar}
+                    />
+                  </td>
+                  <td className="px-4">
+                    <div className="font-medium">
+                      {formatDateWithMonthNameAndTime(item.requestedAt)}
+                    </div>
+                  </td>
+                  <td className="px-5 py-4 text-right">
+                    <Button size="xs">
+                      <Link
+                        to={`/deployment-frameworks/${item.id}/comparison-and-gap-analysis?package-version=${item.packageVersion}`}
+                        className="flex items-center gap-1"
                       >
                         Review Now
                         <Icon name="chevron-right" size="16px" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="space-y-3 p-4 md:hidden">
-            {reviewRequests.map((item) => (
-              <div
-                key={item.id}
-                className="rounded-xl border border-border/70 bg-card p-4"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-semibold text-primary">
-                      {item.framework.split(" ")[0].slice(0, 4)}
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium">
-                        {item.framework}
-                      </div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        {item.customer}
-                      </div>
-                    </div>
-                  </div>
-                  <StatusBadge status={item.status} />
-                </div>
-
-                <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <span className="text-muted-foreground">Package</span>
-                    <p className="mt-1 font-medium">{item.packageVersion}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Requested By</span>
-                    <p className="mt-1 font-medium">{item.requestedBy}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">
-                      Assigned Framework
-                    </span>
-                    <p className="mt-1 font-medium">{item.assignedFramework}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Health</span>
-                    <div className="mt-1">
-                      <HealthValue
-                        value={item.health}
-                        label={item.healthLabel}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <Button className="mt-4 w-full bg-primary hover:bg-primary/90">
-                  Review Now{" "}
-                  <Icon name="chevron-right" size="16px" className="ml-1" />
-                </Button>
-              </div>
-            ))}
-          </div>
+                      </Link>
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </CardContent>
       </CardWrapper>
 
