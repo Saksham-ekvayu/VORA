@@ -44,14 +44,20 @@ async def _run_pipeline():
             add_live_log(f"Merge document not found: {merge_id}")
             return
 
-    logging.info(f"LIVE package found: {framework['package_version']}")
-    add_live_log(f"LIVE package found: {framework['package_version']}")
+    logging.info(f"LIVE package found: {framework['framework_name']} v{framework['package_version']}")
+    add_live_log(f"LIVE package found: {framework['framework_name']} v{framework['package_version']}")
 
     # STEP 2: Deployment data from framework_merges
     deployment_data = merge_data["controls"]
 
     # STEP 3: Group paths by whatever source is recorded against each one
+    # (deployment points without BOTH a path and a source are skipped entirely)
     paths_by_source = group_paths_by_source(deployment_data)
+
+    total_qualifying_points = sum(len(paths) for paths in paths_by_source.values())
+
+    logging.info(f"Deployment points with path+source set: {total_qualifying_points}")
+    add_live_log(f"Deployment points with path+source set: {total_qualifying_points}")
 
     logging.info(f"Paths by source: {paths_by_source}")
     add_live_log(f"Paths by source: {paths_by_source}")
