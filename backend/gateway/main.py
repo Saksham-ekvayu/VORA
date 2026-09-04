@@ -50,6 +50,7 @@ ROUTES = {
     # dashboard-service (7003)
     "/api/dashboard/admin": "http://localhost:7003/dashboard/admin",
     "/api/dashboard/expert": "http://localhost:7003/dashboard/expert",
+    "/api/dashboard/internal-expert": "http://localhost:7003/dashboard/internal-expert",
     "/api/dashboard/customer-admin": "http://localhost:7003/dashboard/customer-admin",
     "/api/dashboard/auditor": "http://localhost:7003/dashboard/auditor",
     # framework-category-service (7004)

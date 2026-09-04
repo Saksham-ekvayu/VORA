@@ -167,7 +167,7 @@ export default function AuditorDashboard() {
         </div>
       </div>
 
-      {error || !dashboardData ? (
+      {error ? (
         <DashboardError
           error={error}
           onRetry={() => fetchDashboardData({ startDate, endDate })}
