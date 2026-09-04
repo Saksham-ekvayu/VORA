@@ -21,8 +21,10 @@ const ROLE_COLOR = {
 };
 
 const STATUS_COLOR = {
-  pending: "yellow",
+  pending: "amber",
+  "in review": "purple",
   approved: "green",
+  returned: "red",
   rejected: "red",
   uploaded: "purple",
   failed: "red",

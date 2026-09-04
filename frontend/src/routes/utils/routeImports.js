@@ -25,6 +25,9 @@ export const UserDashboard = lazy(
 export const AuditorDashboard = lazy(
   () => import("@/pages/dashboard-management/AuditorDashboard")
 );
+export const InternalExpertDashboard = lazy(
+  () => import("@/pages/dashboard-management/InternalExpertDashboard")
+);
 export const FrameworkDetailDashboard = lazy(
   () => import("@/pages/dashboard-management/FrameworkDetailDashboard")
 );

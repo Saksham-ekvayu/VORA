@@ -168,7 +168,10 @@ export default function AuditorDashboard() {
       </div>
 
       {error || !dashboardData ? (
-        <DashboardError error={error} onRetry={() => fetchDashboardData({ startDate, endDate })} />
+        <DashboardError
+          error={error}
+          onRetry={() => fetchDashboardData({ startDate, endDate })}
+        />
       ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -365,7 +368,7 @@ export default function AuditorDashboard() {
                                   (d) => d.count
                                 ) || [1])
                               )) *
-                            100,
+                              100,
                             5
                           )}
                           color={"bg-primary"}
