@@ -167,7 +167,7 @@ export default function AuditorDashboard() {
         </div>
       </div>
 
-      {error || !dashboardData ? (
+      {error ? (
         <DashboardError
           error={error}
           onRetry={() => fetchDashboardData({ startDate, endDate })}
@@ -368,7 +368,7 @@ export default function AuditorDashboard() {
                                   (d) => d.count
                                 ) || [1])
                               )) *
-                              100,
+                            100,
                             5
                           )}
                           color={"bg-primary"}
