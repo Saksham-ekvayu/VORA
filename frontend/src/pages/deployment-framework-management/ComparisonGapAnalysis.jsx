@@ -1,6 +1,5 @@
-/* eslint-disable react/prop-types */
-
 import { useEffect, useState, useMemo, useCallback } from "react";
+import { Helmet } from "react-helmet-async";
 import Icon from "@/components/custom/Icon";
 import { Button } from "@/components/ui/button";
 import {
@@ -300,6 +299,9 @@ export default function ComparisonGapAnalysis() {
 
   return (
     <div className="space-y-4 mt-2">
+      <Helmet>
+        <title>VORA - Comparison & Gap Analysis</title>
+      </Helmet>
       {/* Header */}
       <div className="border border-border rounded bg-card p-3 flex items-center justify-between gap-4">
         {/* LEFT */}

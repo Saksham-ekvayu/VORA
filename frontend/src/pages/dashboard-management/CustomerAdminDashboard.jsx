@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
 import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -579,6 +580,9 @@ export default function CustomerAdminDashboard() {
 
   return (
     <div className="space-y-3 my-2">
+      <Helmet>
+        <title>VORA - Customer Admin Dashboard</title>
+      </Helmet>
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between flex-wrap gap-2 px-1">
         <h2 className="text-lg font-semibold text-foreground">

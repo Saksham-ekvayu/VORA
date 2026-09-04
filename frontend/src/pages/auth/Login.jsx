@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 
 import { useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/authContext/useAuth";
 import { isAdmin } from "@/utils/commonUtils";
@@ -51,6 +52,9 @@ function Login() {
 
   return (
     <div className="w-full max-w-md rounded border border-border bg-card p-8 shadow-lg animate-in fade-in duration-500">
+      <Helmet>
+        <title>VORA - Login</title>
+      </Helmet>
       {/* Title */}
       <h1
         className="

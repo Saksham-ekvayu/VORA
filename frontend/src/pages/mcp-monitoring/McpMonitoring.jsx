@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import Icon from "@/components/custom/Icon";
@@ -145,6 +146,9 @@ export default function McpMonitoring() {
 
   return (
     <div className="space-y-4 my-2">
+      <Helmet>
+        <title>VORA - MCP Monitoring</title>
+      </Helmet>
       {/* Header */}
       <div className="border border-border rounded bg-card p-2 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Helmet } from "react-helmet-async";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import Icon from "@/components/custom/Icon";
@@ -168,6 +169,9 @@ export default function FrameworkWorkflowSetup() {
 
   return (
     <div className="mt-2">
+      <Helmet>
+        <title>VORA - Framework Workflow Setup</title>
+      </Helmet>
       {/* Header Area */}
       <div className="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

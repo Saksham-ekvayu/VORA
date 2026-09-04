@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 
 import { useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { register } from "@/services/authService";
@@ -88,6 +89,9 @@ function Register() {
 
   return (
     <div className="w-full max-w-md rounded border border-border bg-card p-8 shadow-lg animate-in fade-in duration-500">
+      <Helmet>
+        <title>VORA - Register</title>
+      </Helmet>
       <h1 className="text-4xl font-bold bg-primary bg-clip-text text-transparent tracking-[-1px] leading-[1.2] mb-2">
         Create Account
       </h1>

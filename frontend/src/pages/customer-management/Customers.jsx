@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 
 import { useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
 import DataTable from "@/components/data-table/DataTable";
 import CustomerManageModal from "./components/CustomerManageModal";
@@ -293,6 +294,9 @@ export default function Customers() {
 
   return (
     <div className="my-2">
+      <Helmet>
+        <title>VORA - Customers</title>
+      </Helmet>
       {/* Data Table */}
       <DataTable
         entityName="Customers"

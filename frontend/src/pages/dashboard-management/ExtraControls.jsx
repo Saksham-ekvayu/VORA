@@ -8,6 +8,7 @@ import { getAuditorExtraControls } from "@/services/dashboardService";
 import { useTableData } from "@/components/data-table/hooks/useTableData";
 import { capitalizeFirstLetter } from "@/utils/stringUtils";
 import FrameworkMiniCard from "@/components/custom/FrameworkMiniCard";
+import { Helmet } from "react-helmet-async";
 
 export default function ExtraControls() {
   usePageTitle("extra-controls", "Extra Controls");
@@ -78,6 +79,9 @@ export default function ExtraControls() {
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-3 my-2">
+      <Helmet>
+        <title>VORA - Controls Above Standard Requirements</title>
+      </Helmet>
       {/* Hero summary banner */}
       <div className="rounded border border-border bg-linear-to-br from-background to-card p-3 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
