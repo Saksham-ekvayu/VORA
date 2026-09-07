@@ -283,6 +283,35 @@ async def get_live_framework(db: AsyncSession):
     return None
 
 
+async def get_live_frameworks(db: AsyncSession):
+    """
+    Return every LIVE deployment package across all frameworks (not just the
+    first match), so callers can search all of them for one that actually
+    has usable deployment-point data instead of giving up on the first hit.
+    """
+    result = await db.execute(select(DeploymentFramework))
+    frameworks = result.scalars().all()
+
+    live = []
+
+    for framework in frameworks:
+        for pkg in framework.packages or []:
+            if pkg.get("status") == "live":
+                live.append(
+                    {
+                        "framework_id": framework.id,
+                        "tenant_id": framework.tenantId,
+                        "framework_name": framework.frameworkName,
+                        "framework_code": framework.frameworkCode,
+                        "framework_version": framework.frameworkVersion,
+                        "package_version": pkg.get("packageVersion"),
+                        "merge_document": pkg.get("mergeDocument"),
+                    }
+                )
+
+    return live
+
+
 async def get_framework_merge(db: AsyncSession, merge_id: str):
     result = await db.execute(select(DeploymentPackageMerge).where(DeploymentPackageMerge.id == merge_id))
 
