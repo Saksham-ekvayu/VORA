@@ -44,6 +44,7 @@ from vora_shared.models.framework_assignment import (
 )
 from vora_shared.models.framework_category import FrameworkCategory
 from vora_shared.models.framework_merge import FrameworkMerge
+from vora_shared.models.mcp import ProcessedFile, SourceConfig, SourceCredential
 from vora_shared.models.package_comparison import PackageComparison
 from vora_shared.models.package_gap_analysis import (
     GapThresholdConfig,
@@ -88,6 +89,9 @@ __all__ = [
     "PackageComparison",
     "PackageGapAnalysis",
     "PackageVersion",
+    "ProcessedFile",
+    "SourceConfig",
+    "SourceCredential",
     "UploadedFile",
     "User",
     "UserAddress",
