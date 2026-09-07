@@ -32,6 +32,7 @@ def _schedule_compliance_evaluation(dd_id: str) -> None:
     _background_tasks.add(task)
     task.add_done_callback(_background_tasks.discard)
 
+
 DEFAULT_AGENTS = [
     ("Organizational Controls Agent", "Evaluate general organizational policies and procedures."),
     ("People Controls Agent", "Review human resources security and training procedures."),
