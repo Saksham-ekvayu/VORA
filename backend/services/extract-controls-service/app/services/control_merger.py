@@ -10,16 +10,54 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+def _remove_parenthetical_text(name: str) -> str:
+    result = []
+    index = 0
+    while index < len(name):
+        if name[index] != "(":
+            result.append(name[index])
+            index += 1
+            continue
+
+        while result and result[-1] in " \t":
+            result.pop()
+        index += 1
+        while index < len(name) and name[index] != ")":
+            index += 1
+        if index < len(name):
+            index += 1
+    return "".join(result)
+
+
 def clean_section_name(name: str) -> str:
     if not name:
         return ""
     original = name
     # Remove anything in parenthesis (including the parenthesis)
-    name = re.sub(r"\s*\([^)]*\)", "", name)
+    name = _remove_parenthetical_text(name)
     # Remove leading numbers and prefixes (e.g., "3. ", "10 - ", "A.5 ")
     name = re.sub(r"^(?:\d+|[A-Za-z]\.\d+(?:\.\d+)*)[\.\-\s]+", "", name)
     cleaned = name.strip()
     return cleaned if cleaned else original.strip()
+
+
+def _extract_previous_controls(ai_extraction: Any) -> list | None:
+    if not isinstance(ai_extraction, dict) or ai_extraction.get("status") != "extracted":
+        return None
+    controls_block = ai_extraction.get("controls", {})
+    if isinstance(controls_block, dict):
+        return controls_block.get("controls_data", [])
+    if isinstance(controls_block, list):
+        return controls_block
+    return []
+
+
+def _is_previous_version_candidate(fv: Any, current_file_version: str) -> bool:
+    return (
+        isinstance(fv, dict)
+        and fv.get("fileVersion") != current_file_version
+        and bool(fv.get("aiExtraction"))
+    )
 
 
 def get_framework_previous_controls(
@@ -42,43 +80,129 @@ def get_framework_previous_controls(
 
     # Reverse iterate — latest first
     for fv in reversed(file_versions):
-        if not isinstance(fv, dict):
+        if not _is_previous_version_candidate(fv, current_file_version):
+            continue
+        controls_data = _extract_previous_controls(fv.get("aiExtraction"))
+        if controls_data is None or not controls_data:
             continue
 
-        if fv.get("fileVersion") == current_file_version:
-            continue  # Skip current version
-
-        ai_extraction = fv.get("aiExtraction")
-        if not ai_extraction:
-            continue
-
-        if isinstance(ai_extraction, dict):
-            status = ai_extraction.get("status")
-            if status != "extracted":
-                continue  # Skip incomplete versions
-
-            controls_block = ai_extraction.get("controls", {})
-        else:
-            continue
-
-        # Extract controls_data from structure
-        if isinstance(controls_block, dict):
-            controls_data = controls_block.get("controls_data", [])
-        elif isinstance(controls_block, list):
-            controls_data = controls_block
-        else:
-            controls_data = []
-
-        if controls_data:
-            prev_file_hash = fv.get("fileHash")
-            logger.info(
-                f"[MERGE] Previous controls found | fileVersion={fv.get('fileVersion')} "
-                f"| sections={len(controls_data)} | fileHash={prev_file_hash}"
-            )
-            return controls_data, fv.get("fileVersion"), prev_file_hash
+        prev_file_hash = fv.get("fileHash")
+        logger.info(
+            f"[MERGE] Previous controls found | fileVersion={fv.get('fileVersion')} "
+            f"| sections={len(controls_data)} | fileHash={prev_file_hash}"
+        )
+        return controls_data, fv.get("fileVersion"), prev_file_hash
 
     logger.info("[MERGE] No previous extracted version found")
     return [], None, None
+
+
+def _section_key(section: dict[str, Any]) -> str:
+    section_id = (section.get("id") or "").lower().strip()
+    section_name = (section.get("name") or "").lower().strip()
+    return section_id or section_name
+
+
+def _copy_section(section: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": section.get("id"),
+        "name": clean_section_name(section.get("name")),
+        "controls": [dict(control) for control in section.get("controls", [])],
+    }
+
+
+def _index_controls(
+    controls: list[dict[str, Any]],
+) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+    by_id = {control.get("id", "").strip(): control for control in controls if control.get("id")}
+    by_name = {
+        control.get("name", "").lower().strip(): control
+        for control in controls
+        if control.get("name")
+    }
+    return by_id, by_name
+
+
+def _merge_deployment_points(
+    existing: dict[str, Any], incoming: dict[str, Any], summary: dict[str, int]
+) -> None:
+    points = existing.setdefault("deployment_points", [])
+    existing_names = {
+        point.get("name", "").lower().strip() for point in points
+    }
+    for new_point in incoming.get("deployment_points", []):
+        point_name = (new_point.get("name") or "").lower().strip()
+        if not point_name or point_name in existing_names:
+            continue
+        points.append(
+            {
+                "id": f"DP-{len(points) + 1:03d}",
+                "name": new_point.get("name", ""),
+                "status": "pending",
+                "path": "",
+                "source": "",
+                "weightage": 0,
+                "remark": "",
+            }
+        )
+        existing_names.add(point_name)
+        summary["new_dps"] += 1
+
+
+def _merge_existing_control(
+    existing: dict[str, Any],
+    incoming: dict[str, Any],
+    control_id: str,
+    control_name: str,
+    summary: dict[str, int],
+) -> None:
+    if incoming.get("description"):
+        existing["description"] = incoming["description"]
+    _merge_deployment_points(existing, incoming, summary)
+    summary["merged_controls"] += 1
+    logger.info(f"[MERGE] Merged control: {control_id} ({control_name})")
+
+
+def _merge_section_controls(
+    old_controls: list[dict[str, Any]],
+    new_controls: list[dict[str, Any]],
+    summary: dict[str, int],
+) -> None:
+    controls_by_id, controls_by_name = _index_controls(old_controls)
+    for new_control in new_controls:
+        control_id = (new_control.get("id") or "").strip()
+        control_name = (new_control.get("name") or "").lower().strip()
+        existing = controls_by_id.get(control_id) or controls_by_name.get(control_name)
+        if existing:
+            _merge_existing_control(existing, new_control, control_id, control_name, summary)
+            continue
+
+        old_controls.append(new_control)
+        if control_id:
+            controls_by_id[control_id] = new_control
+        if control_name:
+            controls_by_name[control_name] = new_control
+        summary["new_controls"] += 1
+        logger.info(f"[MERGE] Added new control: {control_id} ({control_name})")
+
+
+def _add_new_section(
+    section_map: dict[str, dict[str, Any]],
+    section_order: list[str],
+    section: dict[str, Any],
+    summary: dict[str, int],
+) -> None:
+    key = _section_key(section)
+    section_map[key] = {
+        "id": section.get("id"),
+        "name": clean_section_name(section.get("name")),
+        "controls": list(section.get("controls", [])),
+    }
+    section_order.append(key)
+    controls = section.get("controls", [])
+    summary["new_sections"] += 1
+    summary["new_controls"] += len(controls)
+    logger.info(f"[MERGE] Added new section: {section.get('name')} with {len(controls)} controls")
 
 
 def merge_controls_cumulative(
@@ -112,95 +236,18 @@ def merge_controls_cumulative(
 
     summary = {"merged_controls": 0, "new_controls": 0, "new_dps": 0, "new_sections": 0}
 
-    # Build section map from old (preserve order)
-    sec_map = {}
-    sec_order = []
-    for sec in old_sections:
-        # Use ID as primary key if available, fallback to name
-        sec_id = (sec.get("id") or "").lower().strip()
-        sec_name = (sec.get("name") or "").lower().strip()
-        key = sec_id if sec_id else sec_name
-        sec_map[key] = {
-            "id": sec.get("id"),
-            "name": clean_section_name(sec.get("name")),
-            "controls": [dict(c) for c in sec.get("controls", [])],
-        }
-        sec_order.append(key)
+    sec_map = {_section_key(section): _copy_section(section) for section in old_sections}
+    sec_order = [_section_key(section) for section in old_sections]
 
     # Merge new sections
     for new_sec in new_sections:
-        sec_id = (new_sec.get("id") or "").lower().strip()
-        sec_name = (new_sec.get("name") or "").lower().strip()
-        sec_key = sec_id if sec_id else sec_name
+        sec_key = _section_key(new_sec)
 
         if sec_key not in sec_map:
-            # Brand new section
-            sec_map[sec_key] = {
-                "id": new_sec.get("id"),
-                "name": clean_section_name(new_sec.get("name")),
-                "controls": list(new_sec.get("controls", [])),
-            }
-            sec_order.append(sec_key)
-            summary["new_sections"] += 1
-            summary["new_controls"] += len(new_sec.get("controls", []))
-            logger.info(
-                f"[MERGE] Added new section: {new_sec.get('name')} "
-                f"with {len(new_sec.get('controls', []))} controls"
-            )
+            _add_new_section(sec_map, sec_order, new_sec, summary)
             continue
-        else:
-            # If merging into existing section by ID, just keep the existing name.
-            pass
 
-        # Merge controls within existing section
-        old_ctrl_list = sec_map[sec_key]["controls"]
-        ctrl_by_id = {c.get("id", "").strip(): c for c in old_ctrl_list if c.get("id")}
-        ctrl_by_name = {c.get("name", "").lower().strip(): c for c in old_ctrl_list if c.get("name")}
-
-        for new_ctrl in new_sec.get("controls", []):
-            nc_id = (new_ctrl.get("id") or "").strip()
-            nc_name = (new_ctrl.get("name") or "").lower().strip()
-            existing = ctrl_by_id.get(nc_id) or ctrl_by_name.get(nc_name)
-
-            if existing:
-                # Update description (new wins)
-                if new_ctrl.get("description"):
-                    existing["description"] = new_ctrl["description"]
-
-                # Merge DPs — deduplicate by name
-                existing_dp_names = {
-                    dp.get("name", "").lower().strip() for dp in existing.get("deployment_points", [])
-                }
-                dps = existing.setdefault("deployment_points", [])
-                for new_dp in new_ctrl.get("deployment_points", []):
-                    dp_name_lower = (new_dp.get("name") or "").lower().strip()
-                    if dp_name_lower and dp_name_lower not in existing_dp_names:
-                        dps.append(
-                            {
-                                "id": f"DP-{len(dps) + 1:03d}",
-                                "name": new_dp.get("name", ""),
-                                "status": "pending",
-                                "path": "",
-                                "source": "",
-                                "weightage": 0,
-                                "remark": "",
-                            }
-                        )
-                        existing_dp_names.add(dp_name_lower)
-                        summary["new_dps"] += 1
-
-                summary["merged_controls"] += 1
-                logger.info(f"[MERGE] Merged control: {nc_id} ({nc_name})")
-
-            else:
-                # New control — append
-                old_ctrl_list.append(new_ctrl)
-                if nc_id:
-                    ctrl_by_id[nc_id] = new_ctrl
-                if nc_name:
-                    ctrl_by_name[nc_name] = new_ctrl
-                summary["new_controls"] += 1
-                logger.info(f"[MERGE] Added new control: {nc_id} ({nc_name})")
+        _merge_section_controls(sec_map[sec_key]["controls"], new_sec.get("controls", []), summary)
 
     merged_result = [sec_map[k] for k in sec_order]
 

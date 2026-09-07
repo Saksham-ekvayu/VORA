@@ -120,6 +120,32 @@ def _log_llm_call(tag: str, response: Any, elapsed: float):
         return None
 
 
+def _last_complete_json_object_end(text: str, start: int) -> int:
+    depth = 0
+    last_complete_end = -1
+    in_string = False
+    escape = False
+    for index in range(start, len(text)):
+        char = text[index]
+        if in_string:
+            if escape:
+                escape = False
+            elif char == "\\":
+                escape = True
+            elif char == '"':
+                in_string = False
+            continue
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                last_complete_end = index
+    return last_complete_end
+
+
 def _salvage_json_array(raw_text: str) -> list:
     """
     Best-effort recovery for a JSON array that got cut off mid-generation
@@ -141,29 +167,7 @@ def _salvage_json_array(raw_text: str) -> list:
     if start == -1:
         return []
 
-    depth = 0
-    last_complete_end = -1
-    in_string = False
-    escape = False
-    for i in range(start, len(text)):
-        ch = text[i]
-        if in_string:
-            if escape:
-                escape = False
-            elif ch == "\\":
-                escape = True
-            elif ch == '"':
-                in_string = False
-            continue
-        if ch == '"':
-            in_string = True
-        elif ch == "{":
-            depth += 1
-        elif ch == "}":
-            depth -= 1
-            if depth == 0:
-                last_complete_end = i
-
+    last_complete_end = _last_complete_json_object_end(text, start)
     if last_complete_end == -1:
         return []
 
@@ -351,6 +355,43 @@ def _drop_parent_prefix_duplicates(controls: list) -> list:
     return kept
 
 
+def _flattened_category_groups(controls: list) -> defaultdict:
+    groups = defaultdict(list)
+    for control in controls:
+        if not isinstance(control, dict):
+            continue
+        control_id = str(control.get("Control_id", "")).strip()
+        parts = _split_id(control_id)
+        if len(parts) == 3 and parts[0] and parts[0].isalpha():
+            groups[f"{parts[0]}.{parts[1]}".upper()].append(control)
+    return groups
+
+
+def _is_flattened_category_group(prefix: str, group: list) -> bool:
+    if len(group) < 2:
+        return False
+    if any(_looks_like_objective_only(str(control.get("Control_description", ""))) for control in group):
+        return False
+
+    first_id = str(group[0].get("Control_id", "")).strip()
+    anchor_parts = _split_id(first_id)
+    if len(anchor_parts) != 3 or anchor_parts[2] != "1":
+        return False
+
+    anchor_prefix = f"{anchor_parts[0]}.{anchor_parts[1]}".upper()
+    return anchor_prefix == prefix and first_id.upper() == f"{prefix}.{anchor_parts[2]}".upper()
+
+
+def _repair_flattened_category_group(prefix: str, group: list) -> None:
+    for index, control in enumerate(group, start=1):
+        old_id = control.get("Control_id")
+        new_id = f"{prefix}.{index}"
+        if old_id == new_id:
+            continue
+        logger.info(f"[EXTRACT] Repairing flattened ID: {old_id} → {new_id}")
+        control["Control_id"] = new_id
+
+
 def _fix_flattened_category_ids(controls: list) -> list:
     """
     Structural safety net #3 (version-agnostic).
@@ -364,39 +405,9 @@ def _fix_flattened_category_ids(controls: list) -> list:
     logic — it operates purely on ID depth (part count) and prefix matching,
     so it generalizes to any hierarchical numbering scheme.
     """
-    by_2part = defaultdict(list)
-    for c in controls:
-        if not isinstance(c, dict):
-            continue
-        cid = str(c.get("Control_id", "")).strip()
-        parts = _split_id(cid)
-        if len(parts) == 3 and parts[0] and parts[0].isalpha():
-            by_2part[f"{parts[0]}.{parts[1]}".upper()].append(c)
-
-    for prefix, group in by_2part.items():
-        if len(group) < 2:
-            continue
-        if any(_looks_like_objective_only(str(g.get("Control_description", ""))) for g in group):
-            continue
-        first_id = str(group[0].get("Control_id", "")).strip()
-        anchor_parts = _split_id(first_id)
-        if len(anchor_parts) != 3:
-            continue
-        anchor_prefix = f"{anchor_parts[0]}.{anchor_parts[1]}".upper()
-        if anchor_prefix != prefix:
-            continue
-        if first_id.upper() != f"{prefix}.{anchor_parts[2]}".upper():
-            continue
-        last_segment_first = anchor_parts[2]
-        if last_segment_first != "1":
-            continue
-
-        for i, ctrl in enumerate(group, start=1):
-            old_id = ctrl.get("Control_id")
-            new_id = f"{prefix}.{i}"
-            if old_id != new_id:
-                logger.info(f"[EXTRACT] Repairing flattened ID: {old_id} → {new_id}")
-                ctrl["Control_id"] = new_id
+    for prefix, group in _flattened_category_groups(controls).items():
+        if _is_flattened_category_group(prefix, group):
+            _repair_flattened_category_group(prefix, group)
 
     return controls
 
@@ -486,8 +497,8 @@ def _drop_ids_with_whitespace(controls: list) -> list:
 # genuinely show the corresponding structural signal.
 # ---------------------------------------------------------------------------
 
-_STANDALONE_CONTROL_LABEL_RE = re.compile(r"(?<![A-Za-z])Control(?![A-Za-z])", re.IGNORECASE)
-_STANDALONE_OBJECTIVE_LABEL_RE = re.compile(r"(?<![A-Za-z])Objective\s*:", re.IGNORECASE)
+_STANDALONE_CONTROL_LABEL_RE = re.compile(r"(?<![A-Z])Control(?![A-Z])", re.IGNORECASE)
+_STANDALONE_OBJECTIVE_LABEL_RE = re.compile(r"(?<![A-Z])Objective\s*:", re.IGNORECASE)
 _ANNEX_A_HEADING_RE = re.compile(r"\bAnnex\s+A\b", re.IGNORECASE)
 _LETTER_PREFIXED_ID_RE = re.compile(r"\b[A-Z]\.\d+(?:\.\d+){1,3}\b")
 
@@ -521,7 +532,7 @@ def _detect_label_based_document(text: str) -> bool:
     return is_label_based
 
 
-def _verify_against_control_labels(text: str, controls: list) -> list:
+def _verify_against_control_labels(text: str, controls: list) -> None:
     """
     Diagnostic-only check (does NOT modify the controls list) — only run
     when _detect_label_based_document(text) is True.
@@ -544,7 +555,7 @@ def _verify_against_control_labels(text: str, controls: list) -> list:
     column-linearization.
     """
     if not controls:
-        return controls
+        return
 
     unverified = []
     for c in controls:
@@ -573,7 +584,6 @@ def _verify_against_control_labels(text: str, controls: list) -> list:
             f"their ID in the source text — likely due to column-reordering in PDF text extraction, "
             f"not a sign these are actually invalid: {unverified}"
         )
-    return controls
 
 
 def _detect_annex_style_document(text: str) -> bool:
@@ -642,37 +652,11 @@ def _restrict_to_letter_prefixed_catalog(controls: list) -> list:
     return kept
 
 
-def _run_completeness_check(text: str, controls: list, structural_rule: str) -> list:
-    """
-    Dynamic, framework-agnostic gap-fill pass (no ID/section/framework name
-    is ever hardcoded here). Re-scans the same text against the
-    already-found IDs to catch any controls the extraction still skipped
-    (a known long-list omission pattern, not a truncation/token-limit
-    issue). Acts as a second-layer safety net on top of the batched
-    Stage-1 extraction — most gaps should already be closed by batching,
-    but this still catches anything a batch boundary might have missed.
-    """
-    if not controls:
-        return controls
-
-    all_controls = list(controls)
-    seen_ids = {
-        str(c.get("Control_id", "")).strip()
-        for c in all_controls
-        if isinstance(c, dict) and c.get("Control_id")
-    }
-
-    if not seen_ids:
-        return all_controls
-
-    schema_fields = (
-        '{"Control_id": "","Control_name": "","Control_type":"","Control_description": "","Section_name": ""}'
-    )
-
-    for round_num in range(1, COMPLETENESS_MAX_ROUNDS + 1):
-        existing_ids_str = ", ".join(sorted(seen_ids))
-
-        completeness_prompt = f"""You are auditing a compliance-control extraction for COMPLETENESS — checking
+def _build_completeness_prompt(
+    text: str, seen_ids: set[str], structural_rule: str, schema_fields: str
+) -> str:
+    existing_ids_str = ", ".join(sorted(seen_ids))
+    return f"""You are auditing a compliance-control extraction for COMPLETENESS — checking
 whether anything was missed, not re-doing the extraction from scratch.
 {structural_rule}
 
@@ -699,66 +683,115 @@ TEXT:
 
 Return ONLY JSON. No markdown. No text outside JSON."""
 
-        round_missing = None
-        for round_attempt in range(1, TRUNCATION_RETRY_ATTEMPTS + 1):
-            try:
-                t_start = datetime.now(UTC)
-                response = get_openai_client().chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[{"role": "user", "content": completeness_prompt}],
-                    temperature=0,
-                    max_tokens=CONTROL_EXTRACTION_MAX_TOKENS,
-                    timeout=3600,
-                )
-                elapsed = (datetime.now(UTC) - t_start).total_seconds()
-                finish_reason = _log_llm_call(
-                    f"EXTRACT-COMPLETENESS-round{round_num}"
-                    f"{'' if round_attempt == 1 else f'-retry{round_attempt}'}",
-                    response,
-                    elapsed,
-                )
-                raw_content = response.choices[0].message.content
 
-                try:
-                    round_missing = json.loads(raw_content)
-                    break
-                except json.JSONDecodeError:
-                    salvaged = _salvage_json_array(raw_content)
-                    if salvaged:
-                        round_missing = salvaged
-                        if round_attempt < TRUNCATION_RETRY_ATTEMPTS:
-                            logger.info(
-                                f"[EXTRACT] Completeness round {round_num} attempt {round_attempt}: "
-                                f"salvaged {len(salvaged)} item(s) from truncated response "
-                                f"(finish_reason={finish_reason}) — retrying for a fuller result..."
-                            )
-                            continue
-                        break
-                    if round_attempt < TRUNCATION_RETRY_ATTEMPTS:
-                        logger.warning(
-                            f"[EXTRACT] Completeness round {round_num} attempt {round_attempt}: "
-                            f"unparsable and nothing salvageable (finish_reason={finish_reason}) — retrying..."
-                        )
-                        continue
-                    logger.info(
-                        f"[EXTRACT] Completeness round {round_num}: all {TRUNCATION_RETRY_ATTEMPTS} "
-                        f"attempts unparsable — stopping completeness check"
-                    )
-                    round_missing = None
-                    break
+def _run_completeness_attempt(
+    prompt: str, round_num: int, attempt: int
+) -> tuple[list | None, bool]:
+    try:
+        t_start = datetime.now(UTC)
+        response = get_openai_client().chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0,
+            max_tokens=CONTROL_EXTRACTION_MAX_TOKENS,
+            timeout=3600,
+        )
+        elapsed = (datetime.now(UTC) - t_start).total_seconds()
+        finish_reason = _log_llm_call(
+            f"EXTRACT-COMPLETENESS-round{round_num}"
+            f"{'' if attempt == 1 else f'-retry{attempt}'}",
+            response,
+            elapsed,
+        )
+        raw_content = response.choices[0].message.content
+        return _parse_completeness_response(raw_content, round_num, attempt, finish_reason)
+    except Exception:
+        logger.exception(f"[EXTRACT] Completeness round {round_num} attempt {attempt} API error")
+        return None, attempt < TRUNCATION_RETRY_ATTEMPTS
 
-            except Exception:
-                logger.exception(
-                    f"[EXTRACT] Completeness round {round_num} attempt {round_attempt} API error"
+
+def _parse_completeness_response(
+    raw_content: str, round_num: int, attempt: int, finish_reason: str | None
+) -> tuple[list | None, bool]:
+    try:
+        return json.loads(raw_content), False
+    except json.JSONDecodeError:
+        salvaged = _salvage_json_array(raw_content)
+        if salvaged:
+            if attempt < TRUNCATION_RETRY_ATTEMPTS:
+                logger.info(
+                    f"[EXTRACT] Completeness round {round_num} attempt {attempt}: "
+                    f"salvaged {len(salvaged)} item(s) from truncated response "
+                    f"(finish_reason={finish_reason}) — retrying for a fuller result..."
                 )
-                if round_attempt < TRUNCATION_RETRY_ATTEMPTS:
-                    continue
-                round_missing = None
-                break
+                return None, True
+            return salvaged, False
+        if attempt < TRUNCATION_RETRY_ATTEMPTS:
+            logger.warning(
+                f"[EXTRACT] Completeness round {round_num} attempt {attempt}: "
+                f"unparsable and nothing salvageable (finish_reason={finish_reason}) — retrying..."
+            )
+            return None, True
+        logger.info(
+            f"[EXTRACT] Completeness round {round_num}: all {TRUNCATION_RETRY_ATTEMPTS} "
+            "attempts unparsable — stopping completeness check"
+        )
+        return None, False
 
+
+def _run_completeness_round(prompt: str, round_num: int) -> list | None:
+    for attempt in range(1, TRUNCATION_RETRY_ATTEMPTS + 1):
+        result, retry = _run_completeness_attempt(prompt, round_num, attempt)
+        if not retry:
+            return result
+    return None
+
+
+def _new_completeness_items(round_missing: list, seen_ids: set[str]) -> list:
+    new_items = []
+    for item in round_missing:
+        if not isinstance(item, dict):
+            continue
+        cid = str(item.get("Control_id", "")).strip()
+        if cid and cid not in seen_ids:
+            new_items.append(item)
+            seen_ids.add(cid)
+    return new_items
+
+
+def _run_completeness_check(text: str, controls: list, structural_rule: str) -> list:
+    """
+    Dynamic, framework-agnostic gap-fill pass (no ID/section/framework name
+    is ever hardcoded here). Re-scans the same text against the
+    already-found IDs to catch any controls the extraction still skipped
+    (a known long-list omission pattern, not a truncation/token-limit
+    issue). Acts as a second-layer safety net on top of the batched
+    Stage-1 extraction — most gaps should already be closed by batching,
+    but this still catches anything a batch boundary might have missed.
+    """
+    if not controls:
+        return controls
+
+    all_controls = list(controls)
+    seen_ids = {
+        str(c.get("Control_id", "")).strip()
+        for c in all_controls
+        if isinstance(c, dict) and c.get("Control_id")
+    }
+
+    if not seen_ids:
+        return all_controls
+
+    for round_num in range(1, COMPLETENESS_MAX_ROUNDS + 1):
+        schema_fields = (
+            '{"Control_id": "","Control_name": "","Control_type":"","Control_description": "","Section_name": ""}'
+        )
+        completeness_prompt = _build_completeness_prompt(
+            text, seen_ids, structural_rule, schema_fields
+        )
+        round_missing = _run_completeness_round(completeness_prompt, round_num)
         if round_missing is None:
             break
-
         if not isinstance(round_missing, list) or not round_missing:
             logger.info(
                 f"[EXTRACT] Completeness round {round_num}: model found nothing missing — "
@@ -766,15 +799,7 @@ Return ONLY JSON. No markdown. No text outside JSON."""
             )
             break
 
-        new_items = []
-        for item in round_missing:
-            if not isinstance(item, dict):
-                continue
-            cid = str(item.get("Control_id", "")).strip()
-            if cid and cid not in seen_ids:
-                new_items.append(item)
-                seen_ids.add(cid)
-
+        new_items = _new_completeness_items(round_missing, seen_ids)
         if not new_items:
             logger.info(
                 f"[EXTRACT] Completeness round {round_num}: model returned items but all were "
@@ -890,6 +915,52 @@ TEXT:
 Return ONLY JSON. No markdown. No text outside JSON."""
 
 
+def _parse_stage1_response(
+    raw_content: str, tag: str, attempt: int, finish_reason: str | None, best_salvage: list
+) -> tuple[list, list, bool]:
+    try:
+        parsed = json.loads(raw_content)
+        if isinstance(parsed, list):
+            return parsed, best_salvage, False
+        logger.warning(
+            f"[EXTRACT] {tag} attempt {attempt}: parsed JSON was not a list — treating as empty"
+        )
+        return [], best_salvage, False
+    except json.JSONDecodeError as exc:
+        logger.warning(
+            f"[EXTRACT] {tag} attempt {attempt}: JSON decode failed "
+            f"(finish_reason={finish_reason}): {exc}. Attempting salvage..."
+        )
+        salvaged = _salvage_json_array(raw_content)
+        if salvaged:
+            best_salvage = _merge_by_control_id(best_salvage, salvaged)
+        return [], best_salvage, attempt < TRUNCATION_RETRY_ATTEMPTS
+
+
+def _run_stage1_attempt(
+    prompt: str, tag: str, attempt: int, best_salvage: list
+) -> tuple[list, list, bool]:
+    try:
+        t_start = datetime.now(UTC)
+        response = get_openai_client().chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0,
+            max_tokens=CONTROL_EXTRACTION_MAX_TOKENS,
+            timeout=3600,
+        )
+        elapsed = (datetime.now(UTC) - t_start).total_seconds()
+        finish_reason = _log_llm_call(
+            f"{tag}{'' if attempt == 1 else f'-retry{attempt}'}", response, elapsed
+        )
+        return _parse_stage1_response(
+            response.choices[0].message.content, tag, attempt, finish_reason, best_salvage
+        )
+    except Exception:
+        logger.exception(f"[EXTRACT] {tag} attempt {attempt} API error")
+        return [], best_salvage, attempt < TRUNCATION_RETRY_ATTEMPTS
+
+
 def _run_stage1_call(prompt: str, tag: str) -> list:
     """
     Run one Stage-1 LLM call for a single batch, with the same
@@ -902,46 +973,11 @@ def _run_stage1_call(prompt: str, tag: str) -> list:
     best_salvage: list = []
 
     for attempt in range(1, TRUNCATION_RETRY_ATTEMPTS + 1):
-        t_start = datetime.now(UTC)
-        try:
-            response = get_openai_client().chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0,
-                max_tokens=CONTROL_EXTRACTION_MAX_TOKENS,
-                timeout=3600,
-            )
-            elapsed = (datetime.now(UTC) - t_start).total_seconds()
-            finish_reason = _log_llm_call(
-                f"{tag}{'' if attempt == 1 else f'-retry{attempt}'}", response, elapsed
-            )
-            raw_content = response.choices[0].message.content
-
-            try:
-                parsed = json.loads(raw_content)
-                if isinstance(parsed, list):
-                    return parsed
-                logger.warning(
-                    f"[EXTRACT] {tag} attempt {attempt}: parsed JSON was not a list — treating as empty"
-                )
-                return []
-            except json.JSONDecodeError as e:
-                logger.warning(
-                    f"[EXTRACT] {tag} attempt {attempt}: JSON decode failed "
-                    f"(finish_reason={finish_reason}): {e}. Attempting salvage..."
-                )
-                salvaged = _salvage_json_array(raw_content)
-                if salvaged:
-                    best_salvage = _merge_by_control_id(best_salvage, salvaged)
-                if attempt < TRUNCATION_RETRY_ATTEMPTS:
-                    continue
-                return best_salvage
-
-        except Exception:
-            logger.exception(f"[EXTRACT] {tag} attempt {attempt} API error")
-            if attempt < TRUNCATION_RETRY_ATTEMPTS:
-                continue
-            return best_salvage
+        result, best_salvage, retry = _run_stage1_attempt(
+            prompt, tag, attempt, best_salvage
+        )
+        if result or not retry:
+            return result or best_salvage
 
     return best_salvage
 
@@ -995,7 +1031,7 @@ def _validate_deployment_points(raw: Any, control_name: str = "") -> str:
         return _generate_default_deployment_points(control_name)
 
     raw_str = str(raw).strip()
-    points = re.split(r"\n?\s*\d+\.\s+", raw_str)
+    points = re.split(r"(?m)(?:^|\r?\n)[ \t]*\d+\.[ \t]+", raw_str)
     points = [p.strip() for p in points if p.strip()]
 
     if not points:
@@ -1016,6 +1052,82 @@ def _validate_deployment_points(raw: Any, control_name: str = "") -> str:
             points.append("Review and reinforce adherence to this control periodically.")
 
     return "\n".join(f"{i+1}. {p}" for i, p in enumerate(points))
+
+
+def _build_stage2_prompt(batch: list) -> str:
+    return f"""You are an analyser of framework controls.
+
+CRITICAL RULES (no exceptions):
+- EVERY control MUST have EXACTLY 5 deployment points. NOT 4, NOT 6, NEVER empty.
+- If the control description is vague, short, or minimal, you MUST still generate 5
+  sensible, generic deployment points based on the control's NAME and general best
+  practice for that type of control. Do NOT return an empty string under any circumstance.
+
+Deployment points must describe:
+- How to implement this control based on what the document says (or general best
+  practice if the description lacks detail)
+- Specific actions/steps required
+- How to operationalize it
+- Important implementation details
+
+Every point must be numbered: 1. 2. 3. 4. 5.
+Store all 5 points as a SINGLE string with newlines between them.
+
+IMPORTANT: Keep Section_name exactly as provided. Do NOT change it.
+
+Input JSON:
+{json.dumps(batch)}
+
+Add Deployment_points field to each control (a string with EXACTLY 5 numbered points).
+Use JSON list ONLY:
+[{{"Control_id": "","Control_name":"","Control_type":"","Control_description": "","Section_name": "","Deployment_points": "1. ...\\n2. ...\\n3. ...\\n4. ...\\n5. ..."}}]
+
+Return ONLY JSON. No markdown."""
+
+
+def _apply_deployment_points(batch: list, response_controls: list | None = None) -> list:
+    response_map = {
+        str(control.get("Control_id", "")).strip(): control.get("Deployment_points", "")
+        for control in (response_controls or [])
+        if isinstance(control, dict) and str(control.get("Control_id", "")).strip()
+    }
+    for control in batch:
+        control_id = str(control.get("Control_id", "")).strip()
+        control_name = str(control.get("Control_name", "")).strip()
+        raw_points = response_map.get(control_id, control.get("Deployment_points", ""))
+        control["Deployment_points"] = _validate_deployment_points(raw_points, control_name)
+    return batch
+
+
+def _run_stage2_batch(batch: list, batch_num: int) -> list:
+    t_start = datetime.now(UTC)
+    finish_reason = None
+    try:
+        response = get_openai_client().chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": _build_stage2_prompt(batch)}],
+            temperature=0,
+            max_tokens=DEPLOYMENT_MAX_TOKENS,
+            timeout=3600,
+        )
+        elapsed = (datetime.now(UTC) - t_start).total_seconds()
+        finish_reason = _log_llm_call(f"EXTRACT-STAGE2-batch{batch_num}", response, elapsed)
+        batch_result = json.loads(response.choices[0].message.content)
+        merged_batch = _apply_deployment_points(batch, batch_result)
+        logger.info(
+            f"[EXTRACT] DP Batch {batch_num} OK — added {len(merged_batch)} controls, "
+            "all guaranteed exactly 5 deployment points"
+        )
+        return merged_batch
+    except json.JSONDecodeError:
+        logger.exception(f"[EXTRACT] DP Batch {batch_num} JSON parse failed")
+        if finish_reason == "length":
+            logger.warning(
+                f"[EXTRACT] DP Batch {batch_num} truncated — consider lowering DEPLOYMENT_BATCH_SIZE"
+            )
+    except Exception:
+        logger.exception(f"[EXTRACT] DP Batch {batch_num} API error")
+    return _apply_deployment_points(batch)
 
 
 def extract_framework_controls(chunks: list, framework_id: str, is_deployment: bool = False) -> list:
@@ -1255,99 +1367,14 @@ slice you were given.
 
     final_controls = []
     total_dp_batches = (len(controls) + DEPLOYMENT_BATCH_SIZE - 1) // DEPLOYMENT_BATCH_SIZE
-
     for batch_idx in range(0, len(controls), DEPLOYMENT_BATCH_SIZE):
         batch = controls[batch_idx : batch_idx + DEPLOYMENT_BATCH_SIZE]
         batch_num = batch_idx // DEPLOYMENT_BATCH_SIZE + 1
-
         batch_ids = [str(c.get("Control_id", "")) for c in batch]
         logger.info(
             f"[EXTRACT] DP Batch {batch_num}/{total_dp_batches}: {len(batch)} controls | IDs: {batch_ids}"
         )
-
-        prompt_stage2 = f"""You are an analyser of framework controls.
-
-CRITICAL RULES (no exceptions):
-- EVERY control MUST have EXACTLY 5 deployment points. NOT 4, NOT 6, NEVER empty.
-- If the control description is vague, short, or minimal, you MUST still generate 5
-  sensible, generic deployment points based on the control's NAME and general best
-  practice for that type of control. Do NOT return an empty string under any circumstance.
-
-Deployment points must describe:
-- How to implement this control based on what the document says (or general best
-  practice if the description lacks detail)
-- Specific actions/steps required
-- How to operationalize it
-- Important implementation details
-
-Every point must be numbered: 1. 2. 3. 4. 5.
-Store all 5 points as a SINGLE string with newlines between them.
-
-IMPORTANT: Keep Section_name exactly as provided. Do NOT change it.
-
-Input JSON:
-{json.dumps(batch)}
-
-Add Deployment_points field to each control (a string with EXACTLY 5 numbered points).
-Use JSON list ONLY:
-[{{"Control_id": "","Control_name": "","Control_type":"","Control_description": "","Section_name": "","Deployment_points": "1. ...\\n2. ...\\n3. ...\\n4. ...\\n5. ..."}}]
-
-Return ONLY JSON. No markdown."""
-
-        t_start = datetime.now(UTC)
-        finish_reason = None
-        try:
-            response = get_openai_client().chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt_stage2}],
-                temperature=0,
-                max_tokens=DEPLOYMENT_MAX_TOKENS,
-                timeout=3600,
-            )
-            elapsed = (datetime.now(UTC) - t_start).total_seconds()
-            finish_reason = _log_llm_call(f"EXTRACT-STAGE2-batch{batch_num}", response, elapsed)
-
-            batch_result = json.loads(response.choices[0].message.content)
-
-            dp_map = {}
-            for res_ctrl in batch_result:
-                if isinstance(res_ctrl, dict):
-                    c_id = str(res_ctrl.get("Control_id", "")).strip()
-                    if c_id:
-                        dp_map[c_id] = res_ctrl.get("Deployment_points", "")
-
-            merged_batch = []
-            for orig_ctrl in batch:
-                c_id = str(orig_ctrl.get("Control_id", "")).strip()
-                c_name = str(orig_ctrl.get("Control_name", "")).strip()
-                raw_dp = dp_map.get(c_id, orig_ctrl.get("Deployment_points", ""))
-                # Deterministic safety net — guarantees exactly 5 points
-                # regardless of what the LLM actually returned.
-                orig_ctrl["Deployment_points"] = _validate_deployment_points(raw_dp, c_name)
-                merged_batch.append(orig_ctrl)
-
-            final_controls.extend(merged_batch)
-            logger.info(
-                f"[EXTRACT] DP Batch {batch_num} OK — added {len(merged_batch)} controls, "
-                f"all guaranteed exactly 5 deployment points"
-            )
-
-        except json.JSONDecodeError:
-            logger.exception(f"[EXTRACT] DP Batch {batch_num} JSON parse failed")
-            if finish_reason == "length":
-                logger.warning(
-                    f"[EXTRACT] DP Batch {batch_num} truncated — consider lowering DEPLOYMENT_BATCH_SIZE"
-                )
-            # Even on total failure, every control still gets 5 default points.
-            for ctrl in batch:
-                ctrl["Deployment_points"] = _validate_deployment_points("", str(ctrl.get("Control_name", "")))
-            final_controls.extend(batch)
-
-        except Exception:
-            logger.exception(f"[EXTRACT] DP Batch {batch_num} API error")
-            for ctrl in batch:
-                ctrl["Deployment_points"] = _validate_deployment_points("", str(ctrl.get("Control_name", "")))
-            final_controls.extend(batch)
+        final_controls.extend(_run_stage2_batch(batch, batch_num))
 
     # Final cosmetic sort by natural ID order
     final_controls.sort(
@@ -1362,7 +1389,54 @@ Return ONLY JSON. No markdown."""
     return final_controls
 
 
-def extract_deployment_controls(chunks: list, framework_id: str, is_deployment: bool = True) -> list:
+def _run_deployment_batch(batch_text: str, batch_num: int, total_batches: int) -> list:
+    prompt = f"""You are a strict JSON generator.
+Analyze the following structured deployment document and extract all controls exactly as they are defined in this text slice.
+
+Each control in the document follows this structure:
+1. A heading containing a numeric ID and name separated by '—' or '-' (e.g., '4.1 — general requirements' or '4.2.4 — records management').
+2. A 'Description:' block containing the requirement text.
+3. A 'Deployment Points' section followed by bullet points (e.g., lines starting with '•' or '-').
+
+Your task:
+1. Identify each control heading. Extract the ID as Control_id and the text after the em-dash/dash as Control_name.
+2. Extract the text after 'Description:' as Control_description.
+3. Extract all bullet points under 'Deployment Points' as five numbered lines.
+4. For Section_name, identify the nearest parent heading and strip IDs or numbering.
+
+Use JSON list ONLY:
+[{{"Control_id":"","Control_name":"","Control_description":"","Section_name":"","Deployment_points":"1. ...\\n2. ...\\n3. ...\\n4. ...\\n5. ..."}}]
+
+TEXT:
+{batch_text}
+
+Return ONLY JSON. No markdown. No text outside JSON."""
+    t_start = datetime.now(UTC)
+    try:
+        logger.info(f"[DEPLOYMENT-EXTRACT] Processing batch {batch_num}/{total_batches}...")
+        response = get_openai_client().chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0,
+            max_tokens=CONTROL_EXTRACTION_MAX_TOKENS,
+            timeout=3600,
+        )
+        elapsed = (datetime.now(UTC) - t_start).total_seconds()
+        _log_llm_call(f"DEPLOYMENT-EXTRACT-BATCH{batch_num}", response, elapsed)
+        batch_controls = json.loads(response.choices[0].message.content)
+        logger.info(
+            f"[DEPLOYMENT-EXTRACT] Batch {batch_num}/{total_batches} parsed: "
+            f"{len(batch_controls)} controls"
+        )
+        return batch_controls
+    except json.JSONDecodeError:
+        logger.exception(f"[DEPLOYMENT-EXTRACT] Batch {batch_num} JSON decode failed")
+    except Exception:
+        logger.exception(f"[DEPLOYMENT-EXTRACT] Batch {batch_num} OpenAI API error")
+    return []
+
+
+def extract_deployment_controls(chunks: list) -> list:
     """
     Extract deployment controls from deployment documents/frameworks using AI.
     Specifically designed to parse pre-structured deployment frameworks containing
@@ -1382,61 +1456,7 @@ def extract_deployment_controls(chunks: list, framework_id: str, is_deployment: 
 
     all_batch_results = []
     for i, batch_text in enumerate(batches, start=1):
-        prompt = f"""You are a strict JSON generator.
-Analyze the following structured deployment document and extract all controls exactly as they are defined in this text slice.
-
-Each control in the document follows this structure:
-1. A heading containing a numeric ID and name separated by '—' or '-' (e.g., '4.1 — general requirements' or '4.2.4 — records management').
-2. A 'Description:' block containing the requirement text.
-3. A 'Deployment Points' section followed by bullet points (e.g., lines starting with '•' or '-').
-
-Your task:
-1. Identify each control heading. Extract the ID as Control_id (e.g., '4.1' or '4.2.4') and the text after the em-dash/dash as Control_name (e.g., 'general requirements' or 'records management').
-2. Extract the text after 'Description:' as Control_description.
-3. Extract all bullet points under 'Deployment Points' for that control. Format them as a single string of numbered lines starting from 1 (e.g., '1. Point one\\n2. Point two\\n3. Point three\\n4. Point four\\n5. Point five').
-4. For Section_name: Identify the nearest parent heading under which this control lies (e.g., for control '5.1' under heading '5 — Management Responsibility', the parent heading is 'Management Responsibility'). Strip any IDs or numbering from the Section_name.
-
-Use JSON list ONLY:
-[
-  {{
-    "Control_id": "Extract ID here (e.g., '4.1')",
-    "Control_name": "Extract control name here",
-    "Control_description": "Extract description here",
-    "Section_name": "Extract parent section name here",
-    "Deployment_points": "1. First bullet point\\n2. Second bullet point..."
-  }}
-]
-
-TEXT:
-{batch_text}
-
-Return ONLY JSON. No markdown. No text outside JSON."""
-
-        t_start = datetime.now(UTC)
-        try:
-            logger.info(f"[DEPLOYMENT-EXTRACT] Processing batch {i}/{len(batches)}...")
-            response = get_openai_client().chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0,
-                max_tokens=CONTROL_EXTRACTION_MAX_TOKENS,
-                timeout=3600,
-            )
-            elapsed = (datetime.now(UTC) - t_start).total_seconds()
-            _log_llm_call(f"DEPLOYMENT-EXTRACT-BATCH{i}", response, elapsed)
-
-            batch_controls = json.loads(response.choices[0].message.content)
-            logger.info(
-                f"[DEPLOYMENT-EXTRACT] Batch {i}/{len(batches)} parsed: {len(batch_controls)} controls"
-            )
-            all_batch_results.append(batch_controls)
-
-        except json.JSONDecodeError:
-            logger.exception(f"[DEPLOYMENT-EXTRACT] Batch {i} JSON decode failed")
-            continue
-        except Exception:
-            logger.exception(f"[DEPLOYMENT-EXTRACT] Batch {i} OpenAI API error")
-            continue
+        all_batch_results.append(_run_deployment_batch(batch_text, i, len(batches)))
 
     # Merge extracted controls across all batches, deduplicating by Control_id
     controls = _merge_by_control_id(*all_batch_results)
@@ -1446,7 +1466,6 @@ Return ONLY JSON. No markdown. No text outside JSON."""
     final_controls = []
     for ctrl in controls:
         if isinstance(ctrl, dict):
-            str(ctrl.get("Control_id", "")).strip()
             c_name = str(ctrl.get("Control_name", "")).strip()
             raw_dp = ctrl.get("Deployment_points", "")
 
@@ -1460,6 +1479,99 @@ Return ONLY JSON. No markdown. No text outside JSON."""
     )
     logger.info(f"[DEPLOYMENT-EXTRACT] Saved and sorted total: {len(final_controls)} controls")
     return final_controls
+
+
+def _control_entry(ctrl: dict, idx: int, resource_type: str) -> tuple[str, dict, str]:
+    ctrl_id = str(ctrl.get("Control_id") or f"CTR-{idx + 1:03d}").strip()
+    if resource_type == "framework":
+        name = str(ctrl.get("Control_name") or "").strip()
+        description = str(ctrl.get("Control_description") or "").strip()
+        raw_points = ctrl.get("Deployment_points") or ""
+    else:
+        name = str(ctrl.get("Client_control_name") or ctrl.get("Control_name") or "").strip()
+        description = str(
+            ctrl.get("Client_control_description") or ctrl.get("Control_description") or ""
+        ).strip()
+        raw_points = ctrl.get("Client_deployment_points") or ctrl.get("Deployment_points") or ""
+    return (
+        ctrl_id,
+        {
+            "id": ctrl_id,
+            "name": name.lower() if name else ctrl_id,
+            "description": description,
+            "deployment_points": _parse_deployment_points(raw_points),
+        },
+        str(ctrl.get("Section_name") or "").strip(),
+    )
+
+
+def _sub_control_entries(
+    ctrl_id: str, ordered_ids: list[str], control_by_id: dict[str, dict]
+) -> list[dict]:
+    entries = []
+    for other_id in ordered_ids:
+        other_parts = _split_id(other_id)
+        if len(other_parts) < 4 or ".".join(other_parts[:-1]) != ctrl_id:
+            continue
+        sub_obj = control_by_id[other_id]
+        entries.append(
+            {
+                "id": sub_obj["id"],
+                "name": sub_obj["name"],
+                "description": sub_obj["description"],
+                "deployment_points": sub_obj["deployment_points"],
+            }
+        )
+        logger.debug(f"[STRUCTURE] {other_id} -> sub-control of {ctrl_id}")
+    return entries
+
+
+def _structure_section_key(ctrl_id: str) -> str:
+    parts = _split_id(ctrl_id)
+    if not parts or not parts[0] or parts[0] == "CTR":
+        return "NOSEC"
+    if parts[0].isdigit():
+        return parts[0]
+    return f"{parts[0]}.{parts[1]}".upper() if len(parts) >= 2 else parts[0].upper()
+
+
+def _ensure_structure_section(
+    sections: dict, section_key: str, display_name: str
+) -> None:
+    if section_key and section_key not in sections:
+        sections[section_key] = {
+            "id": section_key,
+            "name": (
+                clean_section_name(display_name).title()
+                if display_name
+                else f"Section {section_key}"
+            ),
+            "controls": [],
+        }
+
+
+def _is_sub_control(ctrl_id: str, control_by_id: dict[str, dict]) -> bool:
+    parts = _split_id(ctrl_id)
+    parent_id = ".".join(parts[:-1]) if len(parts) >= 4 else ""
+    return parent_id in control_by_id
+
+
+def _build_structure_root(
+    ctrl_id: str,
+    ctrl_obj: dict,
+    ordered_ids: list[str],
+    control_by_id: dict[str, dict],
+) -> dict:
+    entry = {
+        "id": ctrl_obj["id"],
+        "name": ctrl_obj["name"],
+        "description": ctrl_obj["description"],
+        "deployment_points": ctrl_obj["deployment_points"],
+    }
+    sub_controls = _sub_control_entries(ctrl_id, ordered_ids, control_by_id)
+    if sub_controls:
+        entry["controls"] = sub_controls
+    return entry
 
 
 def convert_to_section_structure(controls: list, resource_type: str = "framework") -> list:
@@ -1477,62 +1589,12 @@ def convert_to_section_structure(controls: list, resource_type: str = "framework
         logger.warning("[STRUCTURE] Empty controls list")
         return []
 
-    def _parse_id(ctrl_id: str):
-        """Split ID by . or - into parts"""
-        return re.split(r"[.\-]", str(ctrl_id).strip())
-
-    def _section_key_for_id(ctrl_id: str) -> str:
-        """
-        SINGLE source of truth for section key of any Control_id.
-
-        - Letter-prefixed schemes (ISO 27001 Annex A style: A.5.1.1) ->
-          section is the first TWO parts (e.g. "A.5").
-        - Purely numeric clause schemes (ISO 9001 style: 4.2.1) -> section
-          is just the FIRST part (e.g. "4").
-        """
-        parts = _parse_id(ctrl_id)
-        if not parts or not parts[0]:
-            return "NOSEC"
-
-        first = parts[0]
-        if first == "CTR":
-            return "NOSEC"
-
-        if first.isdigit():
-            return first
-        else:
-            if len(parts) >= 2:
-                return f"{first}.{parts[1]}".upper()
-            return first.upper()
-
     sections = {}
     control_by_id = {}
     section_for_control = {}
 
     for idx, ctrl in enumerate(controls):
-        if resource_type == "framework":
-            ctrl_id = str(ctrl.get("Control_id") or f"CTR-{idx+1:03d}").strip()
-            ctrl_name = str(ctrl.get("Control_name") or "").strip()
-            ctrl_desc = str(ctrl.get("Control_description") or "").strip()
-            raw_dp = ctrl.get("Deployment_points") or ""
-            section_name = str(ctrl.get("Section_name") or "").strip()
-        else:
-            ctrl_id = str(ctrl.get("Control_id") or f"CTR-{idx+1:03d}").strip()
-            ctrl_name = str(ctrl.get("Client_control_name") or ctrl.get("Control_name") or "").strip()
-            ctrl_desc = str(
-                ctrl.get("Client_control_description") or ctrl.get("Control_description") or ""
-            ).strip()
-            raw_dp = ctrl.get("Client_deployment_points") or ctrl.get("Deployment_points") or ""
-            section_name = str(ctrl.get("Section_name") or "").strip()
-
-        dp_list = _parse_deployment_points(raw_dp)
-
-        ctrl_obj = {
-            "id": ctrl_id,
-            "name": ctrl_name.strip().lower() if ctrl_name else ctrl_id,
-            "description": ctrl_desc,
-            "deployment_points": dp_list,
-        }
+        ctrl_id, ctrl_obj, section_name = _control_entry(ctrl, idx, resource_type)
         control_by_id[ctrl_id] = ctrl_obj
         section_for_control[ctrl_id] = {"name": section_name}
 
@@ -1548,55 +1610,19 @@ def convert_to_section_structure(controls: list, resource_type: str = "framework
 
     for ctrl_id in ordered_ids:
         ctrl_obj = control_by_id[ctrl_id]
-        parts = _parse_id(ctrl_id)
+        if _is_sub_control(ctrl_id, control_by_id):
+            added_as_sub += 1
+            parent_id = ".".join(_split_id(ctrl_id)[:-1])
+            logger.info(f"[STRUCTURE] {ctrl_id} -> sub-control of {parent_id}")
+            continue
 
-        if len(parts) >= 4:
-            parent_id = ".".join(parts[:-1])
-            if parent_id in control_by_id:
-                added_as_sub += 1
-                logger.info(f"[STRUCTURE] {ctrl_id} -> sub-control of {parent_id}")
-                continue
-
-        sec_key = _section_key_for_id(ctrl_id)
+        sec_key = _structure_section_key(ctrl_id)
         sec_display = section_for_control.get(ctrl_id, {}).get("name") or sec_key
-
-        if sec_key and sec_key not in sections:
-            sections[sec_key] = {
-                "id": sec_key,
-                "name": (clean_section_name(sec_display).title() if sec_display else f"Section {sec_key}"),
-                "controls": [],
-            }
-
+        _ensure_structure_section(sections, sec_key, sec_display)
         if not sec_key:
             continue
 
-        ctrl_entry = {
-            "id": ctrl_obj["id"],
-            "name": ctrl_obj["name"],
-            "description": ctrl_obj["description"],
-            "deployment_points": ctrl_obj["deployment_points"],
-        }
-
-        sub_controls = []
-        for other_id in ordered_ids:
-            other_parts = _parse_id(other_id)
-            if len(other_parts) >= 4:
-                parent_id = ".".join(other_parts[:-1])
-                if parent_id == ctrl_id:
-                    sub_obj = control_by_id[other_id]
-                    sub_controls.append(
-                        {
-                            "id": sub_obj["id"],
-                            "name": sub_obj["name"],
-                            "description": sub_obj["description"],
-                            "deployment_points": sub_obj["deployment_points"],
-                        }
-                    )
-                    logger.debug(f"[STRUCTURE] {other_id} -> sub-control of {ctrl_id}")
-
-        if sub_controls:
-            ctrl_entry["controls"] = sub_controls
-
+        ctrl_entry = _build_structure_root(ctrl_id, ctrl_obj, ordered_ids, control_by_id)
         sections[sec_key]["controls"].append(ctrl_entry)
         added_as_root += 1
         logger.info(f"[STRUCTURE] {ctrl_id} -> root control in section {sec_key}")
@@ -1648,7 +1674,7 @@ def _parse_deployment_points(raw: Any) -> list:
         return result
 
     raw_str = str(raw).strip()
-    points = re.split(r"\n?\s*\d+\.\s+", raw_str)
+    points = re.split(r"(?m)(?:^|\r?\n)[ \t]*\d+\.[ \t]+", raw_str)
     points = [p.strip() for p in points if p.strip()]
 
     result = []

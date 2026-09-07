@@ -131,7 +131,7 @@ def _pymupdf_extract(file_path: str) -> list[str]:
     try:
         import fitz  # PyMuPDF
     except ImportError:
-        logger.warning("[LOAD] PyMuPDF not installed — skipping Attempt 1.5. " "Run: pip install PyMuPDF")
+        logger.warning("[LOAD] PyMuPDF not installed — skipping Attempt 1.5. Run: pip install PyMuPDF")
         return []
 
     try:
@@ -163,7 +163,7 @@ def _ocr_extract(file_path: str) -> list[str]:
         import pytesseract
         from pdf2image import convert_from_path
     except ImportError as e:
-        logger.error(f"[LOAD] OCR dependencies missing: {e}")
+        logger.exception(f"[LOAD] OCR dependencies missing: {e}")
         return []
 
     logger.info("[LOAD] Attempt 2: OCR extraction (pdf2image + pytesseract)...")
@@ -172,7 +172,7 @@ def _ocr_extract(file_path: str) -> list[str]:
         images = convert_from_path(file_path, dpi=OCR_DPI)
         logger.info(f"[LOAD] Converted to {len(images)} images")
     except Exception as e:  # noqa: BLE001
-        logger.error(f"[LOAD] PDF-to-image conversion failed: {e}")
+        logger.exception(f"[LOAD] PDF-to-image conversion failed: {e}")
         return []
 
     all_lines: list[str] = []
@@ -211,7 +211,7 @@ def load_pdf_document(file_path: str) -> list:
         )
         fitz_lines = _pymupdf_extract(file_path)
         if len(fitz_lines) >= MIN_ACCEPTABLE_LINES:
-            logger.info(f"[LOAD]  Using PyMuPDF result ({len(fitz_lines)} lines) — " f"OCR skipped entirely")
+            logger.info(f"[LOAD]  Using PyMuPDF result ({len(fitz_lines)} lines) — OCR skipped entirely")
             lines = fitz_lines
         else:
             logger.info(
