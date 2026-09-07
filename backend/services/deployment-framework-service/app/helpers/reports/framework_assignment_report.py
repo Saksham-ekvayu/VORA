@@ -146,6 +146,10 @@ def _add_stats_section(
     
     story.append(Spacer(1, 10 * mm))
     story.append(Paragraph("Statistics", _styles_dict["section_title"]))
+    
+    usable_width = REPORT_PAGESIZE[0] - (REPORT_MARGINS["leftMargin"] + REPORT_MARGINS["rightMargin"])
+    card_width = usable_width / 3
+    
     stats = [
         ("SECTIONS", len(sections)),
         ("APPLICABLE CONTROLS", len(applicable_controls)),
@@ -154,7 +158,7 @@ def _add_stats_section(
         ("ORG SPECIFIC CONTROLS", org_specific_controls),
         ("AVG CUSTOMER WEIGHT", f"{avg_customer_weightage}/10"),
     ]
-    stat_cards = [build_stat_card(label, value, _styles_dict) for label, value in stats]
+    stat_cards = [build_stat_card(label, value, _styles_dict, width=card_width) for label, value in stats]
     rows = [stat_cards[i : i + 3] for i in range(0, len(stat_cards), 3)]
     stats_table = Table(rows, hAlign="LEFT", spaceBefore=0, spaceAfter=0)
     stats_table.setStyle(

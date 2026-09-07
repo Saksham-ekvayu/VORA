@@ -338,11 +338,11 @@ def build_toc_story(styles: dict) -> list:
     return story
 
 
-def build_stat_card(label: str, value: Any, styles: dict) -> Table:
+def build_stat_card(label: str, value: Any, styles: dict, width: float = 54 * mm) -> Table:
     """Builds a boxed stat card."""
     table = Table(
         [[Paragraph(str(value), styles["stat_value"])], [Paragraph(label, styles["stat_label"])]],
-        colWidths=[54 * mm],
+        colWidths=[width],
     )
     table.setStyle(
         TableStyle(

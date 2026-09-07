@@ -52,23 +52,25 @@ def _stat_status_color(ai_status: str) -> colors.Color:
 
 def _build_stats_table(sections: list[dict], styles: dict) -> Table:
     total_sections = len(sections)
-    total_controls = sum(len(s.get("controls") or []) for s in sections)
     all_controls = [c for s in sections for c in (s.get("controls") or [])]
+    total_controls = len(all_controls)
     total_dps = sum(len(c.get("deployment_points") or []) for c in all_controls)
+    total_weightage = sum((c.get("weightage") or 0) for c in all_controls)
     avg_weightage = (
-        round(sum((c.get("weightage") or 0) for c in all_controls) / len(all_controls), 1)
-        if all_controls
-        else 0
+        round(total_weightage / total_controls, 1) if total_controls > 0 else 0.0
     )
 
+    usable_width = REPORT_PAGESIZE[0] - (REPORT_MARGINS["leftMargin"] + REPORT_MARGINS["rightMargin"])
+    card_width = usable_width / 4
+
     stats = [
-        ("TOTAL SECTIONS", str(total_sections)),
-        ("TOTAL CONTROLS", str(total_controls)),
-        ("DEPLOYMENT POINTS", str(total_dps)),
+        ("TOTAL SECTIONS", total_sections),
+        ("TOTAL CONTROLS", total_controls),
+        ("DEPLOYMENT POINTS", total_dps),
         ("AVG PRIORITY SCORE", f"{avg_weightage}/10"),
     ]
 
-    stat_cards = [build_stat_card(label, val, styles) for label, val in stats]
+    stat_cards = [build_stat_card(label, value, styles, width=card_width) for label, value in stats]
     rows = [stat_cards[i : i + 4] for i in range(0, len(stat_cards), 4)]
     stats_table = Table(rows, hAlign="LEFT", spaceBefore=0, spaceAfter=0)
     stats_table.setStyle(
@@ -440,7 +442,6 @@ def generate_framework_report_pdf(
 
     # Build stats (Page 3)
     story.append(Paragraph("Statistics", styles["section_title"]))
-    story.append(Spacer(1, 4 * mm))
     fw_dict = _framework_to_dict(framework, doc_extractions)
     story.append(_build_stats_table(fw_dict["sections"], styles))
     story.append(Spacer(1, 10 * mm))
