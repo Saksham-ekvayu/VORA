@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   Popover,
@@ -38,48 +38,7 @@ import { getCustomerAdminDashboardAnalytics } from "@/services/dashboardService"
 // ─── Chart colours ────────────────────────────────────────────────────────────
 const FW_COLORS = ["#0f9f93", "#8b5cf6", "#3b82f6", "#f97316", "#ec4899"];
 
-// ─── Top Stat Card ────────────────────────────────────────────────────────────
-function TopStatCard({
-  icon,
-  iconColor = "text-primary",
-  iconBg = "bg-primary/10",
-  borderColor = "border-primary/40",
-  title,
-  value,
-  onClick,
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded bg-card border border-border p-4 flex items-center gap-4 text-left w-full hover:border-primary/40 hover:shadow-md transition-all group cursor-pointer"
-    >
-      <div
-        className={cn(
-          "w-12 h-12 rounded shrink-0 flex items-center justify-center transition-transform duration-300 group-hover:scale-105 border",
-          borderColor,
-          iconBg,
-          iconColor
-        )}
-      >
-        <Icon name={icon} size="24px" />
-      </div>
-      <div className="flex flex-col gap-1.5 overflow-hidden">
-        <p
-          className="text-sm font-medium text-foreground truncate"
-          title={title}
-        >
-          {title}
-        </p>
-        <p
-          className={cn("text-2xl font-bold leading-none truncate", iconColor)}
-        >
-          {value ?? "—"}
-        </p>
-      </div>
-    </button>
-  );
-}
+import StatCard from "./components/StatCard";
 
 // ─── Profiles by Role ─────────────────────────────────────────────────────────
 function ProfilesByRoleCard({ profilesByRole = [], total = 0 }) {
@@ -475,7 +434,6 @@ function RecentActivityFeed({ items = [] }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function CustomerAdminDashboard() {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -622,44 +580,52 @@ export default function CustomerAdminDashboard() {
 
       {/* ── Row 1: Top stat cards ──────────────────────────────────────── */}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <TopStatCard
+        <StatCard
           title="Total Profiles"
           icon="users"
           iconColor="text-primary"
           iconBg="bg-primary/10"
           borderColor="border-primary/40"
-          value={profileTotal}
-          onClick={() => navigate("/profiles")}
-        />
-        <TopStatCard
+          navigation="/profiles"
+        >
+          <div className="text-2xl font-bold text-primary">{profileTotal}</div>
+        </StatCard>
+        <StatCard
           title="Assigned Frameworks"
           icon="assignment"
           iconColor="text-violet-500"
           iconBg="bg-violet-500/10"
           borderColor="border-violet-500/40"
-          value={stats.assignedFrameworks ?? stats.totalAssignedFrameworks ?? 0}
-          onClick={() => navigate("/assigned-frameworks")}
-        />
-        <TopStatCard
+          navigation="/assigned-frameworks"
+        >
+          <div className="text-2xl font-bold text-violet-500">
+            {stats.assignedFrameworks ?? stats.totalAssignedFrameworks ?? 0}
+          </div>
+        </StatCard>
+        <StatCard
           title="Deployment Frameworks"
           icon="cloud-upload"
           iconColor="text-blue-500"
           iconBg="bg-blue-500/10"
           borderColor="border-blue-500/40"
-          value={
-            stats.deploymentFrameworks ?? stats.totalDeploymentFrameworks ?? 0
-          }
-          onClick={() => navigate("/deployment-frameworks")}
-        />
-        <TopStatCard
+          navigation="/deployment-frameworks"
+        >
+          <div className="text-2xl font-bold text-blue-500">
+            {stats.deploymentFrameworks ?? stats.totalDeploymentFrameworks ?? 0}
+          </div>
+        </StatCard>
+        <StatCard
           title="Monitoring Point Configured"
           icon="shield-check"
           iconColor="text-emerald-500"
           iconBg="bg-emerald-500/10"
           borderColor="border-emerald-500/40"
-          value={monitoringSetupValue}
-          onClick={() => navigate("/monitoring-setup")}
-        />
+          navigation="/monitoring-setup"
+        >
+          <div className="text-2xl font-bold text-emerald-500">
+            {monitoringSetupValue}
+          </div>
+        </StatCard>
       </div>
 
       {/* ── Row 2: (Monitoring Setup + Profiles) | Timeline Chart ─────── */}
@@ -708,7 +674,7 @@ export default function CustomerAdminDashboard() {
 
         {/* Framework Timeline Chart */}
         <CardWrapper
-          title="Deployed Frameworks"
+          title="Assigned Frameworks"
           right={
             <div className="flex items-center gap-2">
               <Link

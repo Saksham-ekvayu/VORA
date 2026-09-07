@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
@@ -92,38 +92,59 @@ def _add_month(d: datetime) -> datetime:
     return datetime(d.year, d.month + 1, 1, tzinfo=UTC)
 
 
-def _naive(dt: datetime) -> datetime:
-    return dt.replace(tzinfo=None) if dt.tzinfo else dt
+def _aware(dt: datetime) -> datetime:
+    return dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt
 
 
 def _generate_upload_trend(
     frameworks: list[Framework], start_date: str | None, end_date: str | None
 ) -> list[dict]:
+    if end_date:
+        end_date = end_date.replace("Z", "+00:00")
+    if start_date:
+        start_date = start_date.replace("Z", "+00:00")
+
     trend_end = datetime.fromisoformat(end_date) if end_date else datetime.now(UTC).replace(tzinfo=None)
     trend_start = datetime.fromisoformat(start_date) if start_date else _subtract_months(trend_end, 5)
 
-    start_month = datetime(trend_start.year, trend_start.month, 1, tzinfo=UTC)
-    end_month = datetime(trend_end.year, trend_end.month, 1, tzinfo=UTC)
+    trend_start_aware = _aware(trend_start)
+    trend_end_aware = _aware(trend_end)
 
-    months = []
-    cursor = start_month
-    while cursor <= end_month:
-        months.append(cursor)
-        cursor = _add_month(cursor)
-
+    delta = (trend_end_aware.date() - trend_start_aware.date()).days
     result = []
-    for month_date in months:
-        month_start = datetime(month_date.year, month_date.month, 1, tzinfo=UTC)
-        month_end = _add_month(month_start)
-        uploads = sum(
-            1 for fw in frameworks if fw.createdAt and month_start <= _naive(fw.createdAt) < month_end
-        )
-        label = (
-            f"{MONTH_NAMES[month_date.month - 1]} {month_date.year}"
-            if len(months) > 12
-            else MONTH_NAMES[month_date.month - 1]
-        )
-        result.append({"month": label, "uploads": uploads})
+
+    if delta <= 31:
+        # Day-wise trend
+        for i in range(delta + 1):
+            current_day = trend_start_aware.date() + timedelta(days=i)
+            uploads = sum(
+                1 for fw in frameworks if fw.createdAt and _aware(fw.createdAt).date() == current_day
+            )
+            result.append({"month": current_day.strftime("%Y-%m-%d"), "uploads": uploads})
+    else:
+        # Month-wise trend
+        start_month = datetime(trend_start_aware.year, trend_start_aware.month, 1, tzinfo=UTC)
+        end_month = datetime(trend_end_aware.year, trend_end_aware.month, 1, tzinfo=UTC)
+
+        months = []
+        cursor = start_month
+        while cursor <= end_month:
+            months.append(cursor)
+            cursor = _add_month(cursor)
+
+        for month_date in months:
+            month_start = datetime(month_date.year, month_date.month, 1, tzinfo=UTC)
+            month_end = _add_month(month_start)
+            uploads = sum(
+                1 for fw in frameworks if fw.createdAt and month_start <= _aware(fw.createdAt) < month_end
+            )
+            label = (
+                f"{MONTH_NAMES[month_date.month - 1]} {month_date.year}"
+                if len(months) > 12
+                else MONTH_NAMES[month_date.month - 1]
+            )
+            result.append({"month": label, "uploads": uploads})
+
     return result
 
 

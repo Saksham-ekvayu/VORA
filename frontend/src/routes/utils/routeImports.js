@@ -16,9 +16,6 @@ export const ExpertDashboard = lazy(
 export const CustomerAdminDashboard = lazy(
   () => import("@/pages/dashboard-management/CustomerAdminDashboard")
 );
-export const CustomerExpertDashboard = lazy(
-  () => import("@/pages/dashboard-management/CustomerExpertDashboard")
-);
 export const UserDashboard = lazy(
   () => import("@/pages/dashboard-management/UserDashboard")
 );
@@ -124,7 +121,6 @@ export const DeploymentDocumentDetail = lazy(
 
 // Auth Pages
 export const Login = lazy(() => import("@/pages/auth/Login"));
-export const Register = lazy(() => import("@/pages/auth/Register"));
 export const ForgotPassword = lazy(() => import("@/pages/auth/ForgotPassword"));
 export const ResetPassword = lazy(() => import("@/pages/auth/ResetPassword"));
 export const VerifyEmail = lazy(() => import("@/pages/auth/VerifyEmail"));

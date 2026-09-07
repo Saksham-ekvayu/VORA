@@ -28,6 +28,10 @@ from vora_shared.responses import error, not_found, paginated, server_error, suc
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["extract"])
 
+CREATING_DOCUMENT_EXTRACTION_LOG = "[API] Creating document_extraction entry with status=processing..."
+EXTRACTION_ALREADY_IN_PROGRESS_MESSAGE = "Extraction already in progress"
+INVALIDE_DD_ID_MESSAGE = "Invalid deployment document ID"
+
 _background_tasks = set()
 
 
@@ -50,6 +54,77 @@ def _serialize_dt(value: Any) -> Any:
 # ---------------------------------------------------------------------------
 
 
+async def _get_framework_file_hash(framework_id: str, file_id: str):
+    async with session_scope() as session:
+        framework = await session.get(Framework, framework_id)
+        if not framework:
+            return None, not_found(f"Framework not found: {framework_id}")
+
+        file_info = next(
+            (
+                file_version
+                for file_version in (framework.fileVersions or [])
+                if isinstance(file_version, dict) and str(file_version.get("fileId")) == file_id
+            ),
+            None,
+        )
+        if not file_info:
+            return None, not_found(f"File not found in framework: {file_id}")
+
+        file_hash = file_info.get("fileHash")
+        logger.info(f"[API] File found | hash={file_hash}")
+        return file_hash, None
+
+
+async def _prepare_document_extraction(file_hash: Any, framework_id: str, file_id: str):
+    if not file_hash:
+        return None, None
+
+    async with session_scope() as session:
+        logger.info(CREATING_DOCUMENT_EXTRACTION_LOG)
+        existing = (
+            await session.execute(select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash))
+        ).scalar_one_or_none()
+
+        if existing:
+            ai_data = existing.aiExtraction or {}
+            if ai_data.get("status") == "processing":
+                logger.info(f"[API]  Extraction already in progress | id={existing.id}")
+                return None, success(
+                    message=EXTRACTION_ALREADY_IN_PROGRESS_MESSAGE,
+                    data={
+                        "framework_id": framework_id,
+                        "file_id": file_id,
+                        "file_hash": file_hash,
+                        "extraction_id": existing.id,
+                        "status": "processing",
+                    },
+                )
+            logger.info(f"[API] Using existing document_extraction | id={existing.id}")
+            return existing.id, None
+
+        doc_extraction = DocumentExtraction(
+            id=new_id(),
+            fileHash=file_hash,
+            aiExtraction={
+                "status": "processing",
+                "timestamp": _iso(),
+                "message": "AI extraction in progress",
+            },
+        )
+        session.add(doc_extraction)
+        await session.flush()
+        logger.info(f"[API] Created document_extraction | id={doc_extraction.id}")
+        return doc_extraction.id, None
+
+
+def _queue_framework_extraction(framework_id: str, file_id: str) -> None:
+    task = asyncio.create_task(run_framework_extraction(framework_id, file_id))
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+    logger.info("[API] Extraction task queued")
+
+
 @router.post("/framework/{framework_id}/files/{file_id}/ai-extract")
 async def extract_framework_controls(framework_id: str, file_id: str):
     """
@@ -59,81 +134,19 @@ async def extract_framework_controls(framework_id: str, file_id: str):
     try:
         framework_id = str(framework_id).strip()
         file_id = str(file_id).strip()
-
         if not framework_id or not file_id:
             return error("Invalid framework_id or file_id")
 
         logger.info(f"[API] Extraction requested | framework={framework_id} | file={file_id}")
+        file_hash, response = await _get_framework_file_hash(framework_id, file_id)
+        if response:
+            return response
 
-        # Validate framework exists and get file info
-        file_hash = None
-        async with session_scope() as session:
-            framework = await session.get(Framework, framework_id)
-            if not framework:
-                return not_found(f"Framework not found: {framework_id}")
+        doc_extraction_id, response = await _prepare_document_extraction(file_hash, framework_id, file_id)
+        if response:
+            return response
 
-            file_versions = framework.fileVersions or []
-            file_info = None
-            for fv in file_versions:
-                if isinstance(fv, dict) and str(fv.get("fileId")) == file_id:
-                    file_info = fv
-                    break
-
-            if not file_info:
-                return not_found(f"File not found in framework: {file_id}")
-
-            file_hash = file_info.get("fileHash")
-            logger.info(f"[API] File found | hash={file_hash}")
-
-        # Create document_extraction entry immediately with "processing" status
-        doc_extraction_id = None
-        if file_hash:
-            async with session_scope() as session:
-                logger.info("[API] Creating document_extraction entry with status=processing...")
-
-                # Check if already exists and is currently processing
-                existing = (
-                    await session.execute(
-                        select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash)
-                    )
-                ).scalar_one_or_none()
-
-                if existing:
-                    ai_data = existing.aiExtraction or {}
-                    if ai_data.get("status") == "processing":
-                        logger.info(f"[API]  Extraction already in progress | id={existing.id}")
-                        return success(
-                            message="Extraction already in progress",
-                            data={
-                                "framework_id": framework_id,
-                                "file_id": file_id,
-                                "file_hash": file_hash,
-                                "extraction_id": existing.id,
-                                "status": "processing",
-                            },
-                        )
-                    doc_extraction_id = existing.id
-                    logger.info(f"[API] Using existing document_extraction | id={doc_extraction_id}")
-                else:
-                    doc_extraction = DocumentExtraction(
-                        id=new_id(),
-                        fileHash=file_hash,
-                        aiExtraction={
-                            "status": "processing",
-                            "timestamp": _iso(),
-                            "message": "AI extraction in progress",
-                        },
-                    )
-                    session.add(doc_extraction)
-                    await session.flush()
-                    doc_extraction_id = doc_extraction.id
-                    logger.info(f"[API] Created document_extraction | id={doc_extraction_id}")
-
-        # Queue extraction as background task (don't wait for it)
-        task = asyncio.create_task(run_framework_extraction(framework_id, file_id))
-        _background_tasks.add(task)
-        task.add_done_callback(_background_tasks.discard)
-        logger.info("[API] Extraction task queued")
+        _queue_framework_extraction(framework_id, file_id)
 
         return success(
             message="Framework extraction started",
@@ -157,6 +170,91 @@ async def extract_framework_controls(framework_id: str, file_id: str):
 # ---------------------------------------------------------------------------
 
 
+async def _get_deployment_framework_file_hash(df_id: str, pkg_ver: str, file_id: str):
+    from vora_shared.models import DeploymentFramework
+
+    async with session_scope() as session:
+        deployment_framework = await session.get(DeploymentFramework, df_id)
+        if not deployment_framework:
+            return None, not_found(f"Deployment Framework not found: {df_id}")
+
+        package = next(
+            (
+                package
+                for package in (deployment_framework.packages or [])
+                if isinstance(package, dict) and package.get("packageVersion") == pkg_ver
+            ),
+            None,
+        )
+        if not package:
+            return None, not_found(f"Package not found in deployment framework: {pkg_ver}")
+
+        file_info = next(
+            (
+                document
+                for document in (package.get("documents") or [])
+                if isinstance(document, dict) and str(document.get("fileId")) == file_id
+            ),
+            None,
+        )
+        if not file_info:
+            return None, not_found(f"File not found in package: {file_id}")
+
+        file_hash = file_info.get("fileHash")
+        logger.info(f"[API] File found | hash={file_hash}")
+        return file_hash, None
+
+
+async def _prepare_deployment_framework_extraction(file_hash: Any, df_id: str, pkg_ver: str, file_id: str):
+    if not file_hash:
+        return None, None
+
+    async with session_scope() as session:
+        logger.info(CREATING_DOCUMENT_EXTRACTION_LOG)
+        existing = (
+            await session.execute(select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash))
+        ).scalar_one_or_none()
+
+        if existing:
+            ai_data = existing.aiExtraction or {}
+            if ai_data.get("status") == "processing":
+                logger.info(f"[API]  Extraction already in progress | id={existing.id}")
+                return None, success(
+                    message=EXTRACTION_ALREADY_IN_PROGRESS_MESSAGE,
+                    data={
+                        "df_id": df_id,
+                        "pkg_ver": pkg_ver,
+                        "file_id": file_id,
+                        "file_hash": file_hash,
+                        "extraction_id": existing.id,
+                        "status": "processing",
+                    },
+                )
+            logger.info(f"[API] Using existing document_extraction | id={existing.id}")
+            return existing.id, None
+
+        doc_extraction = DocumentExtraction(
+            id=new_id(),
+            fileHash=file_hash,
+            aiExtraction={
+                "status": "processing",
+                "timestamp": _iso(),
+                "message": "Deployment framework AI extraction in progress",
+            },
+        )
+        session.add(doc_extraction)
+        await session.flush()
+        logger.info(f"[API] Created document_extraction | id={doc_extraction.id}")
+        return doc_extraction.id, None
+
+
+def _queue_deployment_framework_extraction(df_id: str, pkg_ver: str, file_id: str) -> None:
+    task = asyncio.create_task(run_deployment_framework_extraction(df_id, pkg_ver, file_id))
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+    logger.info("[API] Deployment Framework extraction task queued")
+
+
 @router.post("/deployment-framework/{df_id}/packages/{pkg_ver}/files/{file_id}/ai-extract")
 async def extract_deployment_framework_controls(df_id: str, pkg_ver: str, file_id: str):
     """
@@ -176,88 +274,17 @@ async def extract_deployment_framework_controls(df_id: str, pkg_ver: str, file_i
             f"pkg_ver={pkg_ver} | file={file_id}"
         )
 
-        # Validate deployment framework exists and get file info
-        file_hash = None
-        async with session_scope() as session:
-            from vora_shared.models import DeploymentFramework
+        file_hash, response = await _get_deployment_framework_file_hash(df_id, pkg_ver, file_id)
+        if response:
+            return response
 
-            df = await session.get(DeploymentFramework, df_id)
-            if not df:
-                return not_found(f"Deployment Framework not found: {df_id}")
+        doc_extraction_id, response = await _prepare_deployment_framework_extraction(
+            file_hash, df_id, pkg_ver, file_id
+        )
+        if response:
+            return response
 
-            packages = df.packages or []
-            pkg_info = None
-            for pkg in packages:
-                if isinstance(pkg, dict) and pkg.get("packageVersion") == pkg_ver:
-                    pkg_info = pkg
-                    break
-
-            if not pkg_info:
-                return not_found(f"Package not found in deployment framework: {pkg_ver}")
-
-            documents = pkg_info.get("documents") or []
-            file_info = None
-            for doc in documents:
-                if isinstance(doc, dict) and str(doc.get("fileId")) == file_id:
-                    file_info = doc
-                    break
-
-            if not file_info:
-                return not_found(f"File not found in package: {file_id}")
-
-            file_hash = file_info.get("fileHash")
-            logger.info(f"[API] File found | hash={file_hash}")
-
-        # Create document_extraction entry immediately with "processing" status
-        doc_extraction_id = None
-        if file_hash:
-            async with session_scope() as session:
-                logger.info("[API] Creating document_extraction entry with status=processing...")
-
-                # Check if already exists and is currently processing
-                existing = (
-                    await session.execute(
-                        select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash)
-                    )
-                ).scalar_one_or_none()
-
-                if existing:
-                    ai_data = existing.aiExtraction or {}
-                    if ai_data.get("status") == "processing":
-                        logger.info(f"[API]  Extraction already in progress | id={existing.id}")
-                        return success(
-                            message="Extraction already in progress",
-                            data={
-                                "df_id": df_id,
-                                "pkg_ver": pkg_ver,
-                                "file_id": file_id,
-                                "file_hash": file_hash,
-                                "extraction_id": existing.id,
-                                "status": "processing",
-                            },
-                        )
-                    doc_extraction_id = existing.id
-                    logger.info(f"[API] Using existing document_extraction | id={doc_extraction_id}")
-                else:
-                    doc_extraction = DocumentExtraction(
-                        id=new_id(),
-                        fileHash=file_hash,
-                        aiExtraction={
-                            "status": "processing",
-                            "timestamp": _iso(),
-                            "message": "Deployment framework AI extraction in progress",
-                        },
-                    )
-                    session.add(doc_extraction)
-                    await session.flush()
-                    doc_extraction_id = doc_extraction.id
-                    logger.info(f"[API] Created document_extraction | id={doc_extraction_id}")
-
-        # Queue extraction as background task (don't wait for it)
-        task = asyncio.create_task(run_deployment_framework_extraction(df_id, pkg_ver, file_id))
-        _background_tasks.add(task)
-        task.add_done_callback(_background_tasks.discard)
-        logger.info("[API] Deployment Framework extraction task queued")
+        _queue_deployment_framework_extraction(df_id, pkg_ver, file_id)
 
         return success(
             message="Deployment Framework extraction started",
@@ -350,7 +377,7 @@ async def extract_deployment_document_controls(dd_id: str):
         dd_id = str(dd_id).strip()
 
         if not dd_id:
-            return error("Invalid dd_id")
+            return error(INVALIDE_DD_ID_MESSAGE)
 
         logger.info(f"[API] Deployment Document extraction requested | dd={dd_id}")
 
@@ -376,7 +403,7 @@ async def extract_deployment_document_controls(dd_id: str):
         doc_extraction_id = None
         if file_hash:
             async with session_scope() as session:
-                logger.info("[API] Creating document_extraction entry with status=processing...")
+                logger.info(CREATING_DOCUMENT_EXTRACTION_LOG)
 
                 # Check if already exists and is currently processing
                 existing = (
@@ -390,7 +417,7 @@ async def extract_deployment_document_controls(dd_id: str):
                     if ai_data.get("status") == "processing":
                         logger.info(f"[API]  Extraction already in progress | id={existing.id}")
                         return success(
-                            message="Extraction already in progress",
+                            message=EXTRACTION_ALREADY_IN_PROGRESS_MESSAGE,
                             data={
                                 "dd_id": dd_id,
                                 "file_hash": file_hash,
@@ -450,7 +477,7 @@ async def get_deployment_document(dd_id: str):
     try:
         dd_id = str(dd_id).strip()
         if not dd_id:
-            return error("Invalid dd_id")
+            return error(INVALIDE_DD_ID_MESSAGE)
 
         logger.info(f"[GET-DD] Fetching deployment document | id={dd_id}")
         async with session_scope() as session:
@@ -481,8 +508,7 @@ async def get_deployment_document(dd_id: str):
                 },
             )
     except Exception as exc:
-        logger.error(f"[GET-DD] Error for dd_id={dd_id}: {exc}")
-        logger.exception("get_deployment_document error")
+        logger.exception("[GET-DD] Error for dd_id=%s", dd_id)
         return server_error(str(exc))
 
 
@@ -541,8 +567,7 @@ async def get_document_extraction(file_hash: str):
                 },
             )
     except Exception as exc:
-        logger.error(f"[GET-EXTRACTION] Error for file_hash={file_hash}: {exc}")
-        logger.exception("get_document_extraction error | file_hash=%s", file_hash)
+        logger.exception("[GET-EXTRACTION] Error for file_hash=%s", file_hash)
         return server_error(str(exc))
 
 
@@ -602,8 +627,7 @@ async def list_document_extractions(page: int = 1, page_size: int = 10):
                 message=f"Retrieved {len(items)} document extractions",
             )
     except Exception as exc:
-        logger.error(f"[LIST-EXTRACTIONS] Error: {exc}")
-        logger.exception("list_document_extractions error")
+        logger.exception("[LIST-EXTRACTIONS] Error")
         return server_error(str(exc))
 
 
@@ -678,8 +702,7 @@ async def retry_extraction(extraction_id: str):
             )
 
     except Exception as exc:
-        logger.error(f"[RETRY] ❌ Error for extraction_id={extraction_id}: {exc}")
-        logger.exception("retry_extraction error")
+        logger.exception("[RETRY] Error for extraction_id=%s", extraction_id)
         return server_error(str(exc))
 
 
@@ -698,7 +721,7 @@ async def retry_deployment_document_extraction(dd_id: str):
     try:
         dd_id = str(dd_id).strip()
         if not dd_id:
-            return error("Invalid dd_id")
+            return error(INVALIDE_DD_ID_MESSAGE)
 
         logger.info(f"[RETRY-DD] Retry requested for deployment document | dd={dd_id}")
 
@@ -767,6 +790,5 @@ async def retry_deployment_document_extraction(dd_id: str):
         )
 
     except Exception as exc:
-        logger.error(f"[RETRY-DD] ❌ Error for dd_id={dd_id}: {exc}")
-        logger.exception("retry_deployment_document_extraction error")
+        logger.exception("[RETRY-DD] Error for dd_id=%s", dd_id)
         return server_error(str(exc))
