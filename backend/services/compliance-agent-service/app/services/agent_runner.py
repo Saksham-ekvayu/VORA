@@ -21,6 +21,7 @@ from vora_shared.models import (
     FrameworkAssignment,
     UploadedFile,
 )
+from sentence_transformers import SentenceTransformer, util
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,6 @@ def get_embed_model():
     global _embed_model
     if _embed_model is None:
         try:
-            from sentence_transformers import SentenceTransformer
 
             settings = get_settings()
             model_name = getattr(settings, "sentence_transformer_model", "all-MiniLM-L6-v2")
@@ -45,6 +45,32 @@ def get_embed_model():
     return _embed_model
 
 
+def _extract_pdf_text(file_path: str) -> str:
+    import fitz
+
+    doc = fitz.open(file_path)
+    try:
+        return "".join(page.get_text() or "" for page in doc)
+    finally:
+        doc.close()
+
+
+def _extract_docx_text(file_path: str) -> str:
+    from docx import Document
+
+    doc = Document(file_path)
+    paragraphs = [para.text.strip() for para in doc.paragraphs if para.text.strip()]
+    for table in doc.tables:
+        for row in table.rows:
+            paragraphs.extend(cell.text.strip() for cell in row.cells if cell.text.strip())
+    return "\n".join(paragraphs)
+
+
+def _extract_plain_text(file_path: str) -> str:
+    with open(file_path, "r", encoding="utf-8", errors="ignore") as file:
+        return file.read()
+
+
 def extract_text_from_file(file_path: str) -> str:
     """Extract all text from PDF, DOCX, or text files."""
     if not file_path or not os.path.exists(file_path):
@@ -52,43 +78,29 @@ def extract_text_from_file(file_path: str) -> str:
         return ""
 
     ext = os.path.splitext(file_path)[1].lower()
-    text = ""
     logger.info(f"[EXTRACT-TEXT] Extracting text from {file_path} (extension: {ext})")
-
+    extractors = {
+        ".pdf": _extract_pdf_text,
+        ".docx": _extract_docx_text,
+        ".doc": _extract_docx_text,
+        ".txt": _extract_plain_text,
+        ".log": _extract_plain_text,
+        ".csv": _extract_plain_text,
+    }
+    extractor = extractors.get(ext)
+    if not extractor:
+        logger.error(f"[EXTRACT-TEXT] Unsupported file extension: {ext}")
+        return ""
     try:
-        if ext == ".pdf":
-            import fitz
-
-            doc = fitz.open(file_path)
-            for page in doc:
-                text += page.get_text() or ""
-            doc.close()
-        elif ext in (".docx", ".doc"):
-            from docx import Document
-
-            doc = Document(file_path)
-            paragraphs = [para.text for para in doc.paragraphs if para.text.strip()]
-            for table in doc.tables:
-                for row in table.rows:
-                    for cell in row.cells:
-                        if cell.text.strip():
-                            paragraphs.append(cell.text.strip())
-            text = "\n".join(paragraphs)
-        elif ext in (".txt", ".log", ".csv"):
-            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                text = f.read()
-        else:
-            logger.error(f"[EXTRACT-TEXT] Unsupported file extension: {ext}")
+        return extractor(file_path).strip()
     except Exception:
         logger.exception(f"[EXTRACT-TEXT] Failed to extract text from {file_path}")
-
-    return text.strip()
+        return ""
 
 
 async def compute_similarity_async(text: str, dp_text: str) -> float:
     """Compute similarity asynchronously by running encoder in a background thread."""
     try:
-        from sentence_transformers import util
 
         model = get_embed_model()
         emb1 = await asyncio.to_thread(model.encode, text, convert_to_tensor=True)
@@ -129,8 +141,6 @@ def compute_final_score(
 
 def generate_recommendation(
     confidence: str,
-    control_id: str,
-    control_name: str,
     dp_text: str,
     reason: str,
     relevant: bool = True,
@@ -168,53 +178,66 @@ def generate_recommendation(
         )
 
 
+def _map_iso27001_agent(control_id: str) -> str | None:
+    prefix_agents = {
+        "A.5": "Organizational Controls Agent",
+        "A.6": "People Controls Agent",
+        "A.7": "Physical Controls Agent",
+    }
+    for prefix, agent in prefix_agents.items():
+        if control_id.startswith(prefix):
+            return agent
+    groups = {
+        "Access Control Agent": ("A.8.2", "A.8.3", "A.8.4", "A.8.5", "A.8.18"),
+        "Logging & Monitoring Agent": ("A.8.9", "A.8.10", "A.8.15", "A.8.16"),
+        "Network Security Agent": ("A.8.20", "A.8.21", "A.8.22"),
+        "Secure Development Agent": ("A.8.25", "A.8.26", "A.8.27", "A.8.28"),
+    }
+    if control_id.startswith("A.8"):
+        for agent, controls in groups.items():
+            if any(control_id.startswith(control) for control in controls):
+                return agent
+        return "Technical Controls Agent"
+    return None
+
+
+def _map_iso9001_agent(control_id: str) -> str | None:
+    prefix_agents = (
+        (("5", "A.5"), "Leadership Agent"),
+        (("6", "A.6"), "Planning Agent"),
+        (("7", "A.7"), "Support & Resources Agent"),
+        (("8", "A.8"), "Operational Controls Agent"),
+        (("9", "A.9"), "Performance Evaluation Agent"),
+    )
+    for prefixes, agent in prefix_agents:
+        if control_id.startswith(prefixes):
+            return agent
+    return None
+
+
+def _map_keyword_agent(control_id: str) -> str:
+    keyword_agents = (
+        (("access", "auth"), "Access Control Agent"),
+        (("log", "monitor"), "Logging & Monitoring Agent"),
+        (("change", "patch"), "Change Management Agent"),
+        (("incident", "breach"), "Incident Response Agent"),
+    )
+    control_lower = control_id.lower()
+    for keywords, agent in keyword_agents:
+        if any(keyword in control_lower for keyword in keywords):
+            return agent
+    return "General Compliance Agent"
+
+
 def get_agent_name_for_control(control_id: str, framework_code: str | None) -> str:
     """Dynamically map controls to specific compliance sub-agents."""
-    cid = str(control_id).upper().strip()
-    fw = str(framework_code or "").lower().strip()
-
-    if "27001" in fw:
-        if cid.startswith("A.5"):
-            return "Organizational Controls Agent"
-        elif cid.startswith("A.6"):
-            return "People Controls Agent"
-        elif cid.startswith("A.7"):
-            return "Physical Controls Agent"
-        elif cid.startswith("A.8"):
-            if any(x in cid for x in ["A.8.2", "A.8.3", "A.8.4", "A.8.5", "A.8.18"]):
-                return "Access Control Agent"
-            elif any(x in cid for x in ["A.8.9", "A.8.10", "A.8.15", "A.8.16"]):
-                return "Logging & Monitoring Agent"
-            elif any(x in cid for x in ["A.8.20", "A.8.21", "A.8.22"]):
-                return "Network Security Agent"
-            elif any(x in cid for x in ["A.8.25", "A.8.26", "A.8.27", "A.8.28"]):
-                return "Secure Development Agent"
-            return "Technical Controls Agent"
-
-    elif "9001" in fw:
-        if cid.startswith(("5", "A.5")):
-            return "Leadership Agent"
-        elif cid.startswith(("6", "A.6")):
-            return "Planning Agent"
-        elif cid.startswith(("7", "A.7")):
-            return "Support & Resources Agent"
-        elif cid.startswith(("8", "A.8")):
-            return "Operational Controls Agent"
-        elif cid.startswith(("9", "A.9")):
-            return "Performance Evaluation Agent"
-
-    # General keyword-based fallback mapping
-    cid_lower = cid.lower()
-    if "access" in cid_lower or "auth" in cid_lower:
-        return "Access Control Agent"
-    elif "log" in cid_lower or "monitor" in cid_lower:
-        return "Logging & Monitoring Agent"
-    elif "change" in cid_lower or "patch" in cid_lower:
-        return "Change Management Agent"
-    elif "incident" in cid_lower or "breach" in cid_lower:
-        return "Incident Response Agent"
-
-    return "General Compliance Agent"
+    normalized_id = str(control_id).upper().strip()
+    framework = str(framework_code or "").lower().strip()
+    if "27001" in framework:
+        return _map_iso27001_agent(normalized_id) or _map_keyword_agent(normalized_id)
+    if "9001" in framework:
+        return _map_iso9001_agent(normalized_id) or _map_keyword_agent(normalized_id)
+    return _map_keyword_agent(normalized_id)
 
 
 async def analyze_with_llm_async(
@@ -233,8 +256,12 @@ async def analyze_with_llm_async(
     base_url_log = openai_base or "https://api.openai.com/v1"
 
     logger.info("--------------------------------------------------------------------------------")
-    logger.info(f"[LLM-ASYNC] [START] Request to Model: '{target_model}' | API Base: '{base_url_log}'")
-    logger.info(f"[LLM-ASYNC] [REQUEST] Control: {control_id} ('{control_name}') | Agent: '{agent_name}'")
+    logger.info(
+        f"[LLM-ASYNC] [START] Request to Model: '{target_model}' | API Base: '{base_url_log}'"
+    )
+    logger.info(
+        f"[LLM-ASYNC] [REQUEST] Control: {control_id} ('{control_name}') | Agent: '{agent_name}'"
+    )
     logger.info(f"[LLM-ASYNC] [REQUEST] Deployment Point: '{dp_text}'")
     logger.info(
         f"[LLM-ASYNC] [REQUEST] Matched Evidence Length: {len(text)} chars | Snippet: '{text[:150]}...'"
@@ -313,10 +340,15 @@ Document (Snippet):
 """
         requested_max_tokens = 250
 
-        logger.info(f"[LLM-ASYNC] [SENDING] Dispatching request payload to model '{target_model}'...")
+        logger.info(
+            f"[LLM-ASYNC] [SENDING] Dispatching request payload to model '{target_model}'..."
+        )
         resp = await client.chat.completions.create(
             model=target_model,
-            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
             temperature=0,
             max_tokens=requested_max_tokens,
             response_format={"type": "json_object"},
@@ -339,9 +371,11 @@ Document (Snippet):
                 f"[LLM-ASYNC] [SUCCESS] Parsed output: relevant={data.get('relevant')} | agent='{data.get('agent_name')}' | reason='{data.get('reason')}'"
             )
             return data
-        except json.JSONDecodeError as jde:
-            logger.error(
-                f"[LLM-ASYNC] [PARSE-ERROR] Failed to parse JSON from cleaned string. Cleaned string: '{cleaned}' | Error: {jde!s}"
+        except json.JSONDecodeError:
+            logger.exception(
+                "[LLM-ASYNC] [PARSE-ERROR] Failed to parse JSON from cleaned string. "
+                "Cleaned string: '%s'",
+                cleaned,
             )
             raise
 
@@ -355,425 +389,253 @@ Document (Snippet):
         }
 
 
-async def evaluate_compliance_task(dd_id: str) -> None:
-    """Evaluate compliance of a deployment document against finalized assignment controls by comparing extractions."""
-    logger.info(f"[COMPLIANCE-TASK] Started compliance check for DeploymentDocument: {dd_id}")
+async def _resolve_deployment_document(session, dd_id: str):
+    dd = await session.get(DeploymentDocument, dd_id)
+    if dd:
+        return dd
+    extraction = await session.get(DocumentExtraction, dd_id)
+    if not extraction or not extraction.fileHash:
+        return None
+    all_dds = (await session.execute(select(DeploymentDocument))).scalars().all()
+    for candidate in all_dds:
+        if candidate.document and candidate.document.get("fileHash") == extraction.fileHash:
+            logger.info(
+                f"[COMPLIANCE-TASK] Resolved DocumentExtraction '{dd_id}' to DeploymentDocument "
+                f"'{candidate.id}' via fileHash '{extraction.fileHash}'"
+            )
+            return candidate
+    return None
 
+
+def _active_file_version(fa):
+    active = fa.currentFileVersion or "1.0.0"
+    versions = [fv if isinstance(fv, dict) else getattr(fv, "__dict__", {}) for fv in fa.fileVersions]
+    return next((fv for fv in versions if fv.get("fileVersion") == active), versions[-1] if versions else None)
+
+
+def _file_path(document: dict[str, Any]) -> str | None:
+    file_url = document.get("fileUrl")
+    if not file_url:
+        return document.get("file_path")
+    if not file_url.startswith("/uploads/"):
+        return file_url
+    from pathlib import Path
+    from vora_shared.file_storage import UPLOAD_BASE_PATH
+
+    return str((Path(UPLOAD_BASE_PATH) / file_url.replace("/uploads/", "", 1)).resolve())
+
+
+def _flatten_extracted_dps(doc_ext) -> list[dict[str, Any]]:
+    if not doc_ext or not doc_ext.aiExtraction:
+        return []
+    controls = (doc_ext.aiExtraction or {}).get("controls", {}).get("controls_data") or []
+    return [
+        {"id": dp.get("id"), "name": dp.get("name"), "control_id": ctrl.get("id"), "control_name": ctrl.get("name")}
+        for section in controls
+        for ctrl in section.get("controls", [])
+        for dp in ctrl.get("deployment_points", [])
+    ]
+
+
+async def _load_evidence_context(session, dd):
+    file_hash = dd.document.get("fileHash")
+    if not file_hash:
+        logger.error("[COMPLIANCE-TASK] No fileHash in DeploymentDocument document field.")
+        return None
+    doc_ext = (
+        await session.execute(select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash))
+    ).scalar_one_or_none()
+    extracted = _flatten_extracted_dps(doc_ext)
+    if extracted:
+        logger.info(
+            f"[COMPLIANCE-TASK] Loaded structured extraction from DB for fileHash={file_hash} "
+            f"| total_extracted_dps={len(extracted)}"
+        )
+    else:
+        logger.warning(
+            f"[COMPLIANCE-TASK] No structured DocumentExtraction found for fileHash={file_hash}. "
+            "Falling back to raw file text."
+        )
+    embeddings = None
+    if extracted:
+        try:
+            model = get_embed_model()
+            texts = [item.get("name", "") for item in extracted]
+            if texts:
+                embeddings = model.encode(texts, convert_to_tensor=True)
+                logger.info(f"[COMPLIANCE-TASK] Pre-encoded {len(texts)} extracted deployment points for fast semantic matching.")
+        except Exception:
+            logger.exception("Failed to pre-encode extracted texts")
+    path = _file_path(dd.document)
+    raw_text = extract_text_from_file(path) if not extracted and path else ""
+    if not extracted and path and not raw_text:
+        logger.error("[COMPLIANCE-TASK] Extraction missing and raw file text extraction failed.")
+        return None
+    return file_hash, extracted, embeddings, path, raw_text
+
+
+def _evaluation_settings() -> dict[str, Any]:
+    settings = get_settings()
+    base = getattr(settings, "compliance_api_base", None) or os.environ.get("COMPLIANCE_API_BASE")
+    model = getattr(settings, "compliance_model_name", "qwen7b") or os.environ.get("COMPLIANCE_MODEL_NAME")
+    return {
+        "openai_key": None,
+        "openai_base": base or None,
+        "model_name": model,
+        "score_threshold": getattr(settings, "compliance_score_threshold", 0.7),
+        "sim_high": getattr(settings, "compliance_sim_high", 80.0),
+        "sim_medium": getattr(settings, "compliance_sim_medium", 60.0),
+        "sim_low": getattr(settings, "compliance_sim_low", 40.0),
+        "score_high": getattr(settings, "compliance_score_high", 0.95),
+        "score_medium": getattr(settings, "compliance_score_medium", 0.75),
+        "score_low": getattr(settings, "compliance_score_low", 0.60),
+        "score_very_low": getattr(settings, "compliance_score_very_low", 0.30),
+    }
+
+
+async def _find_evidence(dp_id, dp_text, control_id, extracted, embeddings, raw_text):
+    evidence, score = None, 0.0
+    for item in extracted:
+        if item.get("control_id") == control_id and item.get("id") == dp_id:
+            evidence = item.get("name")
+            score = await compute_similarity_async(evidence, dp_text)
+            logger.info(f"[COMPLIANCE-TASK] [MATCH-EXACT] Found exact ID & Control match for {dp_id} (Similarity: {score}%)")
+            break
+    if not evidence and embeddings is not None:
+        try:
+            model = get_embed_model()
+            target = await asyncio.to_thread(model.encode, dp_text, convert_to_tensor=True)
+            scores = util.cos_sim(target, embeddings)[0]
+            index = scores.argmax().item()
+            best_score = round(scores[index].item() * 100, 2)
+            best = extracted[index]
+            if best and best_score >= 50.0:
+                evidence, score = best.get("name"), best_score
+                logger.info(
+                    f"[COMPLIANCE-TASK] [MATCH-SEMANTIC] Matched target '{dp_id}' (control '{control_id}') "
+                    f"with extracted DP '{best.get('id')}' (control '{best.get('control_id')}') (similarity: {score}%)"
+                )
+                logger.info(f"[COMPLIANCE-TASK] [MATCH-SEMANTIC] Matched snippet: '{evidence[:150]}...'")
+        except Exception:
+            logger.exception("[COMPLIANCE-TASK] [MATCH-ERROR] Failed semantic search using pre-encoded embeddings")
+    if evidence or not raw_text:
+        return evidence or "", score
+    logger.info(f"[COMPLIANCE-TASK] [FALLBACK-RAW] No extracted match found for {dp_id}. Performing fallback match on raw document text.")
+    return raw_text, await compute_similarity_async(raw_text, dp_text)
+
+
+async def _evaluate_dp(dp, control, agent_name, context, config, dd, file_path):
+    dp_id, dp_text = dp.get("id"), dp.get("name")
+    if not dp_id or not dp_text:
+        return None
+    control_id = control.get("id")
+    logger.info(f"[COMPLIANCE-TASK] [DP-CHECK] Target Requirement: {dp_id} | '{dp_text}'")
+    _, extracted, embeddings, _, raw_text = context
+    evidence, similarity = await _find_evidence(dp_id, dp_text, control_id, extracted, embeddings, raw_text)
+    if not evidence:
+        relevant, reason, confidence = False, "This deployment point was not found/extracted in the uploaded deployment document.", "high"
+        recommendation = f"REQUIRES ACTION: The deployment point is not satisfied because no matching evidence was found in the document. Action: Document and implement: {dp_text}"
+        logger.info(f"[COMPLIANCE-TASK] [DECISION] Target: {dp_id} -> NOT COMPLIANT (No Evidence)")
+    else:
+        logger.info(f"[COMPLIANCE-TASK] [LLM-CALL] Invoking Qwen LLM for control {control_id} | DP: {dp_id}")
+        result = await analyze_with_llm_async(config["openai_key"], config["openai_base"], config["model_name"], evidence, control_id, control.get("name"), control.get("description", ""), dp_text, agent_name)
+        relevant = result.get("relevant", False)
+        reason, confidence = result.get("reason", "No reason provided"), result.get("confidence", "low")
+        recommendation = result.get("recommendation") or generate_recommendation(confidence, dp_text, reason, relevant)
+    status = "Compliant" if similarity >= config["sim_medium"] else "Non-Compliant"
+    logger.info(f"[COMPLIANCE-TASK] [DP-STATUS] Target: {dp_id} | Similarity: {similarity}% | LLM Relevant: {relevant} | Status: {status} | Reason: {reason}")
+    return {
+        "dp_id": dp_id, "deployment_point": dp_text,
+        "file": dd.document.get("originalFileName") or os.path.basename(file_path or "document"),
+        "file_id": dd.document.get("fileId") or "N/A", "match_percentage": f"{similarity}%",
+        "similarity_score": similarity, "compliance_status": status,
+        "llm_analysis": {"agent_name": agent_name, "relevant": relevant, "reason": reason, "confidence": confidence, "recommendation": recommendation},
+        "agent_name": agent_name, "timestamp": datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC"),
+    }
+
+
+async def _save_control(session, control, records, dd, fa, file_hash, file_path):
+    control_id = control.get("id")
+    filename = dd.document.get("originalFileName") or os.path.basename(file_path or "document")
+    output = {"document_uuid": dd.id, "filename": filename, "frameworkCode": fa.frameworkCode, "frameworkName": fa.frameworkName, "frameworkVersion": fa.frameworkVersion,
+              "fileVersions": [{"fileVersion": fa.frameworkVersion or "1.0.0", "status": "processed", "processed_at": datetime.now(UTC).isoformat(),
+                               "data": {str(control_id): {"control_id": control_id, "records": records, "document_source": filename, "file_hash": file_hash}}}]}
+    key = f"{control_id}#{dd.id}"
+    existing = (await session.execute(select(EvidenceOutput).where(EvidenceOutput.control_id == key).limit(1))).scalar_one_or_none()
+    if existing:
+        existing.output = output
+        flag_modified(existing, "output")
+    else:
+        session.add(EvidenceOutput(id=new_id(), control_id=key, output=output))
+    await session.commit()
+    logger.info(f"[COMPLIANCE-TASK] [DATABASE-SAVE] Saved compliance output successfully for Control: {control_id} ({len(records)} records)")
+
+
+async def _process_control(control, sem, context, config, dd, fa):
+    async with sem, session_scope() as session:
+        control_id, dps = control.get("id"), control.get("deployment_points") or []
+        logger.info(f"[COMPLIANCE-TASK] [CONTROL-START] Evaluating Control: {control_id} - '{control.get('name')}' | Total Target DPs: {len(dps)}")
+        if not control_id or not dps:
+            logger.warning(f"[COMPLIANCE-TASK] [CONTROL-SKIP] Skipping {control_id} - No deployment points configured.")
+            return
+        agent = get_agent_name_for_control(control_id, fa.frameworkCode)
+        logger.info(f"[COMPLIANCE-TASK] [CONTROL-AGENT] Mapped to Agent: '{agent}'")
+        results = await asyncio.gather(*(_evaluate_dp(dp, control, agent, context, config, dd, context[3]) for dp in dps))
+        await _save_control(session, control, [item for item in results if item], dd, fa, context[0], context[3])
+
+
+async def _mark_uploaded_file(file_id: str | None) -> None:
+    if not file_id:
+        return
+    async with session_scope() as session:
+        uploaded = await session.get(UploadedFile, str(file_id))
+        if not uploaded:
+            return
+        meta = dict(uploaded.meta or {})
+        meta.update({"status": "processed", "processed_at": datetime.now(UTC).isoformat()})
+        uploaded.meta = meta
+        flag_modified(uploaded, "meta")
+        session.add(uploaded)
+        await session.commit()
+        logger.info(f"[COMPLIANCE-TASK] Marked UploadedFile '{file_id}' as processed in database.")
+
+
+async def _run_compliance_evaluation(dd_id: str) -> None:
+    """Evaluate compliance of a deployment document against finalized assignment controls."""
+    logger.info(f"[COMPLIANCE-TASK] Started compliance check for DeploymentDocument: {dd_id}")
     try:
         async with session_scope() as session:
-            # 1. Fetch DeploymentDocument (resolves either DeploymentDocument ID or DocumentExtraction ID)
-            dd = await session.get(DeploymentDocument, dd_id)
+            dd = await _resolve_deployment_document(session, dd_id)
             if not dd:
-                # Check if dd_id is a DocumentExtraction ID instead
-                doc_ext_fallback = await session.get(DocumentExtraction, dd_id)
-                if doc_ext_fallback and doc_ext_fallback.fileHash:
-                    all_dds = (await session.execute(select(DeploymentDocument))).scalars().all()
-                    for candidate_dd in all_dds:
-                        if (
-                            candidate_dd.document
-                            and candidate_dd.document.get("fileHash") == doc_ext_fallback.fileHash
-                        ):
-                            dd = candidate_dd
-                            logger.info(
-                                f"[COMPLIANCE-TASK] Resolved DocumentExtraction '{dd_id}' to DeploymentDocument '{dd.id}' via fileHash '{doc_ext_fallback.fileHash}'"
-                            )
-                            break
-
-            if not dd:
-                logger.error(
-                    f"[COMPLIANCE-TASK] Deployment Document (or matching extraction file) not found for: {dd_id}"
-                )
+                logger.error(f"[COMPLIANCE-TASK] Deployment Document (or matching extraction file) not found for: {dd_id}")
                 return
-
-            # 2. Get DeploymentFramework
             df = await session.get(DeploymentFramework, dd.deploymentFrameworkId)
             if not df:
                 logger.error(f"[COMPLIANCE-TASK] Deployment Framework not found: {dd.deploymentFrameworkId}")
                 return
-
-            # 3. Get FrameworkAssignment
             fa = await session.get(FrameworkAssignment, df.assignedFrameworkId)
+            file_version = _active_file_version(fa) if fa else None
             if not fa:
                 logger.error(f"[COMPLIANCE-TASK] Framework Assignment not found: {df.assignedFrameworkId}")
                 return
-
-            # Find active version in Assignment
-            active_ver = fa.currentFileVersion or "1.0.0"
-            file_ver_doc = None
-            for fv in fa.fileVersions:
-                fv_dict = fv if isinstance(fv, dict) else getattr(fv, "__dict__", {})
-                if fv_dict.get("fileVersion") == active_ver:
-                    file_ver_doc = fv_dict
-                    break
-            if not file_ver_doc and fa.fileVersions:
-                file_ver_doc = (
-                    fa.fileVersions[-1]
-                    if isinstance(fa.fileVersions[-1], dict)
-                    else getattr(fa.fileVersions[-1], "__dict__", {})
-                )
-
-            if not file_ver_doc or not file_ver_doc.get("aiExtraction"):
-                logger.error(
-                    f"[COMPLIANCE-TASK] No finalized controls/aiExtraction found in FrameworkAssignment {fa.id}"
-                )
+            if not file_version or not file_version.get("aiExtraction"):
+                logger.error(f"[COMPLIANCE-TASK] No finalized controls/aiExtraction found in FrameworkAssignment {fa.id}")
                 return
-
-            # 4. Get Deployment Document Extraction from document_extractions table
-            file_hash = dd.document.get("fileHash")
-            if not file_hash:
-                logger.error("[COMPLIANCE-TASK] No fileHash in DeploymentDocument document field.")
+            context = await _load_evidence_context(session, dd)
+            if not context:
                 return
-
-            doc_ext = (
-                await session.execute(
-                    select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash)
-                )
-            ).scalar_one_or_none()
-
-            # Pool all extracted deployment points across all controls for flat semantic lookup
-            all_extracted_dps = []
-            if doc_ext and doc_ext.aiExtraction:
-                ai_ext = doc_ext.aiExtraction or {}
-                controls_list = ai_ext.get("controls", {}).get("controls_data") or []
-                for sec in controls_list:
-                    for ctrl in sec.get("controls", []):
-                        ctrl_id_ext = ctrl.get("id")
-                        for dp in ctrl.get("deployment_points", []):
-                            all_extracted_dps.append(
-                                {
-                                    "id": dp.get("id"),
-                                    "name": dp.get("name"),
-                                    "control_id": ctrl_id_ext,
-                                    "control_name": ctrl.get("name"),
-                                }
-                            )
-                logger.info(
-                    f"[COMPLIANCE-TASK] Loaded structured extraction from DB for fileHash={file_hash} | total_extracted_dps={len(all_extracted_dps)}"
-                )
-            else:
-                logger.warning(
-                    f"[COMPLIANCE-TASK] No structured DocumentExtraction found for fileHash={file_hash}. Falling back to raw file text."
-                )
-
-            # Pre-compute embeddings for flat semantic lookup
-            ext_embeddings = None
-            if all_extracted_dps:
-                try:
-
-                    model = get_embed_model()
-                    ext_texts = [ext_dp.get("name", "") for ext_dp in all_extracted_dps]
-                    if ext_texts:
-                        ext_embeddings = model.encode(ext_texts, convert_to_tensor=True)
-                        logger.info(
-                            f"[COMPLIANCE-TASK] Pre-encoded {len(ext_texts)} extracted deployment points for fast semantic matching."
-                        )
-                except Exception:
-                    logger.exception("Failed to pre-encode extracted texts")
-
-            # Load raw text only if DocumentExtraction was missing, or as general fallback context
-            file_url = dd.document.get("fileUrl")
-            file_path = None
-            if file_url:
-                if file_url.startswith("/uploads/"):
-                    from pathlib import Path
-
-                    from vora_shared.file_storage import UPLOAD_BASE_PATH
-
-                    relative = file_url.replace("/uploads/", "", 1)
-                    file_path = str((Path(UPLOAD_BASE_PATH) / relative).resolve())
-                else:
-                    file_path = file_url
-            else:
-                file_path = dd.document.get("file_path")
-
-            raw_text = ""
-            if not all_extracted_dps and file_path:
-                raw_text = extract_text_from_file(file_path)
-                if not raw_text:
-                    logger.error("[COMPLIANCE-TASK] Extraction missing and raw file text extraction failed.")
-                    return
-
-            settings = get_settings()
-            # Use local Qwen model - don't check for OpenAI key
-            openai_key = None  # Disabled: using local Qwen model only
-            openai_base = getattr(settings, "compliance_api_base", None) or os.environ.get(
-                "COMPLIANCE_API_BASE"
-            )
-            if openai_base == "":
-                openai_base = None
-            model_name = getattr(settings, "compliance_model_name", "qwen7b") or os.environ.get(
-                "COMPLIANCE_MODEL_NAME"
-            )
-
-            # Load dynamic thresholds from settings/env
-            score_threshold = getattr(settings, "compliance_score_threshold", 0.7)
-            sim_high = getattr(settings, "compliance_sim_high", 80.0)
-            sim_medium = getattr(settings, "compliance_sim_medium", 60.0)
-            sim_low = getattr(settings, "compliance_sim_low", 40.0)
-            score_high = getattr(settings, "compliance_score_high", 0.95)
-            score_medium = getattr(settings, "compliance_score_medium", 0.75)
-            score_low = getattr(settings, "compliance_score_low", 0.60)
-            score_very_low = getattr(settings, "compliance_score_very_low", 0.30)
-
-            logger.info("================================================================================")
-            logger.info("[COMPLIANCE-TASK] RUNNING DETAILED COMPLIANCE EVALUATION")
-            logger.info(f"[COMPLIANCE-TASK] Target Model Name   : '{model_name}'")
-            logger.info(
-                f"[COMPLIANCE-TASK] Target API Base URL : '{openai_base or 'https://api.openai.com/v1'}'"
-            )
-            logger.info(
-                f"[COMPLIANCE-TASK] Target OpenAI Key   : {'Configured (Present)' if openai_key else 'Missing'}"
-            )
-            logger.info(
-                f"[COMPLIANCE-TASK] Framework Assignment: ID={fa.id} | Code={fa.frameworkCode} | Version={fa.frameworkVersion}"
-            )
-            logger.info(f"[COMPLIANCE-TASK] File details        : Path='{file_path}' | Hash={file_hash}")
-            logger.info(f"[COMPLIANCE-TASK] Score Threshold     : {score_threshold}")
-            logger.info(
-                f"[COMPLIANCE-TASK] Similarity Cutoffs  : High={sim_high}% | Medium={sim_medium}% | Low={sim_low}%"
-            )
-            logger.info(
-                f"[COMPLIANCE-TASK] Score Levels        : High={score_high} | Medium={score_medium} | Low={score_low} | Min={score_very_low}"
-            )
-            logger.info("================================================================================")
-
-            # 5. Evaluate each Control in Assignment in Parallel
-            sections = file_ver_doc.get("aiExtraction") or []
+            config = _evaluation_settings()
+            sections = file_version.get("aiExtraction") or []
             sem = asyncio.Semaphore(10)
-
-            async def process_control_async(control):
-                async with sem, session_scope() as local_session:
-                    control_id = control.get("id")
-                    control_name = control.get("name")
-                    control_desc = control.get("description", "")
-                    dps = control.get("deployment_points") or []
-
-                    logger.info(
-                        f"[COMPLIANCE-TASK] [CONTROL-START] Evaluating Control: {control_id} - '{control_name}' | Total Target DPs: {len(dps)}"
-                    )
-
-                    if not control_id or not dps:
-                        logger.warning(
-                            f"[COMPLIANCE-TASK] [CONTROL-SKIP] Skipping {control_id} - No deployment points configured."
-                        )
-                        return
-
-                    agent_name = get_agent_name_for_control(control_id, fa.frameworkCode)
-                    logger.info(f"[COMPLIANCE-TASK] [CONTROL-AGENT] Mapped to Agent: '{agent_name}'")
-
-                    async def process_dp(dp):
-                        dp_id = dp.get("id")
-                        dp_text = dp.get("name")
-                        if not dp_id or not dp_text:
-                            return None
-
-                        logger.info(f"[COMPLIANCE-TASK] [DP-CHECK] Target Requirement: {dp_id} | '{dp_text}'")
-                        evidence_text = None
-                        match_score = 0.0
-
-                        if all_extracted_dps:
-                            # 1. Try exact ID and control match first
-                            for ext_dp in all_extracted_dps:
-                                if ext_dp.get("control_id") == control_id and ext_dp.get("id") == dp_id:
-                                    evidence_text = ext_dp.get("name")
-                                    match_score = await compute_similarity_async(evidence_text, dp_text)
-                                    logger.info(
-                                        f"[COMPLIANCE-TASK] [MATCH-EXACT] Found exact ID & Control match for {dp_id} (Similarity: {match_score}%)"
-                                    )
-                                    break
-
-                            # 2. Fallback to semantic similarity search across all DPs in extraction using pre-computed embeddings
-                            if not evidence_text and ext_embeddings is not None:
-                                try:
-                                    from sentence_transformers import util
-
-                                    model = get_embed_model()
-                                    target_emb = await asyncio.to_thread(
-                                        model.encode, dp_text, convert_to_tensor=True
-                                    )
-                                    cosine_scores = util.cos_sim(target_emb, ext_embeddings)[0]
-                                    best_idx = cosine_scores.argmax().item()
-                                    best_score = round(cosine_scores[best_idx].item() * 100, 2)
-                                    best_ext = all_extracted_dps[best_idx]
-
-                                    if best_ext and best_score >= 50.0:
-                                        evidence_text = best_ext.get("name")
-                                        match_score = best_score
-                                        logger.info(
-                                            f"[COMPLIANCE-TASK] [MATCH-SEMANTIC] Matched target '{dp_id}' (control '{control_id}') with extracted DP '{best_ext.get('id')}' (control '{best_ext.get('control_id')}') (similarity: {match_score}%)"
-                                        )
-                                        logger.info(
-                                            f"[COMPLIANCE-TASK] [MATCH-SEMANTIC] Matched snippet: '{evidence_text[:150]}...'"
-                                        )
-                                except Exception as e:  # noqa: BLE001
-                                    logger.error(
-                                        f"[COMPLIANCE-TASK] [MATCH-ERROR] Failed semantic search using pre-encoded embeddings: {e}"
-                                    )
-
-                        if not evidence_text:
-                            if raw_text:
-                                logger.info(
-                                    f"[COMPLIANCE-TASK] [FALLBACK-RAW] No extracted match found for {dp_id}. Performing fallback match on raw document text."
-                                )
-                                match_score = await compute_similarity_async(raw_text, dp_text)
-                                evidence_text = raw_text
-                            else:
-                                logger.warning(
-                                    f"[COMPLIANCE-TASK] [NO-EVIDENCE] No evidence found in document for target {dp_id}."
-                                )
-                                match_score = 0.0
-                                evidence_text = ""
-
-                        if not evidence_text:
-                            relevant = False
-                            reason = "This deployment point was not found/extracted in the uploaded deployment document."
-                            confidence = "high"
-                            similarity = 0.0
-                            recommendation = f"REQUIRES ACTION: The deployment point is not satisfied because no matching evidence was found in the document. Action: Document and implement: {dp_text}"
-                            logger.info(
-                                f"[COMPLIANCE-TASK] [DECISION] Target: {dp_id} -> NOT COMPLIANT (No Evidence)"
-                            )
-                        else:
-                            similarity = match_score
-                            # Always use Qwen LLM (not OpenAI)
-                            logger.info(
-                                f"[COMPLIANCE-TASK] [LLM-CALL] Invoking Qwen LLM for control {control_id} | DP: {dp_id}"
-                            )
-                            llm_res = await analyze_with_llm_async(
-                                openai_key,
-                                openai_base,
-                                model_name,
-                                evidence_text,
-                                control_id,
-                                control_name,
-                                control_desc,
-                                dp_text,
-                                agent_name,
-                            )
-                            relevant = llm_res.get("relevant", False)
-                            reason = llm_res.get("reason", "No reason provided")
-                            confidence = llm_res.get("confidence", "low")
-                            recommendation = llm_res.get("recommendation")
-                            if not recommendation:
-                                recommendation = generate_recommendation(
-                                    confidence, control_id, control_name, dp_text, reason, relevant
-                                )
-
-                        compute_final_score(
-                            similarity,
-                            relevant,
-                            sim_high,
-                            sim_medium,
-                            sim_low,
-                            score_high,
-                            score_medium,
-                            score_low,
-                            score_very_low,
-                        )
-                        # Rule: >=60% similarity = COMPLIANT, <60% = NON-COMPLIANT
-                        compliance_status = "Compliant" if similarity >= sim_medium else "Non-Compliant"
-                        logger.info(
-                            f"[COMPLIANCE-TASK] [DP-STATUS] Target: {dp_id} | Similarity: {similarity}% | LLM Relevant: {relevant} | Status: {compliance_status} | Reason: {reason}"
-                        )
-
-                        return {
-                            "dp_id": dp_id,
-                            "deployment_point": dp_text,
-                            "file": dd.document.get("originalFileName")
-                            or os.path.basename(file_path or "document"),
-                            "file_id": dd.document.get("fileId") or "N/A",
-                            "match_percentage": f"{similarity}%",
-                            "similarity_score": similarity,
-                            "compliance_status": compliance_status,
-                            "llm_analysis": {
-                                "agent_name": agent_name,
-                                "relevant": relevant,
-                                "reason": reason,
-                                "confidence": confidence,
-                                "recommendation": recommendation,
-                            },
-                            "agent_name": agent_name,
-                            "timestamp": datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC"),
-                        }
-
-                    dp_results = await asyncio.gather(*(process_dp(dp) for dp in dps))
-                    records = [r for r in dp_results if r is not None]
-
-                    output_doc = {
-                        "document_uuid": dd.id,
-                        "filename": dd.document.get("originalFileName")
-                        or os.path.basename(file_path or "document"),
-                        "frameworkCode": fa.frameworkCode,
-                        "frameworkName": fa.frameworkName,
-                        "frameworkVersion": fa.frameworkVersion,
-                        "fileVersions": [
-                            {
-                                "fileVersion": fa.frameworkVersion or "1.0.0",
-                                "status": "processed",
-                                "processed_at": datetime.now(UTC).isoformat(),
-                                "data": {
-                                    str(control_id): {
-                                        "control_id": control_id,
-                                        "records": records,
-                                        "document_source": dd.document.get("originalFileName")
-                                        or os.path.basename(file_path or "document"),
-                                        "file_hash": file_hash,
-                                    }
-                                },
-                            }
-                        ],
-                    }
-
-                    # Create unique key: control_id + document_uuid
-                    unique_key = f"{control_id}#{dd.id}"
-
-                    existing = (
-                        await local_session.execute(
-                            select(EvidenceOutput).where(EvidenceOutput.control_id == unique_key).limit(1)
-                        )
-                    ).scalar_one_or_none()
-
-                    if existing:
-                        existing.output = output_doc
-                        flag_modified(existing, "output")
-                    else:
-                        local_session.add(
-                            EvidenceOutput(id=new_id(), control_id=unique_key, output=output_doc)
-                        )
-                    await local_session.commit()
-                    logger.info(
-                        f"[COMPLIANCE-TASK] [DATABASE-SAVE] Saved compliance output successfully for Control: {control_id} ({len(records)} records)"
-                    )
-
-            # Collect tasks for all controls
-            tasks = []
-            for section in sections:
-                for control in section.get("controls") or []:
-                    tasks.append(process_control_async(control))
-
-            if tasks:
-                logger.info(
-                    f"[COMPLIANCE-TASK] Spawning parallel evaluation tasks for {len(tasks)} controls."
-                )
-                await asyncio.gather(*tasks)
-
-            # 6. Mark UploadedFile as processed if found
-            file_id = dd.document.get("fileId")
-            if file_id:
-                async with session_scope() as local_session:
-                    uploaded = await local_session.get(UploadedFile, str(file_id))
-                    if uploaded:
-                        meta = dict(uploaded.meta or {})
-                        meta.update({"status": "processed", "processed_at": datetime.now(UTC).isoformat()})
-                        uploaded.meta = meta
-                        flag_modified(uploaded, "meta")
-                        local_session.add(uploaded)
-                        await local_session.commit()
-                        logger.info(
-                            f"[COMPLIANCE-TASK] Marked UploadedFile '{file_id}' as processed in database."
-                        )
-
+            controls = [control for section in sections for control in section.get("controls") or []]
+            logger.info(f"[COMPLIANCE-TASK] Spawning parallel evaluation tasks for {len(controls)} controls.")
+            await asyncio.gather(*(_process_control(control, sem, context, config, dd, fa) for control in controls))
+            await _mark_uploaded_file(dd.document.get("fileId"))
             logger.info(f"[COMPLIANCE-TASK] Compliance evaluation completed successfully for dd_id: {dd_id}")
-
     except Exception:
         logger.exception(f"[COMPLIANCE-TASK] Compliance check failed for dd_id {dd_id}")
+
+
+async def evaluate_compliance_task(dd_id: str) -> None:
+    """Evaluate a deployment document in the background."""
+    await _run_compliance_evaluation(dd_id)

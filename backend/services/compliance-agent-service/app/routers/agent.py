@@ -24,6 +24,13 @@ from vora_shared.responses import error, success
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["compliance-agent"])
+_background_tasks: set[asyncio.Task[None]] = set()
+
+
+def _schedule_compliance_evaluation(dd_id: str) -> None:
+    task = asyncio.create_task(evaluate_compliance_task(dd_id))
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
 
 DEFAULT_AGENTS = [
     ("Organizational Controls Agent", "Evaluate general organizational policies and procedures."),
@@ -301,7 +308,7 @@ from app.services.agent_runner import evaluate_compliance_task
 @router.post("/evaluate/{dd_id}")
 async def evaluate_compliance_by_id(dd_id: str):
     logger.info(f"[API] Manual compliance evaluation requested for DeploymentDocument: {dd_id}")
-    asyncio.create_task(evaluate_compliance_task(dd_id))
+    _schedule_compliance_evaluation(dd_id)
     return success(
         message="Compliance evaluation started in background",
         data={"dd_id": dd_id, "status": "processing"},
@@ -344,7 +351,7 @@ async def evaluate_compliance(request: Request):
             return error(f"Failed to auto-select document: {exc!s}", 500)
 
     logger.info(f"[API] Compliance evaluation requested via body for DeploymentDocument: {dd_id}")
-    asyncio.create_task(evaluate_compliance_task(dd_id))
+    _schedule_compliance_evaluation(dd_id)
     return success(
         message="Compliance evaluation started in background",
         data={"dd_id": dd_id, "status": "processing"},
@@ -375,7 +382,7 @@ async def evaluate_all_compliance():
 
             # Spawn task for each document
             for dd in all_dds:
-                asyncio.create_task(evaluate_compliance_task(dd.id))
+                _schedule_compliance_evaluation(dd.id)
 
             return success(
                 message=f"Compliance evaluation started in background for {len(all_dds)} documents",
