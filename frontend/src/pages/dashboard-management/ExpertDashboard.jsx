@@ -2,16 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Helmet } from "react-helmet-async";
-import {
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-} from "recharts";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -27,6 +20,7 @@ import { getExpertDashboardAnalytics } from "@/services/frameworkService";
 import LoadingSpinner from "@/components/custom/Loader/LoadingSpinner";
 import DashboardError from "./components/DashboardError";
 import StatCard from "./components/StatCard";
+import CardWrapper from "./components/CardWrapper";
 import UploadTrendChart from "./components/charts/UploadTrendChart";
 import {
   STATUS_APPROVED,
@@ -138,52 +132,6 @@ function PageHeader({ datePreset, startDate, endDate, handleDateChange }) {
   );
 }
 
-function CardShell({ title, actionLabel, actionPath, children, className }) {
-  let actionButton = null;
-
-  if (actionLabel && actionPath) {
-    actionButton = (
-      <Button
-        asChild
-        variant="outline"
-        size="sm"
-        className="h-9 gap-2 rounded border-border bg-card px-3 text-xs font-semibold text-primary"
-      >
-        <Link to={actionPath}>
-          {actionLabel}
-          <ExternalLink className="size-3.5" />
-        </Link>
-      </Button>
-    );
-  } else if (actionLabel) {
-    actionButton = (
-      <Button
-        variant="outline"
-        size="sm"
-        className="h-9 gap-2 rounded border-border bg-card px-3 text-xs font-semibold text-primary"
-      >
-        {actionLabel}
-        <ExternalLink className="size-3.5" />
-      </Button>
-    );
-  }
-
-  return (
-    <section
-      className={cn(
-        "rounded border border-border bg-card text-card-foreground shadow-sm",
-        className
-      )}
-    >
-      <div className="flex items-center justify-between gap-3 border-b border-transparent px-4 py-3">
-        <h2 className="text-base font-semibold text-foreground">{title}</h2>
-        {actionButton}
-      </div>
-      {children}
-    </section>
-  );
-}
-
 function renderPieLabel({ cx, cy, midAngle, outerRadius, value, payload }) {
   if (!value) return null;
 
@@ -215,7 +163,7 @@ function renderPieLabel({ cx, cy, midAngle, outerRadius, value, payload }) {
 
 function AccessStatusChart({ data, total }) {
   return (
-    <div className="grid gap-5 px-4 pb-4 lg:grid-cols-[240px_1fr]">
+    <div className="grid gap-5 lg:grid-cols-[240px_1fr]">
       <div className="relative h-56">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -449,14 +397,6 @@ function ApprovedFrameworksTable({ rows }) {
   );
 }
 
-function TableCard({ title, actionLabel, actionPath, children }) {
-  return (
-    <CardShell title={title} actionLabel={actionLabel} actionPath={actionPath}>
-      {children}
-    </CardShell>
-  );
-}
-
 export default function ExpertDashboard() {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -553,43 +493,81 @@ export default function ExpertDashboard() {
       </div>
 
       <div className="grid gap-2 xl:grid-cols-2">
-        <CardShell
+        <CardWrapper
           title="Framework Upload Trend"
-          actionLabel="View Full Analytics"
-          actionPath="/frameworks"
+          className="flex flex-col"
+          right={
+            <Link
+              to={"/frameworks"}
+              className="text-primary cursor-pointer flex items-center gap-1"
+            >
+              <span className="text-xs font-semibold hover:underline">
+                View Full Analytics
+              </span>
+              <ExternalLink className="size-3" />
+            </Link>
+          }
         >
-          <div className="px-3 pb-4">
-            <UploadTrendChart data={dashboardData.uploadTrend || []} />
-          </div>
-        </CardShell>
+          <UploadTrendChart data={dashboardData.uploadTrend || []} />
+        </CardWrapper>
 
-        <CardShell
+        <CardWrapper
           title="Framework Category Access Status"
-          actionLabel="View Status Details"
-          actionPath="/framework-categories"
+          className="flex flex-col"
+          right={
+            <Link
+              to={"/framework-categories"}
+              className="text-primary cursor-pointer flex items-center gap-1"
+            >
+              <span className="text-xs font-semibold hover:underline">
+                View Status Details
+              </span>
+              <ExternalLink className="size-3" />
+            </Link>
+          }
         >
           <AccessStatusChart data={accessStatus} total={accessTotal} />
-        </CardShell>
+        </CardWrapper>
       </div>
 
       <div className="grid gap-2 xl:grid-cols-2">
-        <TableCard
+        <CardWrapper
           title="Recent Framework Uploads"
-          actionLabel="View All Uploads"
-          actionPath="/frameworks"
+          className="flex flex-col"
+          right={
+            <Link
+              to={"/frameworks"}
+              className="text-primary cursor-pointer flex items-center gap-1"
+            >
+              <span className="text-xs font-semibold hover:underline">
+                View All Uploads
+              </span>
+              <ExternalLink className="size-3" />
+            </Link>
+          }
         >
           <UploadsTable rows={dashboardData.recentUploads || []} />
-        </TableCard>
+        </CardWrapper>
 
-        <TableCard
+        <CardWrapper
           title="Recently Approved Frameworks"
-          actionLabel="View All Approved Frameworks"
-          actionPath="/frameworks?approvalStatus=approved"
+          className="flex flex-col"
+          right={
+            <Link
+              to={"/frameworks?approvalStatus=approved"}
+              className="text-primary cursor-pointer flex items-center gap-1"
+            >
+              <span className="text-xs font-semibold hover:underline">
+                View All Approved Frameworks
+              </span>
+              <ExternalLink className="size-3" />
+            </Link>
+          }
         >
           <ApprovedFrameworksTable
             rows={dashboardData.approvedFrameworks || []}
           />
-        </TableCard>
+        </CardWrapper>
       </div>
     </div>
   );

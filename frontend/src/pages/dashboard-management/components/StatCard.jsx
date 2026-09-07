@@ -14,7 +14,7 @@ export default function StatCard({
   return (
     <Link
       to={navigation}
-      className="rounded border border-border bg-linear-to-br from-background to-card p-2.5 flex justify-between hover:shadow-md transition-shadow duration-300 hover:border-primary/50 cursor-pointer"
+      className="rounded border border-border bg-linear-to-br from-background to-card p-2.5 flex justify-between shadow-sm hover:shadow-md transition-shadow duration-300 hover:border-primary/50 cursor-pointer"
     >
       <div className="flex flex-col gap-2 w-full">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
