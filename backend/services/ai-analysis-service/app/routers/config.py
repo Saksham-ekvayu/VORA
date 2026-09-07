@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -18,7 +18,7 @@ router = APIRouter(tags=["config"])
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class ThresholdsRequest(BaseModel):
@@ -99,7 +99,7 @@ async def get_thresholds():
                 },
             )
     except Exception as exc:
-        logger.exception(f"[GET-THRESHOLDS] Error: {exc}")
+        logger.exception("[GET-THRESHOLDS] Error")
         logger.exception("get_thresholds error")
         return server_error(str(exc))
 
@@ -162,7 +162,7 @@ async def create_thresholds(request: ThresholdsRequest):
                 status_code=201,
             )
     except Exception as exc:
-        logger.exception(f"[CREATE-THRESHOLDS] Error: {exc}")
+        logger.exception("[CREATE-THRESHOLDS] Error")
         logger.exception("create_thresholds error")
         return server_error(str(exc))
 
@@ -219,7 +219,7 @@ async def update_thresholds(config_id: str, request: ThresholdsRequest):
                 },
             )
     except Exception as exc:
-        logger.exception(f"[UPDATE-THRESHOLDS] Error updating config {config_id}: {exc}")
+        logger.exception(f"[UPDATE-THRESHOLDS] Error updating config {config_id}")
         logger.exception("update_thresholds error")
         return server_error(str(exc))
 
@@ -248,7 +248,7 @@ async def delete_thresholds(config_id: str):
 
             return success(message="Thresholds configuration deleted successfully")
     except Exception as exc:
-        logger.exception(f"[DELETE-THRESHOLDS] Error deleting config {config_id}: {exc}")
+        logger.exception(f"[DELETE-THRESHOLDS] Error deleting config {config_id}")
         logger.exception("delete_thresholds error")
         return server_error(str(exc))
 
@@ -298,6 +298,6 @@ async def list_thresholds():
                 data=items,
             )
     except Exception as exc:
-        logger.exception(f"[LIST-THRESHOLDS] Error: {exc}")
+        logger.exception("[LIST-THRESHOLDS] Error")
         logger.exception("list_thresholds error")
         return server_error(str(exc))

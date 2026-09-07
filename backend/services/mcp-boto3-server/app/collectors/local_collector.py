@@ -21,7 +21,11 @@ def _resolve_directory(directory: str) -> Path | None:
     Deployment points may carry an absolute path recorded on whichever
     machine/checkout created them (e.g. "C:\\dev\\VORA\\docs\\..."), which
     rarely exists elsewhere. If the literal path is missing, fall back to
-    re-anchoring its "docs\\..." tail under this machine's own docs folder.
+    re-anchoring it under this machine's own docs folder — first by trying
+    its "docs\\..." tail as-is, then (since the folder structure under docs
+    can itself differ between checkouts, e.g. an extra subfolder) by
+    searching for a directory matching just its last path segment anywhere
+    under the docs root.
     """
     path = Path(directory)
 
@@ -29,11 +33,20 @@ def _resolve_directory(directory: str) -> Path | None:
         return path
 
     parts = PureWindowsPath(directory).parts
-    if "docs" in parts:
-        tail = parts[parts.index("docs") + 1 :]
-        fallback = DOCS_ROOT.joinpath(*tail)
-        if fallback.is_dir():
-            return fallback
+    if "docs" not in parts:
+        return None
+
+    tail = parts[parts.index("docs") + 1 :]
+
+    fallback = DOCS_ROOT.joinpath(*tail)
+    if fallback.is_dir():
+        return fallback
+
+    target_name = tail[-1] if tail else None
+    if target_name and DOCS_ROOT.is_dir():
+        for candidate in DOCS_ROOT.rglob(target_name):
+            if candidate.is_dir():
+                return candidate
 
     return None
 

@@ -2,7 +2,7 @@ import math
 from typing import Any
 
 
-def format_file_size(num_bytes: int | float | None) -> str:
+def format_file_size(num_bytes: float | None) -> str:
     if not num_bytes or num_bytes <= 0:
         return "0 Bytes"
     sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB"]

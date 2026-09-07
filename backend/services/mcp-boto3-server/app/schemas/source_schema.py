@@ -1,5 +1,3 @@
-from typing import List, Optional
-
 from pydantic import BaseModel
 
 
@@ -8,7 +6,7 @@ class SourceConfigRequest(BaseModel):
     dp_name: str
     organization_name: str
     source_type: str
-    source_name: Optional[str] = None
+    source_name: str | None = None
     config_json: dict
 
 
@@ -18,24 +16,24 @@ class DeploymentPointModel(BaseModel):
     status: str
     path: str
     weightage: int
-    remark: Optional[str] = ""
+    remark: str | None = ""
 
 
 class ControlModel(BaseModel):
     id: str
     name: str
-    description: Optional[str] = ""
-    deployment_points: List[DeploymentPointModel] = []
+    description: str | None = ""
+    deployment_points: list[DeploymentPointModel] = []
 
 
 class SectionModel(BaseModel):
     id: str
     name: str
-    controls: List[ControlModel] = []
+    controls: list[ControlModel] = []
 
 
 class SectionsConfigRequest(BaseModel):
-    sections: List[SectionModel]
+    sections: list[SectionModel]
 
 
 # ---------- combined ----------

@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated
 
 from app.schemas.user import ProfileUpdateRequest
@@ -14,7 +14,11 @@ from fastapi import APIRouter, Body, Depends, File, HTTPException, UploadFile
 from sqlalchemy import select
 from vora_shared import messages as msg
 from vora_shared.auth import AuthenticatedUser, authenticate
-from vora_shared.avatar_uploads import AvatarUploadError, delete_avatar_file, save_avatar
+from vora_shared.avatar_uploads import (
+    AvatarUploadError,
+    delete_avatar_file,
+    save_avatar,
+)
 from vora_shared.database import session_scope
 from vora_shared.models.customer import Customer
 from vora_shared.models.user import User
@@ -113,7 +117,7 @@ async def edit_profile(
 
         # Apply updates
         _apply_profile_updates(db_user, body)
-        db_user.updatedAt = datetime.now(timezone.utc)
+        db_user.updatedAt = datetime.now(UTC)
 
         tenant = str(db_user.tenantId) if db_user.tenantId else None
         user_id = str(db_user.id)
@@ -130,9 +134,7 @@ def _has_profile_changes(body: ProfileUpdateRequest, user: User) -> bool:
         return True
     if body.secondaryPhone is not None and body.secondaryPhone != user.secondaryPhone:
         return True
-    if body.permanentAddress is not None or body.temporaryAddress is not None:
-        return True
-    return False
+    return bool(body.permanentAddress is not None or body.temporaryAddress is not None)
 
 
 async def _check_phone_exists(session, phone: str, tenant_id: str, user_id: str):
@@ -189,7 +191,7 @@ async def update_avatar(
             return error(msg.USER_ACCOUNT_DEACTIVATED, 400, field="user")
         old_avatar = db_user.avatar
         db_user.avatar = avatar_url
-        db_user.updatedAt = datetime.now(timezone.utc)
+        db_user.updatedAt = datetime.now(UTC)
         user_id = str(db_user.id)
 
     delete_avatar_file(old_avatar)
@@ -230,7 +232,7 @@ async def update_customer_avatar(
 
         old_avatar = current_customer.avatar
         current_customer.avatar = avatar_url
-        current_customer.updatedAt = datetime.now(timezone.utc)
+        current_customer.updatedAt = datetime.now(UTC)
         customer_id = str(current_customer.id)
 
     delete_avatar_file(old_avatar)

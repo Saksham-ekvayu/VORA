@@ -2,7 +2,7 @@
 + src/controllers/framework-assignment.controller.js."""
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated, Any
 
 from app.helpers import framework_assignment_helper as helper
@@ -12,7 +12,9 @@ from app.helpers.framework_assignment_helper import (
     dump_file_versions,
     dump_model,
 )
-from app.helpers.reports.framework_assignment_report import generate_framework_assignment_report_pdf
+from app.helpers.reports.framework_assignment_report import (
+    generate_framework_assignment_report_pdf,
+)
 from fastapi import APIRouter, Body, Depends, Path, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
@@ -33,7 +35,7 @@ def not_found(resource: str = "Resource"):
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 async def _hydrate_user_refs(session, assignments: list[FrameworkAssignment]) -> dict[str, User]:
@@ -271,7 +273,10 @@ async def revoke_framework_assignment(
         if assignment.status == "revoked":
             return error(BUSINESS_MESSAGES["ASSIGNMENT_ALREADY_REVOKED"], 409)
 
-        from vora_shared.models.framework_assignment import AssignmentFinalization, AssignmentRevocation
+        from vora_shared.models.framework_assignment import (
+            AssignmentFinalization,
+            AssignmentRevocation,
+        )
 
         assignment.status = "revoked"
         assignment.revocation = dump_model(AssignmentRevocation(revokedBy=str(user.id), revokedAt=_utcnow()))
@@ -336,7 +341,10 @@ def _validate_assignment_for_modification(
 
 
 def _update_deployment_points(target_control: Any, deployment_points: list[dict[str, Any]]) -> None:
-    from vora_shared.models.framework_assignment import AssignmentDeploymentPoint, AssignmentWeightage
+    from vora_shared.models.framework_assignment import (
+        AssignmentDeploymentPoint,
+        AssignmentWeightage,
+    )
 
     new_points = []
     for idx, dp in enumerate(deployment_points):
@@ -574,7 +582,10 @@ async def update_assigned_framework_control_weightage(
         if target_control.customization and target_control.customization.is_applicable is False:
             return error(BUSINESS_MESSAGES["CONTROL_NOT_APPLICABLE_WEIGHTAGE_ERROR"], 400)
 
-        from vora_shared.models.framework_assignment import AssignmentCustomization, AssignmentWeightage
+        from vora_shared.models.framework_assignment import (
+            AssignmentCustomization,
+            AssignmentWeightage,
+        )
 
         if not target_control.customization:
             target_control.customization = AssignmentCustomization(source="system", is_applicable=True)

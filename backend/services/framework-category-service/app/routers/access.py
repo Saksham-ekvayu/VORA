@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated
 
 from app.helpers.helpers import fetch_users_by_ids
@@ -14,7 +14,11 @@ from vora_shared.database import session_scope
 from vora_shared.ids import is_valid_id
 from vora_shared.messages import MESSAGES, VALID_STATUSES, format_message
 from vora_shared.models import FrameworkAccess, FrameworkCategory, User
-from vora_shared.models.framework_access import ApprovalInfo, RejectionInfo, RevocationInfo
+from vora_shared.models.framework_access import (
+    ApprovalInfo,
+    RejectionInfo,
+    RevocationInfo,
+)
 from vora_shared.query_builder import (
     apply_sort,
     build_pagination_meta,
@@ -614,8 +618,10 @@ def _build_assign_response(results: list[dict], errors: list[dict], expert_id: s
 @router.post("/assign")
 async def assign_framework_access(
     auth: Annotated[AuthenticatedUser, Depends(authenticate)],
-    body: Annotated[dict, Body()] = {},
+    body: Annotated[dict | None, Body()] = None,
 ):
+    if body is None:
+        body = {}
     try:
         expert_id_raw, framework_category_ids_raw = validate_assign_access(body)
     except FieldError as exc:
@@ -637,7 +643,7 @@ async def assign_framework_access(
         # Process each category
         results: list[dict] = []
         errors: list[dict] = []
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         auth_user_id = str(auth.user.id)
 
         for category in framework_categories:
@@ -649,7 +655,7 @@ async def assign_framework_access(
                     results.append(result)
                 if err:
                     errors.append(err)
-            except Exception as exc:  # pragma: no cover
+            except Exception as exc:  # noqa: BLE001, ER001
                 errors.append(
                     {
                         "frameworkCategoryId": str(category.id),
@@ -685,7 +691,7 @@ async def approve_framework_access(
         record.status = "approved"
         record.approval = ApprovalInfo(
             approvedBy=str(auth.user.id),
-            approvedAt=datetime.now(timezone.utc),
+            approvedAt=datetime.now(UTC),
         ).model_dump(mode="json")
         flag_modified(record, "approval")
         record_id = str(record.id)
@@ -718,7 +724,7 @@ async def reject_framework_access(
         record.status = "rejected"
         record.rejection = RejectionInfo(
             rejectedBy=str(auth.user.id),
-            rejectedAt=datetime.now(timezone.utc),
+            rejectedAt=datetime.now(UTC),
         ).model_dump(mode="json")
         flag_modified(record, "rejection")
         record_id = str(record.id)
@@ -779,7 +785,7 @@ async def revoke_framework_access(
         record.status = "revoked"
         record.revocation = RevocationInfo(
             revokedBy=str(auth.user.id),
-            revokedAt=datetime.now(timezone.utc),
+            revokedAt=datetime.now(UTC),
         ).model_dump(mode="json")
         flag_modified(record, "revocation")
         result = {

@@ -12,7 +12,6 @@ from reportlab.graphics.charts.piecharts import Pie
 from reportlab.graphics.charts.spider import SpiderChart
 from reportlab.graphics.shapes import Drawing, String
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import landscape
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import (

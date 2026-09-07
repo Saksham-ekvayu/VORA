@@ -5,12 +5,14 @@ which live in framework_assignment.py / dashboard.py)."""
 import logging
 import os
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated, Any
 
 from app.helpers import deployment_framework_helpers as helpers
 from app.helpers.deployment_framework_helpers import coerce_packages, dump_packages
-from app.helpers.reports.deployment_framework_report import generate_deployment_framework_report_pdf
+from app.helpers.reports.deployment_framework_report import (
+    generate_deployment_framework_report_pdf,
+)
 from app.services import (
     data_formatter,
     package_builder,
@@ -22,7 +24,11 @@ from sqlalchemy.orm.attributes import flag_modified
 from vora_shared import file_storage, query_builder
 from vora_shared.database import session_scope
 from vora_shared.ids import is_valid_id, new_id
-from vora_shared.messages import BUSINESS_MESSAGES, FRAMEWORK_MESSAGES, FRAMEWORK_SERVICE_MESSAGES
+from vora_shared.messages import (
+    BUSINESS_MESSAGES,
+    FRAMEWORK_MESSAGES,
+    FRAMEWORK_SERVICE_MESSAGES,
+)
 from vora_shared.models import (
     DeploymentFramework,
     DeploymentPackageMerge,
@@ -62,7 +68,7 @@ class _FrameworkView:
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _blob_get(blob: Any, key: str, default: Any = None) -> Any:
@@ -596,9 +602,11 @@ def _format_patch_response(framework: Any, new_package: Any, patch_type: str) ->
 async def update_deployment_framework(
     id: str,
     ctx: Annotated[RequestContext, Depends(get_context)],
-    files: Annotated[list[UploadFile], File()] = [],
+    files: Annotated[list[UploadFile] | None, File()] = None,
     metadata: Annotated[str | None, Form()] = None,
 ):
+    if files is None:
+        files = []
     logger.info(
         f"[UPDATE-DEPLOYMENT-FRAMEWORK] Update request | id={id} | user_id={ctx.user.id} | files={len(files)}"
     )
@@ -686,7 +694,7 @@ async def update_deployment_framework(
                 f"Framework {patch_type} patch created successfully",
             )
         except Exception as exc:
-            logger.exception(f"[UPDATE-DEPLOYMENT-FRAMEWORK] Error: {exc}")
+            logger.exception("[UPDATE-DEPLOYMENT-FRAMEWORK] Error")
             logger.exception("Framework update error")
             return error(str(exc), 500)
 
@@ -729,7 +737,7 @@ async def delete_deployment_framework(id: str, ctx: Annotated[RequestContext, De
                 if file_path and os.path.exists(file_path):
                     os.remove(file_path)
                     deleted_count += 1
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 logger.warning(
                     f"[DELETE-DEPLOYMENT-FRAMEWORK] Failed to delete file | file_url={file_url} | error={exc}"
                 )
@@ -795,7 +803,10 @@ async def upload_deployment_framework(
 
     document_data_array = process_result["documentDataArray"]
 
-    from vora_shared.models.deployment_framework import FrameworkPackageDocument, PackageVersion
+    from vora_shared.models.deployment_framework import (
+        FrameworkPackageDocument,
+        PackageVersion,
+    )
 
     async with session_scope() as session:
         document_models = [FrameworkPackageDocument(**d) for d in document_data_array]
@@ -987,8 +998,8 @@ async def delete_deployment_framework_package(
                 absolute_path = helpers.get_upload_file_path(file_url)
                 if absolute_path:
                     file_storage.delete_file(absolute_path)
-            except Exception as exc:
-                logger.exception("Failed to delete package file from disk: %s", exc)
+            except Exception:
+                logger.exception("Failed to delete package file from disk")
 
         packages.pop(package_index)
 

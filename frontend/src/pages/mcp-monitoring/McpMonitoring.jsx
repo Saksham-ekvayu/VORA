@@ -267,7 +267,7 @@ export default function McpMonitoring() {
           <ScrollArea
             className={cn(
               "w-full bg-muted/20 transition-all duration-300",
-              logs.length === 0 ? "h-32" : "h-[65vh] min-h-50"
+              logs.length === 0 ? "h-32" : "h-[63vh] min-h-50"
             )}
           >
             {logs.length === 0 ? (

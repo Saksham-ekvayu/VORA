@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import Select, func, select
@@ -46,14 +46,14 @@ def calculate_package_health(ga_results: list[Any]) -> int:
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def to_naive_utc(value: datetime | None) -> datetime | None:
     if value is None:
         return None
     if value.tzinfo is not None:
-        return value.astimezone(timezone.utc).replace(tzinfo=None)
+        return value.astimezone(UTC).replace(tzinfo=None)
     return value
 
 
@@ -61,8 +61,8 @@ def to_aware_utc(value: datetime | None) -> datetime | None:
     if value is None:
         return None
     if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
 
 
 def apply_date_filters(
@@ -73,7 +73,7 @@ def apply_date_filters(
 ) -> Select:
     start = to_aware_utc(start_date)
     end = to_aware_utc(end_date)
-    created_at = getattr(model, "createdAt")
+    created_at = model.createdAt
     if start is not None:
         stmt = stmt.where(created_at >= start)
     if end is not None:
@@ -97,9 +97,7 @@ def filter_array_by_date(
         item_date = to_aware_utc(item_date)
         if start and item_date < start:
             return False
-        if end and item_date > end:
-            return False
-        return True
+        return not (end and item_date > end)
 
     return [item for item in data if in_range(item)]
 
@@ -107,7 +105,7 @@ def filter_array_by_date(
 def get_effective_start_date(default_start: datetime, user_start_date: datetime | None) -> datetime:
     if not user_start_date:
         return default_start
-    return user_start_date if user_start_date > default_start else default_start
+    return max(default_start, user_start_date)
 
 
 async def _count_model(model: type, start_date: datetime | None, end_date: datetime | None, **extra) -> int:
@@ -161,7 +159,7 @@ def calculate_role_stats(all_users: list[User]) -> dict[str, int]:
 def format_recent_users(all_users: list[User]) -> list[dict[str, Any]]:
     sorted_by_date = sorted(
         all_users,
-        key=lambda u: u.createdAt or datetime.min.replace(tzinfo=timezone.utc),
+        key=lambda u: u.createdAt or datetime.min.replace(tzinfo=UTC),
         reverse=True,
     )
     return [
@@ -1317,7 +1315,7 @@ def _update_auditor_control_metrics(
     metrics: dict,
     source_map: dict,
     comp_threshold: float,
-    gap_score: float = None,
+    gap_score: float | None = None,
 ) -> None:
     ctrl_id = ctrl.get("assigned_framework_control_id", "")
     metrics["subscribed"] += 1

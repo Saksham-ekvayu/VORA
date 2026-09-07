@@ -10,7 +10,6 @@ from vora_shared.database import session_scope
 from vora_shared.models import (
     DeploymentFramework,
     DeploymentPackageMerge,
-    FrameworkAssignment,
     PackageGapAnalysis,
     User,
 )

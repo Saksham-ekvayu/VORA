@@ -25,6 +25,9 @@ from vora_shared.models import (
 )
 from vora_shared.models.deployment_document import DeploymentFrameworkDocument
 
+logger = logging.getLogger(__name__)
+
+
 shared_path = Path(__file__).resolve().parents[3] / "shared"
 sys.path.insert(0, str(shared_path))
 
@@ -54,24 +57,13 @@ async def get_deployment_document_by_hash(
     return None
 
 
-async def get_deployment_document_by_hash(db: AsyncSession, file_hash: str):
-    result = await db.execute(select(DeploymentDocument))
-    documents = result.scalars().all()
-
-    for doc in documents:
-        if doc.document.get("fileHash") == file_hash:
-            return doc
-
-    return None
-
-
 async def save_deployment_document(
     db: AsyncSession,
     framework: dict,
     file_path: str,
     uploaded_by: str = "system-pipeline",
 ):
-    logging.info(f"Saving deployment document for: {file_path}")
+    logger.info(f"Saving deployment document for: {file_path}")
 
     if not os.path.exists(file_path):
         raise FileNotFoundError(file_path)
@@ -80,7 +72,7 @@ async def save_deployment_document(
 
     existing = await get_deployment_document_by_hash(db, file_hash)
     if existing:
-        logging.info(f"Document already exists: {existing.id}")
+        logger.info(f"Document already exists: {existing.id}")
         return existing
 
     file_name = os.path.basename(file_path)
@@ -100,10 +92,11 @@ async def save_deployment_document(
     )
 
     deployment_document = DeploymentDocument(
-        tenantId="default-tenant",
+        tenantId=framework["tenant_id"],
         deploymentFrameworkId=framework["framework_id"],
         frameworkName=framework["framework_name"],
-        frameworkVersion=framework["package_version"],
+        frameworkCode=framework.get("framework_code"),
+        frameworkVersion=framework.get("framework_version"),
         uploadedBy=uploaded_by,
         document=document_payload.model_dump(mode="json"),
     )
@@ -114,7 +107,24 @@ async def save_deployment_document(
     await db.commit()
     await db.refresh(deployment_document)
 
-    logging.info(f"Deployment document saved successfully: {deployment_document.id}")
+    logger.info(f"Deployment document saved successfully: {deployment_document.id}")
+
+    return deployment_document
+
+
+async def update_document_ai_extraction(db: AsyncSession, document_id: str, extraction_id: str):
+    result = await db.execute(select(DeploymentDocument).where(DeploymentDocument.id == document_id))
+    deployment_document = result.scalar_one_or_none()
+
+    if not deployment_document:
+        return None
+
+    document = dict(deployment_document.document)
+    document["aiExtraction"] = extraction_id
+    deployment_document.document = document
+
+    await db.commit()
+    await db.refresh(deployment_document)
 
     return deployment_document
 
@@ -136,7 +146,7 @@ async def mark_processed(db: AsyncSession, file_path: str, status: str = "done")
 
         return True
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"mark_processed error: {e}")
         return False
 
@@ -173,7 +183,7 @@ async def save_source_config(
 
         return source_config.id
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"save_source_config error: {e}")
         return None
 
@@ -262,7 +272,10 @@ async def get_live_framework(db: AsyncSession):
             if pkg.get("status") == "live":
                 return {
                     "framework_id": framework.id,
+                    "tenant_id": framework.tenantId,
                     "framework_name": framework.frameworkName,
+                    "framework_code": framework.frameworkCode,
+                    "framework_version": framework.frameworkVersion,
                     "package_version": pkg.get("packageVersion"),
                     "merge_document": pkg.get("mergeDocument"),
                 }

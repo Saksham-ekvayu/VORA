@@ -1,7 +1,7 @@
 """Port of deployment-framework-service dashboard routes/controllers."""
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated, Any
 
 from app.helpers import apply_date_filters, to_naive_utc
@@ -38,12 +38,12 @@ def _get_time_ago(date_value: datetime | None) -> str:
         return ""
     if isinstance(date_value, str):
         try:
-            date_value = datetime.fromisoformat(date_value.replace("Z", "+00:00"))
+            date_value = datetime.fromisoformat(date_value)
         except ValueError:
             return ""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if date_value.tzinfo is None:
-        date_value = date_value.replace(tzinfo=timezone.utc)
+        date_value = date_value.replace(tzinfo=UTC)
     diff = now - date_value
     diff_days = diff.days
     diff_hours = diff.seconds // 3600
@@ -226,7 +226,7 @@ def _process_assignments_and_progress(
         )
 
     assigned_frameworks_list.sort(
-        key=lambda a: a["assignedAt"] or datetime.min.replace(tzinfo=timezone.utc),
+        key=lambda a: a["assignedAt"] or datetime.min.replace(tzinfo=UTC),
         reverse=True,
     )
 
@@ -668,14 +668,14 @@ def _add_system_activities(
 
 def _normalize_timestamp(value: Any) -> datetime:
     if value is None:
-        return datetime.min.replace(tzinfo=timezone.utc)
+        return datetime.min.replace(tzinfo=UTC)
     if isinstance(value, str):
         try:
-            value = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            value = datetime.fromisoformat(value)
         except ValueError:
-            return datetime.min.replace(tzinfo=timezone.utc)
+            return datetime.min.replace(tzinfo=UTC)
     if getattr(value, "tzinfo", None) is None:
-        return value.replace(tzinfo=timezone.utc)
+        return value.replace(tzinfo=UTC)
     return value
 
 
@@ -904,7 +904,7 @@ async def get_customer_admin_dashboard(
             f"[CUSTOMER-ANALYTICS] Dashboard loaded | users={len(users)} | dfs={len(deployment_frameworks)} | assignments={len(active_assignments)} | controls={controls_configured}/{controls_total}"
         )
         return success(response_data, "Customer dashboard analytics retrieved successfully")
-    except Exception as exc:
-        logger.exception(f"[CUSTOMER-ANALYTICS] Error: {exc}")
+    except Exception:
+        logger.exception("[CUSTOMER-ANALYTICS] Error")
         logger.exception("Error fetching customer admin dashboard data")
         return server_error("Failed to retrieve customer dashboard analytics")

@@ -14,7 +14,7 @@ def trigger_ai_extraction(document_id: str):
 
     try:
         return response.json()
-    except Exception:
+    except ValueError:
         return {
             "status_code": response.status_code,
             "text": response.text,

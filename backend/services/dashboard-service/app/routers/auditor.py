@@ -5,7 +5,6 @@ from typing import Annotated
 from app.helpers import (
     MAX_ACTIVE_GAPS,
     build_controls_passing_response,
-    build_critical_gaps_response,
     build_deployment_points_response,
     build_extra_controls_response,
     build_overall_protection_rows,

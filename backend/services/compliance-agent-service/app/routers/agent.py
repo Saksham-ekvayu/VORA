@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Request
@@ -13,7 +13,12 @@ from sqlalchemy import func, select
 from vora_shared.config import get_settings
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
-from vora_shared.models import AgentPrompt, DeploymentDocument, EvidenceOutput, UploadedFile
+from vora_shared.models import (
+    AgentPrompt,
+    DeploymentDocument,
+    EvidenceOutput,
+    UploadedFile,
+)
 from vora_shared.responses import error, success
 
 logger = logging.getLogger(__name__)
@@ -49,7 +54,7 @@ from vora_shared.file_storage import ALLOWED_EXTENSIONS
 
 
 def _utcnow_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 async def _ensure_default_agents() -> list[str]:
@@ -116,8 +121,8 @@ async def list_agents():
             data={"agents": agents, "total": len(agents)},
         )
     except Exception as exc:
-        logger.exception(f"[LIST-AGENTS] Error: {exc}")
-        logger.exception("GET /agents failed: %s", exc)
+        logger.exception("[LIST-AGENTS] Error")
+        logger.exception("GET /agents failed")
         return error(str(exc), 500)
 
 
@@ -138,8 +143,8 @@ async def list_uploads():
             data={"total": len(formatted), "uploads": formatted},
         )
     except Exception as exc:
-        logger.exception(f"[LIST-UPLOADS] Error: {exc}")
-        logger.exception("GET /uploads failed: %s", exc)
+        logger.exception("[LIST-UPLOADS] Error")
+        logger.exception("GET /uploads failed")
         return error(str(exc), 500)
 
 
@@ -160,8 +165,8 @@ async def get_all_output():
             data={"total_files": len(data), "data": data},
         )
     except Exception as exc:
-        logger.exception(f"[GET-OUTPUT] Error: {exc}")
-        logger.exception("GET /output failed: %s", exc)
+        logger.exception("[GET-OUTPUT] Error")
+        logger.exception("GET /output failed")
         return error(str(exc), 500)
 
 
@@ -208,7 +213,7 @@ async def get_output_by_document():
                 data={"total_documents": len(documents), "documents": documents},
             )
     except Exception as exc:
-        logger.exception(f"[GET-OUTPUT-BY-DOC] Error: {exc}")
+        logger.exception("[GET-OUTPUT-BY-DOC] Error")
         return error(str(exc), 500)
 
 
@@ -244,8 +249,8 @@ async def get_output_by_control(control_id: str):
                 data=_evidence_to_dict(row),
             )
     except Exception as exc:
-        logger.exception(f"[GET-OUTPUT-CONTROL] Error for control {control_id}: {exc}")
-        logger.exception("GET /output/%s failed: %s", control_id, exc)
+        logger.exception(f"[GET-OUTPUT-CONTROL] Error for control {control_id}")
+        logger.exception("GET /output/%s failed", control_id)
         return error(str(exc), 500)
 
 
@@ -255,8 +260,8 @@ async def status():
         logger.info("[STATUS] Checking service status")
         agents = await _ensure_default_agents()
         logger.info(f"[STATUS] Agents initialized: {len(agents)}")
-    except Exception as exc:
-        logger.exception(f"[STATUS] Agents fetch failed: {exc}")
+    except Exception:
+        logger.exception("[STATUS] Agents fetch failed")
         agents = []
 
     compliance_count = 0
@@ -272,8 +277,8 @@ async def status():
         logger.info(
             f"[STATUS] Database counts | compliance_records={compliance_count} | uploaded_files={uploaded_count}"
         )
-    except Exception as exc:
-        logger.exception(f"[STATUS] Database counts query failed: {exc}")
+    except Exception:
+        logger.exception("[STATUS] Database counts query failed")
 
     settings = get_settings()
     evidence_folder = os.environ.get("UPLOAD_DIR", getattr(settings, "upload_dir", None) or "uploads")
@@ -311,7 +316,7 @@ async def evaluate_compliance(request: Request):
         if body_bytes.strip():
             body = await request.json()
             dd_id = body.get("dd_id")
-    except Exception:
+    except Exception:  # noqa: BLE001
         return error("Invalid JSON body", 400)
 
     if not dd_id:
@@ -335,8 +340,8 @@ async def evaluate_compliance(request: Request):
                 else:
                     return error("No DeploymentDocument found in database to evaluate compliance.", 404)
         except Exception as exc:
-            logger.exception(f"[API] Failed to retrieve latest DeploymentDocument: {exc}")
-            return error(f"Failed to auto-select document: {str(exc)}", 500)
+            logger.exception("[API] Failed to retrieve latest DeploymentDocument")
+            return error(f"Failed to auto-select document: {exc!s}", 500)
 
     logger.info(f"[API] Compliance evaluation requested via body for DeploymentDocument: {dd_id}")
     asyncio.create_task(evaluate_compliance_task(dd_id))
@@ -381,5 +386,5 @@ async def evaluate_all_compliance():
                 },
             )
     except Exception as exc:
-        logger.exception(f"[API-ALL] Failed to start bulk evaluation: {exc}")
-        return error(f"Failed to start bulk evaluation: {str(exc)}", 500)
+        logger.exception("[API-ALL] Failed to start bulk evaluation")
+        return error(f"Failed to start bulk evaluation: {exc!s}", 500)
