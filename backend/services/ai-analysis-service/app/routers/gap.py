@@ -116,6 +116,7 @@ async def start_gap_analysis(request: GapAnalysisRequest):
                 gap_analysis = await session.get(PackageGapAnalysis, gap_id)
                 if gap_analysis:
                     logger.info(f"[GAP] Found existing gap analysis record: {gap_id}")
+                    gap_analysis.deploymentFrameworkId = deployment_framework_id
                     gap_analysis.gapAnalysis.update(
                         {
                             "status": "processing",
@@ -135,6 +136,7 @@ async def start_gap_analysis(request: GapAnalysisRequest):
             if not gap_id:
                 gap_analysis = PackageGapAnalysis(
                     id=new_id(),
+                    deploymentFrameworkId=deployment_framework_id,
                     fileHashes=[],
                     gapAnalysis={
                         "status": "processing",
@@ -325,8 +327,26 @@ async def delete_gap_analysis(gap_id: str):
                 return not_found(f"Gap analysis not found: {gap_id}")
 
             gap_data = gap_analysis.gapAnalysis or {}
-            df_id = gap_data.get("deployment_framework_id")
+            df_id = gap_data.get("deployment_framework_id") or gap_analysis.deploymentFrameworkId
             pkg_ver = gap_data.get("package_version")
+
+            if df_id:
+                df = await session.get(DeploymentFramework, str(df_id))
+                if df:
+                    packages = list(df.packages or [])
+                    updated = False
+                    for i, pkg in enumerate(packages):
+                        if isinstance(pkg, dict) and pkg.get("gapAnalysis") == gap_id:
+                            pkg = dict(pkg)
+                            pkg["gapAnalysis"] = None
+                            packages[i] = pkg
+                            updated = True
+                    if updated:
+                        df.packages = packages
+                        from sqlalchemy.orm.attributes import flag_modified
+
+                        flag_modified(df, "packages")
+                        session.add(df)
 
             await session.delete(gap_analysis)
             await session.commit()

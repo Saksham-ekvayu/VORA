@@ -742,13 +742,23 @@ async def delete_deployment_framework(id: str, ctx: Annotated[RequestContext, De
                     f"[DELETE-DEPLOYMENT-FRAMEWORK] Failed to delete file | file_url={file_url} | error={exc}"
                 )
 
-        from sqlalchemy import delete
+        from sqlalchemy import delete, or_
 
         await session.execute(
-            delete(PackageComparison).where(PackageComparison.deploymentFrameworkId == str(id))
+            delete(PackageComparison).where(
+                or_(
+                    PackageComparison.deploymentFrameworkId == str(id),
+                    PackageComparison.comparison["deployment_framework_id"].astext == str(id),
+                )
+            )
         )
         await session.execute(
-            delete(PackageGapAnalysis).where(PackageGapAnalysis.deploymentFrameworkId == str(id))
+            delete(PackageGapAnalysis).where(
+                or_(
+                    PackageGapAnalysis.deploymentFrameworkId == str(id),
+                    PackageGapAnalysis.gapAnalysis["deployment_framework_id"].astext == str(id),
+                )
+            )
         )
 
         await session.delete(framework)
