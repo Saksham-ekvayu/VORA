@@ -178,12 +178,6 @@ function VerifyOtp() {
           >
             Back to Login
           </Link>
-          <Link
-            to="/auth/register"
-            className="font-medium text-primary hover:underline"
-          >
-            Back to Register
-          </Link>
         </div>
       </div>
     </div>

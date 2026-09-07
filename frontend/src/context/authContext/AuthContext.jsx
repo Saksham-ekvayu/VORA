@@ -106,7 +106,7 @@ export const AuthProvider = ({ children }) => {
   // Logout with duplicate prevention
   // -------------------------
   const logout = useCallback(
-    async (message = null, showToast = true, toastOpts = null) => {
+    async (message = null, showToast = true, toastOpts = null, skipApi = false) => {
       // Prevent multiple simultaneous logout calls
       if (isLoggingOut.current) {
         return;
@@ -115,8 +115,8 @@ export const AuthProvider = ({ children }) => {
       isLoggingOut.current = true;
 
       try {
-        // Only call logout API if we have a token
-        if (token) {
+        // Only call logout API if we have a token and skipApi is false
+        if (token && !skipApi) {
           await logoutApi();
         }
       } catch {
