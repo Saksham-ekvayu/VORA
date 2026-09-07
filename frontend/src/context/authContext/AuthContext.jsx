@@ -106,7 +106,12 @@ export const AuthProvider = ({ children }) => {
   // Logout with duplicate prevention
   // -------------------------
   const logout = useCallback(
-    async (message = null, showToast = true, toastOpts = null, skipApi = false) => {
+    async (
+      message = null,
+      showToast = true,
+      toastOpts = null,
+      skipApi = false
+    ) => {
       // Prevent multiple simultaneous logout calls
       if (isLoggingOut.current) {
         return;

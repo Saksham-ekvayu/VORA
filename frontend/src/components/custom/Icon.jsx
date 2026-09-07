@@ -147,7 +147,7 @@ import { RiRobot2Fill } from "react-icons/ri";
 
 import { IoKeySharp } from "react-icons/io5";
 import { IoIosSend, IoMdCloseCircle } from "react-icons/io";
-import { RotateCcw, Undo2 } from "lucide-react";
+import { RotateCcw, Undo2, Award } from "lucide-react";
 
 // Icon mapping from old names to React Icons components
 const iconMap = {
@@ -321,6 +321,7 @@ const iconMap = {
   "open-folder": FaFolderOpen,
   "rotate-ccw": RotateCcw,
   back: Undo2,
+  award: Award,
 };
 
 export default function Icon({

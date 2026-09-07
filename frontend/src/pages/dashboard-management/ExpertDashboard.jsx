@@ -14,7 +14,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Award, CloudUpload, ExternalLink, LockKeyhole } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +31,7 @@ import DateFilter from "./components/DateFilter";
 import { getExpertDashboardAnalytics } from "@/services/frameworkService";
 import LoadingSpinner from "@/components/custom/Loader/LoadingSpinner";
 import DashboardError from "./components/DashboardError";
+import StatCard from "./components/StatCard";
 import {
   STATUS_APPROVED,
   STATUS_PENDING,
@@ -55,24 +56,6 @@ const CODE_BADGE_CLASSES = [
   "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
 ];
 
-const STAT_TONE_CLASSES = {
-  teal: {
-    icon: "bg-primary/10 text-primary border-primary/20",
-    value: "text-primary",
-    footer: "from-primary/10 to-primary/5 text-primary",
-  },
-  violet: {
-    icon: "bg-secondary/10 text-secondary border-secondary/20",
-    value: "text-secondary",
-    footer: "from-secondary/10 to-secondary/5 text-secondary",
-  },
-  orange: {
-    icon: "bg-warning/10 text-warning border-warning/20",
-    value: "text-warning",
-    footer: "from-warning/10 to-warning/5 text-foreground",
-  },
-};
-
 function getCodeBadgeClass(code) {
   if (!code) return "bg-muted text-muted-foreground";
 
@@ -89,19 +72,21 @@ function buildStats(stats) {
       title: "Framework Categories",
       value: stats.totalCategories || 0,
       description: "Approved, pending, rejected and revoked",
-      action: "View All Categories",
       actionPath: "/framework-categories",
-      icon: LockKeyhole,
-      tone: "teal",
+      icon: "lock",
+      iconColor: "text-teal-500",
+      iconBg: "bg-teal-500/10",
+      borderColor: "border-teal-500/40",
     },
     {
       title: "Framework Uploads",
       value: stats.totalUploads || 0,
       description: "Submitted in the selected date range",
-      action: "View All Uploads",
       actionPath: "/frameworks",
-      icon: CloudUpload,
-      tone: "violet",
+      icon: "cloud-upload",
+      iconColor: "text-violet-500",
+      iconBg: "bg-violet-500/10",
+      borderColor: "border-violet-500/40",
     },
     {
       title: "Framework Approval Progress",
@@ -109,11 +94,11 @@ function buildStats(stats) {
       description: `${stats.approvedUploads || 0} approved out of ${
         stats.totalUploads || 0
       } uploaded frameworks`,
-      action: "View Approval Details",
       actionPath: "/frameworks?approvalStatus=approved",
-      icon: Award,
-      tone: "orange",
-      progress: stats.approvalProgress || 0,
+      icon: "award",
+      iconColor: "text-orange-500",
+      iconBg: "bg-orange-500/10",
+      borderColor: "border-orange-500/40",
     },
   ];
 }
@@ -154,35 +139,6 @@ function PageHeader({ datePreset, startDate, endDate, handleDateChange }) {
         endDate={endDate}
         onChange={handleDateChange}
       />
-    </div>
-  );
-}
-
-function StatCard({ stat }) {
-  const tone = STAT_TONE_CLASSES[stat.tone];
-  const IconComponent = stat.icon;
-
-  return (
-    <div className="flex h-full flex-col overflow-hidden rounded border border-border bg-card text-card-foreground hover:shadow-md transition-all group">
-      <Link to={stat.actionPath} className="flex flex-1 items-start gap-5 p-4">
-        <div
-          className={cn(
-            "flex size-14 shrink-0 items-center justify-center rounded border group-hover:scale-105 duration-300",
-            tone.icon
-          )}
-        >
-          <IconComponent className="size-7" strokeWidth={2} />
-        </div>
-        <div className="min-w-0 flex-1 pt-1">
-          <p className="text-sm font-semibold text-foreground">{stat.title}</p>
-          <p className={cn("mt-2 text-3xl font-bold leading-none", tone.value)}>
-            {stat.value}
-          </p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {stat.description}
-          </p>
-        </div>
-      </Link>
     </div>
   );
 }
@@ -643,7 +599,29 @@ export default function ExpertDashboard() {
 
       <div className="grid gap-2 lg:grid-cols-3">
         {statCards.map((stat) => (
-          <StatCard key={stat.title} stat={stat} />
+          <StatCard
+            key={stat.title}
+            title={stat.title}
+            icon={stat.icon}
+            iconColor={stat.iconColor}
+            iconBg={stat.iconBg}
+            borderColor={stat.borderColor}
+            navigation={stat.actionPath}
+          >
+            <div className="flex flex-col gap-1.5 pt-1">
+              <p
+                className={cn(
+                  "text-3xl font-bold leading-none",
+                  stat.iconColor
+                )}
+              >
+                {stat.value}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {stat.description}
+              </p>
+            </div>
+          </StatCard>
         ))}
       </div>
 
