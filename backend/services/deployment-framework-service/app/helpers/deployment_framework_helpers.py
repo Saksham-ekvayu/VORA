@@ -3,10 +3,11 @@
 RabbitMQ event publishing functions have been dropped per the porting rules.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any
 
+from app.services import package_builder, version_service
 from fastapi import UploadFile
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,11 +18,9 @@ from vora_shared.models.deployment_framework import (
     PackageVersion,
 )
 
-from app.services import package_builder, version_service
-
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _g(obj: Any, key: str, default: Any = None) -> Any:

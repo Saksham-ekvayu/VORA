@@ -5,9 +5,18 @@ which live in framework_assignment.py / dashboard.py)."""
 import logging
 import os
 import re
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Annotated, Any
 
+from app.helpers import deployment_framework_helpers as helpers
+from app.helpers.deployment_framework_helpers import coerce_packages, dump_packages
+from app.helpers.reports.deployment_framework_report import (
+    generate_deployment_framework_report_pdf,
+)
+from app.services import (
+    data_formatter,
+    package_builder,
+)
 from fastapi import APIRouter, Body, Depends, File, Form, Path, Query, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import select
@@ -30,16 +39,6 @@ from vora_shared.models import (
 )
 from vora_shared.responses import error, forbidden, paginated, success
 from vora_shared.security import RequestContext, get_context
-
-from app.helpers import deployment_framework_helpers as helpers
-from app.helpers.deployment_framework_helpers import coerce_packages, dump_packages
-from app.helpers.reports.deployment_framework_report import (
-    generate_deployment_framework_report_pdf,
-)
-from app.services import (
-    data_formatter,
-    package_builder,
-)
 
 logger = logging.getLogger("deployment_framework_router")
 
@@ -69,7 +68,7 @@ class _FrameworkView:
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _blob_get(blob: Any, key: str, default: Any = None) -> Any:

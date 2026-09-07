@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -18,7 +18,7 @@ router = APIRouter(tags=["config"])
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class ThresholdsRequest(BaseModel):

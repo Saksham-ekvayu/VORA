@@ -2,18 +2,8 @@
 + src/controllers/framework-assignment.controller.js."""
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Annotated, Any
-
-from fastapi import APIRouter, Body, Depends, Path, Query
-from fastapi.responses import JSONResponse
-from sqlalchemy import select
-from vora_shared import query_builder
-from vora_shared.database import session_scope
-from vora_shared.messages import BUSINESS_MESSAGES, format_message
-from vora_shared.models import Customer, FrameworkAssignment, User
-from vora_shared.responses import error, success
-from vora_shared.security import RequestContext, get_context
 
 from app.helpers import framework_assignment_helper as helper
 from app.helpers.framework_assignment_helper import (
@@ -25,6 +15,15 @@ from app.helpers.framework_assignment_helper import (
 from app.helpers.reports.framework_assignment_report import (
     generate_framework_assignment_report_pdf,
 )
+from fastapi import APIRouter, Body, Depends, Path, Query
+from fastapi.responses import JSONResponse
+from sqlalchemy import select
+from vora_shared import query_builder
+from vora_shared.database import session_scope
+from vora_shared.messages import BUSINESS_MESSAGES, format_message
+from vora_shared.models import Customer, FrameworkAssignment, User
+from vora_shared.responses import error, success
+from vora_shared.security import RequestContext, get_context
 
 logger = logging.getLogger("framework_assignment_router")
 
@@ -36,7 +35,7 @@ def not_found(resource: str = "Resource"):
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 async def _hydrate_user_refs(session, assignments: list[FrameworkAssignment]) -> dict[str, User]:

@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Any
 
 from sqlalchemy import select
@@ -693,7 +693,7 @@ async def evaluate_compliance_task(dd_id: str) -> None:
                                 "recommendation": recommendation,
                             },
                             "agent_name": agent_name,
-                            "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+                            "timestamp": datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC"),
                         }
 
                     dp_results = await asyncio.gather(*(process_dp(dp) for dp in dps))
@@ -710,7 +710,7 @@ async def evaluate_compliance_task(dd_id: str) -> None:
                             {
                                 "fileVersion": fa.frameworkVersion or "1.0.0",
                                 "status": "processed",
-                                "processed_at": datetime.now(timezone.utc).isoformat(),
+                                "processed_at": datetime.now(UTC).isoformat(),
                                 "data": {
                                     str(control_id): {
                                         "control_id": control_id,
@@ -765,7 +765,7 @@ async def evaluate_compliance_task(dd_id: str) -> None:
                     if uploaded:
                         meta = dict(uploaded.meta or {})
                         meta.update(
-                            {"status": "processed", "processed_at": datetime.now(timezone.utc).isoformat()}
+                            {"status": "processed", "processed_at": datetime.now(UTC).isoformat()}
                         )
                         uploaded.meta = meta
                         flag_modified(uploaded, "meta")

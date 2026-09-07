@@ -4,9 +4,15 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Any
 
+from app.services.extraction_runner import (
+    run_deployment_document_extraction,
+    run_deployment_framework_extraction,
+    run_deployment_package_merge,
+    run_framework_extraction,
+)
 from fastapi import APIRouter
 from sqlalchemy import func, select
 from vora_shared.database import session_scope
@@ -19,13 +25,6 @@ from vora_shared.models import (
 from vora_shared.query_builder import build_pagination_meta, clamp_limit, clamp_page
 from vora_shared.responses import error, not_found, paginated, server_error, success
 
-from app.services.extraction_runner import (
-    run_deployment_document_extraction,
-    run_deployment_framework_extraction,
-    run_deployment_package_merge,
-    run_framework_extraction,
-)
-
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["extract"])
 
@@ -33,7 +32,7 @@ _background_tasks = set()
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _iso(dt: datetime | None = None) -> str:

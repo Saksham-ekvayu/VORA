@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 import app.utils.live_logs as live_log_manager
 from app.mcp_server.controller import run_pipeline
@@ -27,7 +27,7 @@ async def start_dynamic_scheduler(payload: dict):
             minutes=payload.get("minutes", 1),
             id="mcp_pipeline",
             replace_existing=True,
-            next_run_time=datetime.now(timezone.utc),  # fire immediately, then repeat on the interval
+            next_run_time=datetime.now(UTC),  # fire immediately, then repeat on the interval
         )
     else:
         scheduler.add_job(
@@ -37,7 +37,7 @@ async def start_dynamic_scheduler(payload: dict):
             minute=payload.get("minute", 0),
             id="mcp_pipeline",
             replace_existing=True,
-            next_run_time=datetime.now(timezone.utc),  # fire immediately, then follow the cron schedule
+            next_run_time=datetime.now(UTC),  # fire immediately, then follow the cron schedule
         )
 
     if not scheduler.running:

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from typing import Any
 
 from sqlalchemy import Select, func, select
@@ -46,14 +46,14 @@ def calculate_package_health(ga_results: list[Any]) -> int:
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def to_naive_utc(value: datetime | None) -> datetime | None:
     if value is None:
         return None
     if value.tzinfo is not None:
-        return value.astimezone(timezone.utc).replace(tzinfo=None)
+        return value.astimezone(UTC).replace(tzinfo=None)
     return value
 
 
@@ -61,8 +61,8 @@ def to_aware_utc(value: datetime | None) -> datetime | None:
     if value is None:
         return None
     if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
 
 
 def apply_date_filters(
@@ -159,7 +159,7 @@ def calculate_role_stats(all_users: list[User]) -> dict[str, int]:
 def format_recent_users(all_users: list[User]) -> list[dict[str, Any]]:
     sorted_by_date = sorted(
         all_users,
-        key=lambda u: u.createdAt or datetime.min.replace(tzinfo=timezone.utc),
+        key=lambda u: u.createdAt or datetime.min.replace(tzinfo=UTC),
         reverse=True,
     )
     return [

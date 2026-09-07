@@ -3,16 +3,15 @@ import os
 import sys
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
-from vora_shared.config import get_settings
-from vora_shared.database import connect_db, disconnect_db
-from vora_shared.server import create_vora_app
-
 from app.routers import admin as admin_router
 from app.routers import auditor as auditor_router
 from app.routers import customer_admin as customer_admin_router
 from app.routers import expert as expert_router
 from app.routers import internal_expert as internal_expert_router
+from fastapi import FastAPI
+from vora_shared.config import get_settings
+from vora_shared.database import connect_db, disconnect_db
+from vora_shared.server import create_vora_app
 
 # Create logs directory if it doesn't exist
 os.makedirs("logs", exist_ok=True)

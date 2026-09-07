@@ -4,11 +4,21 @@ from __future__ import annotations
 
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile
+from app.helpers import framework_helper
+from app.helpers.report_helper import generate_framework_report_pdf
+from app.schemas.framework import (
+    AddControlBody,
+    AssignFrameworkToCustomerBody,
+    RejectFrameworkBody,
+    UpdateControlBody,
+    UpdateControlWeightageBody,
+)
+from fastapi import APIRouter, Depends, File, Form
 from fastapi import Path as ApiPath
+from fastapi import Query, Response, UploadFile
 from sqlalchemy import String, cast, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.attributes import flag_modified
@@ -35,22 +45,12 @@ from vora_shared.models.framework_assignment import AssignmentInfo
 from vora_shared.query_builder import build_pagination_meta, clamp_limit, clamp_page
 from vora_shared.responses import error, paginated, success
 
-from app.helpers import framework_helper
-from app.helpers.report_helper import generate_framework_report_pdf
-from app.schemas.framework import (
-    AddControlBody,
-    AssignFrameworkToCustomerBody,
-    RejectFrameworkBody,
-    UpdateControlBody,
-    UpdateControlWeightageBody,
-)
-
 router = APIRouter(tags=["framework"])
 logger = logging.getLogger(__name__)
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 async def _validate_upload(file: UploadFile | None) -> tuple[bytes | None, str | None]:

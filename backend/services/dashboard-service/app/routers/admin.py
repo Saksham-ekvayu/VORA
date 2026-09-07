@@ -2,14 +2,6 @@ import logging
 from datetime import datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select
-from vora_shared.auth import AuthenticatedUser, authenticate
-from vora_shared.database import session_scope
-from vora_shared.messages import MESSAGES
-from vora_shared.models import Customer, User
-from vora_shared.responses import error, success
-
 from app.helpers import (
     apply_date_filters,
     build_response_data,
@@ -22,6 +14,13 @@ from app.helpers import (
     to_naive_utc,
     utcnow,
 )
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy import select
+from vora_shared.auth import AuthenticatedUser, authenticate
+from vora_shared.database import session_scope
+from vora_shared.messages import MESSAGES
+from vora_shared.models import Customer, User
+from vora_shared.responses import error, success
 
 router = APIRouter(tags=["admin-dashboard"])
 logger = logging.getLogger(__name__)

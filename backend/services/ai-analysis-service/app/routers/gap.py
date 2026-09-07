@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
+from app.services.gap_runner import run_gap
 from fastapi import APIRouter
 from pydantic import BaseModel
 from sqlalchemy import func, select
@@ -19,8 +20,6 @@ from vora_shared.models import (
 from vora_shared.query_builder import build_pagination_meta, clamp_limit, clamp_page
 from vora_shared.responses import error, not_found, paginated, server_error, success
 
-from app.services.gap_runner import run_gap
-
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["gap"])
 
@@ -28,7 +27,7 @@ _background_tasks = set()
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _iso(dt: datetime | None = None) -> str:

@@ -1,7 +1,7 @@
 """Port of deployment-framework-service-main/src/helpers/framework-assignment.helper.js."""
 
 import re
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Any
 
 from vora_shared.models.framework_assignment import (
@@ -18,7 +18,7 @@ from vora_shared.models.user import User
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _g(obj: Any, key: str, default: Any = None) -> Any:

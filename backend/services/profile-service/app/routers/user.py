@@ -1,7 +1,15 @@
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Annotated
 
+from app.schemas.user import ProfileUpdateRequest
+from app.utils.formatting import (
+    address_dict,
+    created_by_user_id,
+    customer_summary,
+    format_created_by,
+    merge_address,
+)
 from fastapi import APIRouter, Body, Depends, File, HTTPException, UploadFile
 from sqlalchemy import select
 from vora_shared import messages as msg
@@ -15,15 +23,6 @@ from vora_shared.database import session_scope
 from vora_shared.models.customer import Customer
 from vora_shared.models.user import User
 from vora_shared.responses import error, success
-
-from app.schemas.user import ProfileUpdateRequest
-from app.utils.formatting import (
-    address_dict,
-    created_by_user_id,
-    customer_summary,
-    format_created_by,
-    merge_address,
-)
 
 router = APIRouter(tags=["profile"])
 logger = logging.getLogger(__name__)
@@ -118,7 +117,7 @@ async def edit_profile(
 
         # Apply updates
         _apply_profile_updates(db_user, body)
-        db_user.updatedAt = datetime.now(timezone.utc)
+        db_user.updatedAt = datetime.now(UTC)
 
         tenant = str(db_user.tenantId) if db_user.tenantId else None
         user_id = str(db_user.id)
@@ -192,7 +191,7 @@ async def update_avatar(
             return error(msg.USER_ACCOUNT_DEACTIVATED, 400, field="user")
         old_avatar = db_user.avatar
         db_user.avatar = avatar_url
-        db_user.updatedAt = datetime.now(timezone.utc)
+        db_user.updatedAt = datetime.now(UTC)
         user_id = str(db_user.id)
 
     delete_avatar_file(old_avatar)
@@ -233,7 +232,7 @@ async def update_customer_avatar(
 
         old_avatar = current_customer.avatar
         current_customer.avatar = avatar_url
-        current_customer.updatedAt = datetime.now(timezone.utc)
+        current_customer.updatedAt = datetime.now(UTC)
         customer_id = str(current_customer.id)
 
     delete_avatar_file(old_avatar)

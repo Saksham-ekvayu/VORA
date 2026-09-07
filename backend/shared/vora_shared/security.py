@@ -5,7 +5,6 @@ from dataclasses import dataclass
 
 import bcrypt
 from fastapi import Depends, Header, HTTPException, status
-
 from vora_shared.auth import AuthenticatedUser, authenticate
 from vora_shared.models.user import User
 

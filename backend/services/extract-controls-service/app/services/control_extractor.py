@@ -8,14 +8,13 @@ import logging
 import os
 import re
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any
 
+from app.services.control_merger import clean_section_name
 from dotenv import load_dotenv
 from openai import OpenAI
-
-from app.services.control_merger import clean_section_name
 
 logger = logging.getLogger(__name__)
 
@@ -703,7 +702,7 @@ Return ONLY JSON. No markdown. No text outside JSON."""
         round_missing = None
         for round_attempt in range(1, TRUNCATION_RETRY_ATTEMPTS + 1):
             try:
-                t_start = datetime.now(timezone.utc)
+                t_start = datetime.now(UTC)
                 response = get_openai_client().chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[{"role": "user", "content": completeness_prompt}],
@@ -711,7 +710,7 @@ Return ONLY JSON. No markdown. No text outside JSON."""
                     max_tokens=CONTROL_EXTRACTION_MAX_TOKENS,
                     timeout=3600,
                 )
-                elapsed = (datetime.now(timezone.utc) - t_start).total_seconds()
+                elapsed = (datetime.now(UTC) - t_start).total_seconds()
                 finish_reason = _log_llm_call(
                     f"EXTRACT-COMPLETENESS-round{round_num}"
                     f"{'' if round_attempt == 1 else f'-retry{round_attempt}'}",
@@ -903,7 +902,7 @@ def _run_stage1_call(prompt: str, tag: str) -> list:
     best_salvage: list = []
 
     for attempt in range(1, TRUNCATION_RETRY_ATTEMPTS + 1):
-        t_start = datetime.now(timezone.utc)
+        t_start = datetime.now(UTC)
         try:
             response = get_openai_client().chat.completions.create(
                 model="gpt-4o-mini",
@@ -912,7 +911,7 @@ def _run_stage1_call(prompt: str, tag: str) -> list:
                 max_tokens=CONTROL_EXTRACTION_MAX_TOKENS,
                 timeout=3600,
             )
-            elapsed = (datetime.now(timezone.utc) - t_start).total_seconds()
+            elapsed = (datetime.now(UTC) - t_start).total_seconds()
             finish_reason = _log_llm_call(
                 f"{tag}{'' if attempt == 1 else f'-retry{attempt}'}", response, elapsed
             )
@@ -1295,7 +1294,7 @@ Use JSON list ONLY:
 
 Return ONLY JSON. No markdown."""
 
-        t_start = datetime.now(timezone.utc)
+        t_start = datetime.now(UTC)
         finish_reason = None
         try:
             response = get_openai_client().chat.completions.create(
@@ -1305,7 +1304,7 @@ Return ONLY JSON. No markdown."""
                 max_tokens=DEPLOYMENT_MAX_TOKENS,
                 timeout=3600,
             )
-            elapsed = (datetime.now(timezone.utc) - t_start).total_seconds()
+            elapsed = (datetime.now(UTC) - t_start).total_seconds()
             finish_reason = _log_llm_call(f"EXTRACT-STAGE2-batch{batch_num}", response, elapsed)
 
             batch_result = json.loads(response.choices[0].message.content)
@@ -1413,7 +1412,7 @@ TEXT:
 
 Return ONLY JSON. No markdown. No text outside JSON."""
 
-        t_start = datetime.now(timezone.utc)
+        t_start = datetime.now(UTC)
         try:
             logger.info(f"[DEPLOYMENT-EXTRACT] Processing batch {i}/{len(batches)}...")
             response = get_openai_client().chat.completions.create(
@@ -1423,7 +1422,7 @@ Return ONLY JSON. No markdown. No text outside JSON."""
                 max_tokens=CONTROL_EXTRACTION_MAX_TOKENS,
                 timeout=3600,
             )
-            elapsed = (datetime.now(timezone.utc) - t_start).total_seconds()
+            elapsed = (datetime.now(UTC) - t_start).total_seconds()
             _log_llm_call(f"DEPLOYMENT-EXTRACT-BATCH{i}", response, elapsed)
 
             batch_controls = json.loads(response.choices[0].message.content)

@@ -2,21 +2,6 @@ import logging
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy import desc, select
-from vora_shared.config import get_settings
-from vora_shared.database import session_scope
-from vora_shared.models import (
-    DeploymentFramework,
-    DeploymentPackageMerge,
-    EvidenceOutput,
-    FrameworkAssignment,
-    PackageGapAnalysis,
-)
-from vora_shared.query_builder import build_pagination_meta, clamp_limit, clamp_page
-from vora_shared.responses import paginated, server_error, success
-from vora_shared.security import RequestContext, get_context
-
 from app.helpers import (
     MAX_ACTIVE_GAPS,
     build_controls_passing_response,
@@ -32,6 +17,20 @@ from app.helpers import (
     process_gap_analyses,
     process_live_streams,
 )
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy import desc, select
+from vora_shared.config import get_settings
+from vora_shared.database import session_scope
+from vora_shared.models import (
+    DeploymentFramework,
+    DeploymentPackageMerge,
+    EvidenceOutput,
+    FrameworkAssignment,
+    PackageGapAnalysis,
+)
+from vora_shared.query_builder import build_pagination_meta, clamp_limit, clamp_page
+from vora_shared.responses import paginated, server_error, success
+from vora_shared.security import RequestContext, get_context
 
 router = APIRouter(tags=["auditor-dashboard"])
 logger = logging.getLogger(__name__)

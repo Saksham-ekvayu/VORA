@@ -5,16 +5,15 @@ Pydantic models; callers dump nested models to JSONB-friendly dicts before persi
 """
 
 import hashlib
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Any
 
-from vora_shared.ids import new_id
-
 from app.services import version_service
+from vora_shared.ids import new_id
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _g(obj: Any, key: str, default: Any = None) -> Any:

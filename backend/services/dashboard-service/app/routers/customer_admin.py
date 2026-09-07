@@ -1,9 +1,10 @@
 """Port of deployment-framework-service dashboard routes/controllers."""
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Annotated, Any
 
+from app.helpers import apply_date_filters, to_naive_utc
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import or_, select
 from vora_shared.database import session_scope
@@ -19,8 +20,6 @@ from vora_shared.models import (
 )
 from vora_shared.responses import server_error, success
 from vora_shared.security import RequestContext, get_context
-
-from app.helpers import apply_date_filters, to_naive_utc
 
 router = APIRouter(tags=["customer-admin-dashboard"])
 logger = logging.getLogger(__name__)
@@ -39,12 +38,12 @@ def _get_time_ago(date_value: datetime | None) -> str:
         return ""
     if isinstance(date_value, str):
         try:
-            date_value = datetime.fromisoformat(date_value.replace("Z", "+00:00"))
+            date_value = datetime.fromisoformat(date_value)
         except ValueError:
             return ""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if date_value.tzinfo is None:
-        date_value = date_value.replace(tzinfo=timezone.utc)
+        date_value = date_value.replace(tzinfo=UTC)
     diff = now - date_value
     diff_days = diff.days
     diff_hours = diff.seconds // 3600
@@ -227,7 +226,7 @@ def _process_assignments_and_progress(
         )
 
     assigned_frameworks_list.sort(
-        key=lambda a: a["assignedAt"] or datetime.min.replace(tzinfo=timezone.utc),
+        key=lambda a: a["assignedAt"] or datetime.min.replace(tzinfo=UTC),
         reverse=True,
     )
 
@@ -669,14 +668,14 @@ def _add_system_activities(
 
 def _normalize_timestamp(value: Any) -> datetime:
     if value is None:
-        return datetime.min.replace(tzinfo=timezone.utc)
+        return datetime.min.replace(tzinfo=UTC)
     if isinstance(value, str):
         try:
-            value = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            value = datetime.fromisoformat(value)
         except ValueError:
-            return datetime.min.replace(tzinfo=timezone.utc)
+            return datetime.min.replace(tzinfo=UTC)
     if getattr(value, "tzinfo", None) is None:
-        return value.replace(tzinfo=timezone.utc)
+        return value.replace(tzinfo=UTC)
     return value
 
 

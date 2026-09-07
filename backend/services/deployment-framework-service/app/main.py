@@ -3,13 +3,12 @@ import os
 import sys
 from contextlib import asynccontextmanager
 
+from app.routers import deployment_framework as deployment_framework_router
+from app.routers import framework_assignment as framework_assignment_router
 from fastapi import FastAPI
 from vora_shared.config import get_settings
 from vora_shared.database import connect_db, disconnect_db
 from vora_shared.server import create_vora_app
-
-from app.routers import deployment_framework as deployment_framework_router
-from app.routers import framework_assignment as framework_assignment_router
 
 # Create logs directory if it doesn't exist
 os.makedirs("logs", exist_ok=True)

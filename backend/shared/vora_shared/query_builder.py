@@ -10,13 +10,12 @@ from typing import Any, TypeVar
 from fastapi import HTTPException, status
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from vora_shared.models.user import User
 
 T = TypeVar("T")
 
 
-async def find_by_id_or_fail(
+async def find_by_id_or_fail[T](
     session: AsyncSession,
     model: type[T],
     doc_id: str,

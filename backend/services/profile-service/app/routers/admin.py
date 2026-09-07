@@ -1,9 +1,21 @@
 import logging
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Annotated
 
+from app.schemas.admin import CreateUserRequest, UpdateUserRequest
+from app.schemas.customer import CreateCustomerRequest, UpdateCustomerRequest
+from app.utils.formatting import (
+    created_by_type,
+    created_by_user_id,
+    customer_dict,
+    customer_summary,
+    merge_address,
+    sanitize_user,
+    user_admin_dict,
+)
+from app.utils.temp_password import generate_temp_password
 from fastapi import APIRouter, Body, Depends, File, Query, UploadFile
 from sqlalchemy import delete, or_, select
 from sqlalchemy.orm.attributes import flag_modified
@@ -28,19 +40,6 @@ from vora_shared.models.user import User, UserAddress, UserCreatedBy
 from vora_shared.query_builder import apply_search_filter, apply_sort, paginate_stmt
 from vora_shared.responses import error, forbidden, paginated, success
 from vora_shared.security import hash_password
-
-from app.schemas.admin import CreateUserRequest, UpdateUserRequest
-from app.schemas.customer import CreateCustomerRequest, UpdateCustomerRequest
-from app.utils.formatting import (
-    created_by_type,
-    created_by_user_id,
-    customer_dict,
-    customer_summary,
-    merge_address,
-    sanitize_user,
-    user_admin_dict,
-)
-from app.utils.temp_password import generate_temp_password
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -107,7 +106,7 @@ def _apply_customer_updates(customer: Customer, body: UpdateCustomerRequest):
             body.address.temporaryAddress,
         )
         flag_modified(customer, "address")
-    customer.updatedAt = datetime.now(timezone.utc)
+    customer.updatedAt = datetime.now(UTC)
 
 
 def _apply_user_updates(user: User, body: UpdateUserRequest):
@@ -125,7 +124,7 @@ def _apply_user_updates(user: User, body: UpdateUserRequest):
     if body.permanentAddress or body.temporaryAddress:
         user.address = merge_address(user.address, body.permanentAddress, body.temporaryAddress)
         flag_modified(user, "address")
-    user.updatedAt = datetime.now(timezone.utc)
+    user.updatedAt = datetime.now(UTC)
 
 
 async def _check_customer_email_exists(session, email: str, exclude_id: str | None = None) -> bool:
@@ -264,7 +263,7 @@ async def create_customer(
         ).scalar_one_or_none():
             tenant_id = f"tenant_{secrets.token_hex(8)}"
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         new_customer = Customer(
             tenantId=tenant_id,
             name=body.name,
@@ -433,7 +432,7 @@ async def toggle_customer_status(id: str, ctx: Annotated[AuthenticatedUser, Depe
             return error(msg.CUSTOMER_NOT_FOUND, 404)
 
         customer.isActive = not customer.isActive
-        customer.updatedAt = datetime.now(timezone.utc)
+        customer.updatedAt = datetime.now(UTC)
 
         creator = None
         creator_id = created_by_user_id(customer.createdBy)
@@ -499,7 +498,7 @@ async def update_customer_avatar_by_admin(
 
         old_avatar = customer.avatar
         customer.avatar = avatar_url
-        customer.updatedAt = datetime.now(timezone.utc)
+        customer.updatedAt = datetime.now(UTC)
 
         creator = None
         creator_id = created_by_user_id(customer.createdBy)
@@ -786,7 +785,7 @@ async def toggle_user_status(id: str, ctx: Annotated[AuthenticatedUser, Depends(
 
         new_status = not user.isActive
         user.isActive = new_status
-        user.updatedAt = datetime.now(timezone.utc)
+        user.updatedAt = datetime.now(UTC)
         result = {
             "id": str(user.id),
             "tenantId": str(user.tenantId) if user.tenantId else None,

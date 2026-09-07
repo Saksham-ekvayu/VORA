@@ -5,10 +5,19 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any
 
+from app.services.control_extractor import (
+    convert_to_section_structure,
+    extract_deployment_controls,
+    extract_framework_controls,
+)
+from app.services.control_merger import (
+    get_framework_previous_controls,
+    merge_controls_cumulative,
+)
 from sqlalchemy import select
 from sqlalchemy.orm.attributes import flag_modified
 from vora_shared.database import session_scope
@@ -21,16 +30,6 @@ from vora_shared.models import (
     FrameworkMerge,
 )
 
-from app.services.control_extractor import (
-    convert_to_section_structure,
-    extract_deployment_controls,
-    extract_framework_controls,
-)
-from app.services.control_merger import (
-    get_framework_previous_controls,
-    merge_controls_cumulative,
-)
-
 logger = logging.getLogger(__name__)
 
 MSG_EXTRACTION_COMPLETED = "Extraction completed"
@@ -38,7 +37,7 @@ MSG_DEPLOYMENT_EXTRACTION_COMPLETED = "Deployment framework extraction completed
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _iso(dt: datetime | None = None) -> str:
@@ -62,8 +61,8 @@ def _status_history(
     completed = completed or _iso()
     history.append({"status": "completed", "timestamp": completed, "message": MSG_EXTRACTION_COMPLETED})
     try:
-        start = datetime.fromisoformat(uploaded.replace("Z", "+00:00"))
-        end = datetime.fromisoformat(completed.replace("Z", "+00:00"))
+        start = datetime.fromisoformat(uploaded)
+        end = datetime.fromisoformat(completed)
         elapsed = max(0.0, (end - start).total_seconds())
     except Exception:  # noqa: BLE001
         elapsed = 1.0

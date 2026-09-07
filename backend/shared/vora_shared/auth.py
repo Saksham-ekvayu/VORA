@@ -8,7 +8,6 @@ import jwt
 from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
-
 from vora_shared import messages as msg
 from vora_shared.config import Settings, get_settings
 from vora_shared.database import session_scope

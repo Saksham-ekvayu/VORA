@@ -1,7 +1,9 @@
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Annotated
 
+from app.helpers.helpers import fetch_users_by_ids
+from app.validations.validation import FieldError, validate_assign_access
 from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm.attributes import flag_modified
@@ -25,9 +27,6 @@ from vora_shared.query_builder import (
     paginate_stmt,
 )
 from vora_shared.responses import error, paginated, success
-
-from app.helpers.helpers import fetch_users_by_ids
-from app.validations.validation import FieldError, validate_assign_access
 
 router = APIRouter(tags=["framework-access"])
 logger = logging.getLogger(__name__)
@@ -644,7 +643,7 @@ async def assign_framework_access(
         # Process each category
         results: list[dict] = []
         errors: list[dict] = []
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         auth_user_id = str(auth.user.id)
 
         for category in framework_categories:
@@ -692,7 +691,7 @@ async def approve_framework_access(
         record.status = "approved"
         record.approval = ApprovalInfo(
             approvedBy=str(auth.user.id),
-            approvedAt=datetime.now(timezone.utc),
+            approvedAt=datetime.now(UTC),
         ).model_dump(mode="json")
         flag_modified(record, "approval")
         record_id = str(record.id)
@@ -725,7 +724,7 @@ async def reject_framework_access(
         record.status = "rejected"
         record.rejection = RejectionInfo(
             rejectedBy=str(auth.user.id),
-            rejectedAt=datetime.now(timezone.utc),
+            rejectedAt=datetime.now(UTC),
         ).model_dump(mode="json")
         flag_modified(record, "rejection")
         record_id = str(record.id)
@@ -786,7 +785,7 @@ async def revoke_framework_access(
         record.status = "revoked"
         record.revocation = RevocationInfo(
             revokedBy=str(auth.user.id),
-            revokedAt=datetime.now(timezone.utc),
+            revokedAt=datetime.now(UTC),
         ).model_dump(mode="json")
         flag_modified(record, "revocation")
         result = {
