@@ -317,7 +317,7 @@ async def _build_comparison_results(df_sections: list, assignment_sections: list
 
 
 async def _update_package_comparison(
-    session, comparison_id: str | None, comparison_payload: dict
+    session, comparison_id: str | None, comparison_payload: dict, df_id: str | None = None
 ) -> PackageComparison:
     logger.info("[COMPARISON-RUNNER] Updating PackageComparison record...")
     pc = None
@@ -328,6 +328,7 @@ async def _update_package_comparison(
         logger.warning(f"[COMPARISON-RUNNER] PackageComparison not found (id={comparison_id}), creating new")
         pc = PackageComparison(
             id=new_id(),
+            deploymentFrameworkId=df_id,
             fileHashes=[],
             comparison=comparison_payload,
         )
@@ -335,6 +336,8 @@ async def _update_package_comparison(
     else:
         logger.info("[COMPARISON-RUNNER] Found existing PackageComparison, updating")
         pc.comparison = comparison_payload
+        if df_id:
+            pc.deploymentFrameworkId = df_id
         pc.updatedAt = _utcnow()
         session.add(pc)
 
@@ -451,7 +454,7 @@ async def run_comparison(
                 "comparison_result": grouped,
             }
 
-            pc = await _update_package_comparison(session, comparison_id, comparison_payload)
+            pc = await _update_package_comparison(session, comparison_id, comparison_payload, df_id)
             await _update_df_package_comparison(session, df_id, pkg_ver, pc.id)
 
             # Commit all changes
