@@ -1182,7 +1182,9 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
 
             if file_path and file_path.startswith("/uploads/"):
                 from pathlib import Path
+
                 from vora_shared.file_storage import UPLOAD_BASE_PATH
+
                 relative = file_path.replace("/uploads/", "", 1)
                 file_path = str((Path(UPLOAD_BASE_PATH) / relative).resolve())
 
@@ -1192,11 +1194,13 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
 
             logger.info("[DD-EXTRACT] Step 1.5: Updating status to 'processing'...")
             updated_ai_ext = dict(ai_ext)
-            updated_ai_ext.update({
-                "status": "processing",
-                "timestamp": uploaded_ts,
-                "message": "Deployment document ai extraction in progress",
-            })
+            updated_ai_ext.update(
+                {
+                    "status": "processing",
+                    "timestamp": uploaded_ts,
+                    "message": "Deployment document ai extraction in progress",
+                }
+            )
             doc_extraction.aiExtraction = updated_ai_ext
             session.add(doc_extraction)
             await session.commit()
@@ -1212,7 +1216,9 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
 
         logger.info("[DD-EXTRACT] Step 3: Running AI extraction...")
         controls_flat = await asyncio.to_thread(extract_deployment_controls, chunks, dd_id)
-        logger.info(f"[DD-EXTRACT]  Framework ai extraction complete: {len(controls_flat)} controls extracted")
+        logger.info(
+            f"[DD-EXTRACT]  Framework ai extraction complete: {len(controls_flat)} controls extracted"
+        )
 
         logger.info("[DD-EXTRACT] Step 4: Converting to section structure...")
         controls_structured = await asyncio.to_thread(
@@ -1267,7 +1273,7 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
         logger.info("[DD-EXTRACT] Step 5: Saving to database...")
         async with session_scope() as session:
             from vora_shared.models import DocumentExtraction
-            
+
             doc_extraction = await session.get(DocumentExtraction, extraction_id)
             if doc_extraction:
                 doc_extraction.aiExtraction = extraction_data
@@ -1275,16 +1281,21 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
                 await session.flush()
                 await session.commit()
                 logger.info("[DD-EXTRACT]  Saved to document_extractions table")
-            
+
             try:
                 import httpx
+
                 logger.info(f"[DD-EXTRACT] Triggering compliance agent evaluation for dd_id: {dd_id}...")
                 async with httpx.AsyncClient(timeout=60.0) as client:
                     resp = await client.post(f"http://localhost:7008/api/compliance-agent/evaluate/{dd_id}")
                     if resp.status_code in (200, 201, 202):
-                        logger.info(f"[DD-EXTRACT] Successfully triggered compliance agent for dd_id: {dd_id}")
+                        logger.info(
+                            f"[DD-EXTRACT] Successfully triggered compliance agent for dd_id: {dd_id}"
+                        )
                     else:
-                        logger.warning(f"[DD-EXTRACT] Failed to trigger compliance agent, status: {resp.status_code}")
+                        logger.warning(
+                            f"[DD-EXTRACT] Failed to trigger compliance agent, status: {resp.status_code}"
+                        )
             except Exception as e:
                 logger.warning(f"[DD-EXTRACT] Could not reach compliance agent service: {e}")
 
@@ -1308,23 +1319,25 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
         try:
             async with session_scope() as session:
                 from vora_shared.models import DocumentExtraction
+
                 # If extraction_id was successfully retrieved earlier
-                if 'extraction_id' in locals() and extraction_id:
+                if "extraction_id" in locals() and extraction_id:
                     doc_extraction = await session.get(DocumentExtraction, extraction_id)
                     if doc_extraction:
                         ai = dict(doc_extraction.aiExtraction or {})
-                        ai.update({
-                            "status": "failed",
-                            "timestamp": _iso(),
-                            "message": f"Extraction failed: {str(exc)}",
-                        })
+                        ai.update(
+                            {
+                                "status": "failed",
+                                "timestamp": _iso(),
+                                "message": f"Extraction failed: {str(exc)}",
+                            }
+                        )
                         doc_extraction.aiExtraction = ai
                         session.add(doc_extraction)
                         await session.commit()
                         logger.info("[DD-EXTRACT] Updated status to 'failed' in database")
         except Exception as db_exc:
             logger.error(f"[DD-EXTRACT] Failed to update status in database: {db_exc}")
-
 
 
 async def _get_or_create_doc_extraction(

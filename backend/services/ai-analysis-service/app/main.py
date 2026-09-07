@@ -26,6 +26,11 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+# Reduce noise from 3rd party libraries
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
+logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
