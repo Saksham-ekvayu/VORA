@@ -16,6 +16,8 @@ from app.services.downloader import download_file
 from app.utils.live_logs import add_live_log
 from vora_shared.database import session_scope
 
+logger = logging.getLogger(__name__)
+
 
 async def run_pipeline():
     await _run_pipeline()
@@ -27,25 +29,25 @@ async def _run_pipeline():
         framework = await get_live_framework(db)
 
         if not framework:
-            logging.info("No LIVE deployment framework found")
+            logger.info("No LIVE deployment framework found")
             add_live_log("No LIVE deployment framework found")
             return
 
         merge_id = framework.get("merge_document")
 
         if not merge_id:
-            logging.info("LIVE package has no merge document")
+            logger.info("LIVE package has no merge document")
             add_live_log("LIVE package has no merge document")
             return
 
         merge_data = await get_framework_merge(db, merge_id)
 
         if not merge_data:
-            logging.info(f"Merge document not found: {merge_id}")
+            logger.info(f"Merge document not found: {merge_id}")
             add_live_log(f"Merge document not found: {merge_id}")
             return
 
-    logging.info(f"LIVE package found: {framework['framework_name']} v{framework['package_version']}")
+    logger.info(f"LIVE package found: {framework['framework_name']} v{framework['package_version']}")
     add_live_log(f"LIVE package found: {framework['framework_name']} v{framework['package_version']}")
 
     # STEP 2: Deployment data from framework_merges
@@ -57,14 +59,14 @@ async def _run_pipeline():
 
     total_qualifying_points = sum(len(paths) for paths in paths_by_source.values())
 
-    logging.info(f"Deployment points with path+source set: {total_qualifying_points}")
+    logger.info(f"Deployment points with path+source set: {total_qualifying_points}")
     add_live_log(f"Deployment points with path+source set: {total_qualifying_points}")
 
-    logging.info(f"Paths by source: {paths_by_source}")
+    logger.info(f"Paths by source: {paths_by_source}")
     add_live_log(f"Paths by source: {paths_by_source}")
 
     if not paths_by_source:
-        logging.info("No deployment points with path and source found")
+        logger.info("No deployment points with path and source found")
         add_live_log("No deployment points with path and source found")
         return
 
@@ -75,16 +77,16 @@ async def _run_pipeline():
         try:
             source_files = collect_files(source, {"paths": source_paths})
         except Exception as e:
-            logging.exception(f"Failed to collect files for source: {source}: {e}")
+            logger.exception(f"Failed to collect files for source: {source}")
             add_live_log(f"Failed to collect files for source: {source}: {e}")
             continue
 
-        logging.info(f"Fetched {len(source_files)} files for source: {source}")
+        logger.info(f"Fetched {len(source_files)} files for source: {source}")
         add_live_log(f"Fetched {len(source_files)} files for source: {source}")
 
         files.extend(source_files)
 
-    logging.info(f"Total files fetched: {len(files)}")
+    logger.info(f"Total files fetched: {len(files)}")
     add_live_log(f"Total files fetched: {len(files)}")
 
     # STEP 5: Process files
@@ -96,7 +98,7 @@ async def _run_pipeline():
                 continue
 
             try:
-                logging.info(f"Processing: {path}")
+                logger.info(f"Processing: {path}")
                 add_live_log(f"Processing: {path}")
 
                 if path.startswith("s3://"):
@@ -118,24 +120,24 @@ async def _run_pipeline():
 
                     document_id = deployment_document.id
 
-                    logging.info(f"Deployment document id: {document_id}")
+                    logger.info(f"Deployment document id: {document_id}")
                     add_live_log(f"Deployment document id: {document_id}")
 
                     # trigger AI extraction (sync call)
                     ai_response = trigger_ai_extraction(document_id)
 
-                    logging.info(f"AI Extraction Response: {ai_response}")
+                    logger.info(f"AI Extraction Response: {ai_response}")
                     add_live_log(f"AI Extraction Response: {ai_response}")
 
                     extraction_id = (ai_response or {}).get("data", {}).get("extraction_id")
 
                     if extraction_id:
                         await update_document_ai_extraction(db, document_id, extraction_id)
-                        logging.info(f"Stored AI extraction id on document: {extraction_id}")
+                        logger.info(f"Stored AI extraction id on document: {extraction_id}")
                         add_live_log(f"Stored AI extraction id on document: {extraction_id}")
 
                 except Exception as e:
-                    logging.exception(f"Failed to save deployment document: {e}")
+                    logger.exception("Failed to save deployment document")
                     add_live_log(f"Failed to save deployment document: {e}")
                     # continue processing but mark as error
                     await mark_processed(db, path)
@@ -153,16 +155,16 @@ async def _run_pipeline():
 
                 try:
                     response = call_agent(payload, "Compliance_Audit_Agent")
-                    logging.info(f"Agent Response: {response}")
+                    logger.info(f"Agent Response: {response}")
                     add_live_log(f"Agent Response: {response}")
                 except Exception as e:
-                    logging.exception(f"Compliance agent call failed for {path}: {e}")
+                    logger.exception(f"Compliance agent call failed for {path}")
                     add_live_log(f"Compliance agent call failed for {path}: {e}")
 
                 # Mark processed regardless of the agent-call outcome above, so this
                 # file (and its AI extraction) is never re-triggered on future runs.
                 await mark_processed(db, path)
 
-            except Exception as e:
-                logging.error(f"Error processing {path}: {e}")
+            except Exception as e:  # noqa: BLE001
+                logger.error(f"Error processing {path}: {e}")
                 add_live_log(f"Error processing {path}: {e}")

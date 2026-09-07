@@ -1,11 +1,12 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 import app.utils.live_logs as live_log_manager
 from app.mcp_server.controller import run_pipeline
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
-from apscheduler.triggers.interval import IntervalTrigger
+
+logger = logging.getLogger(__name__)
+
 
 live_logs = []
 
@@ -26,7 +27,7 @@ async def start_dynamic_scheduler(payload: dict):
             minutes=payload.get("minutes", 1),
             id="mcp_pipeline",
             replace_existing=True,
-            next_run_time=datetime.now(),  # fire immediately, then repeat on the interval
+            next_run_time=datetime.now(timezone.utc),  # fire immediately, then repeat on the interval
         )
     else:
         scheduler.add_job(
@@ -36,14 +37,14 @@ async def start_dynamic_scheduler(payload: dict):
             minute=payload.get("minute", 0),
             id="mcp_pipeline",
             replace_existing=True,
-            next_run_time=datetime.now(),  # fire immediately, then follow the cron schedule
+            next_run_time=datetime.now(timezone.utc),  # fire immediately, then follow the cron schedule
         )
 
     if not scheduler.running:
         try:
             scheduler.start()
         except Exception as e:
-            logging.exception("Failed to start scheduler")
+            logger.exception("Failed to start scheduler")
             return {"status": False, "message": f"Failed to start scheduler: {e}"}
 
     return {
@@ -81,4 +82,4 @@ def add_live_log(message):
     if len(live_logs) > 1000:
         live_logs.pop(0)
 
-    logging.info(message)
+    logger.info(message)

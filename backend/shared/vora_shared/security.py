@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 import bcrypt
 from fastapi import Depends, Header, HTTPException, status
+
 from vora_shared.auth import AuthenticatedUser, authenticate
 from vora_shared.models.user import User
 
@@ -45,7 +46,7 @@ def _tenant_error(message: str) -> HTTPException:
 
 
 def get_context(
-    auth: AuthenticatedUser = Depends(authenticate),
+    auth: AuthenticatedUser = Depends(authenticate),  # noqa: B008
     x_tenant_id: str | None = Header(default=None, alias="x-tenant-id"),
 ) -> RequestContext:
     role = auth.user.role
@@ -76,7 +77,7 @@ def get_context(
 
 
 def require_roles(*roles: str):
-    def _dep(ctx: RequestContext = Depends(get_context)) -> RequestContext:
+    def _dep(ctx: RequestContext = Depends(get_context)) -> RequestContext:  # noqa: B008
         if ctx.role not in roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

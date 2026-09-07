@@ -1,11 +1,9 @@
 import os
 
-from app.collectors.collector_manager import collect_files
 from app.db.queries import save_full_config
 from app.scheduler import scheduler_status, start_dynamic_scheduler, stop_scheduler
 from app.schemas.scheduler_schema import StartSchedulerRequest
 from app.schemas.source_schema import FullConfigRequest
-from app.services.downloader import download_file
 from app.utils.live_logs import live_logs
 from fastapi import APIRouter, Depends
 from fastapi.responses import FileResponse
@@ -109,7 +107,7 @@ def get_live_logs():
 @router.post("/save-config")
 async def create_full_config(
     request: FullConfigRequest,
-    db: AsyncSession = Depends(get_session),
+    db: AsyncSession = Depends(get_session),  # noqa: B008
 ):
     result = await save_full_config(db, request)
 

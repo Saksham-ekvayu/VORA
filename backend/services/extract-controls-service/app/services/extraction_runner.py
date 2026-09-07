@@ -9,15 +9,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from app.services.control_extractor import (
-    convert_to_section_structure,
-    extract_deployment_controls,
-    extract_framework_controls,
-)
-from app.services.control_merger import (
-    get_framework_previous_controls,
-    merge_controls_cumulative,
-)
 from sqlalchemy import select
 from sqlalchemy.orm.attributes import flag_modified
 from vora_shared.database import session_scope
@@ -28,6 +19,16 @@ from vora_shared.models import (
     DocumentExtraction,
     Framework,
     FrameworkMerge,
+)
+
+from app.services.control_extractor import (
+    convert_to_section_structure,
+    extract_deployment_controls,
+    extract_framework_controls,
+)
+from app.services.control_merger import (
+    get_framework_previous_controls,
+    merge_controls_cumulative,
 )
 
 logger = logging.getLogger(__name__)
@@ -106,11 +107,11 @@ def _load_document_chunks(file_path: str, chunk_size: int = 1000) -> list[str]:
                                         if line.strip():
                                             text_lines.append(line.strip())
                                     text_extracted = True
-                            except Exception as e:
+                            except Exception as e:  # noqa: BLE001
                                 logger.warning(f"[LOAD] Page {page_num} pdfplumber failed: {e}")
                         if text_extracted:
                             logger.info(f"[LOAD]  pdfplumber extracted {len(text_lines)} lines")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 logger.warning(f"[LOAD] pdfplumber failed: {e}")
 
             # Try 1.5: If pdfplumber didn't work (or mis-reported "0 pages"
@@ -136,7 +137,7 @@ def _load_document_chunks(file_path: str, chunk_size: int = 1000) -> list[str]:
                                         if line.strip():
                                             text_lines.append(line.strip())
                                     text_extracted = True
-                            except Exception as e:
+                            except Exception as e:  # noqa: BLE001
                                 logger.warning(f"[LOAD] Page {page_num} PyMuPDF failed: {e}")
                         if text_extracted:
                             logger.info(f"[LOAD]  PyMuPDF extracted {len(text_lines)} lines")
@@ -145,7 +146,7 @@ def _load_document_chunks(file_path: str, chunk_size: int = 1000) -> list[str]:
                     logger.warning(
                         "[LOAD] PyMuPDF not installed — skipping Attempt 1.5. " "Run: pip install PyMuPDF"
                     )
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001
                     logger.warning(f"[LOAD] PyMuPDF attempt failed: {e}")
 
             # Try 2: If pdfplumber and PyMuPDF didn't work, use OCR
@@ -172,7 +173,7 @@ def _load_document_chunks(file_path: str, chunk_size: int = 1000) -> list[str]:
                                     logger.info(
                                         f"[LOAD] Page {page_num}: OCR extracted {len(ocr_text.split(chr(10)))} lines"
                                     )
-                            except Exception as page_err:
+                            except Exception as page_err:  # noqa: BLE001
                                 logger.warning(f"[LOAD] Page {page_num} OCR failed: {page_err}")
 
                         if text_extracted:
@@ -184,7 +185,7 @@ def _load_document_chunks(file_path: str, chunk_size: int = 1000) -> list[str]:
                     logger.error(f"[LOAD]  OCR libraries not installed: {imp_err}")
                     logger.error("[LOAD] Install: pip install pdf2image pytesseract")
                     logger.error("[LOAD] Also install: apt-get install tesseract-ocr poppler-utils")
-                except Exception as ocr_err:
+                except Exception as ocr_err:  # noqa: BLE001
                     logger.error(f"[LOAD]  OCR extraction failed: {ocr_err}")
 
             # Try 3: pypdf as last resort
@@ -205,13 +206,13 @@ def _load_document_chunks(file_path: str, chunk_size: int = 1000) -> list[str]:
                                             if line.strip():
                                                 text_lines.append(line.strip())
                                         text_extracted = True
-                                except Exception as e:
+                                except Exception as e:  # noqa: BLE001
                                     logger.warning(f"[LOAD] Page {page_num} pypdf failed: {e}")
                             if text_extracted:
                                 logger.info(f"[LOAD]  pypdf extracted {len(text_lines)} lines")
-                        except Exception as reader_err:
+                        except Exception as reader_err:  # noqa: BLE001
                             logger.warning(f"[LOAD] pypdf reader failed: {reader_err}")
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001
                     logger.warning(f"[LOAD] pypdf not available: {e}")
 
         # Handle Word documents
@@ -223,7 +224,7 @@ def _load_document_chunks(file_path: str, chunk_size: int = 1000) -> list[str]:
                 for para in doc.paragraphs:
                     if para.text.strip():
                         text_lines.append(para.text.strip())
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 logger.error(f"[LOAD] Failed to load docx: {e}")
                 return []
 
@@ -236,7 +237,7 @@ def _load_document_chunks(file_path: str, chunk_size: int = 1000) -> list[str]:
                 for sheet in xls.sheet_names:
                     df = pd.read_excel(xls, sheet_name=sheet)
                     text_lines.append(df.to_string(index=False))
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 logger.error(f"[LOAD] Failed to load excel: {e}")
                 return []
 
@@ -247,7 +248,7 @@ def _load_document_chunks(file_path: str, chunk_size: int = 1000) -> list[str]:
                     for line in f:
                         if line.strip():
                             text_lines.append(line.strip())
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 logger.error(f"[LOAD] Failed to load text file: {e}")
                 return []
 
@@ -276,8 +277,8 @@ def _load_document_chunks(file_path: str, chunk_size: int = 1000) -> list[str]:
         logger.info(f"[LOAD] Loaded {len(text_lines)} lines into {len(chunks)} chunks")
         return chunks
 
-    except Exception as e:
-        logger.error(f"[LOAD] Failed to load document: {e}", exc_info=True)
+    except Exception:
+        logger.exception("[LOAD] Failed to load document")
         return []
 
 
@@ -603,7 +604,7 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
         logger.error("[EXTRACT-ERROR] Framework extraction failed!")
         logger.error(f"  Framework ID: {framework_id}")
         logger.error(f"  File ID: {file_id}")
-        logger.error(f"  Error: {str(exc)}")
+        logger.error(f"  Error: {exc!s}")
         logger.error(f"{'='*80}")
         logger.exception("[EXTRACT] Exception traceback:")
 
@@ -617,11 +618,11 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
                     {
                         "status": "failed",
                         "timestamp": fail_ts,
-                        "message": f"Extraction failed: {str(exc)}",
+                        "message": f"Extraction failed: {exc!s}",
                     },
                 )
                 logger.info("[EXTRACT] Updated status to 'failed' in database")
-        except Exception as db_exc:
+        except Exception as db_exc:  # noqa: BLE001
             logger.error(f"[EXTRACT] Failed to update status in database: {db_exc}")
 
 
@@ -799,7 +800,7 @@ async def run_deployment_framework_extraction(df_id: str, pkg_ver: str, file_id:
         logger.error(f"  Deployment Framework ID: {df_id}")
         logger.error(f"  Package Version: {pkg_ver}")
         logger.error(f"  File ID: {file_id}")
-        logger.error(f"  Error: {str(exc)}")
+        logger.error(f"  Error: {exc!s}")
         logger.error(f"{'='*80}")
         logger.exception("[DEPLOYMENT-EXTRACT] Exception traceback:")
 
@@ -814,11 +815,11 @@ async def run_deployment_framework_extraction(df_id: str, pkg_ver: str, file_id:
                     {
                         "status": "failed",
                         "timestamp": fail_ts,
-                        "message": f"Extraction failed: {str(exc)}",
+                        "message": f"Extraction failed: {exc!s}",
                     },
                 )
                 logger.info("[DEPLOYMENT-EXTRACT] Updated status to 'failed' in database")
-        except Exception as db_exc:
+        except Exception as db_exc:  # noqa: BLE001
             logger.error(f"[DEPLOYMENT-EXTRACT] Failed to update status in database: {db_exc}")
 
 
@@ -912,7 +913,7 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
                             f"sections={len(controls_data)}"
                         )
 
-            file_hashes = sorted(list(set(file_hashes)))
+            file_hashes = sorted(set(file_hashes))
 
             # Find or create DeploymentPackageMerge record
             existing_merge_id = pkg_info.get("mergeDocument")
@@ -1013,7 +1014,7 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
         logger.error("[PACKAGE-MERGE-ERROR] Package merge failed!")
         logger.error(f"  Deployment Framework ID: {df_id}")
         logger.error(f"  Package Version: {pkg_ver}")
-        logger.error(f"  Error: {str(exc)}")
+        logger.error(f"  Error: {exc!s}")
         logger.exception("[PACKAGE-MERGE] Exception traceback:")
         logger.error(f"{'='*80}")
 
@@ -1028,11 +1029,11 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
                                 existing_merge = await session.get(DeploymentPackageMerge, merge_id)
                                 if existing_merge:
                                     existing_merge.status = "failed"
-                                    existing_merge.summary = {"message": f"Merge failed: {str(exc)}"}
+                                    existing_merge.summary = {"message": f"Merge failed: {exc!s}"}
                                     session.add(existing_merge)
                                     await session.commit()
                             break
-        except Exception as db_exc:
+        except Exception as db_exc:  # noqa: BLE001
             logger.error(f"[PACKAGE-MERGE] Failed to update failure status: {db_exc}")
 
 
@@ -1066,7 +1067,7 @@ async def _clear_deployment_framework_comparison_results(session: Any, df_id: st
             logger.info(f"[PACKAGE-MERGE] Cleared {cleared_count} comparison records for recalculation")
         await session.flush()
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.warning(f"[PACKAGE-MERGE]  Could not clear comparisons (non-critical): {e}")
 
 
@@ -1157,7 +1158,7 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
 
             doc_data = dd.document or {}
             if not isinstance(doc_data, dict) or str(doc_data.get("fileId")) != file_id:
-                logger.error(f"[DD-EXTRACT]  File ID mismatch or invalid document data")
+                logger.error("[DD-EXTRACT]  File ID mismatch or invalid document data")
                 return
 
             extraction_id = doc_data.get("aiExtraction")
@@ -1267,7 +1268,7 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
                 "uploadedAt": doc_data.get("uploadedAt"),
             }
             extraction_data["document"] = meta
-        except Exception:
+        except Exception:  # noqa: BLE001, S110
             pass
 
         logger.info("[DD-EXTRACT] Step 5: Saving to database...")
@@ -1296,7 +1297,7 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
                         logger.warning(
                             f"[DD-EXTRACT] Failed to trigger compliance agent, status: {resp.status_code}"
                         )
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 logger.warning(f"[DD-EXTRACT] Could not reach compliance agent service: {e}")
 
         logger.info(f"{'='*80}")
@@ -1312,7 +1313,7 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
         logger.error(f"{'='*80}")
         logger.error("[DD-EXTRACT-ERROR]  Deployment document extraction failed!")
         logger.error(f"  Deployment Document ID: {dd_id}")
-        logger.error(f"  Error: {str(exc)}")
+        logger.error(f"  Error: {exc!s}")
         logger.error(f"{'='*80}")
         logger.exception("[DD-EXTRACT] Exception traceback:")
 
@@ -1329,14 +1330,14 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
                             {
                                 "status": "failed",
                                 "timestamp": _iso(),
-                                "message": f"Extraction failed: {str(exc)}",
+                                "message": f"Extraction failed: {exc!s}",
                             }
                         )
                         doc_extraction.aiExtraction = ai
                         session.add(doc_extraction)
                         await session.commit()
                         logger.info("[DD-EXTRACT] Updated status to 'failed' in database")
-        except Exception as db_exc:
+        except Exception as db_exc:  # noqa: BLE001
             logger.error(f"[DD-EXTRACT] Failed to update status in database: {db_exc}")
 
 

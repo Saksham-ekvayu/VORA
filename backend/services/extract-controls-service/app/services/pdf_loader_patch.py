@@ -62,7 +62,6 @@ INTEGRATION — only 2 lines change in extraction_runner.py:
 """
 
 import logging
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +111,7 @@ def _pdfplumber_extract(file_path: str) -> list[str]:
             for page in pdf.pages:
                 text = page.extract_text() or ""
                 lines.extend(text.split("\n"))
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.warning(f"[LOAD] pdfplumber attempt failed: {e}")
         return []
     lines = [l for l in lines if l.strip()]
@@ -148,7 +147,7 @@ def _pymupdf_extract(file_path: str) -> list[str]:
         if lines:
             logger.info(f"[LOAD]  PyMuPDF extracted {len(lines)} lines")
         return lines
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.warning(f"[LOAD] PyMuPDF attempt failed: {e}")
         return []
 
@@ -172,7 +171,7 @@ def _ocr_extract(file_path: str) -> list[str]:
         logger.info("[LOAD] Converting PDF to images...")
         images = convert_from_path(file_path, dpi=OCR_DPI)
         logger.info(f"[LOAD] Converted to {len(images)} images")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.error(f"[LOAD] PDF-to-image conversion failed: {e}")
         return []
 
@@ -184,7 +183,7 @@ def _ocr_extract(file_path: str) -> list[str]:
             page_lines = [l for l in text.split("\n") if l.strip()]
             all_lines.extend(page_lines)
             logger.info(f"[LOAD] Page {i}: OCR extracted {len(page_lines)} lines")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.warning(f"[LOAD] OCR failed on page {i}: {e}")
 
     logger.info(f"[LOAD]  OCR extraction complete: {len(all_lines)} total lines")

@@ -4,7 +4,6 @@ from typing import Annotated
 
 # Project Imports
 import vora_shared
-from app.utils.temp_password import generate_temp_password
 
 # Third-party Packages
 from fastapi import Depends, HTTPException
@@ -16,6 +15,8 @@ from vora_shared.models.user import User, UserAddress, UserCreatedBy
 from vora_shared.query_builder import admin_tenant_query
 from vora_shared.responses import error
 from vora_shared.security import hash_password
+
+from app.utils.temp_password import generate_temp_password
 
 TEMPLATES_DIR = Path(vora_shared.__file__).resolve().parent / "templates"
 REGEX_OPTIONS_FIELD = "$options"

@@ -208,9 +208,8 @@ def merge_controls_cumulative(
     # Wait, if we are grouping by A.5, A.7 etc, we shouldn't overwrite their IDs with SEC-01!
     # Let's keep original ID if it's already structured, or assign SEC- if missing.
     for idx, sec in enumerate(merged_result, 1):
-        if isinstance(sec, dict):
-            if not sec.get("id"):
-                sec["id"] = f"SEC-{idx:02d}"
+        if isinstance(sec, dict) and not sec.get("id"):
+            sec["id"] = f"SEC-{idx:02d}"
 
     logger.info(
         f"[MERGE] Merge complete | merged={summary['merged_controls']} "

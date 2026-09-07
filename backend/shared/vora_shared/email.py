@@ -6,11 +6,12 @@ template placeholders), but using aiosmtplib so services stay fully async.
 
 import logging
 import secrets
-from datetime import datetime
+from datetime import datetime, timezone
 from email.message import EmailMessage
 from pathlib import Path
 
 import aiosmtplib
+
 from vora_shared.config import Settings, get_settings
 
 logger = logging.getLogger(__name__)
@@ -35,7 +36,7 @@ def load_template(templates_dir: str | Path, name: str, variables: dict | None =
         template = path.read_text(encoding="utf-8")
         _template_cache[cache_key] = template
 
-    all_vars: dict = {"currentYear": datetime.now().year, "userName": "User"}
+    all_vars: dict = {"currentYear": datetime.now(timezone.utc).year, "userName": "User"}
     all_vars.update(variables or {})
 
     rendered = template

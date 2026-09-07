@@ -2,6 +2,20 @@ import logging
 from datetime import datetime, timezone
 from typing import Annotated
 
+from fastapi import APIRouter, Body, Depends, File, HTTPException, UploadFile
+from sqlalchemy import select
+from vora_shared import messages as msg
+from vora_shared.auth import AuthenticatedUser, authenticate
+from vora_shared.avatar_uploads import (
+    AvatarUploadError,
+    delete_avatar_file,
+    save_avatar,
+)
+from vora_shared.database import session_scope
+from vora_shared.models.customer import Customer
+from vora_shared.models.user import User
+from vora_shared.responses import error, success
+
 from app.schemas.user import ProfileUpdateRequest
 from app.utils.formatting import (
     address_dict,
@@ -10,15 +24,6 @@ from app.utils.formatting import (
     format_created_by,
     merge_address,
 )
-from fastapi import APIRouter, Body, Depends, File, HTTPException, UploadFile
-from sqlalchemy import select
-from vora_shared import messages as msg
-from vora_shared.auth import AuthenticatedUser, authenticate
-from vora_shared.avatar_uploads import AvatarUploadError, delete_avatar_file, save_avatar
-from vora_shared.database import session_scope
-from vora_shared.models.customer import Customer
-from vora_shared.models.user import User
-from vora_shared.responses import error, success
 
 router = APIRouter(tags=["profile"])
 logger = logging.getLogger(__name__)
@@ -130,9 +135,7 @@ def _has_profile_changes(body: ProfileUpdateRequest, user: User) -> bool:
         return True
     if body.secondaryPhone is not None and body.secondaryPhone != user.secondaryPhone:
         return True
-    if body.permanentAddress is not None or body.temporaryAddress is not None:
-        return True
-    return False
+    return bool(body.permanentAddress is not None or body.temporaryAddress is not None)
 
 
 async def _check_phone_exists(session, phone: str, tenant_id: str, user_id: str):

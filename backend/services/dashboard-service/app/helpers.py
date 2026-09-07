@@ -73,7 +73,7 @@ def apply_date_filters(
 ) -> Select:
     start = to_aware_utc(start_date)
     end = to_aware_utc(end_date)
-    created_at = getattr(model, "createdAt")
+    created_at = model.createdAt
     if start is not None:
         stmt = stmt.where(created_at >= start)
     if end is not None:
@@ -97,9 +97,7 @@ def filter_array_by_date(
         item_date = to_aware_utc(item_date)
         if start and item_date < start:
             return False
-        if end and item_date > end:
-            return False
-        return True
+        return not (end and item_date > end)
 
     return [item for item in data if in_range(item)]
 
@@ -107,7 +105,7 @@ def filter_array_by_date(
 def get_effective_start_date(default_start: datetime, user_start_date: datetime | None) -> datetime:
     if not user_start_date:
         return default_start
-    return user_start_date if user_start_date > default_start else default_start
+    return max(default_start, user_start_date)
 
 
 async def _count_model(model: type, start_date: datetime | None, end_date: datetime | None, **extra) -> int:
@@ -1317,7 +1315,7 @@ def _update_auditor_control_metrics(
     metrics: dict,
     source_map: dict,
     comp_threshold: float,
-    gap_score: float = None,
+    gap_score: float | None = None,
 ) -> None:
     ctrl_id = ctrl.get("assigned_framework_control_id", "")
     metrics["subscribed"] += 1

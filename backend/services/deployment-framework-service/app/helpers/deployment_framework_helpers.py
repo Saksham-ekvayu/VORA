@@ -7,13 +7,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from app.services import package_builder, version_service
 from fastapi import UploadFile
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from vora_shared import file_storage
 from vora_shared.ids import new_id
-from vora_shared.models.deployment_framework import FrameworkPackageDocument, PackageVersion
+from vora_shared.models.deployment_framework import (
+    FrameworkPackageDocument,
+    PackageVersion,
+)
+
+from app.services import package_builder, version_service
 
 
 def _utcnow() -> datetime:

@@ -6,15 +6,20 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 
-from app.services.gap_runner import run_gap
 from fastapi import APIRouter
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
-from vora_shared.models import DeploymentFramework, FrameworkAssignment, PackageGapAnalysis
+from vora_shared.models import (
+    DeploymentFramework,
+    FrameworkAssignment,
+    PackageGapAnalysis,
+)
 from vora_shared.query_builder import build_pagination_meta, clamp_limit, clamp_page
 from vora_shared.responses import error, not_found, paginated, server_error, success
+
+from app.services.gap_runner import run_gap
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["gap"])
@@ -169,7 +174,7 @@ async def start_gap_analysis(request: GapAnalysisRequest):
         )
 
     except Exception as exc:
-        logger.exception(f"[GAP-START] Error: {exc}")
+        logger.exception("[GAP-START] Error")
         return server_error(str(exc))
 
 
@@ -222,7 +227,7 @@ async def get_gap_analysis(gap_id: str):
                 },
             )
     except Exception as exc:
-        logger.exception(f"get_gap_analysis error: {exc}")
+        logger.exception("get_gap_analysis error")
         return server_error(str(exc))
 
 
@@ -340,5 +345,5 @@ async def delete_gap_analysis(gap_id: str):
                 },
             )
     except Exception as exc:
-        logger.exception(f"delete_gap_analysis error: {exc}")
+        logger.exception("delete_gap_analysis error")
         return server_error(str(exc))

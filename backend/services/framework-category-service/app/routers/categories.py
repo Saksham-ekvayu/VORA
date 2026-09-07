@@ -1,12 +1,6 @@
 import logging
 from typing import Annotated
 
-from app.helpers.helpers import code_exists, fetch_users_by_ids
-from app.validations.validation import (
-    FieldError,
-    validate_create_category,
-    validate_update_category,
-)
 from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy import delete, or_, select
 from vora_shared import data_format, file_storage
@@ -24,6 +18,13 @@ from vora_shared.models import (
 )
 from vora_shared.query_builder import apply_sort, paginate_stmt
 from vora_shared.responses import error, paginated, success
+
+from app.helpers.helpers import code_exists, fetch_users_by_ids
+from app.validations.validation import (
+    FieldError,
+    validate_create_category,
+    validate_update_category,
+)
 
 router = APIRouter(tags=["framework-categories"])
 logger = logging.getLogger(__name__)
@@ -48,8 +49,10 @@ def _format_category(category: FrameworkCategory, users_by_id: dict[str, User]) 
 @router.post("")
 async def create_framework_category(
     auth: Annotated[AuthenticatedUser, Depends(authenticate)],
-    body: Annotated[dict, Body()] = {},
+    body: Annotated[dict | None, Body()] = None,
 ):
+    if body is None:
+        body = {}
     logger.info(
         f"[CREATE-CATEGORY] Request started | user_id={auth.user.id} | name={body.get('frameworkCategoryName')} | code={body.get('code')}"
     )
@@ -185,8 +188,10 @@ async def get_framework_category_by_id(
 async def update_framework_category(
     id: str,
     auth: Annotated[AuthenticatedUser, Depends(authenticate)],
-    body: Annotated[dict, Body()] = {},
+    body: Annotated[dict | None, Body()] = None,
 ):
+    if body is None:
+        body = {}
     logger.info(f"[PUT-CATEGORY] Request started | user_id={auth.user.id} | category_id={id}")
     try:
         fields = validate_update_category(body)

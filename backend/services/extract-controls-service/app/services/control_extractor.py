@@ -8,14 +8,14 @@ import logging
 import os
 import re
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from app.services.control_merger import clean_section_name
-from app.services.pdf_loader_patch import load_pdf_document
 from dotenv import load_dotenv
 from openai import OpenAI
+
+from app.services.control_merger import clean_section_name
 
 logger = logging.getLogger(__name__)
 
@@ -116,7 +116,7 @@ def _log_llm_call(tag: str, response: Any, elapsed: float):
                 f"— will attempt to salvage any complete JSON objects already generated"
             )
         return finish_reason
-    except Exception:
+    except Exception:  # noqa: BLE001
         logger.info(f"[{tag}] LLM call done in {elapsed:.1f}s")
         return None
 
@@ -272,10 +272,7 @@ def _looks_like_objective_only(desc: str) -> bool:
     if has_control_verb:
         return False
 
-    if _OBJECTIVE_LEAD_RE.match(d) and not has_control_verb:
-        return True
-
-    return False
+    return bool(_OBJECTIVE_LEAD_RE.match(d) and not has_control_verb)
 
 
 def _drop_objective_only_controls(controls: list) -> list:
@@ -706,7 +703,7 @@ Return ONLY JSON. No markdown. No text outside JSON."""
         round_missing = None
         for round_attempt in range(1, TRUNCATION_RETRY_ATTEMPTS + 1):
             try:
-                t_start = datetime.now()
+                t_start = datetime.now(timezone.utc)
                 response = get_openai_client().chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[{"role": "user", "content": completeness_prompt}],
@@ -714,7 +711,7 @@ Return ONLY JSON. No markdown. No text outside JSON."""
                     max_tokens=CONTROL_EXTRACTION_MAX_TOKENS,
                     timeout=3600,
                 )
-                elapsed = (datetime.now() - t_start).total_seconds()
+                elapsed = (datetime.now(timezone.utc) - t_start).total_seconds()
                 finish_reason = _log_llm_call(
                     f"EXTRACT-COMPLETENESS-round{round_num}"
                     f"{'' if round_attempt == 1 else f'-retry{round_attempt}'}",
@@ -751,9 +748,9 @@ Return ONLY JSON. No markdown. No text outside JSON."""
                     round_missing = None
                     break
 
-            except Exception as e:
+            except Exception:
                 logger.exception(
-                    f"[EXTRACT] Completeness round {round_num} attempt {round_attempt} API error: {e}"
+                    f"[EXTRACT] Completeness round {round_num} attempt {round_attempt} API error"
                 )
                 if round_attempt < TRUNCATION_RETRY_ATTEMPTS:
                     continue
@@ -906,7 +903,7 @@ def _run_stage1_call(prompt: str, tag: str) -> list:
     best_salvage: list = []
 
     for attempt in range(1, TRUNCATION_RETRY_ATTEMPTS + 1):
-        t_start = datetime.now()
+        t_start = datetime.now(timezone.utc)
         try:
             response = get_openai_client().chat.completions.create(
                 model="gpt-4o-mini",
@@ -915,7 +912,7 @@ def _run_stage1_call(prompt: str, tag: str) -> list:
                 max_tokens=CONTROL_EXTRACTION_MAX_TOKENS,
                 timeout=3600,
             )
-            elapsed = (datetime.now() - t_start).total_seconds()
+            elapsed = (datetime.now(timezone.utc) - t_start).total_seconds()
             finish_reason = _log_llm_call(
                 f"{tag}{'' if attempt == 1 else f'-retry{attempt}'}", response, elapsed
             )
@@ -941,8 +938,8 @@ def _run_stage1_call(prompt: str, tag: str) -> list:
                     continue
                 return best_salvage
 
-        except Exception as e:
-            logger.exception(f"[EXTRACT] {tag} attempt {attempt} API error: {e}")
+        except Exception:
+            logger.exception(f"[EXTRACT] {tag} attempt {attempt} API error")
             if attempt < TRUNCATION_RETRY_ATTEMPTS:
                 continue
             return best_salvage
@@ -1298,7 +1295,7 @@ Use JSON list ONLY:
 
 Return ONLY JSON. No markdown."""
 
-        t_start = datetime.now()
+        t_start = datetime.now(timezone.utc)
         finish_reason = None
         try:
             response = get_openai_client().chat.completions.create(
@@ -1308,7 +1305,7 @@ Return ONLY JSON. No markdown."""
                 max_tokens=DEPLOYMENT_MAX_TOKENS,
                 timeout=3600,
             )
-            elapsed = (datetime.now() - t_start).total_seconds()
+            elapsed = (datetime.now(timezone.utc) - t_start).total_seconds()
             finish_reason = _log_llm_call(f"EXTRACT-STAGE2-batch{batch_num}", response, elapsed)
 
             batch_result = json.loads(response.choices[0].message.content)
@@ -1336,8 +1333,8 @@ Return ONLY JSON. No markdown."""
                 f"all guaranteed exactly 5 deployment points"
             )
 
-        except json.JSONDecodeError as e:
-            logger.exception(f"[EXTRACT] DP Batch {batch_num} JSON parse failed: {e}")
+        except json.JSONDecodeError:
+            logger.exception(f"[EXTRACT] DP Batch {batch_num} JSON parse failed")
             if finish_reason == "length":
                 logger.warning(
                     f"[EXTRACT] DP Batch {batch_num} truncated — consider lowering DEPLOYMENT_BATCH_SIZE"
@@ -1347,8 +1344,8 @@ Return ONLY JSON. No markdown."""
                 ctrl["Deployment_points"] = _validate_deployment_points("", str(ctrl.get("Control_name", "")))
             final_controls.extend(batch)
 
-        except Exception as e:
-            logger.exception(f"[EXTRACT] DP Batch {batch_num} API error: {e}")
+        except Exception:
+            logger.exception(f"[EXTRACT] DP Batch {batch_num} API error")
             for ctrl in batch:
                 ctrl["Deployment_points"] = _validate_deployment_points("", str(ctrl.get("Control_name", "")))
             final_controls.extend(batch)
@@ -1416,7 +1413,7 @@ TEXT:
 
 Return ONLY JSON. No markdown. No text outside JSON."""
 
-        t_start = datetime.now()
+        t_start = datetime.now(timezone.utc)
         try:
             logger.info(f"[DEPLOYMENT-EXTRACT] Processing batch {i}/{len(batches)}...")
             response = get_openai_client().chat.completions.create(
@@ -1426,7 +1423,7 @@ Return ONLY JSON. No markdown. No text outside JSON."""
                 max_tokens=CONTROL_EXTRACTION_MAX_TOKENS,
                 timeout=3600,
             )
-            elapsed = (datetime.now() - t_start).total_seconds()
+            elapsed = (datetime.now(timezone.utc) - t_start).total_seconds()
             _log_llm_call(f"DEPLOYMENT-EXTRACT-BATCH{i}", response, elapsed)
 
             batch_controls = json.loads(response.choices[0].message.content)
@@ -1435,11 +1432,11 @@ Return ONLY JSON. No markdown. No text outside JSON."""
             )
             all_batch_results.append(batch_controls)
 
-        except json.JSONDecodeError as e:
-            logger.exception(f"[DEPLOYMENT-EXTRACT] Batch {i} JSON decode failed: {e}")
+        except json.JSONDecodeError:
+            logger.exception(f"[DEPLOYMENT-EXTRACT] Batch {i} JSON decode failed")
             continue
-        except Exception as e:
-            logger.exception(f"[DEPLOYMENT-EXTRACT] Batch {i} OpenAI API error: {e}")
+        except Exception:
+            logger.exception(f"[DEPLOYMENT-EXTRACT] Batch {i} OpenAI API error")
             continue
 
     # Merge extracted controls across all batches, deduplicating by Control_id
@@ -1450,7 +1447,7 @@ Return ONLY JSON. No markdown. No text outside JSON."""
     final_controls = []
     for ctrl in controls:
         if isinstance(ctrl, dict):
-            c_id = str(ctrl.get("Control_id", "")).strip()
+            str(ctrl.get("Control_id", "")).strip()
             c_name = str(ctrl.get("Control_name", "")).strip()
             raw_dp = ctrl.get("Deployment_points", "")
 

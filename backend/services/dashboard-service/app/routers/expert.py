@@ -83,13 +83,13 @@ def _fmt_date(value) -> str:
 def _subtract_months(d: datetime, months: int) -> datetime:
     total = d.year * 12 + (d.month - 1) - months
     year, month = divmod(total, 12)
-    return datetime(year, month + 1, 1)
+    return datetime(year, month + 1, 1, tzinfo=timezone.utc)
 
 
 def _add_month(d: datetime) -> datetime:
     if d.month == 12:
-        return datetime(d.year + 1, 1, 1)
-    return datetime(d.year, d.month + 1, 1)
+        return datetime(d.year + 1, 1, 1, tzinfo=timezone.utc)
+    return datetime(d.year, d.month + 1, 1, tzinfo=timezone.utc)
 
 
 def _naive(dt: datetime) -> datetime:
@@ -104,8 +104,8 @@ def _generate_upload_trend(
     )
     trend_start = datetime.fromisoformat(start_date) if start_date else _subtract_months(trend_end, 5)
 
-    start_month = datetime(trend_start.year, trend_start.month, 1)
-    end_month = datetime(trend_end.year, trend_end.month, 1)
+    start_month = datetime(trend_start.year, trend_start.month, 1, tzinfo=timezone.utc)
+    end_month = datetime(trend_end.year, trend_end.month, 1, tzinfo=timezone.utc)
 
     months = []
     cursor = start_month
@@ -115,7 +115,7 @@ def _generate_upload_trend(
 
     result = []
     for month_date in months:
-        month_start = datetime(month_date.year, month_date.month, 1)
+        month_start = datetime(month_date.year, month_date.month, 1, tzinfo=timezone.utc)
         month_end = _add_month(month_start)
         uploads = sum(
             1 for fw in frameworks if fw.createdAt and month_start <= _naive(fw.createdAt) < month_end

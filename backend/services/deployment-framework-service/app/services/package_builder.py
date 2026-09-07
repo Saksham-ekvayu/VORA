@@ -8,8 +8,9 @@ import hashlib
 from datetime import datetime, timezone
 from typing import Any
 
-from app.services import version_service
 from vora_shared.ids import new_id
+
+from app.services import version_service
 
 
 def _utcnow() -> datetime:

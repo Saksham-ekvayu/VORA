@@ -1,6 +1,7 @@
-from app.schemas.common import AddressBlockIn
 from pydantic import BaseModel, field_validator, model_validator
 from vora_shared.validators import validate_name, validate_phone, validate_role
+
+from app.schemas.common import AddressBlockIn
 
 
 class CreateUserRequest(BaseModel):

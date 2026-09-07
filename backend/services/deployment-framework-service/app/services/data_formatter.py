@@ -6,7 +6,6 @@ Nested JSONB refs are plain string ids. Callers pass pre-fetched maps
 
 from typing import Any
 
-from app.helpers.deployment_framework_helpers import coerce_packages
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from vora_shared import data_format
@@ -22,6 +21,8 @@ from vora_shared.models import (
     User,
 )
 from vora_shared.models.document_extraction import AiExtractionInfo
+
+from app.helpers.deployment_framework_helpers import coerce_packages
 
 
 def _collect_package_refs(

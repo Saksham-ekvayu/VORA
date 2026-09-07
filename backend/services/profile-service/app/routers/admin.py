@@ -4,6 +4,31 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated
 
+from fastapi import APIRouter, Body, Depends, File, Query, UploadFile
+from sqlalchemy import delete, or_, select
+from sqlalchemy.orm.attributes import flag_modified
+from vora_shared import messages as msg
+from vora_shared.auth import AuthenticatedUser, authenticate
+from vora_shared.avatar_uploads import (
+    AvatarUploadError,
+    delete_avatar_file,
+    save_avatar,
+)
+from vora_shared.database import session_scope
+from vora_shared.email import load_template, send_email
+from vora_shared.ids import is_valid_id
+from vora_shared.models.customer import (
+    AddressBlock,
+    Customer,
+    CustomerAddress,
+    CustomerCreatedBy,
+)
+from vora_shared.models.framework_access import FrameworkAccess
+from vora_shared.models.user import User, UserAddress, UserCreatedBy
+from vora_shared.query_builder import apply_search_filter, apply_sort, paginate_stmt
+from vora_shared.responses import error, forbidden, paginated, success
+from vora_shared.security import hash_password
+
 from app.schemas.admin import CreateUserRequest, UpdateUserRequest
 from app.schemas.customer import CreateCustomerRequest, UpdateCustomerRequest
 from app.utils.formatting import (
@@ -16,21 +41,6 @@ from app.utils.formatting import (
     user_admin_dict,
 )
 from app.utils.temp_password import generate_temp_password
-from fastapi import APIRouter, Body, Depends, File, Query, UploadFile
-from sqlalchemy import delete, or_, select
-from sqlalchemy.orm.attributes import flag_modified
-from vora_shared import messages as msg
-from vora_shared.auth import AuthenticatedUser, authenticate
-from vora_shared.avatar_uploads import AvatarUploadError, delete_avatar_file, save_avatar
-from vora_shared.database import session_scope
-from vora_shared.email import load_template, send_email
-from vora_shared.ids import is_valid_id
-from vora_shared.models.customer import AddressBlock, Customer, CustomerAddress, CustomerCreatedBy
-from vora_shared.models.framework_access import FrameworkAccess
-from vora_shared.models.user import User, UserAddress, UserCreatedBy
-from vora_shared.query_builder import apply_search_filter, apply_sort, paginate_stmt
-from vora_shared.responses import error, forbidden, paginated, success
-from vora_shared.security import hash_password
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -118,7 +128,7 @@ def _apply_user_updates(user: User, body: UpdateUserRequest):
     user.updatedAt = datetime.now(timezone.utc)
 
 
-async def _check_customer_email_exists(session, email: str, exclude_id: str = None) -> bool:
+async def _check_customer_email_exists(session, email: str, exclude_id: str | None = None) -> bool:
     """Check if customer email already exists."""
     stmt = select(Customer).where(Customer.email == email)
     if exclude_id:
@@ -126,7 +136,7 @@ async def _check_customer_email_exists(session, email: str, exclude_id: str = No
     return (await session.execute(stmt)).scalar_one_or_none() is not None
 
 
-async def _check_customer_phone_exists(session, phone: str, exclude_id: str = None) -> bool:
+async def _check_customer_phone_exists(session, phone: str, exclude_id: str | None = None) -> bool:
     """Check if customer phone already exists."""
     stmt = select(Customer).where(Customer.phone == phone)
     if exclude_id:
@@ -275,7 +285,7 @@ async def create_customer(
         result = customer_dict(new_customer, ctx.user)
 
     logger.info(
-        f"[CREATE-CUSTOMER] Created | customer_id={str(new_customer.id)} | tenant={tenant_id} | email={body.email}"
+        f"[CREATE-CUSTOMER] Created | customer_id={new_customer.id!s} | tenant={tenant_id} | email={body.email}"
     )
     return success(result, "Customer created successfully")
 
@@ -381,15 +391,21 @@ async def update_customer(
             logger.warning(f"[PATCH-CUSTOMER] Not found | customer_id={id} | user_id={ctx.user.id}")
             return error(msg.CUSTOMER_NOT_FOUND, 404)
 
-        if body.email and body.email != customer.email:
-            if await _check_customer_email_exists(session, body.email, id):
-                logger.warning(f"[PATCH-CUSTOMER] Email already exists | email={body.email}")
-                return error(msg.EMAIL_ALREADY_EXISTS, 400, field="email")
+        if (
+            body.email
+            and body.email != customer.email
+            and await _check_customer_email_exists(session, body.email, id)
+        ):
+            logger.warning(f"[PATCH-CUSTOMER] Email already exists | email={body.email}")
+            return error(msg.EMAIL_ALREADY_EXISTS, 400, field="email")
 
-        if body.phone and body.phone != customer.phone:
-            if await _check_customer_phone_exists(session, body.phone, id):
-                logger.warning(f"[PATCH-CUSTOMER] Phone already exists | phone={body.phone}")
-                return error(msg.PHONE_ALREADY_EXISTS, 400, field="phone")
+        if (
+            body.phone
+            and body.phone != customer.phone
+            and await _check_customer_phone_exists(session, body.phone, id)
+        ):
+            logger.warning(f"[PATCH-CUSTOMER] Phone already exists | phone={body.phone}")
+            return error(msg.PHONE_ALREADY_EXISTS, 400, field="phone")
 
         _apply_customer_updates(customer, body)
 
@@ -713,12 +729,11 @@ async def get_user_by_id(id: str, ctx: Annotated[AuthenticatedUser, Depends(auth
             logger.warning(f"[GET-USER] Not found | target_user={id} | tenant={tenant_id}")
             return error(msg.USER_NOT_FOUND, 404, field="user")
 
-        if current_role == "customer-admin":
-            if not _validate_customer_admin_permission(user, str(ctx.user.id)):
-                logger.warning(
-                    f"[GET-USER] Permission denied | current_user={ctx.user.id} | target_user={id}"
-                )
-                return error(msg.ONLY_VIEW_CREATED_USERS, 403)
+        if current_role == "customer-admin" and not _validate_customer_admin_permission(
+            user, str(ctx.user.id)
+        ):
+            logger.warning(f"[GET-USER] Permission denied | current_user={ctx.user.id} | target_user={id}")
+            return error(msg.ONLY_VIEW_CREATED_USERS, 403)
 
         creator = None
         creator_id = created_by_user_id(user.createdBy)
@@ -761,12 +776,13 @@ async def toggle_user_status(id: str, ctx: Annotated[AuthenticatedUser, Depends(
             logger.warning(f"[PATCH-USER-STATUS] Not found | target_user={id}")
             return error(msg.USER_NOT_FOUND, 404, field="user")
 
-        if current_role == "customer-admin":
-            if not _validate_customer_admin_permission(user, str(ctx.user.id)):
-                logger.warning(
-                    f"[PATCH-USER-STATUS] Permission denied | current_user={ctx.user.id} | target_user={id}"
-                )
-                return error(msg.ONLY_CHANGE_STATUS_CREATED_USERS, 403)
+        if current_role == "customer-admin" and not _validate_customer_admin_permission(
+            user, str(ctx.user.id)
+        ):
+            logger.warning(
+                f"[PATCH-USER-STATUS] Permission denied | current_user={ctx.user.id} | target_user={id}"
+            )
+            return error(msg.ONLY_CHANGE_STATUS_CREATED_USERS, 403)
 
         new_status = not user.isActive
         user.isActive = new_status
@@ -804,12 +820,11 @@ async def delete_user(id: str, ctx: Annotated[AuthenticatedUser, Depends(authent
             logger.warning(f"[DELETE-USER] Not found | target_user={id}")
             return error(msg.USER_NOT_FOUND, 404, field="user")
 
-        if current_role == "customer-admin":
-            if not _validate_customer_admin_permission(user, str(ctx.user.id)):
-                logger.warning(
-                    f"[DELETE-USER] Permission denied | current_user={ctx.user.id} | target_user={id}"
-                )
-                return error(msg.ONLY_DELETE_CREATED_USERS, 403)
+        if current_role == "customer-admin" and not _validate_customer_admin_permission(
+            user, str(ctx.user.id)
+        ):
+            logger.warning(f"[DELETE-USER] Permission denied | current_user={ctx.user.id} | target_user={id}")
+            return error(msg.ONLY_DELETE_CREATED_USERS, 403)
 
         if user.role == "expert":
             await session.execute(delete(FrameworkAccess).where(FrameworkAccess.expertId == id))

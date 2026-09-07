@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import inspect
 import math
-from typing import Any, Callable, Sequence, TypeVar
+from collections.abc import Callable, Sequence
+from typing import Any, TypeVar
 
 from fastapi import HTTPException, status
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from vora_shared.models.user import User
 
 T = TypeVar("T")

@@ -2,8 +2,6 @@ import logging
 from datetime import datetime, timezone
 from typing import Annotated
 
-from app.helpers.helpers import fetch_users_by_ids
-from app.validations.validation import FieldError, validate_assign_access
 from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm.attributes import flag_modified
@@ -14,7 +12,11 @@ from vora_shared.database import session_scope
 from vora_shared.ids import is_valid_id
 from vora_shared.messages import MESSAGES, VALID_STATUSES, format_message
 from vora_shared.models import FrameworkAccess, FrameworkCategory, User
-from vora_shared.models.framework_access import ApprovalInfo, RejectionInfo, RevocationInfo
+from vora_shared.models.framework_access import (
+    ApprovalInfo,
+    RejectionInfo,
+    RevocationInfo,
+)
 from vora_shared.query_builder import (
     apply_sort,
     build_pagination_meta,
@@ -23,6 +25,9 @@ from vora_shared.query_builder import (
     paginate_stmt,
 )
 from vora_shared.responses import error, paginated, success
+
+from app.helpers.helpers import fetch_users_by_ids
+from app.validations.validation import FieldError, validate_assign_access
 
 router = APIRouter(tags=["framework-access"])
 logger = logging.getLogger(__name__)
@@ -614,8 +619,10 @@ def _build_assign_response(results: list[dict], errors: list[dict], expert_id: s
 @router.post("/assign")
 async def assign_framework_access(
     auth: Annotated[AuthenticatedUser, Depends(authenticate)],
-    body: Annotated[dict, Body()] = {},
+    body: Annotated[dict | None, Body()] = None,
 ):
+    if body is None:
+        body = {}
     try:
         expert_id_raw, framework_category_ids_raw = validate_assign_access(body)
     except FieldError as exc:
@@ -649,7 +656,7 @@ async def assign_framework_access(
                     results.append(result)
                 if err:
                     errors.append(err)
-            except Exception as exc:  # pragma: no cover
+            except Exception as exc:  # noqa: BLE001, ER001
                 errors.append(
                     {
                         "frameworkCategoryId": str(category.id),

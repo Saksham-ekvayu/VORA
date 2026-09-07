@@ -10,16 +10,11 @@ sections/controls breakdown with deployment points.
 from __future__ import annotations
 
 import io
-from datetime import datetime
 
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import mm
+from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import (
     BaseDocTemplate,
-    Frame,
-    HRFlowable,
     KeepTogether,
     NextPageTemplate,
     PageBreak,
@@ -85,7 +80,7 @@ def _attr(obj, key, default=None):
     return getattr(obj, key, default)
 
 
-def _build_file_table(framework, styles: dict, doc_extractions: dict = None) -> Table:
+def _build_file_table(framework, styles: dict, doc_extractions: dict | None = None) -> Table:
     header = [
         Paragraph("VERSION", styles["table_header"]),
         Paragraph("FILE NAME", styles["table_header"]),
@@ -237,7 +232,7 @@ def _parse_section(section) -> dict:
     }
 
 
-def _framework_to_dict(framework, doc_extractions: dict = None) -> dict:
+def _framework_to_dict(framework, doc_extractions: dict | None = None) -> dict:
     """Convert nested pydantic/JSONB control structures to plain dicts for the PDF."""
     current = next(
         (
@@ -302,7 +297,7 @@ def _add_approval_status(story, framework, approval_by_user, styles: dict):
     story.append(Spacer(1, 14))
 
 
-def _add_file_info(story, framework, styles: dict, doc_extractions: dict = None):
+def _add_file_info(story, framework, styles: dict, doc_extractions: dict | None = None):
     """Add file information section to the story."""
     if framework.fileVersions:
         story.append(Paragraph("File Information", styles["section_title"]))
@@ -361,7 +356,9 @@ def _on_page(canvas, framework):
     draw_common_footer(canvas, page_num, REPORT_PAGESIZE, header_text)
 
 
-def generate_framework_report_pdf(framework, approval_by_user=None, doc_extractions: dict = None) -> bytes:
+def generate_framework_report_pdf(
+    framework, approval_by_user=None, doc_extractions: dict | None = None
+) -> bytes:
     styles = get_shared_styles()
     buffer = io.BytesIO()
 

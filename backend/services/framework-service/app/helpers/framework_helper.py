@@ -11,12 +11,12 @@ from vora_shared import data_format
 from vora_shared import messages as msg
 from vora_shared.models.document_extraction import (
     DocumentExtraction,
+    ExtractionControls,
 )
 from vora_shared.models.document_extraction import ExtractionControlItem as ControlItem
 from vora_shared.models.document_extraction import (
-    ExtractionControls,
+    ExtractionDeploymentPoint as DeploymentPoint,
 )
-from vora_shared.models.document_extraction import ExtractionDeploymentPoint as DeploymentPoint
 from vora_shared.models.document_extraction import ExtractionSection as Section
 from vora_shared.models.framework import (
     FileVersionEntry,

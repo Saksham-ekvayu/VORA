@@ -7,18 +7,8 @@ import re
 from datetime import datetime, timezone
 from typing import Annotated
 
-from app.helpers import framework_helper
-from app.helpers.report_helper import generate_framework_report_pdf
-from app.schemas.framework import (
-    AddControlBody,
-    AssignFrameworkToCustomerBody,
-    RejectFrameworkBody,
-    UpdateControlBody,
-    UpdateControlWeightageBody,
-)
-from fastapi import APIRouter, Depends, File, Form
+from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile
 from fastapi import Path as ApiPath
-from fastapi import Query, Response, UploadFile
 from sqlalchemy import String, cast, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.attributes import flag_modified
@@ -27,7 +17,13 @@ from vora_shared import messages as msg
 from vora_shared.auth import AuthenticatedUser, authenticate
 from vora_shared.database import session_scope
 from vora_shared.ids import new_id
-from vora_shared.models import Customer, DocumentExtraction, FrameworkAssignment, FrameworkCategory, User
+from vora_shared.models import (
+    Customer,
+    DocumentExtraction,
+    FrameworkAssignment,
+    FrameworkCategory,
+    User,
+)
 from vora_shared.models.document_extraction import ExtractionControlItem as ControlItem
 from vora_shared.models.document_extraction import ExtractionSection as Section
 from vora_shared.models.framework import (
@@ -38,6 +34,16 @@ from vora_shared.models.framework import (
 from vora_shared.models.framework_assignment import AssignmentInfo
 from vora_shared.query_builder import build_pagination_meta, clamp_limit, clamp_page
 from vora_shared.responses import error, paginated, success
+
+from app.helpers import framework_helper
+from app.helpers.report_helper import generate_framework_report_pdf
+from app.schemas.framework import (
+    AddControlBody,
+    AssignFrameworkToCustomerBody,
+    RejectFrameworkBody,
+    UpdateControlBody,
+    UpdateControlWeightageBody,
+)
 
 router = APIRouter(tags=["framework"])
 logger = logging.getLogger(__name__)
@@ -682,7 +688,7 @@ async def upload_framework(
     try:
         meta = framework_helper.parse_upload_metadata(metadata)
     except Exception as exc:
-        logger.exception(f"[UPLOAD-FRAMEWORK] Invalid metadata | error={exc}")
+        logger.exception("[UPLOAD-FRAMEWORK] Invalid metadata")
         return error(f"Invalid metadata JSON format: {exc}", 400)
 
     framework_name = meta.get("frameworkName")
@@ -864,7 +870,7 @@ async def update_framework(
         if metadata:
             try:
                 meta = framework_helper.parse_upload_metadata(metadata)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 return error(f"Invalid metadata JSON format: {exc}", 400)
             framework_helper.update_framework_metadata(meta, framework)
 

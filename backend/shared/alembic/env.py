@@ -22,7 +22,6 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 # Import all models so they are registered with Base.metadata before Alembic reads it
-import vora_shared.models
 from vora_shared.config import get_settings
 from vora_shared.database import Base
 

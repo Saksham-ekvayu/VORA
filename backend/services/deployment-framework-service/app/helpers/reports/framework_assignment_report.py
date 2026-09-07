@@ -4,16 +4,12 @@ Rebuilt with reportlab/platypus (flowable-based layout) instead of pdfkit's
 manual absolute positioning; content and structure are preserved.
 """
 
-from datetime import datetime, timezone
 from io import BytesIO
 from typing import Any
 
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import (
-    HRFlowable,
     PageBreak,
     Paragraph,
     SimpleDocTemplate,

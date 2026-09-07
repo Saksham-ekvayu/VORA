@@ -201,9 +201,8 @@ async def _fallback_to_package_merge(session, pkg: dict) -> list[dict[str, Any]]
 
 async def _get_sections_from_package(session, pkg: dict) -> list[dict[str, Any]] | None:
     merged = pkg.get("mergedControls") or {}
-    if isinstance(merged, dict):
-        if controls := (merged.get("controls_data") or merged.get("controls")):
-            return controls
+    if isinstance(merged, dict) and (controls := (merged.get("controls_data") or merged.get("controls"))):
+        return controls
 
     sections: list[dict[str, Any]] = []
     for doc in pkg.get("documents") or []:
@@ -371,15 +370,15 @@ async def _save_failure_status(comparison_id: str | None, exc: Exception):
             if pc:
                 pc.comparison = {
                     "status": "failed",
-                    "message": f"Comparison failed: {str(exc)}",
+                    "message": f"Comparison failed: {exc!s}",
                     "timestamp": _iso(),
                     "comparison_time_seconds": None,
                     "comparison_result": [],
                 }
                 session.add(pc)
                 await session.commit()
-    except Exception as db_exc:
-        logger.exception(f"[COMPARISON-RUNNER-ERROR] Failed to update failure status: {db_exc}")
+    except Exception:
+        logger.exception("[COMPARISON-RUNNER-ERROR] Failed to update failure status")
 
 
 async def run_comparison(
@@ -482,12 +481,12 @@ async def run_comparison(
         logger.info("[COMPARISON-RUNNER-SAVED] Data saved to: PackageComparison table")
         logger.info(f"{'='*80}")
 
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.error(f"{'='*80}")
         logger.error("[COMPARISON-RUNNER-ERROR] run_comparison failed!")
         logger.error(f"  Deployment Framework ID: {df_id}")
         logger.error(f"  Package Version: {pkg_ver}")
-        logger.exception(f"  Error: {str(exc)}")
+        logger.exception("  Error")
         logger.error(f"{'='*80}")
         logger.exception("run_comparison exception traceback:")
         await _save_failure_status(comparison_id, exc)

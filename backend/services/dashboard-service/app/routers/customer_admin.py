@@ -4,7 +4,6 @@ import logging
 from datetime import datetime, timezone
 from typing import Annotated, Any
 
-from app.helpers import apply_date_filters, to_naive_utc
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import or_, select
 from vora_shared.database import session_scope
@@ -20,6 +19,8 @@ from vora_shared.models import (
 )
 from vora_shared.responses import server_error, success
 from vora_shared.security import RequestContext, get_context
+
+from app.helpers import apply_date_filters, to_naive_utc
 
 router = APIRouter(tags=["customer-admin-dashboard"])
 logger = logging.getLogger(__name__)
@@ -904,7 +905,7 @@ async def get_customer_admin_dashboard(
             f"[CUSTOMER-ANALYTICS] Dashboard loaded | users={len(users)} | dfs={len(deployment_frameworks)} | assignments={len(active_assignments)} | controls={controls_configured}/{controls_total}"
         )
         return success(response_data, "Customer dashboard analytics retrieved successfully")
-    except Exception as exc:
-        logger.exception(f"[CUSTOMER-ANALYTICS] Error: {exc}")
+    except Exception:
+        logger.exception("[CUSTOMER-ANALYTICS] Error")
         logger.exception("Error fetching customer admin dashboard data")
         return server_error("Failed to retrieve customer dashboard analytics")

@@ -4,14 +4,6 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import vora_shared
-from app.schemas.auth import (
-    ChangePasswordRequest,
-    EmailOnlyRequest,
-    LoginRequest,
-    OtpVerifyRequest,
-    RegisterRequest,
-    ResetPasswordRequest,
-)
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from vora_shared import messages as msg
@@ -21,6 +13,15 @@ from vora_shared.email import generate_otp, load_template, send_email
 from vora_shared.models.user import User, UserCreatedBy, UserOtp
 from vora_shared.responses import error, success
 from vora_shared.security import hash_password, verify_password
+
+from app.schemas.auth import (
+    ChangePasswordRequest,
+    EmailOnlyRequest,
+    LoginRequest,
+    OtpVerifyRequest,
+    RegisterRequest,
+    ResetPasswordRequest,
+)
 
 router = APIRouter(tags=["auth"])
 logger = logging.getLogger(__name__)
