@@ -103,11 +103,11 @@ export const ComparisonGapAnalysis = lazy(
   () => import("@/pages/deployment-framework-management/ComparisonGapAnalysis")
 );
 export const AssignedFrameworks = lazy(
-  () => import("@/pages/deployment-framework-management/AssignedFrameworks")
+  () => import("@/pages/assigned-framework/AssignedFrameworks")
 );
 export const AssignedFrameworkDetails = lazy(
   () =>
-    import("@/pages/deployment-framework-management/AssignedFrameworkDetails")
+    import("@/pages/assigned-framework/AssignedFrameworkDetails")
 );
 
 // Deployment Document Pages
