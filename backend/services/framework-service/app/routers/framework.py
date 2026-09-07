@@ -612,20 +612,24 @@ async def assign_framework_to_customer(
             return error(f"Cannot assign unapproved frameworks: {names}", 400)
 
         existing_assignments = (
-            await session.execute(
-                select(FrameworkAssignment).where(
-                    FrameworkAssignment.customerId == str(body.customerId),
-                    FrameworkAssignment.frameworkId.in_(framework_ids),
+            (
+                await session.execute(
+                    select(FrameworkAssignment).where(
+                        FrameworkAssignment.customerId == str(body.customerId),
+                        FrameworkAssignment.frameworkId.in_(framework_ids),
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         already_assigned = [ea for ea in existing_assignments if ea.status == "assigned"]
         assigned_ids = {a.frameworkId for a in already_assigned}
-        
+
         # Filter out frameworks that are already assigned
         frameworks_to_assign = [fw for fw in frameworks if fw.id not in assigned_ids]
-        
+
         if not frameworks_to_assign:
             # If all frameworks in the request are already assigned, return an error
             assigned_versions = [fw.frameworkVersion for fw in frameworks if fw.id in assigned_ids]

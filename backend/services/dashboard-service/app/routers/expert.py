@@ -109,7 +109,7 @@ def _generate_upload_trend(
 
     trend_start_aware = _aware(trend_start)
     trend_end_aware = _aware(trend_end)
-    
+
     delta = (trend_end_aware.date() - trend_start_aware.date()).days
     result = []
 
@@ -118,13 +118,9 @@ def _generate_upload_trend(
         for i in range(delta + 1):
             current_day = trend_start_aware.date() + timedelta(days=i)
             uploads = sum(
-                1 for fw in frameworks 
-                if fw.createdAt and _aware(fw.createdAt).date() == current_day
+                1 for fw in frameworks if fw.createdAt and _aware(fw.createdAt).date() == current_day
             )
-            result.append({
-                "month": current_day.strftime("%Y-%m-%d"),
-                "uploads": uploads
-            })
+            result.append({"month": current_day.strftime("%Y-%m-%d"), "uploads": uploads})
     else:
         # Month-wise trend
         start_month = datetime(trend_start_aware.year, trend_start_aware.month, 1, tzinfo=UTC)
@@ -148,7 +144,7 @@ def _generate_upload_trend(
                 else MONTH_NAMES[month_date.month - 1]
             )
             result.append({"month": label, "uploads": uploads})
-    
+
     return result
 
 
