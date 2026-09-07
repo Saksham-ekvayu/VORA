@@ -21,40 +21,7 @@ import { getAuditorDashboardAnalytics } from "@/services/dashboardService";
 import { formatDateOnly } from "@/utils/dateFormatter";
 import { Skeleton } from "@/components/ui/skeleton";
 import DashboardError from "./components/DashboardError";
-
-function TopStatCard({
-  icon,
-  iconColor = "text-primary",
-  iconBg = "bg-primary/10",
-  borderColor = "border-primary/40",
-  title,
-  navigation,
-  children,
-}) {
-  return (
-    <Link
-      to={navigation}
-      className="rounded border border-border bg-linear-to-br from-background to-card p-2.5 flex justify-between hover:shadow-md transition-shadow duration-300 hover:border-primary/50 cursor-pointer"
-    >
-      <div className="flex flex-col gap-2 w-full">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {title}
-        </p>
-        <div className="">{children}</div>
-      </div>
-      <span
-        className={cn(
-          "w-12 h-12 rounded shrink-0 flex items-center justify-center transition-transform duration-300 group-hover:scale-105 border",
-          borderColor,
-          iconBg,
-          iconColor
-        )}
-      >
-        <Icon name={icon} size="24px" />
-      </span>
-    </Link>
-  );
-}
+import StatCard from "./components/StatCard";
 
 function PriorityBadge({ priority }) {
   const map = {
@@ -180,7 +147,7 @@ export default function AuditorDashboard() {
         <>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {/* Overall Protection */}
-            <TopStatCard
+            <StatCard
               title="Overall Protection"
               icon="shield"
               iconColor="text-primary"
@@ -193,10 +160,10 @@ export default function AuditorDashboard() {
                   {dashboardData?.overallProtection || 0}%
                 </p>
               )}
-            </TopStatCard>
+            </StatCard>
 
             {/* Critical Gaps */}
-            <TopStatCard
+            <StatCard
               title="Critical Gaps"
               icon="warning"
               iconColor="text-destructive"
@@ -211,10 +178,10 @@ export default function AuditorDashboard() {
                   {dashboardData?.criticalGaps || 0}
                 </p>
               )}
-            </TopStatCard>
+            </StatCard>
 
             {/* Control Passing */}
-            <TopStatCard
+            <StatCard
               title="Control Passing"
               icon="check-circle"
               iconColor="text-emerald-500"
@@ -229,10 +196,10 @@ export default function AuditorDashboard() {
                   {dashboardData?.controlPassing || 0}
                 </p>
               )}
-            </TopStatCard>
+            </StatCard>
 
             {/* Extra Controls */}
-            <TopStatCard
+            <StatCard
               title="Extra Controls"
               icon="star"
               iconColor="text-secondary"
@@ -247,7 +214,7 @@ export default function AuditorDashboard() {
                   {dashboardData?.extraControls || 0}
                 </p>
               )}
-            </TopStatCard>
+            </StatCard>
           </div>
 
           {/* ── Row 2: Framework Health | Active Gaps | Live Audit ────────────── */}
