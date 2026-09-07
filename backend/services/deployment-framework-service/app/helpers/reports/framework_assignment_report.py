@@ -10,8 +10,6 @@ from typing import Any
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import (
-    BaseDocTemplate,
-    Frame,
     KeepTogether,
     NextPageTemplate,
     PageBreak,

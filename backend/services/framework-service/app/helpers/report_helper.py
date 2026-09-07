@@ -15,8 +15,6 @@ from reportlab.lib import colors
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import (
-    BaseDocTemplate,
-    Frame,
     KeepTogether,
     NextPageTemplate,
     PageBreak,
@@ -35,6 +33,7 @@ from vora_shared.pdf import (
     build_toc_story,
     control_separator,
     draw_common_footer,
+    format_pdf_date,
     get_cover_callback,
     get_cover_frame,
     get_shared_frame,
@@ -271,11 +270,8 @@ def _framework_to_dict(framework, doc_extractions: dict | None = None) -> dict:
 
 def _create_header_story(framework, styles: dict) -> list:
     """Create the header section of the report."""
-    from reportlab.lib import colors
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
-
-    story = []
 
     from reportlab.platypus import HRFlowable
 
@@ -421,7 +417,6 @@ def generate_framework_report_pdf(
     framework, approval_by_user=None, doc_extractions: dict | None = None
 ) -> bytes:
     styles = get_shared_styles()
-    from reportlab.platypus import NextPageTemplate, PageBreak
 
     buffer = io.BytesIO()
 
