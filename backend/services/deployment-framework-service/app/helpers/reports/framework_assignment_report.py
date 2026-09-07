@@ -25,16 +25,16 @@ from vora_shared.pdf import (
     COLORS,
     REPORT_MARGINS,
     REPORT_PAGESIZE,
+    VoraDocTemplate,
     build_stat_card,
+    build_toc_story,
     control_separator,
     draw_common_footer,
     format_pdf_date,
+    get_cover_callback,
+    get_cover_frame,
     get_shared_frame,
     get_shared_styles,
-    get_cover_frame,
-    get_cover_callback,
-    VoraDocTemplate,
-    build_toc_story,
 )
 
 _styles_dict = get_shared_styles()
@@ -65,15 +65,20 @@ def _safe_get(obj: Any, key: str, default: Any = None) -> Any:
 
 def _add_header_section(story: list[Any], assignment: Any, file_version: Any, customer: Any):
     from reportlab.platypus import HRFlowable
+
     fw_name = assignment.frameworkName or assignment.frameworkCode
-    
+
     # Content
     story.append(Spacer(1, 30))
     story.append(Paragraph("COMPLIANCE / SECURITY", _styles_dict["cover_over_title"]))
-    
+
     story.append(Paragraph("Assigned Framework", _styles_dict["cover_title1"]))
     story.append(Paragraph("Report", _styles_dict["cover_title2"]))
-    story.append(HRFlowable(width=45*mm, color=COLORS["primary"], thickness=3.5, spaceBefore=4, spaceAfter=20, hAlign="LEFT"))
+    story.append(
+        HRFlowable(
+            width=45 * mm, color=COLORS["primary"], thickness=3.5, spaceBefore=4, spaceAfter=20, hAlign="LEFT"
+        )
+    )
 
     story.append(Spacer(1, 10))
     story.append(Paragraph(str(fw_name), _styles_dict["cover_subtitle1"]))
@@ -81,24 +86,36 @@ def _add_header_section(story: list[Any], assignment: Any, file_version: Any, cu
 
     # Version Info Box
     v_styles = {
-        'lbl': ParagraphStyle('Lbl', fontName='Helvetica-Bold', fontSize=8, textColor=COLORS['primary']),
-        'val': ParagraphStyle('Val', fontName='Helvetica', fontSize=12, textColor=COLORS['dark_text'], spaceBefore=5)
+        "lbl": ParagraphStyle("Lbl", fontName="Helvetica-Bold", fontSize=8, textColor=COLORS["primary"]),
+        "val": ParagraphStyle(
+            "Val", fontName="Helvetica", fontSize=12, textColor=COLORS["dark_text"], spaceBefore=5
+        ),
     }
-    
-    col1 = [Paragraph("FRAMEWORK VERSION", v_styles['lbl']), Paragraph(str(assignment.frameworkVersion or '-'), v_styles['val'])]
-    col2 = [Paragraph("CURRENT VERSION", v_styles['lbl']), Paragraph(f"v{file_version.fileVersion}", v_styles['val'])]
-    
-    box_table = Table([[col1, col2]], colWidths=[80*mm, 80*mm])
-    box_table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), COLORS['primary_light']),
-        ('ROUNDEDCORNERS', [8, 8, 8, 8]),
-        ('BOX', (0,0), (-1,-1), 0.5, COLORS['border']),
-        ('LINEBEFORE', (1,0), (1,-1), 0.5, COLORS['border']),
-        ('LEFTPADDING', (0,0), (-1,-1), 15),
-        ('RIGHTPADDING', (0,0), (-1,-1), 15),
-        ('TOPPADDING', (0,0), (-1,-1), 15),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 15),
-    ]))
+
+    col1 = [
+        Paragraph("FRAMEWORK VERSION", v_styles["lbl"]),
+        Paragraph(str(assignment.frameworkVersion or "-"), v_styles["val"]),
+    ]
+    col2 = [
+        Paragraph("CURRENT VERSION", v_styles["lbl"]),
+        Paragraph(f"v{file_version.fileVersion}", v_styles["val"]),
+    ]
+
+    box_table = Table([[col1, col2]], colWidths=[80 * mm, 80 * mm])
+    box_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), COLORS["primary_light"]),
+                ("ROUNDEDCORNERS", [8, 8, 8, 8]),
+                ("BOX", (0, 0), (-1, -1), 0.5, COLORS["border"]),
+                ("LINEBEFORE", (1, 0), (1, -1), 0.5, COLORS["border"]),
+                ("LEFTPADDING", (0, 0), (-1, -1), 15),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 15),
+                ("TOPPADDING", (0, 0), (-1, -1), 15),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 15),
+            ]
+        )
+    )
     story.append(box_table)
 
 
@@ -116,38 +133,60 @@ def _add_stats_section(
     # Assignment Information Table
     story.append(Paragraph("Assignment Information", _styles_dict["section_title"]))
     story.append(Spacer(1, 4 * mm))
-    
+
     def _make_cell(label, value):
-        if not label: return ""
+        if not label:
+            return ""
         return [
-            Paragraph(label, ParagraphStyle('AssigLabel', fontName='Helvetica-Bold', fontSize=8, textColor=COLORS['primary'])),
-            Paragraph(value, ParagraphStyle('AssigVal', fontName='Helvetica', fontSize=10, textColor=COLORS['dark_text'], spaceBefore=4))
+            Paragraph(
+                label,
+                ParagraphStyle(
+                    "AssigLabel", fontName="Helvetica-Bold", fontSize=8, textColor=COLORS["primary"]
+                ),
+            ),
+            Paragraph(
+                value,
+                ParagraphStyle(
+                    "AssigVal",
+                    fontName="Helvetica",
+                    fontSize=10,
+                    textColor=COLORS["dark_text"],
+                    spaceBefore=4,
+                ),
+            ),
         ]
 
     data = [
-        [_make_cell("CUSTOMER", _display_user(customer)), _make_cell("ASSIGNMENT STATUS", str(assignment.status or 'assigned').upper())],
+        [
+            _make_cell("CUSTOMER", _display_user(customer)),
+            _make_cell("ASSIGNMENT STATUS", str(assignment.status or "assigned").upper()),
+        ],
     ]
-    
-    info_table = Table(data, colWidths=[80*mm, 80*mm], hAlign="LEFT")
-    info_table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), COLORS['primary_light']),
-        ('ROUNDEDCORNERS', [8, 8, 8, 8]),
-        ('BOX', (0,0), (-1,-1), 0.5, COLORS['border']),
-        ('LINEBEFORE', (1,0), (1,-1), 0.5, COLORS['border']),
-        ('VALIGN', (0,0), (-1,-1), 'TOP'),
-        ('TOPPADDING', (0,0), (-1,-1), 10),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 10),
-        ('LEFTPADDING', (0,0), (-1,-1), 16),
-        ('RIGHTPADDING', (0,0), (-1,-1), 16),
-    ]))
+
+    info_table = Table(data, colWidths=[80 * mm, 80 * mm], hAlign="LEFT")
+    info_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), COLORS["primary_light"]),
+                ("ROUNDEDCORNERS", [8, 8, 8, 8]),
+                ("BOX", (0, 0), (-1, -1), 0.5, COLORS["border"]),
+                ("LINEBEFORE", (1, 0), (1, -1), 0.5, COLORS["border"]),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("TOPPADDING", (0, 0), (-1, -1), 10),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+                ("LEFTPADDING", (0, 0), (-1, -1), 16),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 16),
+            ]
+        )
+    )
     story.append(info_table)
-    
+
     story.append(Spacer(1, 10 * mm))
     story.append(Paragraph("Statistics", _styles_dict["section_title"]))
-    
+
     usable_width = REPORT_PAGESIZE[0] - (REPORT_MARGINS["leftMargin"] + REPORT_MARGINS["rightMargin"])
     card_width = usable_width / 3
-    
+
     stats = [
         ("SECTIONS", len(sections)),
         ("APPLICABLE CONTROLS", len(applicable_controls)),
@@ -168,17 +207,20 @@ def _add_stats_section(
 
 def _add_signatures_section(story: list[Any], assignment: Any):
     def _safe_get(obj, key):
-        if not obj: return None
-        if hasattr(obj, key): return getattr(obj, key)
-        if isinstance(obj, dict): return obj.get(key)
+        if not obj:
+            return None
+        if hasattr(obj, key):
+            return getattr(obj, key)
+        if isinstance(obj, dict):
+            return obj.get(key)
         return None
 
-    assigned_by = _display_user(_safe_get(assignment.assignment, 'assignedBy'))
-    assigned_on = format_pdf_date(_safe_get(assignment.assignment, 'assignedAt'))
-    
-    finalized = _safe_get(assignment.finalization, 'isFinalized')
-    finalized_by = _display_user(_safe_get(assignment.finalization, 'finalizedBy')) if finalized else "N/A"
-    finalized_on = format_pdf_date(_safe_get(assignment.finalization, 'finalizedAt')) if finalized else "N/A"
+    assigned_by = _display_user(_safe_get(assignment.assignment, "assignedBy"))
+    assigned_on = format_pdf_date(_safe_get(assignment.assignment, "assignedAt"))
+
+    finalized = _safe_get(assignment.finalization, "isFinalized")
+    finalized_by = _display_user(_safe_get(assignment.finalization, "finalizedBy")) if finalized else "N/A"
+    finalized_on = format_pdf_date(_safe_get(assignment.finalization, "finalizedAt")) if finalized else "N/A"
 
     story.append(Spacer(1, 15 * mm))
     story.append(Paragraph("Signatures & Approvals", _styles_dict["section_title"]))
@@ -186,32 +228,56 @@ def _add_signatures_section(story: list[Any], assignment: Any):
 
     sig_data = [
         [
-            Paragraph("ASSIGNED BY", ParagraphStyle("SigHead", fontName="Helvetica-Bold", fontSize=9, textColor=COLORS['primary'])),
-            Paragraph("FINALIZED BY", ParagraphStyle("SigHead", fontName="Helvetica-Bold", fontSize=9, textColor=COLORS['primary']))
+            Paragraph(
+                "ASSIGNED BY",
+                ParagraphStyle("SigHead", fontName="Helvetica-Bold", fontSize=9, textColor=COLORS["primary"]),
+            ),
+            Paragraph(
+                "FINALIZED BY",
+                ParagraphStyle("SigHead", fontName="Helvetica-Bold", fontSize=9, textColor=COLORS["primary"]),
+            ),
+        ],
+        [Spacer(1, 2 * mm), Spacer(1, 2 * mm)],
+        [
+            Paragraph(
+                assigned_by,
+                ParagraphStyle(
+                    "SigName", fontName="Helvetica-Bold", fontSize=12, textColor=COLORS["dark_text"]
+                ),
+            ),
+            Paragraph(
+                finalized_by,
+                ParagraphStyle(
+                    "SigName", fontName="Helvetica-Bold", fontSize=12, textColor=COLORS["dark_text"]
+                ),
+            ),
         ],
         [
-            Spacer(1, 2 * mm), Spacer(1, 2 * mm)
+            Paragraph(
+                f"Date: {assigned_on}",
+                ParagraphStyle("SigDate", fontName="Helvetica", fontSize=10, textColor=COLORS["muted_text"]),
+            ),
+            Paragraph(
+                f"Date: {finalized_on}",
+                ParagraphStyle("SigDate", fontName="Helvetica", fontSize=10, textColor=COLORS["muted_text"]),
+            ),
         ],
-        [
-            Paragraph(assigned_by, ParagraphStyle("SigName", fontName="Helvetica-Bold", fontSize=12, textColor=COLORS['dark_text'])),
-            Paragraph(finalized_by, ParagraphStyle("SigName", fontName="Helvetica-Bold", fontSize=12, textColor=COLORS['dark_text']))
-        ],
-        [
-            Paragraph(f"Date: {assigned_on}", ParagraphStyle("SigDate", fontName="Helvetica", fontSize=10, textColor=COLORS['muted_text'])),
-            Paragraph(f"Date: {finalized_on}", ParagraphStyle("SigDate", fontName="Helvetica", fontSize=10, textColor=COLORS['muted_text']))
-        ]
     ]
 
     usable_width = REPORT_PAGESIZE[0] - (REPORT_MARGINS["leftMargin"] + REPORT_MARGINS["rightMargin"])
-    sig_table = Table(sig_data, colWidths=[usable_width/2, usable_width/2], hAlign="LEFT")
-    sig_table.setStyle(TableStyle([
-        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
-        ('VALIGN', (0,0), (-1,-1), 'TOP'),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
-        ('LINEBELOW', (0,1), (0,1), 0.5, COLORS['border']),
-        ('LINEBELOW', (1,1), (1,1), 0.5, COLORS['border']),
-    ]))
-    
+    sig_table = Table(sig_data, colWidths=[usable_width / 2, usable_width / 2], hAlign="LEFT")
+    sig_table.setStyle(
+        TableStyle(
+            [
+                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ("LINEBELOW", (0, 1), (0, 1), 0.5, COLORS["border"]),
+                ("LINEBELOW", (1, 1), (1, 1), 0.5, COLORS["border"]),
+            ]
+        )
+    )
+
     story.append(KeepTogether(sig_table))
 
 
@@ -259,7 +325,7 @@ def _add_control_header(story: list[Any], control: Any, doc_width: float, label_
             ]
         ],
         colWidths=[doc_width * 0.65, doc_width * 0.35],
-        hAlign="LEFT"
+        hAlign="LEFT",
     )
     header_row.setStyle(
         TableStyle(
@@ -308,9 +374,11 @@ def _add_controls_section(story: list[Any], sections: list[Any], doc_width: floa
         section_title = f"{section.id or ''} {section.name or ''}".strip()
         key = str(hash(section_title))
         story.append(Paragraph(section_title, _styles_dict["toc_invisible_section"]))
-        
+
         section_bar = Table(
-            [[Paragraph(f'<a name="{key}"/>{section_title}', _styles_dict["section_title"])]], colWidths=[doc_width], hAlign="LEFT"
+            [[Paragraph(f'<a name="{key}"/>{section_title}', _styles_dict["section_title"])]],
+            colWidths=[doc_width],
+            hAlign="LEFT",
         )
         section_bar.setStyle(
             TableStyle(
@@ -331,7 +399,7 @@ def _add_controls_section(story: list[Any], sections: list[Any], doc_width: floa
 
 def generate_framework_assignment_report_pdf(assignment: Any, file_version: Any, customer: Any) -> bytes:
     buffer = BytesIO()
-    
+
     frame = get_shared_frame(id="normal")
     cover_frame = get_cover_frame(id="cover")
 
@@ -340,7 +408,7 @@ def generate_framework_assignment_report_pdf(assignment: Any, file_version: Any,
 
     def page_callback(canvas, doc):
         draw_common_footer(canvas, doc.page, REPORT_PAGESIZE, header_text)
-        
+
     cover_callback = get_cover_callback("Assigned Framework Report", f"v{file_version.fileVersion}")
 
     doc = VoraDocTemplate(
@@ -349,10 +417,12 @@ def generate_framework_assignment_report_pdf(assignment: Any, file_version: Any,
         **REPORT_MARGINS,
         title="Assigned Framework Report",
     )
-    doc.addPageTemplates([
-        PageTemplate(id="cover", frames=[cover_frame], onPage=cover_callback),
-        PageTemplate(id="report", frames=[frame], onPage=page_callback)
-    ])
+    doc.addPageTemplates(
+        [
+            PageTemplate(id="cover", frames=[cover_frame], onPage=cover_callback),
+            PageTemplate(id="report", frames=[frame], onPage=page_callback),
+        ]
+    )
 
     sections = file_version.aiExtraction or []
     controls = [c for s in sections for c in (s.controls or [])]
@@ -385,7 +455,7 @@ def generate_framework_assignment_report_pdf(assignment: Any, file_version: Any,
     _add_header_section(story, assignment, file_version, customer)
     story.append(NextPageTemplate("report"))
     story.append(PageBreak())
-    
+
     # TOC
     story.extend(build_toc_story(_styles_dict))
 
@@ -400,10 +470,10 @@ def generate_framework_assignment_report_pdf(assignment: Any, file_version: Any,
         org_specific_controls,
         avg_customer_weightage,
     )
-    
+
     # Controls
     _add_controls_section(story, sections, frame.width)
-    
+
     # Signatures
     _add_signatures_section(story, assignment)
 

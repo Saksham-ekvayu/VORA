@@ -12,8 +12,8 @@ from __future__ import annotations
 import io
 
 from reportlab.lib import colors
-from reportlab.lib.units import mm
 from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.units import mm
 from reportlab.platypus import (
     BaseDocTemplate,
     Frame,
@@ -30,15 +30,15 @@ from vora_shared.pdf import (
     COLORS,
     REPORT_MARGINS,
     REPORT_PAGESIZE,
+    VoraDocTemplate,
     build_stat_card,
+    build_toc_story,
     control_separator,
     draw_common_footer,
+    get_cover_callback,
+    get_cover_frame,
     get_shared_frame,
     get_shared_styles,
-    get_cover_frame,
-    get_cover_callback,
-    VoraDocTemplate,
-    build_toc_story,
 )
 
 
@@ -56,9 +56,7 @@ def _build_stats_table(sections: list[dict], styles: dict) -> Table:
     total_controls = len(all_controls)
     total_dps = sum(len(c.get("deployment_points") or []) for c in all_controls)
     total_weightage = sum((c.get("weightage") or 0) for c in all_controls)
-    avg_weightage = (
-        round(total_weightage / total_controls, 1) if total_controls > 0 else 0.0
-    )
+    avg_weightage = round(total_weightage / total_controls, 1) if total_controls > 0 else 0.0
 
     usable_width = REPORT_PAGESIZE[0] - (REPORT_MARGINS["leftMargin"] + REPORT_MARGINS["rightMargin"])
     card_width = usable_width / 4
@@ -144,7 +142,7 @@ def _build_control_block(control: dict, styles: dict) -> list:
 
     weight = control.get("weightage")
     weight_display = "—" if weight is None else str(weight)
-    name = control.get('name') or ""
+    name = control.get("name") or ""
     if name:
         name = name[0].upper() + name[1:]
     text = f"[{control.get('id')}] {name}"
@@ -273,20 +271,25 @@ def _framework_to_dict(framework, doc_extractions: dict | None = None) -> dict:
 
 def _create_header_story(framework, styles: dict) -> list:
     """Create the header section of the report."""
-    from reportlab.lib.units import mm
     from reportlab.lib import colors
     from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import mm
+
     story = []
-    
+
     from reportlab.platypus import HRFlowable
-    
+
     flow: list = []
     flow.append(Spacer(1, 30))
     flow.append(Paragraph("COMPLIANCE / SECURITY", styles["cover_over_title"]))
-    
+
     flow.append(Paragraph("Industry Framework", styles["cover_title1"]))
     flow.append(Paragraph("Report", styles["cover_title2"]))
-    flow.append(HRFlowable(width=45*mm, color=COLORS["primary"], thickness=3.5, spaceBefore=4, spaceAfter=20, hAlign="LEFT"))
+    flow.append(
+        HRFlowable(
+            width=45 * mm, color=COLORS["primary"], thickness=3.5, spaceBefore=4, spaceAfter=20, hAlign="LEFT"
+        )
+    )
 
     flow.append(Spacer(1, 10))
     flow.append(Paragraph(str(framework.frameworkName), styles["cover_subtitle1"]))
@@ -294,24 +297,36 @@ def _create_header_story(framework, styles: dict) -> list:
 
     # Version Info Box
     v_styles = {
-        'lbl': ParagraphStyle('Lbl', fontName='Helvetica-Bold', fontSize=8, textColor=COLORS['primary']),
-        'val': ParagraphStyle('Val', fontName='Helvetica', fontSize=12, textColor=COLORS['dark_text'], spaceBefore=5)
+        "lbl": ParagraphStyle("Lbl", fontName="Helvetica-Bold", fontSize=8, textColor=COLORS["primary"]),
+        "val": ParagraphStyle(
+            "Val", fontName="Helvetica", fontSize=12, textColor=COLORS["dark_text"], spaceBefore=5
+        ),
     }
-    
-    col1 = [Paragraph("FRAMEWORK VERSION", v_styles['lbl']), Paragraph(str(framework.frameworkVersion), v_styles['val'])]
-    col2 = [Paragraph("CURRENT VERSION", v_styles['lbl']), Paragraph(f"v{framework.currentFileVersion}", v_styles['val'])]
-    
-    box_table = Table([[col1, col2]], colWidths=[80*mm, 80*mm])
-    box_table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), COLORS['primary_light']),
-        ('ROUNDEDCORNERS', [8, 8, 8, 8]),
-        ('BOX', (0,0), (-1,-1), 0.5, COLORS['border']),
-        ('LINEBEFORE', (1,0), (1,-1), 0.5, COLORS['border']),
-        ('LEFTPADDING', (0,0), (-1,-1), 15),
-        ('RIGHTPADDING', (0,0), (-1,-1), 15),
-        ('TOPPADDING', (0,0), (-1,-1), 15),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 15),
-    ]))
+
+    col1 = [
+        Paragraph("FRAMEWORK VERSION", v_styles["lbl"]),
+        Paragraph(str(framework.frameworkVersion), v_styles["val"]),
+    ]
+    col2 = [
+        Paragraph("CURRENT VERSION", v_styles["lbl"]),
+        Paragraph(f"v{framework.currentFileVersion}", v_styles["val"]),
+    ]
+
+    box_table = Table([[col1, col2]], colWidths=[80 * mm, 80 * mm])
+    box_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), COLORS["primary_light"]),
+                ("ROUNDEDCORNERS", [8, 8, 8, 8]),
+                ("BOX", (0, 0), (-1, -1), 0.5, COLORS["border"]),
+                ("LINEBEFORE", (1, 0), (1, -1), 0.5, COLORS["border"]),
+                ("LEFTPADDING", (0, 0), (-1, -1), 15),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 15),
+                ("TOPPADDING", (0, 0), (-1, -1), 15),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 15),
+            ]
+        )
+    )
     flow.append(box_table)
 
     return flow
@@ -319,23 +334,23 @@ def _create_header_story(framework, styles: dict) -> list:
 
 def _add_approval_status(story, framework, approval_by_user, styles: dict):
     """Add approval status to the story."""
-    from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.enums import TA_RIGHT
-    
+    from reportlab.lib.styles import ParagraphStyle
+
     approval = framework.approval or {}
     approval_status = (_attr(approval, "status") if approval else "pending") or "pending"
     status_text = f"Expert Review: <b>{approval_status.upper()}</b>"
     approver_name = approval_by_user.name if approval_by_user else None
-    
+
     if approval_status in ("approved", "rejected") and approver_name:
         verb = "Reviewed By" if approval_status == "approved" else "Rejected By"
         status_text += f"<br/>{verb}: {approver_name}"
         approval_date = _attr(approval, "date")
         if approval and approval_date:
             status_text += f"<br/>Date: {format_pdf_date(approval_date)}"
-            
+
     sig_style = ParagraphStyle("Signature", parent=styles["meta"], alignment=TA_RIGHT)
-    
+
     story.append(Spacer(1, 40))
     story.append(Paragraph(status_text, sig_style))
     story.append(Spacer(1, 14))
@@ -406,10 +421,10 @@ def generate_framework_report_pdf(
     framework, approval_by_user=None, doc_extractions: dict | None = None
 ) -> bytes:
     styles = get_shared_styles()
-    from reportlab.platypus import PageBreak, NextPageTemplate
-    
+    from reportlab.platypus import NextPageTemplate, PageBreak
+
     buffer = io.BytesIO()
-    
+
     frame = get_shared_frame(id="normal")
     cover_frame = get_cover_frame(id="cover")
 
@@ -425,10 +440,12 @@ def generate_framework_report_pdf(
         **REPORT_MARGINS,
         title=f"{framework.frameworkName} Report",
     )
-    doc.addPageTemplates([
-        PageTemplate(id="cover", frames=[cover_frame], onPage=cover_callback),
-        PageTemplate(id="report", frames=[frame], onPage=page_callback)
-    ])
+    doc.addPageTemplates(
+        [
+            PageTemplate(id="cover", frames=[cover_frame], onPage=cover_callback),
+            PageTemplate(id="report", frames=[frame], onPage=page_callback),
+        ]
+    )
 
     story = []
 
