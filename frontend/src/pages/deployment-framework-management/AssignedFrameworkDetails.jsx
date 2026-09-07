@@ -749,15 +749,9 @@ function AssignedFrameworkDetails() {
                           onChange={setGlobalSearch}
                           onClear={() => setGlobalSearch("")}
                           placeholder="Search Sections, Controls & DPs..."
+                          className="w-70 h-8 text-xs"
                         />
                       )}
-                      <SearchInput
-                        value={globalSearch}
-                        onChange={setGlobalSearch}
-                        onClear={() => setGlobalSearch("")}
-                        placeholder="Search Sections, Controls & DPs..."
-                        className="w-70 h-8 text-xs"
-                      />
                       <Button
                         variant="ghost"
                         size="icon"
