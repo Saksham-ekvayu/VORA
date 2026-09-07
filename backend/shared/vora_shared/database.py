@@ -66,7 +66,7 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
     return _session_factory
 
 
-async def get_session() -> AsyncGenerator[AsyncSession, None]:
+async def get_session() -> AsyncGenerator[AsyncSession]:
     """FastAPI dependency yielding an AsyncSession."""
     factory = get_session_factory()
     async with factory() as session:
@@ -79,7 +79,7 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 @asynccontextmanager
-async def session_scope() -> AsyncGenerator[AsyncSession, None]:
+async def session_scope() -> AsyncGenerator[AsyncSession]:
     """Async context manager for non-Depends call sites (auth, helpers)."""
     factory = get_session_factory()
     async with factory() as session:

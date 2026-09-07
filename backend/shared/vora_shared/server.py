@@ -1,14 +1,18 @@
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from vora_shared.config import get_settings
-from vora_shared.responses import http_exception_handler, request_validation_exception_handler
+from vora_shared.responses import (
+    http_exception_handler,
+    request_validation_exception_handler,
+)
 
 
-def create_vora_app(title: str, lifespan: Callable[[FastAPI], Any] = None) -> FastAPI:
+def create_vora_app(title: str, lifespan: Callable[[FastAPI], Any] | None = None) -> FastAPI:
     import logging
     import sys
     from contextlib import asynccontextmanager

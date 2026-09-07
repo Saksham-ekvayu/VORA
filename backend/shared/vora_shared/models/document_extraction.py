@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -16,7 +16,7 @@ ExtractionStatus = Literal["pending", "uploaded", "processing", "extracted", "fa
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class ExtractionDeploymentPoint(BaseModel):

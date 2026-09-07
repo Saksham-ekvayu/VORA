@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -45,7 +45,7 @@ def _get_thresholds() -> dict[str, float]:
             "implemented": settings.similarity_threshold_high,
             "partially_implemented": settings.similarity_threshold_medium,
         }
-    except Exception:
+    except Exception:  # noqa: BLE001
         return dict(_DEFAULT_THRESHOLDS)
 
 
@@ -53,7 +53,7 @@ DEFAULT_THRESHOLDS = _get_thresholds()
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _iso(dt: datetime | None = None) -> str:
@@ -423,8 +423,7 @@ async def _calculate_gap_results(
                 continue
 
             item_results = await _process_control_item(item, section_id, section_name, thresholds, statuses)
-            for row in item_results:
-                gap_results.append(row)
+            gap_results.extend(item_results)
 
     logger.info(f"[GAP-RUNNER] Completed DP-to-DP comparisons: {len(gap_results)} deployment point gaps")
     return gap_results
@@ -488,14 +487,14 @@ async def _save_failure_status(gap_id: str | None, exc: Exception):
                 if pga:
                     pga.gapAnalysis = {
                         "status": "failed",
-                        "message": f"Gap analysis failed: {str(exc)}",
+                        "message": f"Gap analysis failed: {exc!s}",
                         "timestamp": _iso(),
                         "deployment_gap_results": [],
                     }
                     session.add(pga)
                     await session.commit()
-    except Exception as db_exc:
-        logger.exception(f"[GAP-RUNNER-ERROR] Failed to update failure status: {db_exc}")
+    except Exception:
+        logger.exception("[GAP-RUNNER-ERROR] Failed to update failure status")
 
 
 async def run_gap(
@@ -585,12 +584,12 @@ async def run_gap(
             logger.info("[GAP-RUNNER-SAVED] Data saved to: PackageGapAnalysis table")
             logger.info(f"{'='*80}")
 
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.error(f"{'='*80}")
         logger.error("[GAP-RUNNER-ERROR] run_gap failed!")
         logger.error(f"  Deployment Framework ID: {df_id}")
         logger.error(f"  Package Version: {pkg_ver}")
-        logger.exception(f"  Error: {str(exc)}")
+        logger.exception("  Error")
         logger.error(f"{'='*80}")
         logger.exception("run_gap exception traceback:")
         await _save_failure_status(gap_id, exc)

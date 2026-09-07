@@ -7,3 +7,13 @@ include = '\.pyi?$'
 profile = "black"
 line_length = 110
 multi_line_output = 3
+
+[tool.ruff]
+line-length = 110
+target-version = "py313"
+
+[tool.ruff.lint]
+ignore = ["I"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true

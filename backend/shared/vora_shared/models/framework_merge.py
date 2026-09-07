@@ -6,7 +6,7 @@ Each framework can have multiple merges (one per unique set of file combinations
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import DateTime, Index, String
@@ -17,7 +17,7 @@ from vora_shared.ids import new_id
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class FrameworkMerge(Base):

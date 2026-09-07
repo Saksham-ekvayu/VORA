@@ -42,7 +42,7 @@ async def is_valid_framework_category_id(framework_category_id) -> bool:
                     )
                 )
             ).scalar_one_or_none()
-    except Exception:
+    except Exception:  # noqa: BLE001
         return False
     return category is not None
 

@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 load_dotenv()
 
 SERVICE_NAME = os.getenv("SERVICE_NAME", "api-gateway")
-PORT = int(os.getenv("PORT", 8000))
+PORT = int(os.getenv("PORT", "8000"))
 
 # Create logs directory if it doesn't exist
 os.makedirs("logs", exist_ok=True)
@@ -99,8 +99,8 @@ async def proxy_request(request: Request, target_url: str):
             status_code=httpx_response.status_code,
             headers=response_headers,
         )
-    except httpx.RequestError as exc:
-        logger.exception(f"Error proxying request to {target_url}: {exc}")
+    except httpx.RequestError:
+        logger.exception(f"Error proxying request to {target_url}")
         return Response(content="Gateway Timeout", status_code=504)
 
 
@@ -123,12 +123,12 @@ async def gateway(path: str, request: Request):
     target_base = None
 
     for prefix, target in SORTED_ROUTES:
-        if request_path.startswith(prefix):
-            # Ensure it's a full segment match (e.g., /api/user doesn't match /api/users)
-            if len(request_path) == len(prefix) or request_path[len(prefix)] == "/":
-                matched_prefix = prefix
-                target_base = target
-                break
+        if request_path.startswith(prefix) and (
+            len(request_path) == len(prefix) or request_path[len(prefix)] == "/"
+        ):
+            matched_prefix = prefix
+            target_base = target
+            break
 
     if not matched_prefix:
         logger.warning(f"[GATEWAY] Service not found for path: {request_path}")

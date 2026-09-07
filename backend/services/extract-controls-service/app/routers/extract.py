@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from app.services.extraction_runner import (
@@ -32,7 +32,7 @@ _background_tasks = set()
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _iso(dt: datetime | None = None) -> str:
@@ -147,7 +147,7 @@ async def extract_framework_controls(framework_id: str, file_id: str):
         )
 
     except Exception as exc:
-        logger.exception(f"[API] Request failed: {exc}")
+        logger.exception("[API] Request failed")
         logger.exception("Framework extraction request error:")
         return server_error(str(exc))
 
@@ -272,7 +272,7 @@ async def extract_deployment_framework_controls(df_id: str, pkg_ver: str, file_i
         )
 
     except Exception as exc:
-        logger.exception(f"[API] Deployment Framework request failed: {exc}")
+        logger.exception("[API] Deployment Framework request failed")
         return server_error(str(exc))
 
 
@@ -330,7 +330,7 @@ async def merge_deployment_package(df_id: str, pkg_ver: str):
         )
 
     except Exception as exc:
-        logger.exception(f"[API] Package merge request failed: {exc}")
+        logger.exception("[API] Package merge request failed")
         return server_error(str(exc))
 
 
@@ -432,7 +432,7 @@ async def extract_deployment_document_controls(dd_id: str):
         )
 
     except Exception as exc:
-        logger.exception(f"[API]  Deployment Document request failed: {exc}")
+        logger.exception("[API]  Deployment Document request failed")
         return server_error(str(exc))
 
 
@@ -540,7 +540,7 @@ async def get_document_extraction(file_hash: str):
                     "updatedAt": _serialize_dt(doc_extraction.updatedAt),
                 },
             )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.error(f"[GET-EXTRACTION] Error for file_hash={file_hash}: {exc}")
         logger.exception("get_document_extraction error | file_hash=%s", file_hash)
         return server_error(str(exc))
@@ -601,7 +601,7 @@ async def list_document_extractions(page: int = 1, page_size: int = 10):
                 pagination=build_pagination_meta(page, page_size, total),
                 message=f"Retrieved {len(items)} document extractions",
             )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.error(f"[LIST-EXTRACTIONS] Error: {exc}")
         logger.exception("list_document_extractions error")
         return server_error(str(exc))
@@ -677,7 +677,7 @@ async def retry_extraction(extraction_id: str):
                 },
             )
 
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.error(f"[RETRY] ❌ Error for extraction_id={extraction_id}: {exc}")
         logger.exception("retry_extraction error")
         return server_error(str(exc))
@@ -766,7 +766,7 @@ async def retry_deployment_document_extraction(dd_id: str):
             },
         )
 
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.error(f"[RETRY-DD] ❌ Error for dd_id={dd_id}: {exc}")
         logger.exception("retry_deployment_document_extraction error")
         return server_error(str(exc))

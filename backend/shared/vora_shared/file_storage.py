@@ -55,7 +55,7 @@ class FramworkFilePathInfo:
 
 
 def generate_deployment_file_path(
-    original_name: str, user_id: str, category: str = "document", version: str = None
+    original_name: str, user_id: str, category: str = "document", version: str | None = None
 ) -> FilePathInfo:
     ext = Path(original_name).suffix
     name_without_ext = Path(original_name).stem
@@ -83,7 +83,7 @@ def _sanitize_version(version: str) -> str:
 
 
 def generate_framework_file_path(
-    original_name: str, user_id: str, framework_version: str = None
+    original_name: str, user_id: str, framework_version: str | None = None
 ) -> FramworkFilePathInfo:
     ext = Path(original_name).suffix
     name_without_ext = Path(original_name).stem

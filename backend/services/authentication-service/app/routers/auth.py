@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -57,7 +57,7 @@ async def _invalidate_tokens(user_id: str, *, password: str | None = None) -> No
         if not user:
             return
         user.tokenVersion += 1
-        user.updatedAt = datetime.now(timezone.utc)
+        user.updatedAt = datetime.now(UTC)
         if password is not None:
             user.password = password
 
@@ -88,7 +88,7 @@ async def register(body: RegisterRequest):
                 return error("Phone number already exists", 400, field="phone")
 
         otp = generate_otp()
-        otp_expiry = datetime.now(timezone.utc) + timedelta(minutes=5)
+        otp_expiry = datetime.now(UTC) + timedelta(minutes=5)
         hashed_password = hash_password(body.password)
 
         user_count = (await session.execute(select(func.count()).select_from(User))).scalar_one()
@@ -149,8 +149,8 @@ async def verify_otp(body: OtpVerifyRequest):
 
         expires_at = otp.expiresAt
         if expires_at.tzinfo is None:
-            expires_at = expires_at.replace(tzinfo=timezone.utc)
-        if expires_at < datetime.now(timezone.utc):
+            expires_at = expires_at.replace(tzinfo=UTC)
+        if expires_at < datetime.now(UTC):
             logger.warning(f"[VERIFY-OTP] OTP expired for: {body.email}")
             return error(msg.OTP_EXPIRED, 400, field="otp")
 
@@ -161,7 +161,7 @@ async def verify_otp(body: OtpVerifyRequest):
         user.isEmailVerified = True
         user.isActive = True
         user.otp = None
-        user.updatedAt = datetime.now(timezone.utc)
+        user.updatedAt = datetime.now(UTC)
         email = user.email
         logger.info(f"[VERIFY-OTP] Email verified successfully for: {email}")
 
@@ -172,14 +172,14 @@ async def verify_otp(body: OtpVerifyRequest):
 async def resend_otp(body: EmailOnlyRequest):
     logger.info(f"[RESEND-OTP] OTP resend request for: {body.email}")
     otp = generate_otp()
-    otp_expiry = datetime.now(timezone.utc) + timedelta(minutes=10)
+    otp_expiry = datetime.now(UTC) + timedelta(minutes=10)
     async with session_scope() as session:
         user = (await session.execute(select(User).where(User.email == body.email))).scalar_one_or_none()
         if not user:
             logger.warning(f"[RESEND-OTP] User not found: {body.email}")
             return error(msg.USER_NOT_FOUND_EMAIL, 400, field="email")
         user.otp = _otp_dict(UserOtp(code=otp, expiresAt=otp_expiry))
-        user.updatedAt = datetime.now(timezone.utc)
+        user.updatedAt = datetime.now(UTC)
         user_name = user.name
         user_id = user.id
 
@@ -218,7 +218,7 @@ async def login(body: LoginRequest):
             return error(msg.INVALID_CREDENTIALS, 400, field="password")
 
         user.tokenVersion += 1
-        user.updatedAt = datetime.now(timezone.utc)
+        user.updatedAt = datetime.now(UTC)
         await session.flush()
 
         token = sign_token(
@@ -244,7 +244,7 @@ async def login(body: LoginRequest):
 async def forgot_password(body: EmailOnlyRequest):
     logger.info(f"[FORGOT-PASSWORD] Password reset attempt for: {body.email}")
     otp = generate_otp()
-    otp_expiry = datetime.now(timezone.utc) + timedelta(minutes=5)
+    otp_expiry = datetime.now(UTC) + timedelta(minutes=5)
     async with session_scope() as session:
         user = (
             await session.execute(select(User).where(User.email == body.email, User.isActive.is_(True)))
@@ -253,7 +253,7 @@ async def forgot_password(body: EmailOnlyRequest):
             logger.warning(f"[FORGOT-PASSWORD] User not found or inactive: {body.email}")
             return error(msg.USER_NOT_FOUND_EMAIL, 400, field="email")
         user.otp = _otp_dict(UserOtp(code=otp, expiresAt=otp_expiry, purpose="password_reset"))
-        user.updatedAt = datetime.now(timezone.utc)
+        user.updatedAt = datetime.now(UTC)
         user_name = user.name
         user_id = user.id
 
@@ -296,8 +296,8 @@ async def reset_password(body: ResetPasswordRequest):
 
         expires_at = otp.expiresAt
         if expires_at.tzinfo is None:
-            expires_at = expires_at.replace(tzinfo=timezone.utc)
-        if expires_at < datetime.now(timezone.utc):
+            expires_at = expires_at.replace(tzinfo=UTC)
+        if expires_at < datetime.now(UTC):
             logger.warning(f"[RESET-PASSWORD] OTP expired for: {body.email}")
             return error(msg.OTP_EXPIRED, 400, field="otp")
 
@@ -312,7 +312,7 @@ async def reset_password(body: ResetPasswordRequest):
         user.password = hash_password(body.password)
         user.otp = None
         user.tokenVersion += 1
-        user.updatedAt = datetime.now(timezone.utc)
+        user.updatedAt = datetime.now(UTC)
         user_id = user.id
 
     logger.info(f"[RESET-PASSWORD] Password reset successfully for: {body.email} | user_id: {user_id}")
@@ -323,7 +323,7 @@ async def reset_password(body: ResetPasswordRequest):
 async def send_verification_otp(body: EmailOnlyRequest):
     logger.info(f"[VERIFY-EMAIL] Email verification OTP request for: {body.email}")
     otp = generate_otp()
-    otp_expiry = datetime.now(timezone.utc) + timedelta(minutes=5)
+    otp_expiry = datetime.now(UTC) + timedelta(minutes=5)
     async with session_scope() as session:
         user = (await session.execute(select(User).where(User.email == body.email))).scalar_one_or_none()
         if not user:
@@ -339,7 +339,7 @@ async def send_verification_otp(body: EmailOnlyRequest):
             return error(msg.EMAIL_ALREADY_VERIFIED, 400, field="email")
 
         user.otp = _otp_dict(UserOtp(code=otp, expiresAt=otp_expiry, purpose="email_verification"))
-        user.updatedAt = datetime.now(timezone.utc)
+        user.updatedAt = datetime.now(UTC)
         user_name = user.name
         user_id = user.id
 
@@ -386,7 +386,7 @@ async def change_password(
 
         user.password = hash_password(body.newPassword)
         user.tokenVersion += 1
-        user.updatedAt = datetime.now(timezone.utc)
+        user.updatedAt = datetime.now(UTC)
         user_id = ctx.user.id
 
     logger.info(f"[CHANGE-PASSWORD] Password changed successfully for user_id: {user_id}")

@@ -1,7 +1,7 @@
 import hashlib
 import hmac
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import jwt
@@ -22,7 +22,7 @@ def project_secret(settings: Settings, tenant_id: str | None) -> str:
         return settings.jwt_secret
     digest = hmac.new(
         settings.jwt_secret.encode("utf-8"),
-        f"{tenant_id}:{settings.jwt_project_salt}".encode("utf-8"),
+        f"{tenant_id}:{settings.jwt_project_salt}".encode(),
         hashlib.sha256,
     ).hexdigest()
     return digest
@@ -47,8 +47,8 @@ def sign_token(
 ) -> str:
     settings = settings or get_settings()
     body = {**payload}
-    body.setdefault("iat", datetime.now(timezone.utc))
-    body["exp"] = datetime.now(timezone.utc) + _parse_expires(settings.jwt_expires_in)
+    body.setdefault("iat", datetime.now(UTC))
+    body["exp"] = datetime.now(UTC) + _parse_expires(settings.jwt_expires_in)
     return jwt.encode(body, project_secret(settings, tenant_id), algorithm="HS256")
 
 
@@ -72,9 +72,9 @@ def get_tenant_id(
 
 
 def require_auth(
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),  # noqa: B008
     tenant_id: str | None = Depends(get_tenant_id),
-    settings: Settings = Depends(get_settings),
+    settings: Settings = Depends(get_settings),  # noqa: B008
 ) -> dict[str, Any]:
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise HTTPException(
@@ -168,9 +168,9 @@ def _validate_token_version(payload: dict[str, Any], user: User):
 
 
 async def authenticate(
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),  # noqa: B008
     header_tenant_id: str | None = Depends(get_tenant_id),
-    settings: Settings = Depends(get_settings),
+    settings: Settings = Depends(get_settings),  # noqa: B008
 ) -> AuthenticatedUser:
     """JWT auth against shared Postgres `users` table."""
     if credentials is None or credentials.scheme.lower() != "bearer":

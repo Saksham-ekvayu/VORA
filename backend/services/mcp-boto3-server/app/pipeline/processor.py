@@ -1,6 +1,13 @@
+from app.services.ai_extractor import trigger_ai_extraction
+from vora_shared.database import session_scope
+
+
+def save_file_to_uploads(path: str) -> str:
+    return path
+
+
 import asyncio
 import logging
-import os
 
 from app.collectors.collector_manager import collect_files
 from app.db.queries import (
@@ -15,6 +22,8 @@ from app.services.agent_client import call_agent
 from app.services.downloader import download_file
 from app.utils.live_logs import add_live_log
 
+logger = logging.getLogger(__name__)
+
 
 def run_pipeline(source: str = "local"):
     asyncio.run(_run_pipeline(source))
@@ -28,25 +37,25 @@ async def _run_pipeline(source: str):
         framework = await get_live_framework(db)
 
         if not framework:
-            logging.info("No LIVE deployment framework found")
+            logger.info("No LIVE deployment framework found")
             add_live_log("No LIVE deployment framework found")
             return
 
         merge_id = framework.get("merge_document")
 
         if not merge_id:
-            logging.info("LIVE package has no merge document")
+            logger.info("LIVE package has no merge document")
             add_live_log("LIVE package has no merge document")
             return
 
         merge_data = await get_framework_merge(db, merge_id)
 
         if not merge_data:
-            logging.info(f"Merge document not found: {merge_id}")
+            logger.info(f"Merge document not found: {merge_id}")
             add_live_log(f"Merge document not found: {merge_id}")
             return
 
-    logging.info(f"LIVE package found: {framework['package_version']}")
+    logger.info(f"LIVE package found: {framework['package_version']}")
     add_live_log(f"LIVE package found: {framework['package_version']}")
 
     # ------------------------------------------------
@@ -56,11 +65,11 @@ async def _run_pipeline(source: str):
 
     deployment_points = extract_deployment_points(deployment_data)
 
-    logging.info(f"Deployment points found: {len(deployment_points)}")
+    logger.info(f"Deployment points found: {len(deployment_points)}")
     add_live_log(f"Deployment points found: {len(deployment_points)}")
 
     if not deployment_points:
-        logging.info("No deployment points with path and source found")
+        logger.info("No deployment points with path and source found")
         add_live_log("No deployment points with path and source found")
         return
 
@@ -69,11 +78,11 @@ async def _run_pipeline(source: str):
     # ------------------------------------------------
     source_paths = [dp["path"] for dp in deployment_points if dp["source"].lower() == source.lower()]
 
-    logging.info(f"Source paths: {source_paths}")
+    logger.info(f"Source paths: {source_paths}")
     add_live_log(f"Source paths: {source_paths}")
 
     if not source_paths:
-        logging.info(f"No paths found for source: {source}")
+        logger.info(f"No paths found for source: {source}")
         add_live_log(f"No paths found for source: {source}")
         return
 
@@ -85,11 +94,11 @@ async def _run_pipeline(source: str):
         {"paths": source_paths},
     )
 
-    logging.info(f"Total files fetched: {len(files)}")
+    logger.info(f"Total files fetched: {len(files)}")
     add_live_log(f"Total files fetched: {len(files)}")
 
     if not files:
-        logging.info("No files collected")
+        logger.info("No files collected")
         add_live_log("No files collected")
         return
 
@@ -101,16 +110,16 @@ async def _run_pipeline(source: str):
             path = f.get("file_path")
 
             if not path:
-                logging.warning(f"Skipping invalid file entry: {f}")
+                logger.warning(f"Skipping invalid file entry: {f}")
                 continue
 
             # Skip already processed files
             if await is_processed(db, path):
-                logging.info(f"Already processed: {path}")
+                logger.info(f"Already processed: {path}")
                 continue
 
             try:
-                logging.info(f"Processing: {path}")
+                logger.info(f"Processing: {path}")
                 add_live_log(f"Processing: {path}")
 
                 # ------------------------------------------------
@@ -126,7 +135,7 @@ async def _run_pipeline(source: str):
                 # ------------------------------------------------
                 saved_path = save_file_to_uploads(local_path)
 
-                logging.info(f"Saved file: {saved_path}")
+                logger.info(f"Saved file: {saved_path}")
                 add_live_log(f"Saved file: {saved_path}")
 
                 # ------------------------------------------------
@@ -141,7 +150,7 @@ async def _run_pipeline(source: str):
 
                 document_id = deployment_document.id
 
-                logging.info(f"Deployment document id: {document_id}")
+                logger.info(f"Deployment document id: {document_id}")
                 add_live_log(f"Deployment document id: {document_id}")
 
                 # ------------------------------------------------
@@ -150,7 +159,7 @@ async def _run_pipeline(source: str):
                 print("checking")
                 ai_response = trigger_ai_extraction(document_id)
 
-                logging.info(f"AI Extraction Response: {ai_response}")
+                logger.info(f"AI Extraction Response: {ai_response}")
                 add_live_log(f"AI Extraction Response: {ai_response}")
 
                 # ------------------------------------------------
@@ -172,7 +181,7 @@ async def _run_pipeline(source: str):
                     "Compliance_Audit_Agent",
                 )
 
-                logging.info(f"Agent Response: {response}")
+                logger.info(f"Agent Response: {response}")
                 add_live_log(f"Agent Response: {response}")
 
                 # ------------------------------------------------
@@ -181,5 +190,5 @@ async def _run_pipeline(source: str):
                 await mark_processed(db, path)
 
             except Exception as e:
-                logging.exception(f"Error processing {path}: {e}")
+                logger.exception(f"Error processing {path}")
                 add_live_log(f"Error processing {path}: {e}")

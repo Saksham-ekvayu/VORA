@@ -82,10 +82,10 @@ async def get_admin_dashboard_analytics(
             f"[ADMIN-ANALYTICS] Dashboard loaded | users={len(all_users)} | customers={len(customers)} | frameworks={model_counts['totalFrameworks']}"
         )
         return success(response_data, MESSAGES["DASHBOARD_ANALYTICS_SUCCESS"])
-    except Exception as exc:
+    except Exception:
         import logging
 
         logger = logging.getLogger(__name__)
-        logger.exception(f"[ADMIN-ANALYTICS] Error: {exc}")
+        logger.exception("[ADMIN-ANALYTICS] Error")
         logger.exception("Dashboard analytics error")
         return error(MESSAGES["DASHBOARD_ANALYTICS_FAILED"], 500)

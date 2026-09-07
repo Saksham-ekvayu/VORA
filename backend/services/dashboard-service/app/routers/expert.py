@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
@@ -72,7 +72,7 @@ def _fmt_date(value) -> str:
         return ""
     if isinstance(value, str):
         try:
-            value = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            value = datetime.fromisoformat(value)
         except ValueError:
             return value
     if not hasattr(value, "strftime"):
@@ -83,13 +83,13 @@ def _fmt_date(value) -> str:
 def _subtract_months(d: datetime, months: int) -> datetime:
     total = d.year * 12 + (d.month - 1) - months
     year, month = divmod(total, 12)
-    return datetime(year, month + 1, 1)
+    return datetime(year, month + 1, 1, tzinfo=UTC)
 
 
 def _add_month(d: datetime) -> datetime:
     if d.month == 12:
-        return datetime(d.year + 1, 1, 1)
-    return datetime(d.year, d.month + 1, 1)
+        return datetime(d.year + 1, 1, 1, tzinfo=UTC)
+    return datetime(d.year, d.month + 1, 1, tzinfo=UTC)
 
 
 def _naive(dt: datetime) -> datetime:
@@ -99,13 +99,11 @@ def _naive(dt: datetime) -> datetime:
 def _generate_upload_trend(
     frameworks: list[Framework], start_date: str | None, end_date: str | None
 ) -> list[dict]:
-    trend_end = (
-        datetime.fromisoformat(end_date) if end_date else datetime.now(timezone.utc).replace(tzinfo=None)
-    )
+    trend_end = datetime.fromisoformat(end_date) if end_date else datetime.now(UTC).replace(tzinfo=None)
     trend_start = datetime.fromisoformat(start_date) if start_date else _subtract_months(trend_end, 5)
 
-    start_month = datetime(trend_start.year, trend_start.month, 1)
-    end_month = datetime(trend_end.year, trend_end.month, 1)
+    start_month = datetime(trend_start.year, trend_start.month, 1, tzinfo=UTC)
+    end_month = datetime(trend_end.year, trend_end.month, 1, tzinfo=UTC)
 
     months = []
     cursor = start_month
@@ -115,7 +113,7 @@ def _generate_upload_trend(
 
     result = []
     for month_date in months:
-        month_start = datetime(month_date.year, month_date.month, 1)
+        month_start = datetime(month_date.year, month_date.month, 1, tzinfo=UTC)
         month_end = _add_month(month_start)
         uploads = sum(
             1 for fw in frameworks if fw.createdAt and month_start <= _naive(fw.createdAt) < month_end
@@ -141,7 +139,7 @@ def _build_access_status_counts(access_records: list) -> dict:
 def _format_recent_uploads(frameworks: list[Framework], users_by_id: dict) -> list[dict]:
     sorted_fw = sorted(
         frameworks,
-        key=lambda f: f.createdAt or datetime.min.replace(tzinfo=timezone.utc),
+        key=lambda f: f.createdAt or datetime.min.replace(tzinfo=UTC),
         reverse=True,
     )[:5]
     return [
@@ -170,13 +168,13 @@ def _get_approval_sort_key(f: Framework):
     date_val = _approval_date(f) or f.updatedAt
     if isinstance(date_val, str):
         try:
-            date_val = datetime.fromisoformat(date_val.replace("Z", "+00:00"))
+            date_val = datetime.fromisoformat(date_val)
         except ValueError:
-            date_val = datetime.min.replace(tzinfo=timezone.utc)
+            date_val = datetime.min.replace(tzinfo=UTC)
     if date_val is None:
-        date_val = datetime.min.replace(tzinfo=timezone.utc)
+        date_val = datetime.min.replace(tzinfo=UTC)
     if getattr(date_val, "tzinfo", None) is None:
-        date_val = date_val.replace(tzinfo=timezone.utc)
+        date_val = date_val.replace(tzinfo=UTC)
     return date_val
 
 
