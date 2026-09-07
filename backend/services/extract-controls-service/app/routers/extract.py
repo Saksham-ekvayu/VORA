@@ -508,8 +508,7 @@ async def get_deployment_document(dd_id: str):
                 },
             )
     except Exception as exc:
-        logger.exception(f"[GET-DD] Error for dd_id={dd_id}: {exc}")
-        logger.exception("get_deployment_document error")
+        logger.exception("[GET-DD] Error for dd_id=%s", dd_id)
         return server_error(str(exc))
 
 
@@ -568,8 +567,7 @@ async def get_document_extraction(file_hash: str):
                 },
             )
     except Exception as exc:
-        logger.exception(f"[GET-EXTRACTION] Error for file_hash={file_hash}: {exc}")
-        logger.exception("get_document_extraction error | file_hash=%s", file_hash)
+        logger.exception("[GET-EXTRACTION] Error for file_hash=%s", file_hash)
         return server_error(str(exc))
 
 
@@ -629,8 +627,7 @@ async def list_document_extractions(page: int = 1, page_size: int = 10):
                 message=f"Retrieved {len(items)} document extractions",
             )
     except Exception as exc:
-        logger.exception(f"[LIST-EXTRACTIONS] Error: {exc}")
-        logger.exception("list_document_extractions error")
+        logger.exception("[LIST-EXTRACTIONS] Error")
         return server_error(str(exc))
 
 
@@ -705,8 +702,7 @@ async def retry_extraction(extraction_id: str):
             )
 
     except Exception as exc:
-        logger.exception(f"[RETRY] ❌ Error for extraction_id={extraction_id}: {exc}")
-        logger.exception("retry_extraction error")
+        logger.exception("[RETRY] Error for extraction_id=%s", extraction_id)
         return server_error(str(exc))
 
 
@@ -794,6 +790,5 @@ async def retry_deployment_document_extraction(dd_id: str):
         )
 
     except Exception as exc:
-        logger.exception(f"[RETRY-DD] ❌ Error for dd_id={dd_id}: {exc}")
-        logger.exception("retry_deployment_document_extraction error")
+        logger.exception("[RETRY-DD] Error for dd_id=%s", dd_id)
         return server_error(str(exc))
