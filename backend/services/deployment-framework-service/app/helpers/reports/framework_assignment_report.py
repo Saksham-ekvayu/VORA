@@ -10,9 +10,12 @@ from typing import Any
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import (
+    BaseDocTemplate,
+    Frame,
+    NextPageTemplate,
     PageBreak,
+    PageTemplate,
     Paragraph,
-    SimpleDocTemplate,
     Spacer,
     Table,
     TableStyle,
@@ -25,6 +28,7 @@ from vora_shared.pdf import (
     control_separator,
     draw_common_footer,
     format_pdf_date,
+    get_shared_frame,
     get_shared_styles,
 )
 
@@ -55,44 +59,55 @@ def _safe_get(obj: Any, key: str, default: Any = None) -> Any:
 
 
 def _add_header_section(story: list[Any], assignment: Any, file_version: Any, customer: Any):
-    story.append(Paragraph("<u>Assigned Framework Report</u>", _styles_dict["title"]))
-    story.append(Spacer(1, 10))
-
+    from reportlab.platypus import HRFlowable
     fw_name = assignment.frameworkName or assignment.frameworkCode
-    story.append(Paragraph(fw_name, _styles_dict["h1"]))
-    story.append(
-        Paragraph(
-            f"Version: {assignment.frameworkVersion or '-'} &nbsp;|&nbsp; Current: v{file_version.fileVersion}",
-            _styles_dict["meta"],
-        )
-    )
-    story.append(
-        Paragraph(
-            f"Created On: {format_pdf_date(assignment.createdAt)} &nbsp;|&nbsp; "
-            f"Updated On: {format_pdf_date(assignment.updatedAt)}",
-            _styles_dict["meta"],
-        )
-    )
-    story.append(
-        Paragraph(
-            f"Customer: {_display_user(customer)} &nbsp;|&nbsp; "
-            f"Assigned By: {_display_user(_safe_get(assignment.assignment, 'assignedBy'))} "
-            f"on {format_pdf_date(_safe_get(assignment.assignment, 'assignedAt'))}",
-            _styles_dict["meta"],
-        )
-    )
-    story.append(
-        Paragraph(
-            f"Assignment Status: {str(assignment.status or 'assigned').upper()} &nbsp;|&nbsp; "
-            f"Finalization: {'FINALIZED' if _safe_get(assignment.finalization, 'isFinalized') else 'PENDING'}",
-            _styles_dict["meta"],
-        )
-    )
-    story.append(Spacer(1, 10 * mm))
+    
+    # Custom cover styles
+    over_title = ParagraphStyle('OverTitle', fontName='Helvetica-Bold', fontSize=10, textColor=COLORS['primary'], spaceAfter=20)
+    title1 = ParagraphStyle('Title1', fontName='Helvetica-Bold', fontSize=32, textColor=COLORS['dark_text'], leading=36, rightIndent=60*mm)
+    title2 = ParagraphStyle('Title2', fontName='Helvetica-Bold', fontSize=32, textColor=COLORS['primary'], leading=36, spaceAfter=20)
+    subtitle1 = ParagraphStyle('SubTitle1', fontName='Helvetica-Bold', fontSize=22, textColor=COLORS['dark_text'], leading=26, rightIndent=60*mm)
+    subtitle2 = ParagraphStyle('SubTitle2', fontName='Helvetica', fontSize=12, textColor=COLORS['muted_text'], spaceBefore=10, spaceAfter=30, rightIndent=60*mm)
+
+    # Content
+    story.append(Spacer(1, 30))
+    story.append(Paragraph("COMPLIANCE / SECURITY", over_title))
+    
+    story.append(Paragraph("Assigned Framework", title1))
+    story.append(Paragraph("Report", title2))
+    story.append(HRFlowable(width=45*mm, color=COLORS["primary"], thickness=3.5, spaceBefore=4, spaceAfter=20, hAlign="LEFT"))
+
+    story.append(Spacer(1, 10))
+    story.append(Paragraph(str(fw_name), subtitle1))
+    story.append(Paragraph("Framework assignment and compliance reference", subtitle2))
+
+    # Version Info Box
+    v_styles = {
+        'lbl': ParagraphStyle('Lbl', fontName='Helvetica-Bold', fontSize=8, textColor=COLORS['primary']),
+        'val': ParagraphStyle('Val', fontName='Helvetica', fontSize=12, textColor=COLORS['dark_text'], spaceBefore=5)
+    }
+    
+    col1 = [Paragraph("FRAMEWORK VERSION", v_styles['lbl']), Paragraph(str(assignment.frameworkVersion or '-'), v_styles['val'])]
+    col2 = [Paragraph("CURRENT VERSION", v_styles['lbl']), Paragraph(f"v{file_version.fileVersion}", v_styles['val'])]
+    
+    box_table = Table([[col1, col2]], colWidths=[80*mm, 80*mm])
+    box_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), COLORS['primary_light']),
+        ('ROUNDEDCORNERS', [8, 8, 8, 8]),
+        ('BOX', (0,0), (-1,-1), 0.5, COLORS['border']),
+        ('LINEBEFORE', (1,0), (1,-1), 0.5, COLORS['border']),
+        ('LEFTPADDING', (0,0), (-1,-1), 15),
+        ('RIGHTPADDING', (0,0), (-1,-1), 15),
+        ('TOPPADDING', (0,0), (-1,-1), 15),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 15),
+    ]))
+    story.append(box_table)
 
 
 def _add_stats_section(
     story: list[Any],
+    assignment: Any,
+    customer: Any,
     sections: list[Any],
     applicable_controls: list[Any],
     controls: list[Any],
@@ -100,6 +115,40 @@ def _add_stats_section(
     org_specific_controls: int,
     avg_customer_weightage: float,
 ):
+    # Assignment Information Table
+    story.append(Paragraph("Assignment Information", _styles_dict["section_title"]))
+    story.append(Spacer(1, 4 * mm))
+    
+    def _make_cell(label, value):
+        if not label: return ""
+        return [
+            Paragraph(label, ParagraphStyle('AssigLabel', fontName='Helvetica-Bold', fontSize=8, textColor=COLORS['primary'])),
+            Paragraph(value, ParagraphStyle('AssigVal', fontName='Helvetica', fontSize=10, textColor=COLORS['dark_text'], spaceBefore=4))
+        ]
+
+    data = [
+        [_make_cell("CUSTOMER", _display_user(customer)), _make_cell("ASSIGNMENT STATUS", str(assignment.status or 'assigned').upper())],
+        [_make_cell("CREATED ON", format_pdf_date(assignment.createdAt)), _make_cell("ASSIGNED BY", _display_user(_safe_get(assignment.assignment, 'assignedBy')))],
+        [_make_cell("UPDATED ON", format_pdf_date(assignment.updatedAt)), _make_cell("ASSIGNED ON", format_pdf_date(_safe_get(assignment.assignment, 'assignedAt')))],
+        [_make_cell("FINALIZATION", 'FINALIZED' if _safe_get(assignment.finalization, 'isFinalized') else 'PENDING'), ""]
+    ]
+    
+    info_table = Table(data, colWidths=[80*mm, 80*mm], hAlign="LEFT")
+    info_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), COLORS['primary_light']),
+        ('ROUNDEDCORNERS', [8, 8, 8, 8]),
+        ('BOX', (0,0), (-1,-1), 0.5, COLORS['border']),
+        ('LINEBEFORE', (1,0), (1,-1), 0.5, COLORS['border']),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('TOPPADDING', (0,0), (-1,-1), 10),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 10),
+        ('LEFTPADDING', (0,0), (-1,-1), 16),
+        ('RIGHTPADDING', (0,0), (-1,-1), 16),
+    ]))
+    story.append(info_table)
+    
+    story.append(Spacer(1, 10 * mm))
+    story.append(Paragraph("Statistics", _styles_dict["section_title"]))
     stats = [
         ("SECTIONS", len(sections)),
         ("APPLICABLE CONTROLS", len(applicable_controls)),
@@ -146,14 +195,22 @@ def _add_control_header(story: list[Any], control: Any, doc_width: float, label_
         "AFRCtrlLabel", fontName="Helvetica", fontSize=8, textColor=accent, alignment=2
     )
 
+    name = control.name or ""
+    if name:
+        name = name[0].upper() + name[1:]
+    text = f"[{control.id}] {name}"
+    key = str(hash(text))
+    story.append(Paragraph(text, _styles_dict["toc_invisible_control"]))
+
     header_row = Table(
         [
             [
-                Paragraph(f"[{control.id}] {control.name}", title_style),
+                Paragraph(f'<a name="{key}"/>{text}', title_style),
                 Paragraph(label_text, label_style),
             ]
         ],
         colWidths=[doc_width * 0.65, doc_width * 0.35],
+        hAlign="LEFT"
     )
     header_row.setStyle(
         TableStyle(
@@ -200,8 +257,11 @@ def _add_controls_section(story: list[Any], sections: list[Any], doc_width: floa
 
     for section in sections:
         section_title = f"{section.id or ''} {section.name or ''}".strip()
+        key = str(hash(section_title))
+        story.append(Paragraph(section_title, _styles_dict["toc_invisible_section"]))
+        
         section_bar = Table(
-            [[Paragraph(section_title, _styles_dict["section_title"])]], colWidths=[doc_width]
+            [[Paragraph(f'<a name="{key}"/>{section_title}', _styles_dict["section_title"])]], colWidths=[doc_width], hAlign="LEFT"
         )
         section_bar.setStyle(
             TableStyle(
@@ -221,13 +281,113 @@ def _add_controls_section(story: list[Any], sections: list[Any], doc_width: floa
 
 
 def generate_framework_assignment_report_pdf(assignment: Any, file_version: Any, customer: Any) -> bytes:
+    from reportlab.lib import colors
+    from reportlab.platypus.tableofcontents import TableOfContents
+    
+    _styles_dict["toc_invisible_section"] = ParagraphStyle(name='TOCEntrySection', fontSize=0, leading=0, spaceBefore=0, spaceAfter=0, textColor=colors.transparent)
+    _styles_dict["toc_invisible_control"] = ParagraphStyle(name='TOCEntryControl', fontSize=0, leading=0, spaceBefore=0, spaceAfter=0, textColor=colors.transparent)
+
     buffer = BytesIO()
-    doc = SimpleDocTemplate(
+    
+    frame = get_shared_frame(id="normal")
+    cover_frame = Frame(
+        20 * mm,
+        REPORT_MARGINS["bottomMargin"],
+        REPORT_PAGESIZE[0] - (20 * mm + REPORT_MARGINS["rightMargin"]),
+        REPORT_PAGESIZE[1] - (REPORT_MARGINS["topMargin"] + REPORT_MARGINS["bottomMargin"]),
+        id="cover",
+    )
+
+    header_fw_name = assignment.frameworkName or assignment.frameworkCode or "Framework"
+    header_text = f"{str(header_fw_name).upper()} - VERSION {assignment.frameworkVersion or '-'}"
+
+    def page_callback(canvas, doc):
+        draw_common_footer(canvas, doc.page, REPORT_PAGESIZE, header_text)
+        
+    def cover_callback(canvas, doc):
+        canvas.saveState()
+        
+        sidebar_width = 8 * mm
+        canvas.setFillColor(COLORS["primary"])
+        canvas.rect(0, 0, sidebar_width, REPORT_PAGESIZE[1], fill=1, stroke=0)
+        
+        watermark_color = colors.HexColor("#ccfbf1")
+        canvas.setStrokeColor(watermark_color)
+        canvas.setLineWidth(1)
+        center_x, center_y = REPORT_PAGESIZE[0] - 60*mm, REPORT_PAGESIZE[1] + 20*mm
+        for radius in [40*mm, 50*mm, 60*mm, 70*mm]:
+            canvas.circle(center_x, center_y, radius, stroke=1, fill=0)
+            
+        canvas.setStrokeColor(colors.HexColor("#99f6e4"))
+        canvas.setFillColor(COLORS["primary"])
+        canvas.setLineWidth(0.5)
+        
+        nodes = [
+            (160*mm, 260*mm), (140*mm, 230*mm), (180*mm, 230*mm), 
+            (160*mm, 200*mm), (200*mm, 200*mm),
+        ]
+        edges = [(0,1), (0,2), (1,3), (2,3), (2,4), (3,4)]
+        
+        for start, end in edges:
+            canvas.line(nodes[start][0], nodes[start][1], nodes[end][0], nodes[end][1])
+        
+        for nx, ny in nodes:
+            canvas.circle(nx, ny, 2*mm, fill=1, stroke=0)
+            
+        canvas.setStrokeColor(watermark_color)
+        canvas.setLineWidth(8)
+        canvas.setLineJoin(1)
+        
+        shield_path = canvas.beginPath()
+        sx, sy = 160*mm, 90*mm
+        shield_path.moveTo(sx - 30*mm, sy + 30*mm)
+        shield_path.lineTo(sx + 30*mm, sy + 30*mm)
+        shield_path.lineTo(sx + 30*mm, sy - 10*mm)
+        shield_path.lineTo(sx, sy - 40*mm)
+        shield_path.lineTo(sx - 30*mm, sy - 10*mm)
+        shield_path.close()
+        canvas.drawPath(shield_path, stroke=1, fill=0)
+        
+        canvas.setLineWidth(6)
+        chk_path = canvas.beginPath()
+        chk_path.moveTo(sx - 12*mm, sy)
+        chk_path.lineTo(sx - 2*mm, sy - 10*mm)
+        chk_path.lineTo(sx + 18*mm, sy + 15*mm)
+        canvas.drawPath(chk_path, stroke=1, fill=0)
+
+        canvas.setStrokeColor(COLORS["border"])
+        canvas.setLineWidth(0.5)
+        margin = 25 * mm
+        canvas.line(margin, 20*mm, REPORT_PAGESIZE[0] - margin, 20*mm)
+        
+        canvas.setFont("Helvetica", 8)
+        canvas.setFillColor(COLORS["muted_text"])
+        canvas.drawString(margin, 15*mm, "Assigned Framework Report")
+        canvas.drawRightString(REPORT_PAGESIZE[0] - margin, 15*mm, f"v{file_version.fileVersion}")
+
+        canvas.restoreState()
+
+    class ReportDocTemplate(BaseDocTemplate):
+        def afterFlowable(self, flowable):
+            if flowable.__class__.__name__ == 'Paragraph':
+                style_name = getattr(flowable.style, 'name', '')
+                if style_name in ('TOCEntrySection', 'TOCEntryControl'):
+                    level = 0 if style_name == 'TOCEntrySection' else 1
+                    text = flowable.getPlainText()
+                    key = str(hash(text))
+                    linked_text = f'<a href="#{key}" color="black">{text}</a>'
+                    self.notify('TOCEntry', (level, linked_text, self.page))
+
+    doc = ReportDocTemplate(
         buffer,
         pagesize=REPORT_PAGESIZE,
         **REPORT_MARGINS,
         title="Assigned Framework Report",
     )
+    doc.addPageTemplates([
+        PageTemplate(id="cover", frames=[cover_frame], onPage=cover_callback),
+        PageTemplate(id="report", frames=[frame], onPage=page_callback)
+    ])
 
     sections = file_version.aiExtraction or []
     controls = [c for s in sections for c in (s.controls or [])]
@@ -258,8 +418,24 @@ def generate_framework_assignment_report_pdf(assignment: Any, file_version: Any,
     story: list[Any] = []
 
     _add_header_section(story, assignment, file_version, customer)
+    story.append(NextPageTemplate("report"))
+    story.append(PageBreak())
+    
+    # TOC
+    story.append(Paragraph("Table of Contents", _styles_dict["h1"]))
+    story.append(Spacer(1, 10))
+    toc = TableOfContents()
+    toc.levelStyles = [
+        ParagraphStyle(fontName='Helvetica-Bold', fontSize=10, name='TOCHeading1', leftIndent=20, firstLineIndent=-20, spaceBefore=5, leading=14),
+        ParagraphStyle(fontName='Helvetica', fontSize=9, name='TOCHeading2', leftIndent=40, firstLineIndent=-20, spaceBefore=0, leading=12),
+    ]
+    story.append(toc)
+    story.append(PageBreak())
+
     _add_stats_section(
         story,
+        assignment,
+        customer,
         sections,
         applicable_controls,
         controls,
@@ -267,12 +443,7 @@ def generate_framework_assignment_report_pdf(assignment: Any, file_version: Any,
         org_specific_controls,
         avg_customer_weightage,
     )
-    _add_controls_section(story, sections, doc.width)
+    _add_controls_section(story, sections, frame.width)
 
-    def _footer(canvas, doc_):
-        header_fw_name = assignment.frameworkName or assignment.frameworkCode or "Framework"
-        header_text = f"{str(header_fw_name).upper()} - VERSION {assignment.frameworkVersion or '-'}"
-        draw_common_footer(canvas, doc_.page, REPORT_PAGESIZE, header_text)
-
-    doc.build(story, onFirstPage=_footer, onLaterPages=_footer)
+    doc.multiBuild(story)
     return buffer.getvalue()
