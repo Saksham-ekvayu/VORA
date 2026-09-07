@@ -30,6 +30,10 @@ from vora_shared.pdf import (
     format_pdf_date,
     get_shared_frame,
     get_shared_styles,
+    get_cover_frame,
+    get_cover_callback,
+    VoraDocTemplate,
+    build_toc_story,
 )
 
 _styles_dict = get_shared_styles()
@@ -62,24 +66,17 @@ def _add_header_section(story: list[Any], assignment: Any, file_version: Any, cu
     from reportlab.platypus import HRFlowable
     fw_name = assignment.frameworkName or assignment.frameworkCode
     
-    # Custom cover styles
-    over_title = ParagraphStyle('OverTitle', fontName='Helvetica-Bold', fontSize=10, textColor=COLORS['primary'], spaceAfter=20)
-    title1 = ParagraphStyle('Title1', fontName='Helvetica-Bold', fontSize=32, textColor=COLORS['dark_text'], leading=36, rightIndent=60*mm)
-    title2 = ParagraphStyle('Title2', fontName='Helvetica-Bold', fontSize=32, textColor=COLORS['primary'], leading=36, spaceAfter=20)
-    subtitle1 = ParagraphStyle('SubTitle1', fontName='Helvetica-Bold', fontSize=22, textColor=COLORS['dark_text'], leading=26, rightIndent=60*mm)
-    subtitle2 = ParagraphStyle('SubTitle2', fontName='Helvetica', fontSize=12, textColor=COLORS['muted_text'], spaceBefore=10, spaceAfter=30, rightIndent=60*mm)
-
     # Content
     story.append(Spacer(1, 30))
-    story.append(Paragraph("COMPLIANCE / SECURITY", over_title))
+    story.append(Paragraph("COMPLIANCE / SECURITY", _styles_dict["cover_over_title"]))
     
-    story.append(Paragraph("Assigned Framework", title1))
-    story.append(Paragraph("Report", title2))
+    story.append(Paragraph("Assigned Framework", _styles_dict["cover_title1"]))
+    story.append(Paragraph("Report", _styles_dict["cover_title2"]))
     story.append(HRFlowable(width=45*mm, color=COLORS["primary"], thickness=3.5, spaceBefore=4, spaceAfter=20, hAlign="LEFT"))
 
     story.append(Spacer(1, 10))
-    story.append(Paragraph(str(fw_name), subtitle1))
-    story.append(Paragraph("Framework assignment and compliance reference", subtitle2))
+    story.append(Paragraph(str(fw_name), _styles_dict["cover_subtitle1"]))
+    story.append(Paragraph("Framework assignment and compliance reference", _styles_dict["cover_subtitle2"]))
 
     # Version Info Box
     v_styles = {
@@ -281,22 +278,10 @@ def _add_controls_section(story: list[Any], sections: list[Any], doc_width: floa
 
 
 def generate_framework_assignment_report_pdf(assignment: Any, file_version: Any, customer: Any) -> bytes:
-    from reportlab.lib import colors
-    from reportlab.platypus.tableofcontents import TableOfContents
-    
-    _styles_dict["toc_invisible_section"] = ParagraphStyle(name='TOCEntrySection', fontSize=0, leading=0, spaceBefore=0, spaceAfter=0, textColor=colors.transparent)
-    _styles_dict["toc_invisible_control"] = ParagraphStyle(name='TOCEntryControl', fontSize=0, leading=0, spaceBefore=0, spaceAfter=0, textColor=colors.transparent)
-
     buffer = BytesIO()
     
     frame = get_shared_frame(id="normal")
-    cover_frame = Frame(
-        20 * mm,
-        REPORT_MARGINS["bottomMargin"],
-        REPORT_PAGESIZE[0] - (20 * mm + REPORT_MARGINS["rightMargin"]),
-        REPORT_PAGESIZE[1] - (REPORT_MARGINS["topMargin"] + REPORT_MARGINS["bottomMargin"]),
-        id="cover",
-    )
+    cover_frame = get_cover_frame(id="cover")
 
     header_fw_name = assignment.frameworkName or assignment.frameworkCode or "Framework"
     header_text = f"{str(header_fw_name).upper()} - VERSION {assignment.frameworkVersion or '-'}"
@@ -304,81 +289,9 @@ def generate_framework_assignment_report_pdf(assignment: Any, file_version: Any,
     def page_callback(canvas, doc):
         draw_common_footer(canvas, doc.page, REPORT_PAGESIZE, header_text)
         
-    def cover_callback(canvas, doc):
-        canvas.saveState()
-        
-        sidebar_width = 8 * mm
-        canvas.setFillColor(COLORS["primary"])
-        canvas.rect(0, 0, sidebar_width, REPORT_PAGESIZE[1], fill=1, stroke=0)
-        
-        watermark_color = colors.HexColor("#ccfbf1")
-        canvas.setStrokeColor(watermark_color)
-        canvas.setLineWidth(1)
-        center_x, center_y = REPORT_PAGESIZE[0] - 60*mm, REPORT_PAGESIZE[1] + 20*mm
-        for radius in [40*mm, 50*mm, 60*mm, 70*mm]:
-            canvas.circle(center_x, center_y, radius, stroke=1, fill=0)
-            
-        canvas.setStrokeColor(colors.HexColor("#99f6e4"))
-        canvas.setFillColor(COLORS["primary"])
-        canvas.setLineWidth(0.5)
-        
-        nodes = [
-            (160*mm, 260*mm), (140*mm, 230*mm), (180*mm, 230*mm), 
-            (160*mm, 200*mm), (200*mm, 200*mm),
-        ]
-        edges = [(0,1), (0,2), (1,3), (2,3), (2,4), (3,4)]
-        
-        for start, end in edges:
-            canvas.line(nodes[start][0], nodes[start][1], nodes[end][0], nodes[end][1])
-        
-        for nx, ny in nodes:
-            canvas.circle(nx, ny, 2*mm, fill=1, stroke=0)
-            
-        canvas.setStrokeColor(watermark_color)
-        canvas.setLineWidth(8)
-        canvas.setLineJoin(1)
-        
-        shield_path = canvas.beginPath()
-        sx, sy = 160*mm, 90*mm
-        shield_path.moveTo(sx - 30*mm, sy + 30*mm)
-        shield_path.lineTo(sx + 30*mm, sy + 30*mm)
-        shield_path.lineTo(sx + 30*mm, sy - 10*mm)
-        shield_path.lineTo(sx, sy - 40*mm)
-        shield_path.lineTo(sx - 30*mm, sy - 10*mm)
-        shield_path.close()
-        canvas.drawPath(shield_path, stroke=1, fill=0)
-        
-        canvas.setLineWidth(6)
-        chk_path = canvas.beginPath()
-        chk_path.moveTo(sx - 12*mm, sy)
-        chk_path.lineTo(sx - 2*mm, sy - 10*mm)
-        chk_path.lineTo(sx + 18*mm, sy + 15*mm)
-        canvas.drawPath(chk_path, stroke=1, fill=0)
+    cover_callback = get_cover_callback("Assigned Framework Report", f"v{file_version.fileVersion}")
 
-        canvas.setStrokeColor(COLORS["border"])
-        canvas.setLineWidth(0.5)
-        margin = 25 * mm
-        canvas.line(margin, 20*mm, REPORT_PAGESIZE[0] - margin, 20*mm)
-        
-        canvas.setFont("Helvetica", 8)
-        canvas.setFillColor(COLORS["muted_text"])
-        canvas.drawString(margin, 15*mm, "Assigned Framework Report")
-        canvas.drawRightString(REPORT_PAGESIZE[0] - margin, 15*mm, f"v{file_version.fileVersion}")
-
-        canvas.restoreState()
-
-    class ReportDocTemplate(BaseDocTemplate):
-        def afterFlowable(self, flowable):
-            if flowable.__class__.__name__ == 'Paragraph':
-                style_name = getattr(flowable.style, 'name', '')
-                if style_name in ('TOCEntrySection', 'TOCEntryControl'):
-                    level = 0 if style_name == 'TOCEntrySection' else 1
-                    text = flowable.getPlainText()
-                    key = str(hash(text))
-                    linked_text = f'<a href="#{key}" color="black">{text}</a>'
-                    self.notify('TOCEntry', (level, linked_text, self.page))
-
-    doc = ReportDocTemplate(
+    doc = VoraDocTemplate(
         buffer,
         pagesize=REPORT_PAGESIZE,
         **REPORT_MARGINS,
@@ -422,15 +335,7 @@ def generate_framework_assignment_report_pdf(assignment: Any, file_version: Any,
     story.append(PageBreak())
     
     # TOC
-    story.append(Paragraph("Table of Contents", _styles_dict["h1"]))
-    story.append(Spacer(1, 10))
-    toc = TableOfContents()
-    toc.levelStyles = [
-        ParagraphStyle(fontName='Helvetica-Bold', fontSize=10, name='TOCHeading1', leftIndent=20, firstLineIndent=-20, spaceBefore=5, leading=14),
-        ParagraphStyle(fontName='Helvetica', fontSize=9, name='TOCHeading2', leftIndent=40, firstLineIndent=-20, spaceBefore=0, leading=12),
-    ]
-    story.append(toc)
-    story.append(PageBreak())
+    story.extend(build_toc_story(_styles_dict))
 
     _add_stats_section(
         story,
