@@ -81,8 +81,9 @@ function buildStats(stats) {
     {
       title: "Framework Approval Progress",
       value: `${stats.approvalProgress || 0}%`,
-      description: `${stats.approvedUploads || 0} approved out of ${stats.totalUploads || 0
-        } uploaded frameworks`,
+      description: `${stats.approvedUploads || 0} approved out of ${
+        stats.totalUploads || 0
+      } uploaded frameworks`,
       actionPath: "/frameworks?approvalStatus=approved",
       icon: "award",
       iconColor: "text-orange-500",

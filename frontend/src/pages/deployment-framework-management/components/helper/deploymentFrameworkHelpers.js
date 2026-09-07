@@ -312,7 +312,11 @@ export const buildGateSteps = (currentReviewPackage) => {
     getComparisonStep(currentReviewPackage.comparison),
     getGapAnalysisStep(currentReviewPackage.gapAnalysis),
     getExpertReviewStep(currentReviewPackage.expertReview),
-    getDeployStep(isLive, currentReviewPackage.expertReview?.status === STATUS_APPROVED, currentReviewPackage.packageVersion),
+    getDeployStep(
+      isLive,
+      currentReviewPackage.expertReview?.status === STATUS_APPROVED,
+      currentReviewPackage.packageVersion
+    ),
   ];
 };
 
