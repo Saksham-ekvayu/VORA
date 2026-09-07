@@ -236,7 +236,7 @@ export default function DeploymentFrameworkPackageTable({
                               status.buttonDisabled ||
                               uploadingFileId === doc.fileId
                             }
-                            className={status.buttonClass}
+                            // className={status.buttonClass}
                             onClick={() => handleAiExtraction(doc.fileId)}
                           >
                             <Icon name={status.buttonIcon} size={11} />

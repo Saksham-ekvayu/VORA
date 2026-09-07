@@ -87,10 +87,11 @@ export default function SearchInput({
         )}
         {hasValue && !isSearching && (
           <Button
+            type="button"
             variant="ghost"
             size="icon"
             onClick={handleClear}
-            className="h-5 w-5 hover:bg-accent rounded-full"
+            className="h-5 w-5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-full"
             title="Clear search"
           >
             <Icon name="close" size="12px" />

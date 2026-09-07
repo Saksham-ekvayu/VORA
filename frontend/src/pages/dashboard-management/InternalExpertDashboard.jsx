@@ -184,12 +184,12 @@ export default function InternalExpertDashboard() {
           </div>
         </TableCell>
         <TableCell className="px-5 py-3 text-right">
-          <Button size="xs">
+          <Button size="xs" variant={item.reviewStatus?.toLowerCase() === "approved" ? "outline" : "default"}>
             <Link
               to={`/deployment-frameworks/${item.id}/comparison-and-gap-analysis?package-version=${item.packageVersion}`}
               className="flex items-center gap-1"
             >
-              Review Now
+              {item.reviewStatus?.toLowerCase() === "approved" ? "View" : "Review Now"}
               <Icon name="chevron-right" size="16px" />
             </Link>
           </Button>
@@ -255,7 +255,7 @@ export default function InternalExpertDashboard() {
               iconBg="bg-primary/10"
               borderColor="border-primary/40"
               title="Pending Review Framework"
-              navigation="/pending-reviews"
+              navigation="/deployment-frameworks?requestReviewStatus=pending"
             >
               {isLoading || !dashboardData ? (
                 <Skeleton className="h-10 w-16 mt-1" />
@@ -271,7 +271,7 @@ export default function InternalExpertDashboard() {
               iconBg="bg-secondary/10"
               borderColor="border-secondary/40"
               title="In Review Framework"
-              navigation="/in-review"
+              navigation="/deployment-frameworks"
             >
               {isLoading || !dashboardData ? (
                 <Skeleton className="h-10 w-16 mt-1" />
@@ -287,7 +287,7 @@ export default function InternalExpertDashboard() {
               iconBg="bg-green-500/10"
               borderColor="border-green-500/40"
               title="Approved Framework"
-              navigation="/approved"
+              navigation="/deployment-frameworks?requestReviewStatus=approved"
             >
               {isLoading || !dashboardData ? (
                 <Skeleton className="h-10 w-16 mt-1" />
@@ -303,7 +303,7 @@ export default function InternalExpertDashboard() {
               iconBg="bg-destructive/10"
               borderColor="border-destructive/40"
               title="Returned Framework"
-              navigation="/returned"
+              navigation="/deployment-frameworks?requestReviewStatus=rejected"
             >
               {isLoading || !dashboardData ? (
                 <Skeleton className="h-10 w-16 mt-1" />

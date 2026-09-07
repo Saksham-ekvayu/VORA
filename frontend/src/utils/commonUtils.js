@@ -309,7 +309,7 @@ export const aiExtractionConfig = {
     label: "Pending",
     icon: "hourglass",
     textClass: "text-amber-600 dark:text-amber-400",
-    buttonText: "Extract Controls",
+    buttonText: "Extract",
     buttonIcon: "ai-bot",
     buttonDisabled: false,
     buttonClass:
@@ -320,7 +320,7 @@ export const aiExtractionConfig = {
     label: "Uploaded",
     icon: "upload-cloud",
     textClass: "text-blue-600 dark:text-blue-400",
-    buttonText: "Extract Controls",
+    buttonText: "Extract",
     buttonIcon: "ai-bot",
     buttonDisabled: true,
     buttonClass:
@@ -331,7 +331,7 @@ export const aiExtractionConfig = {
     label: "Processing",
     icon: "loader",
     textClass: "text-violet-600 dark:text-violet-400 animate-pulse",
-    buttonText: "Extract Controls",
+    buttonText: "Extract",
     buttonIcon: "ai-bot",
     buttonDisabled: true,
     buttonClass:
@@ -342,7 +342,7 @@ export const aiExtractionConfig = {
     label: "Extracted",
     icon: "check-circle",
     textClass: "text-green-600 dark:text-green-400",
-    buttonText: "Extract Controls",
+    buttonText: "Extract",
     buttonIcon: "ai-bot",
     buttonDisabled: true,
     buttonClass:

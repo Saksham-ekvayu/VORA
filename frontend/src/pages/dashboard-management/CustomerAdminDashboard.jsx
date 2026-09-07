@@ -551,8 +551,8 @@ export default function CustomerAdminDashboard() {
     activeSetupProgress.percentage ??
     (activeSetupProgress.total
       ? Math.round(
-          (activeSetupProgress.configured / activeSetupProgress.total) * 100
-        )
+        (activeSetupProgress.configured / activeSetupProgress.total) * 100
+      )
       : 0);
 
   const getMonitoringSetupValue = () => {
@@ -708,7 +708,7 @@ export default function CustomerAdminDashboard() {
 
         {/* Framework Timeline Chart */}
         <CardWrapper
-          title="Deployed Frameworks"
+          title="Assigned Frameworks"
           right={
             <div className="flex items-center gap-2">
               <Link

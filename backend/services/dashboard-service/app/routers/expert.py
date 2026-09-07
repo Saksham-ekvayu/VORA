@@ -92,8 +92,8 @@ def _add_month(d: datetime) -> datetime:
     return datetime(d.year, d.month + 1, 1, tzinfo=UTC)
 
 
-def _naive(dt: datetime) -> datetime:
-    return dt.replace(tzinfo=None) if dt.tzinfo else dt
+def _aware(dt: datetime) -> datetime:
+    return dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt
 
 
 def _generate_upload_trend(
@@ -116,7 +116,7 @@ def _generate_upload_trend(
         month_start = datetime(month_date.year, month_date.month, 1, tzinfo=UTC)
         month_end = _add_month(month_start)
         uploads = sum(
-            1 for fw in frameworks if fw.createdAt and month_start <= _naive(fw.createdAt) < month_end
+            1 for fw in frameworks if fw.createdAt and month_start <= _aware(fw.createdAt) < month_end
         )
         label = (
             f"{MONTH_NAMES[month_date.month - 1]} {month_date.year}"

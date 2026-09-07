@@ -16,9 +16,6 @@ export const ExpertDashboard = lazy(
 export const CustomerAdminDashboard = lazy(
   () => import("@/pages/dashboard-management/CustomerAdminDashboard")
 );
-export const CustomerExpertDashboard = lazy(
-  () => import("@/pages/dashboard-management/CustomerExpertDashboard")
-);
 export const UserDashboard = lazy(
   () => import("@/pages/dashboard-management/UserDashboard")
 );
