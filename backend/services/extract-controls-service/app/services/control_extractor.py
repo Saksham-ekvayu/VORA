@@ -684,9 +684,7 @@ TEXT:
 Return ONLY JSON. No markdown. No text outside JSON."""
 
 
-def _run_completeness_attempt(
-    prompt: str, round_num: int, attempt: int
-) -> tuple[list | None, bool]:
+def _run_completeness_attempt(prompt: str, round_num: int, attempt: int) -> tuple[list | None, bool]:
     try:
         t_start = datetime.now(UTC)
         response = get_openai_client().chat.completions.create(
@@ -698,8 +696,7 @@ def _run_completeness_attempt(
         )
         elapsed = (datetime.now(UTC) - t_start).total_seconds()
         finish_reason = _log_llm_call(
-            f"EXTRACT-COMPLETENESS-round{round_num}"
-            f"{'' if attempt == 1 else f'-retry{attempt}'}",
+            f"EXTRACT-COMPLETENESS-round{round_num}" f"{'' if attempt == 1 else f'-retry{attempt}'}",
             response,
             elapsed,
         )
@@ -783,12 +780,8 @@ def _run_completeness_check(text: str, controls: list, structural_rule: str) -> 
         return all_controls
 
     for round_num in range(1, COMPLETENESS_MAX_ROUNDS + 1):
-        schema_fields = (
-            '{"Control_id": "","Control_name": "","Control_type":"","Control_description": "","Section_name": ""}'
-        )
-        completeness_prompt = _build_completeness_prompt(
-            text, seen_ids, structural_rule, schema_fields
-        )
+        schema_fields = '{"Control_id": "","Control_name": "","Control_type":"","Control_description": "","Section_name": ""}'
+        completeness_prompt = _build_completeness_prompt(text, seen_ids, structural_rule, schema_fields)
         round_missing = _run_completeness_round(completeness_prompt, round_num)
         if round_missing is None:
             break
@@ -922,9 +915,7 @@ def _parse_stage1_response(
         parsed = json.loads(raw_content)
         if isinstance(parsed, list):
             return parsed, best_salvage, False
-        logger.warning(
-            f"[EXTRACT] {tag} attempt {attempt}: parsed JSON was not a list — treating as empty"
-        )
+        logger.warning(f"[EXTRACT] {tag} attempt {attempt}: parsed JSON was not a list — treating as empty")
         return [], best_salvage, False
     except json.JSONDecodeError as exc:
         logger.warning(
@@ -937,9 +928,7 @@ def _parse_stage1_response(
         return [], best_salvage, attempt < TRUNCATION_RETRY_ATTEMPTS
 
 
-def _run_stage1_attempt(
-    prompt: str, tag: str, attempt: int, best_salvage: list
-) -> tuple[list, list, bool]:
+def _run_stage1_attempt(prompt: str, tag: str, attempt: int, best_salvage: list) -> tuple[list, list, bool]:
     try:
         t_start = datetime.now(UTC)
         response = get_openai_client().chat.completions.create(
@@ -950,9 +939,7 @@ def _run_stage1_attempt(
             timeout=3600,
         )
         elapsed = (datetime.now(UTC) - t_start).total_seconds()
-        finish_reason = _log_llm_call(
-            f"{tag}{'' if attempt == 1 else f'-retry{attempt}'}", response, elapsed
-        )
+        finish_reason = _log_llm_call(f"{tag}{'' if attempt == 1 else f'-retry{attempt}'}", response, elapsed)
         return _parse_stage1_response(
             response.choices[0].message.content, tag, attempt, finish_reason, best_salvage
         )
@@ -973,9 +960,7 @@ def _run_stage1_call(prompt: str, tag: str) -> list:
     best_salvage: list = []
 
     for attempt in range(1, TRUNCATION_RETRY_ATTEMPTS + 1):
-        result, best_salvage, retry = _run_stage1_attempt(
-            prompt, tag, attempt, best_salvage
-        )
+        result, best_salvage, retry = _run_stage1_attempt(prompt, tag, attempt, best_salvage)
         if result or not retry:
             return result or best_salvage
 
@@ -1505,9 +1490,7 @@ def _control_entry(ctrl: dict, idx: int, resource_type: str) -> tuple[str, dict,
     )
 
 
-def _sub_control_entries(
-    ctrl_id: str, ordered_ids: list[str], control_by_id: dict[str, dict]
-) -> list[dict]:
+def _sub_control_entries(ctrl_id: str, ordered_ids: list[str], control_by_id: dict[str, dict]) -> list[dict]:
     entries = []
     for other_id in ordered_ids:
         other_parts = _split_id(other_id)
@@ -1535,17 +1518,11 @@ def _structure_section_key(ctrl_id: str) -> str:
     return f"{parts[0]}.{parts[1]}".upper() if len(parts) >= 2 else parts[0].upper()
 
 
-def _ensure_structure_section(
-    sections: dict, section_key: str, display_name: str
-) -> None:
+def _ensure_structure_section(sections: dict, section_key: str, display_name: str) -> None:
     if section_key and section_key not in sections:
         sections[section_key] = {
             "id": section_key,
-            "name": (
-                clean_section_name(display_name).title()
-                if display_name
-                else f"Section {section_key}"
-            ),
+            "name": (clean_section_name(display_name).title() if display_name else f"Section {section_key}"),
             "controls": [],
         }
 

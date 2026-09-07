@@ -5,9 +5,9 @@ import sys
 # Ensure we can import from vora_shared
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from vora_shared.config import get_settings
-from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
+from vora_shared.config import get_settings
 
 
 async def drop_alembic():

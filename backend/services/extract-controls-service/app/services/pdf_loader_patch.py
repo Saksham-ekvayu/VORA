@@ -162,8 +162,8 @@ def _ocr_extract(file_path: str) -> list[str]:
     try:
         import pytesseract
         from pdf2image import convert_from_path
-    except ImportError as e:
-        logger.exception(f"[LOAD] OCR dependencies missing: {e}")
+    except ImportError:
+        logger.exception("[LOAD] OCR dependencies missing")
         return []
 
     logger.info("[LOAD] Attempt 2: OCR extraction (pdf2image + pytesseract)...")
@@ -171,8 +171,8 @@ def _ocr_extract(file_path: str) -> list[str]:
         logger.info("[LOAD] Converting PDF to images...")
         images = convert_from_path(file_path, dpi=OCR_DPI)
         logger.info(f"[LOAD] Converted to {len(images)} images")
-    except Exception as e:  # noqa: BLE001
-        logger.exception(f"[LOAD] PDF-to-image conversion failed: {e}")
+    except Exception:
+        logger.exception("[LOAD] PDF-to-image conversion failed")
         return []
 
     all_lines: list[str] = []

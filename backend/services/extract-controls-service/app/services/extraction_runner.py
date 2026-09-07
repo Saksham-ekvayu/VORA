@@ -112,9 +112,7 @@ def _extract_pdf_pages(file_path: str, text_lines: list[str], module_name: str) 
     doc = module.open(file_path)
     try:
         logger.info(f"[LOAD] PyMuPDF reports {doc.page_count} pages")
-        return _extract_pdf_page_text(
-            doc, text_lines, lambda page: page.get_text("text"), "PyMuPDF"
-        )
+        return _extract_pdf_page_text(doc, text_lines, lambda page: page.get_text("text"), "PyMuPDF")
     finally:
         doc.close()
 
@@ -186,13 +184,13 @@ def _load_pdf_lines(file_path: str) -> list[str]:
         logger.info("[LOAD] Attempt 2: OCR extraction (pdf2image + pytesseract)...")
         try:
             extracted = _extract_pdf_ocr(file_path, text_lines)
-        except ImportError as imp_err:
-            logger.exception(f"[LOAD]  OCR libraries not installed: {imp_err}")
+        except ImportError:
+            logger.exception("[LOAD]  OCR libraries not installed")
             logger.error("[LOAD] Install: pip install pdf2image pytesseract")
             logger.error("[LOAD] Also install: apt-get install tesseract-ocr poppler-utils")
             extracted = False
-        except Exception as ocr_err:  # noqa: BLE001
-            logger.exception(f"[LOAD]  OCR extraction failed: {ocr_err}")
+        except Exception:
+            logger.exception("[LOAD]  OCR extraction failed")
             extracted = False
     if not extracted:
         logger.info("[LOAD] Attempt 3: pypdf text extraction...")
@@ -212,8 +210,8 @@ def _load_document_lines(file_path: str, ext: str) -> list[str]:
 
             doc = Document(file_path)
             return [para.text.strip() for para in doc.paragraphs if para.text.strip()]
-        except Exception as e:  # noqa: BLE001
-            logger.exception(f"[LOAD] Failed to load docx: {e}")
+        except Exception:
+            logger.exception("[LOAD] Failed to load docx")
             return []
     if ext in [".xls", ".xlsx"]:
         try:
@@ -221,15 +219,15 @@ def _load_document_lines(file_path: str, ext: str) -> list[str]:
 
             xls = pd.ExcelFile(file_path)
             return [pd.read_excel(xls, sheet_name=sheet).to_string(index=False) for sheet in xls.sheet_names]
-        except Exception as e:  # noqa: BLE001
-            logger.exception(f"[LOAD] Failed to load excel: {e}")
+        except Exception:
+            logger.exception("[LOAD] Failed to load excel")
             return []
     if ext in [".txt", ".csv"]:
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 return [line.strip() for line in f if line.strip()]
-        except Exception as e:  # noqa: BLE001
-            logger.exception(f"[LOAD] Failed to load text file: {e}")
+        except Exception:
+            logger.exception("[LOAD] Failed to load text file")
             return []
     logger.error(f"[LOAD] Unsupported file type: {ext}")
     return []
@@ -263,8 +261,8 @@ def _load_document_chunks(file_path: str, chunk_size: int = 1000) -> list[str]:
             return []
         try:
             text_lines = _load_document_lines(file_path, ext)
-        except Exception as e:  # noqa: BLE001
-            logger.exception(f"[LOAD] Failed to load document: {e}")
+        except Exception:
+            logger.exception("[LOAD] Failed to load document")
             return []
         if not text_lines:
             logger.warning(f"[LOAD] No text extracted from {file_path}")
@@ -505,9 +503,7 @@ async def _save_framework_extraction(
     extraction_data: dict[str, Any],
 ) -> None:
     async with session_scope() as session:
-        await _update_framework_ai_status(
-            session, framework_id, file_id, extraction_data, replace=True
-        )
+        await _update_framework_ai_status(session, framework_id, file_id, extraction_data, replace=True)
         if file_hash:
             doc_extraction = await _get_or_create_doc_extraction(session, file_hash, None)
             doc_extraction.aiExtraction = extraction_data
@@ -648,9 +644,14 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
         if not chunks:
             async with session_scope() as session:
                 await _update_framework_ai_status(
-                    session, framework_id, file_id,
-                    {"status": "failed", "timestamp": _iso(),
-                     "message": "Failed to extract text from document"},
+                    session,
+                    framework_id,
+                    file_id,
+                    {
+                        "status": "failed",
+                        "timestamp": _iso(),
+                        "message": "Failed to extract text from document",
+                    },
                 )
             return
         controls_payload, merge_summary, total_controls = await _extract_framework_payload(
@@ -670,7 +671,7 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
         logger.error("[EXTRACT-ERROR] Framework extraction failed!")
         logger.error(f"  Framework ID: {framework_id}")
         logger.error(f"  File ID: {file_id}")
-        logger.exception(f"  Error: {exc!s}")
+        logger.error(f"  Error: {exc!s}")
         logger.error(f"{'='*80}")
         logger.exception("[EXTRACT] Exception traceback:")
 
@@ -688,8 +689,8 @@ async def run_framework_extraction(framework_id: str, file_id: str) -> None:
                     },
                 )
                 logger.info("[EXTRACT] Updated status to 'failed' in database")
-        except Exception as db_exc:  # noqa: BLE001
-            logger.exception(f"[EXTRACT] Failed to update status in database: {db_exc}")
+        except Exception:
+            logger.exception("[EXTRACT] Failed to update status in database")
 
 
 async def run_deployment_framework_extraction(df_id: str, pkg_ver: str, file_id: str) -> None:
@@ -708,9 +709,7 @@ async def run_deployment_framework_extraction(df_id: str, pkg_ver: str, file_id:
     logger.info(f"{'='*80}")
 
     try:
-        file_path, file_hash = await _get_deployment_framework_file_info(
-            df_id, pkg_ver, file_id, uploaded_ts
-        )
+        file_path, file_hash = await _get_deployment_framework_file_info(df_id, pkg_ver, file_id, uploaded_ts)
         if not file_path:
             return
         chunks = await asyncio.to_thread(_load_document_chunks, file_path)
@@ -718,12 +717,8 @@ async def run_deployment_framework_extraction(df_id: str, pkg_ver: str, file_id:
             logger.error("[DEPLOYMENT-EXTRACT] No text extracted from document")
             return
         controls_payload, total_controls = await _extract_deployment_payload(chunks)
-        extraction_data, history = _build_deployment_extraction_data(
-            controls_payload, uploaded_ts
-        )
-        await _save_deployment_extraction(
-            df_id, pkg_ver, file_id, file_hash, extraction_data
-        )
+        extraction_data, history = _build_deployment_extraction_data(controls_payload, uploaded_ts)
+        await _save_deployment_extraction(df_id, pkg_ver, file_id, file_hash, extraction_data)
         logger.info(
             f"[DEPLOYMENT-EXTRACT-SUCCESS] Extraction complete | controls={total_controls} "
             f"| sections={controls_payload['total_sections']} "
@@ -736,7 +731,7 @@ async def run_deployment_framework_extraction(df_id: str, pkg_ver: str, file_id:
         logger.error(f"  Deployment Framework ID: {df_id}")
         logger.error(f"  Package Version: {pkg_ver}")
         logger.error(f"  File ID: {file_id}")
-        logger.exception(f"  Error: {exc!s}")
+        logger.error(f"  Error: {exc!s}")
         logger.error(f"{'='*80}")
         logger.exception("[DEPLOYMENT-EXTRACT] Exception traceback:")
 
@@ -755,13 +750,11 @@ async def run_deployment_framework_extraction(df_id: str, pkg_ver: str, file_id:
                     },
                 )
                 logger.info("[DEPLOYMENT-EXTRACT] Updated status to 'failed' in database")
-        except Exception as db_exc:  # noqa: BLE001
-            logger.exception(f"[DEPLOYMENT-EXTRACT] Failed to update status in database: {db_exc}")
+        except Exception:
+            logger.exception("[DEPLOYMENT-EXTRACT] Failed to update status in database")
 
 
-async def _get_deployment_package(
-    session: Any, df_id: str, pkg_ver: str
-) -> dict[str, Any] | None:
+async def _get_deployment_package(session: Any, df_id: str, pkg_ver: str) -> dict[str, Any] | None:
     deployment_framework = await session.get(DeploymentFramework, df_id)
     if not deployment_framework:
         logger.error(f"[PACKAGE-MERGE] Deployment Framework not found: {df_id}")
@@ -799,9 +792,7 @@ async def _get_document_sections(
     ai_ext_data = doc_ext.aiExtraction if doc_ext else None
     status = ai_ext_data.get("status") if isinstance(ai_ext_data, dict) else None
     if status != "extracted":
-        logger.info(
-            f"[PACKAGE-MERGE] Skipping document - not extracted | fileId={file_id} | status={status}"
-        )
+        logger.info(f"[PACKAGE-MERGE] Skipping document - not extracted | fileId={file_id} | status={status}")
         return [], None
     controls_block = ai_ext_data.get("controls", {}) if isinstance(ai_ext_data, dict) else {}
     controls_data: list[dict[str, Any]] = []
@@ -810,9 +801,7 @@ async def _get_document_sections(
     elif isinstance(controls_block, list):
         controls_data = controls_block
     if controls_data:
-        logger.info(
-            f"[PACKAGE-MERGE] Added document | fileId={file_id} | sections={len(controls_data)}"
-        )
+        logger.info(f"[PACKAGE-MERGE] Added document | fileId={file_id} | sections={len(controls_data)}")
     return controls_data, file_hash
 
 
@@ -835,9 +824,7 @@ async def _get_or_create_deployment_merge(
     session: Any, package: dict[str, Any], file_hashes: list[str]
 ) -> DeploymentPackageMerge:
     merge_id = package.get("mergeDocument")
-    existing_merge = (
-        await session.get(DeploymentPackageMerge, merge_id) if merge_id else None
-    )
+    existing_merge = await session.get(DeploymentPackageMerge, merge_id) if merge_id else None
     if not existing_merge and file_hashes:
         existing_merge = (
             (
@@ -851,9 +838,7 @@ async def _get_or_create_deployment_merge(
             .first()
         )
     if not existing_merge:
-        existing_merge = DeploymentPackageMerge(
-            id=new_id(), fileHashes=file_hashes, status="processing"
-        )
+        existing_merge = DeploymentPackageMerge(id=new_id(), fileHashes=file_hashes, status="processing")
     else:
         existing_merge.status = "processing"
         existing_merge.fileHashes = file_hashes
@@ -862,9 +847,7 @@ async def _get_or_create_deployment_merge(
     return existing_merge
 
 
-async def _mark_empty_deployment_merge(
-    session: Any, merge: DeploymentPackageMerge
-) -> None:
+async def _mark_empty_deployment_merge(session: Any, merge: DeploymentPackageMerge) -> None:
     logger.warning("[PACKAGE-MERGE] No extracted sections found in package")
     merge.status = "failed"
     merge.summary = {"message": "No extracted sections found"}
@@ -932,9 +915,7 @@ async def run_deployment_package_merge(df_id: str, pkg_ver: str) -> None:
                 return
             all_sections, file_hashes = await _collect_deployment_package_sections(session, package)
             merge = await _get_or_create_deployment_merge(session, package, file_hashes)
-            await _update_deployment_framework_merge_document_status(
-                session, df_id, pkg_ver, merge.id
-            )
+            await _update_deployment_framework_merge_document_status(session, df_id, pkg_ver, merge.id)
             await session.commit()
             if not all_sections:
                 await _mark_empty_deployment_merge(session, merge)
@@ -1103,8 +1084,7 @@ async def _prepare_deployment_document(
 
 
 async def _extract_deployment_document_payload(
-    file_path: str, uploaded_ts: str, file_id: str, file_hash: str | None,
-    doc_data: dict[str, Any]
+    file_path: str, uploaded_ts: str, file_id: str, file_hash: str | None, doc_data: dict[str, Any]
 ) -> tuple[dict[str, Any], dict[str, Any], int]:
     chunks = await asyncio.to_thread(_load_document_chunks, file_path)
     if not chunks:
@@ -1166,15 +1146,11 @@ async def _save_deployment_document_extraction(
         import httpx
 
         async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(
-                f"http://localhost:7008/api/compliance-agent/evaluate/{dd_id}"
-            )
+            response = await client.post(f"http://localhost:7008/api/compliance-agent/evaluate/{dd_id}")
         if response.status_code in (200, 201, 202):
             logger.info(f"[DD-EXTRACT] Triggered compliance agent for dd_id: {dd_id}")
         else:
-            logger.warning(
-                f"[DD-EXTRACT] Compliance agent returned status: {response.status_code}"
-            )
+            logger.warning(f"[DD-EXTRACT] Compliance agent returned status: {response.status_code}")
     except Exception as exc:  # noqa: BLE001
         logger.warning(f"[DD-EXTRACT] Could not reach compliance agent service: {exc}")
 
@@ -1217,9 +1193,7 @@ async def run_deployment_document_extraction(dd_id: str, file_id: str) -> None:
         logger.exception("[DD-EXTRACT-ERROR] Deployment document extraction failed")
         if extraction_id:
             try:
-                await _mark_deployment_document_failed(
-                    extraction_id, f"Extraction failed: {exc!s}"
-                )
+                await _mark_deployment_document_failed(extraction_id, f"Extraction failed: {exc!s}")
             except Exception:
                 logger.exception("[DD-EXTRACT] Failed to update status in database")
 

@@ -116,9 +116,7 @@ def _index_controls(
 ) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
     by_id = {control.get("id", "").strip(): control for control in controls if control.get("id")}
     by_name = {
-        control.get("name", "").lower().strip(): control
-        for control in controls
-        if control.get("name")
+        control.get("name", "").lower().strip(): control for control in controls if control.get("name")
     }
     return by_id, by_name
 
@@ -127,9 +125,7 @@ def _merge_deployment_points(
     existing: dict[str, Any], incoming: dict[str, Any], summary: dict[str, int]
 ) -> None:
     points = existing.setdefault("deployment_points", [])
-    existing_names = {
-        point.get("name", "").lower().strip() for point in points
-    }
+    existing_names = {point.get("name", "").lower().strip() for point in points}
     for new_point in incoming.get("deployment_points", []):
         point_name = (new_point.get("name") or "").lower().strip()
         if not point_name or point_name in existing_names:

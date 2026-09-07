@@ -28,9 +28,7 @@ from vora_shared.responses import error, not_found, paginated, server_error, suc
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["extract"])
 
-CREATING_DOCUMENT_EXTRACTION_LOG = (
-    "[API] Creating document_extraction entry with status=processing..."
-)
+CREATING_DOCUMENT_EXTRACTION_LOG = "[API] Creating document_extraction entry with status=processing..."
 EXTRACTION_ALREADY_IN_PROGRESS_MESSAGE = "Extraction already in progress"
 INVALIDE_DD_ID_MESSAGE = "Invalid deployment document ID"
 
@@ -66,8 +64,7 @@ async def _get_framework_file_hash(framework_id: str, file_id: str):
             (
                 file_version
                 for file_version in (framework.fileVersions or [])
-                if isinstance(file_version, dict)
-                and str(file_version.get("fileId")) == file_id
+                if isinstance(file_version, dict) and str(file_version.get("fileId")) == file_id
             ),
             None,
         )
@@ -79,18 +76,14 @@ async def _get_framework_file_hash(framework_id: str, file_id: str):
         return file_hash, None
 
 
-async def _prepare_document_extraction(
-    file_hash: Any, framework_id: str, file_id: str
-):
+async def _prepare_document_extraction(file_hash: Any, framework_id: str, file_id: str):
     if not file_hash:
         return None, None
 
     async with session_scope() as session:
         logger.info(CREATING_DOCUMENT_EXTRACTION_LOG)
         existing = (
-            await session.execute(
-                select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash)
-            )
+            await session.execute(select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash))
         ).scalar_one_or_none()
 
         if existing:
@@ -149,9 +142,7 @@ async def extract_framework_controls(framework_id: str, file_id: str):
         if response:
             return response
 
-        doc_extraction_id, response = await _prepare_document_extraction(
-            file_hash, framework_id, file_id
-        )
+        doc_extraction_id, response = await _prepare_document_extraction(file_hash, framework_id, file_id)
         if response:
             return response
 
@@ -214,18 +205,14 @@ async def _get_deployment_framework_file_hash(df_id: str, pkg_ver: str, file_id:
         return file_hash, None
 
 
-async def _prepare_deployment_framework_extraction(
-    file_hash: Any, df_id: str, pkg_ver: str, file_id: str
-):
+async def _prepare_deployment_framework_extraction(file_hash: Any, df_id: str, pkg_ver: str, file_id: str):
     if not file_hash:
         return None, None
 
     async with session_scope() as session:
         logger.info(CREATING_DOCUMENT_EXTRACTION_LOG)
         existing = (
-            await session.execute(
-                select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash)
-            )
+            await session.execute(select(DocumentExtraction).where(DocumentExtraction.fileHash == file_hash))
         ).scalar_one_or_none()
 
         if existing:
@@ -439,9 +426,7 @@ async def extract_deployment_document_controls(dd_id: str):
                             },
                         )
                     doc_extraction_id = existing.id
-                    logger.info(
-                        f"[API] Using existing document_extraction | id={doc_extraction_id}"
-                    )
+                    logger.info(f"[API] Using existing document_extraction | id={doc_extraction_id}")
                 else:
                     doc_extraction = DocumentExtraction(
                         id=new_id(),
@@ -565,9 +550,7 @@ async def get_document_extraction(file_hash: str):
 
             ai_data = doc_extraction.aiExtraction or {}
             status = ai_data.get("status", "pending")
-            logger.info(
-                f"[GET-EXTRACTION] Retrieved extraction | id={doc_extraction.id} | status={status}"
-            )
+            logger.info(f"[GET-EXTRACTION] Retrieved extraction | id={doc_extraction.id} | status={status}")
 
             return success(
                 message="Document extraction data retrieved successfully",
@@ -604,9 +587,7 @@ async def list_document_extractions(page: int = 1, page_size: int = 10):
 
         logger.info(f"[LIST-EXTRACTIONS] Listing extractions | page={page} | page_size={page_size}")
         async with session_scope() as session:
-            total = (
-                await session.execute(select(func.count()).select_from(DocumentExtraction))
-            ).scalar_one()
+            total = (await session.execute(select(func.count()).select_from(DocumentExtraction))).scalar_one()
 
             rows = (
                 (
@@ -625,9 +606,7 @@ async def list_document_extractions(page: int = 1, page_size: int = 10):
             for doc in rows:
                 ai_data = doc.aiExtraction or {}
                 controls = ai_data.get("controls", {})
-                total_controls = (
-                    controls.get("total_controls", 0) if isinstance(controls, dict) else 0
-                )
+                total_controls = controls.get("total_controls", 0) if isinstance(controls, dict) else 0
 
                 items.append(
                     {
