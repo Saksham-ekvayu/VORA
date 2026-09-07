@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useTableData } from "@/components/data-table/hooks/useTableData";
-import { getAssignmentFrameworks } from "@/services/deploymentFrameworkService";
+import { getAssignmentFrameworks } from "@/services/assignedFrameworkService";
 import DataTable from "@/components/data-table/DataTable";
 import CustomBadge from "@/components/custom/CustomBadge";
 import UserMiniCard from "@/components/custom/UserMiniCard";

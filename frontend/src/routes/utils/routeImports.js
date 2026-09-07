@@ -106,8 +106,7 @@ export const AssignedFrameworks = lazy(
   () => import("@/pages/assigned-framework-management/AssignedFrameworks")
 );
 export const AssignedFrameworkDetails = lazy(
-  () =>
-    import("@/pages/assigned-framework-management/AssignedFrameworkDetails")
+  () => import("@/pages/assigned-framework-management/AssignedFrameworkDetails")
 );
 
 // Deployment Document Pages

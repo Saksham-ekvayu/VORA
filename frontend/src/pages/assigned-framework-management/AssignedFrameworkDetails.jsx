@@ -33,7 +33,7 @@ import {
   updateAssignmentFrameworkControlWeightage,
   finalizeAssignmentFramework,
   downloadAssignedFrameworkReport,
-} from "@/services/deploymentFrameworkService";
+} from "@/services/assignedFrameworkService";
 
 const FRAMEWORK_ID_NOT_FOUND = "Framework ID not found";
 const CANNOT_MODIFY_FINALIZED =
