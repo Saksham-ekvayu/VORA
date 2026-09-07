@@ -137,11 +137,17 @@ def _build_control_block(control: dict, styles: dict) -> list:
 
     weight = control.get("weightage")
     weight_display = "—" if weight is None else str(weight)
+    name = control.get('name') or ""
+    if name:
+        name = name[0].upper() + name[1:]
+    text = f"[{control.get('id')}] {name}"
+    key = str(hash(text))
+    flow.append(Paragraph(text, styles["toc_invisible_control"]))
 
     header_table = Table(
         [
             [
-                Paragraph(f"[{control.get('id')}] {control.get('name')}", styles["control_title"]),
+                Paragraph(f'<a name="{key}"/>{text}', styles["control_title"]),
                 Paragraph(
                     f"Priority Weightage: {weight_display}/10",
                     styles["control_weightage"],
@@ -149,6 +155,7 @@ def _build_control_block(control: dict, styles: dict) -> list:
             ]
         ],
         colWidths=[340, 140],
+        hAlign="LEFT",
     )
     header_table.setStyle(
         TableStyle(
@@ -168,6 +175,7 @@ def _build_control_block(control: dict, styles: dict) -> list:
         remark_table = Table(
             [[Paragraph(f"<b>Remark:</b> {control['remark']}", styles["remark"])]],
             colWidths=[480],
+            hAlign="LEFT",
         )
         remark_table.setStyle(
             TableStyle(
@@ -270,30 +278,30 @@ def _create_header_story(framework, styles: dict) -> list:
         )
     )
 
-    dates_text = []
-    if framework.createdAt:
-        dates_text.append(f"Created On: {format_pdf_date(framework.createdAt)}")
-    if framework.updatedAt:
-        dates_text.append(f"Updated On: {format_pdf_date(framework.updatedAt)}")
-    if dates_text:
-        story.append(Paragraph("  \u2022  ".join(dates_text), styles["meta"]))
-
     return story
 
 
 def _add_approval_status(story, framework, approval_by_user, styles: dict):
     """Add approval status to the story."""
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.enums import TA_RIGHT
+    
     approval = framework.approval or {}
     approval_status = (_attr(approval, "status") if approval else "pending") or "pending"
-    status_text = f"Expert Review: {approval_status.upper()}"
+    status_text = f"Expert Review: <b>{approval_status.upper()}</b>"
     approver_name = approval_by_user.name if approval_by_user else None
+    
     if approval_status in ("approved", "rejected") and approver_name:
         verb = "Reviewed By" if approval_status == "approved" else "Rejected By"
-        status_text += f"  \u2022  {verb}: {approver_name}"
+        status_text += f"<br/>{verb}: {approver_name}"
         approval_date = _attr(approval, "date")
         if approval and approval_date:
-            status_text += f" on {format_pdf_date(approval_date)}"
-    story.append(Paragraph(status_text, styles["meta"]))
+            status_text += f"<br/>Date: {format_pdf_date(approval_date)}"
+            
+    sig_style = ParagraphStyle("Signature", parent=styles["meta"], alignment=TA_RIGHT)
+    
+    story.append(Spacer(1, 40))
+    story.append(Paragraph(status_text, sig_style))
     story.append(Spacer(1, 14))
 
 
@@ -306,8 +314,6 @@ def _add_file_info(story, framework, styles: dict, doc_extractions: dict | None 
 
 def _add_controls_section(story, sections: list, styles: dict):
     """Add controls section to the story."""
-    story.append(NextPageTemplate("report"))
-    story.append(PageBreak())
     story.append(Paragraph("Controls", styles["section_title"]))
 
     if not sections:
@@ -322,9 +328,13 @@ def _add_controls_section(story, sections: list, styles: dict):
 
 def _add_section_block(story, section: dict, styles: dict):
     """Add a single section block to the story."""
+    text = f"{section['id']} {section['name']}"
+    key = str(hash(text))
+    story.append(Paragraph(text, styles["toc_invisible_section"]))
     header_table = Table(
-        [[Paragraph(f"{section['id']} {section['name']}", styles["section_header"])]],
+        [[Paragraph(f'<a name="{key}"/>{text}', styles["section_header"])]],
         colWidths=[520],
+        hAlign="LEFT",
     )
     header_table.setStyle(
         TableStyle(
@@ -360,14 +370,31 @@ def generate_framework_report_pdf(
     framework, approval_by_user=None, doc_extractions: dict | None = None
 ) -> bytes:
     styles = get_shared_styles()
-    buffer = io.BytesIO()
+    
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.platypus.tableofcontents import TableOfContents
+    
+    styles["toc_invisible_section"] = ParagraphStyle(name='TOCEntrySection', fontSize=0, leading=0, spaceBefore=0, spaceAfter=0, textColor=colors.transparent)
+    styles["toc_invisible_control"] = ParagraphStyle(name='TOCEntryControl', fontSize=0, leading=0, spaceBefore=0, spaceAfter=0, textColor=colors.transparent)
 
+    buffer = io.BytesIO()
     frame = get_shared_frame(id="normal")
 
     def page_callback(canvas, doc):
         _on_page(canvas, framework)
 
-    doc = BaseDocTemplate(
+    class ReportDocTemplate(BaseDocTemplate):
+        def afterFlowable(self, flowable):
+            if flowable.__class__.__name__ == 'Paragraph':
+                style_name = getattr(flowable.style, 'name', '')
+                if style_name in ('TOCEntrySection', 'TOCEntryControl'):
+                    level = 0 if style_name == 'TOCEntrySection' else 1
+                    text = flowable.getPlainText()
+                    key = str(hash(text))
+                    linked_text = f'<a href="#{key}" color="black">{text}</a>'
+                    self.notify('TOCEntry', (level, linked_text, self.page))
+
+    doc = ReportDocTemplate(
         buffer,
         pagesize=REPORT_PAGESIZE,
         **REPORT_MARGINS,
@@ -377,20 +404,31 @@ def generate_framework_report_pdf(
 
     story = []
 
-    # Build header
+    # Build header (Page 1)
     story.extend(_create_header_story(framework, styles))
-    _add_approval_status(story, framework, approval_by_user, styles)
+    story.append(PageBreak())
 
-    # Build stats
+    # Build TOC (Page 2)
+    story.append(Paragraph("Table of Contents", styles["h1"]))
+    story.append(Spacer(1, 10))
+    toc = TableOfContents()
+    toc.levelStyles = [
+        ParagraphStyle(fontName='Helvetica-Bold', fontSize=10, name='TOCHeading1', leftIndent=20, firstLineIndent=-20, spaceBefore=5, leading=14),
+        ParagraphStyle(fontName='Helvetica', fontSize=9, name='TOCHeading2', leftIndent=40, firstLineIndent=-20, spaceBefore=0, leading=12),
+    ]
+    story.append(toc)
+    story.append(PageBreak())
+
+    # Build stats (Page 3)
     fw_dict = _framework_to_dict(framework, doc_extractions)
     story.append(_build_stats_table(fw_dict["sections"], styles))
     story.append(Spacer(1, 18))
 
-    # Build file info
-    _add_file_info(story, framework, styles, doc_extractions)
-
-    # Build controls section
+    # Build controls section (Page 3 continued)
     _add_controls_section(story, fw_dict["sections"], styles)
 
-    doc.build(story)
+    # Add approval status as signature on last page
+    _add_approval_status(story, framework, approval_by_user, styles)
+
+    doc.multiBuild(story)
     return buffer.getvalue()
