@@ -509,8 +509,8 @@ export default function CustomerAdminDashboard() {
     activeSetupProgress.percentage ??
     (activeSetupProgress.total
       ? Math.round(
-        (activeSetupProgress.configured / activeSetupProgress.total) * 100
-      )
+          (activeSetupProgress.configured / activeSetupProgress.total) * 100
+        )
       : 0);
 
   const getMonitoringSetupValue = () => {

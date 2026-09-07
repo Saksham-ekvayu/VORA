@@ -3,16 +3,11 @@
 import { useEffect, useState, useCallback } from "react";
 import { Helmet } from "react-helmet-async";
 import {
-  Area,
-  AreaChart,
-  CartesianGrid,
   Cell,
   Pie,
   PieChart,
   ResponsiveContainer,
   Tooltip,
-  XAxis,
-  YAxis,
 } from "recharts";
 import { ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -32,6 +27,7 @@ import { getExpertDashboardAnalytics } from "@/services/frameworkService";
 import LoadingSpinner from "@/components/custom/Loader/LoadingSpinner";
 import DashboardError from "./components/DashboardError";
 import StatCard from "./components/StatCard";
+import UploadTrendChart from "./components/charts/UploadTrendChart";
 import {
   STATUS_APPROVED,
   STATUS_PENDING,
@@ -91,9 +87,8 @@ function buildStats(stats) {
     {
       title: "Framework Approval Progress",
       value: `${stats.approvalProgress || 0}%`,
-      description: `${stats.approvedUploads || 0} approved out of ${
-        stats.totalUploads || 0
-      } uploaded frameworks`,
+      description: `${stats.approvedUploads || 0} approved out of ${stats.totalUploads || 0
+        } uploaded frameworks`,
       actionPath: "/frameworks?approvalStatus=approved",
       icon: "award",
       iconColor: "text-orange-500",
@@ -186,74 +181,6 @@ function CardShell({ title, actionLabel, actionPath, children, className }) {
       </div>
       {children}
     </section>
-  );
-}
-
-function UploadTrendChart({ data }) {
-  const maxUploads = Math.max(...data.map((item) => item.uploads || 0), 0);
-
-  return (
-    <ResponsiveContainer width="100%" height={230}>
-      <AreaChart data={data} margin={{ top: 8, right: 22, left: 0, bottom: 0 }}>
-        <defs>
-          <linearGradient id="uploadTrend" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="5%" stopColor="#0f9f93" stopOpacity={0.24} />
-            <stop offset="95%" stopColor="#0f9f93" stopOpacity={0.02} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid
-          stroke="var(--color-border)"
-          strokeDasharray="4 4"
-          vertical={false}
-        />
-        <XAxis
-          dataKey="month"
-          axisLine={{ stroke: "var(--color-border)" }}
-          tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
-          tickLine={false}
-        />
-        <YAxis
-          axisLine={{ stroke: "var(--color-border)" }}
-          allowDecimals={false}
-          domain={[0, Math.max(5, maxUploads + 2)]}
-          label={{
-            value: "Uploads",
-            angle: -90,
-            position: "insideLeft",
-            fill: "var(--color-muted-foreground)",
-            fontSize: 12,
-          }}
-          tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
-          tickLine={false}
-        />
-        <Tooltip
-          cursor={{ stroke: "#0f9f93", strokeDasharray: "3 3" }}
-          contentStyle={{
-            borderRadius: 6,
-            backgroundColor: "var(--color-card)",
-            borderColor: "var(--color-border)",
-            color: "var(--color-card-foreground)",
-            fontSize: 12,
-          }}
-        />
-        <Area
-          dataKey="uploads"
-          fill="url(#uploadTrend)"
-          stroke="#0f9f93"
-          strokeWidth={3}
-          dot={{ r: 5, fill: "#0f9f93", stroke: "#0f9f93" }}
-          activeDot={{ r: 6 }}
-          label={{
-            position: "top",
-            dy: -6,
-            fill: "var(--color-foreground)",
-            fontSize: 13,
-            fontWeight: 700,
-          }}
-          type="monotone"
-        />
-      </AreaChart>
-    </ResponsiveContainer>
   );
 }
 
