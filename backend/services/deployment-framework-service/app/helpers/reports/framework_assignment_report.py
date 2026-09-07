@@ -12,6 +12,7 @@ from reportlab.lib.units import mm
 from reportlab.platypus import (
     BaseDocTemplate,
     Frame,
+    KeepTogether,
     NextPageTemplate,
     PageBreak,
     PageTemplate,
@@ -125,9 +126,6 @@ def _add_stats_section(
 
     data = [
         [_make_cell("CUSTOMER", _display_user(customer)), _make_cell("ASSIGNMENT STATUS", str(assignment.status or 'assigned').upper())],
-        [_make_cell("CREATED ON", format_pdf_date(assignment.createdAt)), _make_cell("ASSIGNED BY", _display_user(_safe_get(assignment.assignment, 'assignedBy')))],
-        [_make_cell("UPDATED ON", format_pdf_date(assignment.updatedAt)), _make_cell("ASSIGNED ON", format_pdf_date(_safe_get(assignment.assignment, 'assignedAt')))],
-        [_make_cell("FINALIZATION", 'FINALIZED' if _safe_get(assignment.finalization, 'isFinalized') else 'PENDING'), ""]
     ]
     
     info_table = Table(data, colWidths=[80*mm, 80*mm], hAlign="LEFT")
@@ -160,11 +158,61 @@ def _add_stats_section(
     ]
     stat_cards = [build_stat_card(label, value, _styles_dict, width=card_width) for label, value in stats]
     rows = [stat_cards[i : i + 3] for i in range(0, len(stat_cards), 3)]
-    stats_table = Table(rows, hAlign="LEFT", spaceBefore=0, spaceAfter=0)
-    stats_table.setStyle(
-        TableStyle([("LEFTPADDING", (0, 0), (-1, -1), 4), ("RIGHTPADDING", (0, 0), (-1, -1), 4)])
+    section_table = Table(rows, hAlign="LEFT", spaceBefore=0, spaceAfter=0)
+    section_table.setStyle(
+        TableStyle([("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0)])
     )
-    story.append(stats_table)
+    story.append(section_table)
+    story.append(Spacer(1, 15 * mm))
+
+
+def _add_signatures_section(story: list[Any], assignment: Any):
+    def _safe_get(obj, key):
+        if not obj: return None
+        if hasattr(obj, key): return getattr(obj, key)
+        if isinstance(obj, dict): return obj.get(key)
+        return None
+
+    assigned_by = _display_user(_safe_get(assignment.assignment, 'assignedBy'))
+    assigned_on = format_pdf_date(_safe_get(assignment.assignment, 'assignedAt'))
+    
+    finalized = _safe_get(assignment.finalization, 'isFinalized')
+    finalized_by = _display_user(_safe_get(assignment.finalization, 'finalizedBy')) if finalized else "N/A"
+    finalized_on = format_pdf_date(_safe_get(assignment.finalization, 'finalizedAt')) if finalized else "N/A"
+
+    story.append(Spacer(1, 15 * mm))
+    story.append(Paragraph("Signatures & Approvals", _styles_dict["section_title"]))
+    story.append(Spacer(1, 6 * mm))
+
+    sig_data = [
+        [
+            Paragraph("ASSIGNED BY", ParagraphStyle("SigHead", fontName="Helvetica-Bold", fontSize=9, textColor=COLORS['primary'])),
+            Paragraph("FINALIZED BY", ParagraphStyle("SigHead", fontName="Helvetica-Bold", fontSize=9, textColor=COLORS['primary']))
+        ],
+        [
+            Spacer(1, 2 * mm), Spacer(1, 2 * mm)
+        ],
+        [
+            Paragraph(assigned_by, ParagraphStyle("SigName", fontName="Helvetica-Bold", fontSize=12, textColor=COLORS['dark_text'])),
+            Paragraph(finalized_by, ParagraphStyle("SigName", fontName="Helvetica-Bold", fontSize=12, textColor=COLORS['dark_text']))
+        ],
+        [
+            Paragraph(f"Date: {assigned_on}", ParagraphStyle("SigDate", fontName="Helvetica", fontSize=10, textColor=COLORS['muted_text'])),
+            Paragraph(f"Date: {finalized_on}", ParagraphStyle("SigDate", fontName="Helvetica", fontSize=10, textColor=COLORS['muted_text']))
+        ]
+    ]
+
+    usable_width = REPORT_PAGESIZE[0] - (REPORT_MARGINS["leftMargin"] + REPORT_MARGINS["rightMargin"])
+    sig_table = Table(sig_data, colWidths=[usable_width/2, usable_width/2], hAlign="LEFT")
+    sig_table.setStyle(TableStyle([
+        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+        ('LINEBELOW', (0,1), (0,1), 0.5, COLORS['border']),
+        ('LINEBELOW', (1,1), (1,1), 0.5, COLORS['border']),
+    ]))
+    
+    story.append(KeepTogether(sig_table))
 
 
 def _get_control_label_info(control: Any) -> tuple[str, Any]:
@@ -352,7 +400,12 @@ def generate_framework_assignment_report_pdf(assignment: Any, file_version: Any,
         org_specific_controls,
         avg_customer_weightage,
     )
+    
+    # Controls
     _add_controls_section(story, sections, frame.width)
+    
+    # Signatures
+    _add_signatures_section(story, assignment)
 
     doc.multiBuild(story)
     return buffer.getvalue()

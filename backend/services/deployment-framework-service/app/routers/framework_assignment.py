@@ -195,12 +195,18 @@ async def download_framework_assignment_report(
         customer = customers.get(str(assignment.customerId)) if assignment.customerId else None
 
         info = helper.as_assignment_info(assignment.assignment)
-        if info.assignedBy:
+        fin = as_finalization(assignment.finalization)
+        if info.assignedBy or (fin and fin.finalizedBy):
             session.expunge(assignment)
             # Report helper may expect populated user; keep id string / user object
-            assignment.assignment = info.model_copy(
-                update={"assignedBy": users.get(str(info.assignedBy), info.assignedBy)}
-            )
+            if info.assignedBy:
+                assignment.assignment = info.model_copy(
+                    update={"assignedBy": users.get(str(info.assignedBy), info.assignedBy)}
+                )
+            if fin and fin.finalizedBy:
+                assignment.finalization = fin.model_copy(
+                    update={"finalizedBy": users.get(str(fin.finalizedBy), fin.finalizedBy)}
+                )
 
         version = file_version or assignment.currentFileVersion
         file_versions = coerce_file_versions(assignment.fileVersions)
