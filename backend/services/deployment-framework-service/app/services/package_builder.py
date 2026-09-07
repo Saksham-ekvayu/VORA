@@ -5,7 +5,7 @@ Pydantic models; callers dump nested models to JSONB-friendly dicts before persi
 """
 
 import hashlib
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 
 from app.services import version_service

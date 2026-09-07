@@ -6,7 +6,7 @@ template placeholders), but using aiosmtplib so services stay fully async.
 
 import logging
 import secrets
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from email.message import EmailMessage
 from pathlib import Path
 

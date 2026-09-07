@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from difflib import SequenceMatcher
 from typing import Any
 

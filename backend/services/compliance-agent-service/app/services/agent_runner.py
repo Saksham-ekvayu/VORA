@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -764,9 +764,7 @@ async def evaluate_compliance_task(dd_id: str) -> None:
                     uploaded = await local_session.get(UploadedFile, str(file_id))
                     if uploaded:
                         meta = dict(uploaded.meta or {})
-                        meta.update(
-                            {"status": "processed", "processed_at": datetime.now(UTC).isoformat()}
-                        )
+                        meta.update({"status": "processed", "processed_at": datetime.now(UTC).isoformat()})
                         uploaded.meta = meta
                         flag_modified(uploaded, "meta")
                         local_session.add(uploaded)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Annotated
 
 from app.helpers import framework_helper

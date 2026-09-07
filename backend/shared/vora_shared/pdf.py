@@ -1,6 +1,6 @@
 """Shared PDF reporting components for VORA."""
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 
 from reportlab.lib import colors

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
@@ -99,9 +99,7 @@ def _naive(dt: datetime) -> datetime:
 def _generate_upload_trend(
     frameworks: list[Framework], start_date: str | None, end_date: str | None
 ) -> list[dict]:
-    trend_end = (
-        datetime.fromisoformat(end_date) if end_date else datetime.now(UTC).replace(tzinfo=None)
-    )
+    trend_end = datetime.fromisoformat(end_date) if end_date else datetime.now(UTC).replace(tzinfo=None)
     trend_start = datetime.fromisoformat(start_date) if start_date else _subtract_months(trend_end, 5)
 
     start_month = datetime(trend_start.year, trend_start.month, 1, tzinfo=UTC)

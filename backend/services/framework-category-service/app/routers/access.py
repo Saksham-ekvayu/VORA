@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Annotated
 
 from app.helpers.helpers import fetch_users_by_ids

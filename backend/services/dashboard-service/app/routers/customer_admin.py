@@ -1,7 +1,7 @@
 """Port of deployment-framework-service dashboard routes/controllers."""
 
 import logging
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Annotated, Any
 
 from app.helpers import apply_date_filters, to_naive_utc

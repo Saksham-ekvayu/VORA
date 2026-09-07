@@ -1,7 +1,7 @@
 """Port of deployment-framework-service-main/src/helpers/framework-assignment.helper.js."""
 
 import re
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 
 from vora_shared.models.framework_assignment import (
