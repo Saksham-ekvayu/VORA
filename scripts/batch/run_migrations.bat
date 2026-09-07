@@ -13,6 +13,17 @@ if "%MIGRATION_MSG%"=="" (
 :: Navigate to the shared directory relative to the batch script location
 cd /d "%~dp0..\..\backend\shared"
 
+:: Auto-heal: Ensure versions directory exists
+if not exist "alembic\versions" mkdir "alembic\versions"
+
+:: Auto-heal: Check if the versions folder has any Python files. 
+:: If it is empty, the user deleted all migrations. We must drop the alembic_version table to prevent the "Can't locate revision" crash.
+dir /A-D /B "alembic\versions\*.py" >nul 2>&1
+if errorlevel 1 (
+    echo [INFO] No existing migrations found. Resetting database migration state to start fresh...
+    ..\services\authentication-service\.venv\Scripts\python.exe alembic\reset_alembic.py
+)
+
 echo.
 echo ========================================================
 echo Generating migration script...
