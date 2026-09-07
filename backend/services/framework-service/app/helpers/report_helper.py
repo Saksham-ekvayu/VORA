@@ -272,7 +272,6 @@ def _create_header_story(framework, styles: dict) -> list:
     """Create the header section of the report."""
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
-
     from reportlab.platypus import HRFlowable
 
     flow: list = []

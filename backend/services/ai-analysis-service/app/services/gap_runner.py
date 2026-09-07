@@ -516,7 +516,9 @@ async def _save_gap_analysis_result(
 
     if not pga:
         logger.warning("[GAP-RUNNER] No PackageGapAnalysis found, creating new")
-        pga = PackageGapAnalysis(id=new_id(), deploymentFrameworkId=df_id, fileHashes=[], gapAnalysis=gap_payload)
+        pga = PackageGapAnalysis(
+            id=new_id(), deploymentFrameworkId=df_id, fileHashes=[], gapAnalysis=gap_payload
+        )
         session.add(pga)
 
     await session.flush()
