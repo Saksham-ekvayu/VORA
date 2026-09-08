@@ -1,0 +1,759 @@
+{
+    "success": true,
+    "message": "Framework retrieved successfully",
+    "data": {
+        "id": "6a9faa8d086fa77601fd36c0",
+        "frameworkName": "Quality Management Framework",
+        "frameworkVersion": "ISO9001:2000",
+        "frameworkCode": "iso9001",
+        "frameworkCategoryId": "6a9fa71a7cf124190e8c919a",
+        "currentFileVersion": "1.0.0",
+        "fileVersions": [
+            {
+                "fileVersion": "1.0.0",
+                "fileId": "6a9faa8d34c01e47a192562c",
+                "fileUrl": "C:\\EKVAYU\\VORA\\backend\\shared\\uploads\\file\\framework\\ISO9001-2000\\6a9e542eb023aaad62cf160e\\ISO-9001-2000-1788848781554.pdf",
+                "fileHash": "deac764d3be12d9e157c6e56922ae07beb1d33af9192a9e646a3e60f680a02fa",
+                "originalFileName": "ISO-9001-2000.pdf",
+                "fileSize": "347.64 KB",
+                "fileType": "pdf",
+                "uploadedAt": "2026-09-08T06:26:21.559982+00:00",
+                "aiExtraction": {
+                    "status": "extracted",
+                    "message": "Framework ai extraction completed",
+                    "controls": {
+                        "controls_data": [
+                            {
+                                "id": "4",
+                                "name": "Quality Management System",
+                                "controls": [
+                                    {
+                                        "id": "4.1",
+                                        "name": "general requirements",
+                                        "description": "The organization shall establish, document, implement and maintain a quality management system and continually improve its effectiveness in accordance with the requirements of this International Standard. The organization shall a) identify the processes needed for the quality management system and their application throughout the organization (see 1.2), b) determine the sequence and interaction of these processes, c) determine criteria and methods needed to ensure that both the operation and control of these processes are effective, d) ensure the availability of resources and information necessary to support the operation and monitoring of these processes, e) monitor, measure and analyse these processes, and f) implement actions necessary to achieve planned results and continual improvement of these processes. These processes shall be managed by the organization in accordance with the requirements of this International Standard. Where an organization chooses to outsource any process that affects product conformity with requirements, the organization shall ensure control over such processes. Control of such outsourced processes shall be identified within the quality management system.",
+                                        "deployment_points": [
+                                            {
+                                                "id": "DP-001",
+                                                "name": "Identify and document all processes required for the quality management system, ensuring clarity on their application across the organization.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-002",
+                                                "name": "Develop a flowchart or diagram to illustrate the sequence and interaction of these processes, facilitating better understanding and communication.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-003",
+                                                "name": "Establish criteria and methods for monitoring the effectiveness of each process, including performance metrics and evaluation techniques.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-004",
+                                                "name": "Allocate necessary resources, including personnel and technology, to support the operation and monitoring of the identified processes.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-005",
+                                                "name": "Implement a continuous improvement plan that includes regular reviews and updates of processes based on monitoring and analysis results.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "id": "4.2.2",
+                                        "name": "quality manual",
+                                        "description": "The organization shall establish and maintain a quality manual that includes a) the scope of the quality management system, including details of and justification for any exclusions (see 1.2), b) the documented procedures established for the quality management system, or reference to them, and c) a description of the interaction between the processes of the quality management system.",
+                                        "deployment_points": [
+                                            {
+                                                "id": "DP-001",
+                                                "name": "Create a quality manual that outlines the scope of the quality management system, including any exclusions and justifications for them.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-002",
+                                                "name": "Document all procedures related to the quality management system, ensuring they are easily accessible and referenced within the manual.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-003",
+                                                "name": "Include a section in the manual that describes how the various processes interact, using diagrams or flowcharts for clarity.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-004",
+                                                "name": "Review and update the quality manual regularly to ensure it reflects current practices and any changes in the quality management system.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-005",
+                                                "name": "Communicate the existence and importance of the quality manual to all employees, ensuring they understand its contents and how to use it.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "id": "4.2.3",
+                                        "name": "control of documents",
+                                        "description": "Documents required by the quality management system shall be controlled. Records are a special type of document and shall be controlled according to the requirements given in 4.2.4. A documented procedure shall be established to define the controls needed a) to approve documents for adequacy prior to issue, b) to review and update as necessary and re-approve documents, c) to ensure that changes and the current revision status of documents are identified, d) to ensure that relevant versions of applicable documents are available at points of use, e) to ensure that documents remain legible and readily identifiable, f) to ensure that documents of external origin are identified and their distribution controlled, and g) to prevent the unintended use of obsolete documents, and to apply suitable identification to them if they are retained for any purpose.",
+                                        "deployment_points": [
+                                            {
+                                                "id": "DP-001",
+                                                "name": "Establish a documented procedure for the approval of documents, ensuring they are reviewed for adequacy before being issued.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-002",
+                                                "name": "Implement a regular review schedule for all documents to ensure they are updated as necessary and re-approved accordingly.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-003",
+                                                "name": "Create a system to track changes and maintain the current revision status of all documents, making this information easily accessible.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-004",
+                                                "name": "Ensure that all relevant versions of documents are available at points of use, possibly through a centralized document management system.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-005",
+                                                "name": "Develop a process to identify and control documents of external origin, ensuring their distribution is managed and that obsolete documents are clearly marked to prevent unintended use.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "id": "4.2.4",
+                                        "name": "control of records",
+                                        "description": "Records shall be established and maintained to provide evidence of conformity to requirements and of the effective operation of the quality management system. Records shall remain legible, readily identifiable and retrievable. A documented procedure shall be established to define the controls needed for the identification, storage, protection, retrieval, retention time and disposition of records.",
+                                        "deployment_points": [
+                                            {
+                                                "id": "DP-001",
+                                                "name": "Develop a documented procedure that outlines how records will be identified, stored, and protected to ensure their integrity.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-002",
+                                                "name": "Implement a system for the retrieval of records that allows for quick access while maintaining security and confidentiality.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-003",
+                                                "name": "Define and document the retention time for each type of record, ensuring compliance with legal and regulatory requirements.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-004",
+                                                "name": "Establish a process for the proper disposition of records once their retention period has expired, including secure destruction methods if necessary.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-005",
+                                                "name": "Regularly review records to ensure they remain legible and identifiable, taking corrective actions as needed to maintain their quality.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "id": "5",
+                                "name": "Management Responsibility",
+                                "controls": [
+                                    {
+                                        "id": "5.1",
+                                        "name": "management commitment",
+                                        "description": "Top management shall provide evidence of its commitment to the development and implementation of the quality management system and continually improving its effectiveness by a) communicating to the organization the importance of meeting customer as well as statutory and regulatory requirements, b) establishing the quality policy, c) ensuring that quality objectives are established, d) conducting management reviews, and e) ensuring the availability of resources.",
+                                        "deployment_points": [
+                                            {
+                                                "id": "DP-001",
+                                                "name": "Communicate the importance of the quality management system to all employees, emphasizing the need to meet customer and regulatory requirements.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-002",
+                                                "name": "Develop and formally establish a quality policy that reflects the organization’s commitment to quality and continuous improvement.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-003",
+                                                "name": "Set measurable quality objectives at all levels of the organization, ensuring they align with the overall quality policy.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-004",
+                                                "name": "Schedule and conduct regular management reviews to assess the effectiveness of the quality management system and identify areas for improvement.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-005",
+                                                "name": "Ensure that adequate resources, including training and tools, are available to support the implementation and maintenance of the quality management system.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "id": "5.2",
+                                        "name": "customer focus",
+                                        "description": "Top management shall ensure that customer requirements are determined and are met with the aim of enhancing customer satisfaction (see 7.2.1 and 8.2.1).",
+                                        "deployment_points": [
+                                            {
+                                                "id": "DP-001",
+                                                "name": "Establish a process for identifying customer requirements through surveys, feedback, and direct communication.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-002",
+                                                "name": "Ensure that all departments understand customer requirements and how their roles contribute to meeting these needs.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-003",
+                                                "name": "Implement a system for monitoring customer satisfaction, using metrics and feedback to assess performance.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-004",
+                                                "name": "Regularly review customer feedback and satisfaction data to identify trends and areas for improvement.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-005",
+                                                "name": "Communicate findings related to customer satisfaction to all employees, fostering a culture of customer focus throughout the organization.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "id": "5.3",
+                                        "name": "quality policy",
+                                        "description": "Top management shall ensure that the quality policy a) is appropriate to the purpose of the organization, b) includes a commitment to comply with requirements and continually improve the effectiveness of the quality management system, c) provides a framework for establishing and reviewing quality objectives, d) is communicated and understood within the organization, and e) is reviewed for continuing suitability.",
+                                        "deployment_points": [
+                                            {
+                                                "id": "DP-001",
+                                                "name": "Develop a quality policy that aligns with the organization’s purpose and strategic direction, ensuring it is relevant and meaningful.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-002",
+                                                "name": "Include a clear commitment to compliance with applicable requirements and a focus on continuous improvement within the policy.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-003",
+                                                "name": "Establish a framework for setting and reviewing quality objectives that are consistent with the quality policy.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-004",
+                                                "name": "Communicate the quality policy to all employees, ensuring it is understood and integrated into daily operations.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-005",
+                                                "name": "Schedule regular reviews of the quality policy to ensure its ongoing relevance and effectiveness, making updates as necessary.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "id": "5.4.1",
+                                        "name": "quality objectives",
+                                        "description": "Top management shall ensure that quality objectives, including those needed to meet requirements for product [see 7.1 a)], are established at relevant functions and levels within the organization. The quality objectives shall be measurable and consistent with the quality policy.",
+                                        "deployment_points": [
+                                            {
+                                                "id": "DP-001",
+                                                "name": "Identify key areas within the organization where quality objectives are needed, ensuring alignment with the overall quality policy.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-002",
+                                                "name": "Develop specific, measurable quality objectives for each relevant function and level, ensuring they are achievable and time-bound.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-003",
+                                                "name": "Communicate the established quality objectives to all employees, ensuring they understand their roles in achieving them.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-004",
+                                                "name": "Implement a tracking system to monitor progress towards meeting quality objectives, allowing for adjustments as necessary.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-005",
+                                                "name": "Review quality objectives regularly to ensure they remain relevant and aligned with the organization’s goals and customer requirements.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "id": "5.4.2",
+                                        "name": "quality management system planning",
+                                        "description": "Top management shall ensure that a) the planning of the quality management system is carried out in order to meet the requirements given in 4.1, as well as the quality objectives, and b) the integrity of the quality management system is maintained when changes to the quality management system are planned and implemented.",
+                                        "deployment_points": [
+                                            {
+                                                "id": "DP-001",
+                                                "name": "Develop a comprehensive plan for the quality management system that addresses all requirements outlined in 4.1 and aligns with established quality objectives.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-002",
+                                                "name": "Involve relevant stakeholders in the planning process to ensure all perspectives are considered and integrated.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-003",
+                                                "name": "Establish a change management process to assess the impact of any changes on the quality management system’s integrity.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-004",
+                                                "name": "Document all planning activities and decisions to maintain transparency and accountability.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-005",
+                                                "name": "Regularly review and update the quality management system plan to reflect changes in organizational goals, customer needs, and regulatory requirements.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "id": "5.5.1",
+                                        "name": "responsibility and authority",
+                                        "description": "Top management shall ensure that responsibilities and authorities are defined and communicated within the organization.",
+                                        "deployment_points": [
+                                            {
+                                                "id": "DP-001",
+                                                "name": "Clearly define roles and responsibilities related to the quality management system for all levels of the organization.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-002",
+                                                "name": "Document these responsibilities in a manner that is easily accessible to all employees, such as in an organizational chart or manual.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-003",
+                                                "name": "Communicate the defined responsibilities and authorities to all employees, ensuring they understand their specific roles.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-004",
+                                                "name": "Implement a system for regularly reviewing and updating responsibilities to reflect any changes in the organization.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-005",
+                                                "name": "Foster a culture of accountability by encouraging employees to take ownership of their responsibilities within the quality management system.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "id": "5.5.2",
+                                        "name": "management representative",
+                                        "description": "Top management shall appoint a member of management who, irrespective of other responsibilities, shall have responsibility and authority that includes a) ensuring that processes needed for the quality management system are established, implemented and maintained.",
+                                        "deployment_points": [
+                                            {
+                                                "id": "DP-001",
+                                                "name": "Identify a qualified member of top management to serve as the management representative for the quality management system.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-002",
+                                                "name": "Define the specific responsibilities and authority of the management representative in relation to the quality management system.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-003",
+                                                "name": "Ensure that the management representative is provided with the necessary resources and support to fulfill their role effectively.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-004",
+                                                "name": "Communicate the appointment and responsibilities of the management representative to all relevant stakeholders within the organization.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-005",
+                                                "name": "Establish regular reporting mechanisms for the management representative to provide updates on the quality management system's performance and any necessary improvements.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "id": "5.5.3",
+                                        "name": "management representative",
+                                        "description": "Top management shall appoint a member of management who, irrespective of other responsibilities, shall have responsibility and authority that includes ensuring that processes needed for the quality management system are established, implemented and maintained.",
+                                        "deployment_points": [
+                                            {
+                                                "id": "DP-001",
+                                                "name": "Appoint a member of management as the quality management representative, ensuring they have the authority to influence quality-related decisions.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-002",
+                                                "name": "Clearly outline the scope of the representative's responsibilities, including oversight of quality processes and compliance with standards.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-003",
+                                                "name": "Provide training and resources to the management representative to enhance their understanding of quality management principles and practices.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-004",
+                                                "name": "Facilitate regular communication between the management representative and other departments to ensure alignment on quality objectives.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-005",
+                                                "name": "Document the appointment and responsibilities of the management representative in the quality management system documentation.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "id": "5.6",
+                                        "name": "management review",
+                                        "description": "Top management shall review the organization's quality management system, at planned intervals, to ensure its continuing suitability, adequacy and effectiveness. The review shall include assessing opportunities for improvement and the need for changes to the quality management system, including the quality policy and quality objectives. Records of the management reviews shall be maintained.",
+                                        "deployment_points": [
+                                            {
+                                                "id": "DP-001",
+                                                "name": "Schedule regular management review meetings at defined intervals to assess the quality management system's performance and effectiveness.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-002",
+                                                "name": "Prepare an agenda for each review meeting that includes key performance indicators, audit results, and feedback from stakeholders.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-003",
+                                                "name": "Document the outcomes of each management review, including decisions made and actions assigned to address identified issues or opportunities for improvement.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-004",
+                                                "name": "Ensure that all relevant data and information are available for review prior to the meeting to facilitate informed decision-making.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            },
+                                            {
+                                                "id": "DP-005",
+                                                "name": "Communicate the results of the management reviews to all relevant personnel to promote transparency and accountability in the quality management system.",
+                                                "path": "",
+                                                "remark": "",
+                                                "source": "",
+                                                "status": "pending",
+                                                "weightage": 10
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        "total_controls": 13,
+                        "total_sections": 2
+                    },
+                    "timestamp": "2026-09-08T06:27:54.715792+00:00",
+                    "statusHistory": {
+                        "history": [
+                            {
+                                "status": "uploaded",
+                                "message": "Document uploaded",
+                                "timestamp": "2026-09-08T06:27:23.343240+00:00"
+                            },
+                            {
+                                "status": "processing",
+                                "message": "Extraction in progress",
+                                "timestamp": "2026-09-08T06:27:23.343240+00:00"
+                            },
+                            {
+                                "status": "extracted",
+                                "message": "Extraction completed",
+                                "timestamp": "2026-09-08T06:27:54.715792+00:00"
+                            }
+                        ],
+                        "completedAt": "2026-09-08T06:27:54.715792+00:00",
+                        "processingTimeSeconds": 31.372552
+                    }
+                }
+            }
+        ],
+        "uploadedBy": {
+            "id": "6a9e542eb023aaad62cf160e",
+            "name": "Saksham Kamboj",
+            "email": "sakshamkamboj2072@gmail.com",
+            "role": "expert",
+            "avatar": "/uploads/avatar/6a9e542eb023aaad62cf160e/1775628378792-af9abc3b-1788848888348.png"
+        },
+        "approval": {
+            "status": "pending",
+            "by": null,
+            "date": null,
+            "remark": null
+        },
+        "createdAt": "2026-09-08T06:26:21.570511+00:00",
+        "updatedAt": "2026-09-08T06:27:54.743404+00:00"
+    }
+}
