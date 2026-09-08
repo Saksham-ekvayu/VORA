@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
 import CardWrapper from "./components/CardWrapper";
-import MetricCard from "./components/MetricCard";
+import StatCard from "./components/StatCard";
 import UserRegistrationChart from "@/pages/dashboard-management/components/charts/UserRegistrationChart";
 import Icon from "@/components/custom/Icon";
 import { getAdminDashboardAnalytics } from "@/services/dashboardService";
@@ -213,12 +213,17 @@ export default function AdminDashboard() {
       >
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {metrics.map((m) => (
-            <MetricCard
+            <StatCard
               key={m.label}
-              {...m}
-              icon={<Icon name={m.icon} size="24px" />}
-              path={m.path}
-            />
+              title={m.label}
+              icon={m.icon}
+              iconColor={m.iconColor}
+              iconBg={m.iconBg}
+              borderColor={m.borderColor}
+              navigation={m.path}
+            >
+              <h3 className="text-2xl font-bold text-foreground">{m.value}</h3>
+            </StatCard>
           ))}
         </div>
       </CardWrapper>

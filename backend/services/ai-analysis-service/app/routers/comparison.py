@@ -121,6 +121,7 @@ async def start_comparison(request: ComparisonRequest):
                 comparison = await session.get(PackageComparison, comparison_id)
                 if comparison:
                     logger.info(f"[COMPARISON] Found existing comparison record: {comparison_id}")
+                    comparison.deploymentFrameworkId = deployment_framework_id
                     # Ensure it has all the keys needed for processing status
                     comparison.comparison.update(
                         {
@@ -142,6 +143,7 @@ async def start_comparison(request: ComparisonRequest):
                 logger.info("[COMPARISON] Creating new comparison record...")
                 comparison = PackageComparison(
                     id=new_id(),
+                    deploymentFrameworkId=deployment_framework_id,
                     fileHashes=[],
                     comparison={
                         "status": "processing",
@@ -333,8 +335,26 @@ async def delete_comparison(comparison_id: str):
                 return not_found(f"Comparison not found: {comparison_id}")
 
             comp_data = comparison.comparison or {}
-            df_id = comp_data.get("deployment_framework_id")
+            df_id = comp_data.get("deployment_framework_id") or comparison.deploymentFrameworkId
             pkg_ver = comp_data.get("package_version")
+
+            if df_id:
+                df = await session.get(DeploymentFramework, str(df_id))
+                if df:
+                    packages = list(df.packages or [])
+                    updated = False
+                    for i, pkg in enumerate(packages):
+                        if isinstance(pkg, dict) and pkg.get("comparison") == comparison_id:
+                            pkg = dict(pkg)
+                            pkg["comparison"] = None
+                            packages[i] = pkg
+                            updated = True
+                    if updated:
+                        df.packages = packages
+                        from sqlalchemy.orm.attributes import flag_modified
+
+                        flag_modified(df, "packages")
+                        session.add(df)
 
             await session.delete(comparison)
             await session.commit()

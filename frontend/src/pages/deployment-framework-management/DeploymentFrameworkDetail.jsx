@@ -40,6 +40,7 @@ import {
   ConfirmDeleteModal,
   DeleteDeploymentFrameworkModal,
 } from "@/components/custom/modal";
+import ConfirmModal from "@/components/custom/modal/ConfirmModal";
 import RequestReviewModal from "./components/RequestReviewModal";
 import ExpertReviewModal from "./components/ExpertReviewModal";
 import {
@@ -304,7 +305,7 @@ const DeploymentFrameworkDetail = () => {
   const [activelyExtractingFileIds, setActivelyExtractingFileIds] = useState(
     new Set()
   );
-  const [isDeploying, setIsDeploying] = useState(false);
+  const [deployModalOpen, setDeployModalOpen] = useState(false);
 
   const { loading, framework, fetchFrameworkDetails } = useFrameworkData(id);
 
@@ -337,7 +338,6 @@ const DeploymentFrameworkDetail = () => {
 
   const handleDeployPackage = async () => {
     if (!currentReviewPackage) return;
-    setIsDeploying(true);
     try {
       const response = await deployDeploymentPackage(
         id,
@@ -348,8 +348,7 @@ const DeploymentFrameworkDetail = () => {
     } catch (error) {
       console.error("Error deploying package:", error);
       toast.error(error?.message || "Failed to deploy package");
-    } finally {
-      setIsDeploying(false);
+      throw error;
     }
   };
 
@@ -884,19 +883,9 @@ const DeploymentFrameworkDetail = () => {
               <Button
                 variant="default"
                 size="xs"
-                onClick={handleDeployPackage}
-                disabled={isDeploying}
+                onClick={() => setDeployModalOpen(true)}
               >
-                {isDeploying ? (
-                  <>
-                    <Icon name="loader" size={12} className="animate-spin" />{" "}
-                    Deploying...
-                  </>
-                ) : (
-                  <>
-                    <Icon name="rocket" size={12} /> Deploy Package
-                  </>
-                )}
+                <Icon name="rocket" size={12} /> Deploy Package
               </Button>
             </div>
           )}
@@ -961,6 +950,26 @@ const DeploymentFrameworkDetail = () => {
         packageData={currentReviewPackage}
         onSuccess={() => fetchFrameworkDetails(false)}
       />
+      <ConfirmModal
+        open={deployModalOpen}
+        onCancel={() => setDeployModalOpen(false)}
+        onConfirm={handleDeployPackage}
+        title="Deploy Package"
+        description="Confirm deployment to the live environment."
+        actionLabel="Deploy Package"
+        savingLabel="Deploying..."
+        actionIcon="rocket"
+        actionVariant="default"
+        icon="rocket"
+      >
+        <div className="text-sm text-foreground">
+          Are you sure you want to deploy package{" "}
+          <strong>v{currentReviewPackage?.packageVersion}</strong>?
+          <div className="mt-1 text-muted-foreground text-xs">
+            This will make it the live active version for this framework.
+          </div>
+        </div>
+      </ConfirmModal>
     </div>
   );
 };

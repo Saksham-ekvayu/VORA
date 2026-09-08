@@ -313,10 +313,71 @@ async def _synthesize_comparison_sections(
     return comparison_sections
 
 
+async def _match_dps_one_to_one(
+    assigned_dps: list[dict[str, Any]], deployment_dps: list[dict[str, Any]]
+) -> list[tuple[dict[str, Any], float, str, str]]:
+    """
+    Perform 1-to-1 best matching between assigned DPs and deployment DPs.
+    Each deployment DP will be matched at most ONCE to its single best matching assigned DP.
+    Returns list of tuples: (af_dp_dict, score_pct, best_df_dp_id, best_df_dp_text) for each af_dp in assigned_dps.
+    """
+    from app.services.comparison_runner import _batch_encode, _cosine
+
+    valid_af_dps = [dp for dp in assigned_dps if isinstance(dp, dict)]
+    valid_df_dps = [dp for dp in deployment_dps if isinstance(dp, dict)]
+
+    if not valid_af_dps:
+        return []
+
+    if not valid_df_dps:
+        return [(af_dp, 0.0, "", "") for af_dp in valid_af_dps]
+
+    af_texts = [dp.get("point") or "" for dp in valid_af_dps]
+    df_texts = [dp.get("point") or "" for dp in valid_df_dps]
+
+    # Batch encode all texts
+    af_embeddings = await _batch_encode(af_texts)
+    df_embeddings = await _batch_encode(df_texts)
+
+    # Calculate similarity matrix: af_idx -> df_idx -> score_pct
+    candidates = []
+    for i, af_emb in enumerate(af_embeddings):
+        for j, df_emb in enumerate(df_embeddings):
+            score = _cosine(af_emb, df_emb)
+            score_pct = round(score * 100 if score <= 1.0 else score, 2)
+            candidates.append((score_pct, i, j))
+
+    # Sort candidates by score_pct descending
+    candidates.sort(key=lambda x: x[0], reverse=True)
+
+    matched_pairs: dict[int, tuple[float, int]] = {}  # af_idx -> (score_pct, df_idx)
+    used_af = set()
+    used_df = set()
+
+    for score_pct, af_idx, df_idx in candidates:
+        if af_idx not in used_af and df_idx not in used_df:
+            matched_pairs[af_idx] = (score_pct, df_idx)
+            used_af.add(af_idx)
+            used_df.add(df_idx)
+
+    # Build results array in original order of valid_af_dps
+    results = []
+    for i, af_dp in enumerate(valid_af_dps):
+        if i in matched_pairs:
+            score_pct, j = matched_pairs[i]
+            best_df_dp_id = str(valid_df_dps[j].get("id") or "")
+            best_df_dp_text = valid_df_dps[j].get("point") or ""
+            results.append((af_dp, score_pct, best_df_dp_id, best_df_dp_text))
+        else:
+            results.append((af_dp, 0.0, "", ""))
+
+    return results
+
+
 async def _find_best_dp_match(
     af_dp_text: str, deployment_dps: list[dict[str, Any]]
 ) -> tuple[float, str, str]:
-    """Find best DP match using batch encoding."""
+    """Find best DP match using batch encoding (fallback single match)."""
     best_df_dp_id = ""
     best_df_dp_text = ""
 
@@ -365,19 +426,17 @@ async def _process_control_item(
     logger.info(f"[GAP-RUNNER] DP comparison for control: {assigned_name}")
     logger.info(f"  Assigned DPs: {len(assigned_dps)}, Deployment DPs: {len(deployment_dps)}")
 
-    results = []
-    for af_dp in assigned_dps:
-        if not isinstance(af_dp, dict):
-            continue
+    matches = await _match_dps_one_to_one(assigned_dps, deployment_dps)
 
+    results = []
+    for af_dp, best_dp_score, best_df_dp_id, best_df_dp_text in matches:
         af_dp_id = str(af_dp.get("id") or "")
         af_dp_text = af_dp.get("point") or ""
-        best_dp_score, best_df_dp_id, best_df_dp_text = await _find_best_dp_match(af_dp_text, deployment_dps)
 
         impl_status = _status_for_score(best_dp_score / 100.0, thresholds, statuses)
 
         logger.info(
-            f"  [DP-MATCH] AF DP '{af_dp_id}' ({af_dp_text[:50]}...) "
+            f"  [DP-MATCH-1TO1] AF DP '{af_dp_id}' ({af_dp_text[:50]}...) "
             f"matched with DF Control '{df_control_name}' DP '{best_df_dp_id}' ({best_df_dp_text[:50]}...) "
             f"| Score: {best_dp_score}% | Status: {impl_status}"
         )
@@ -390,8 +449,8 @@ async def _process_control_item(
                 "assigned_framework_section_id": section_id,
                 "assigned_framework_section_name": section_name,
                 "assigned_framework_deployment_points": {"id": af_dp_id, "point": af_dp_text},
-                "deployment_framework_control_id": df_control_id,
-                "deployment_framework_control_name": df_control_name,
+                "deployment_framework_control_id": df_control_id if best_df_dp_id else "",
+                "deployment_framework_control_name": df_control_name if best_df_dp_id else "",
                 "deployment_framework_deployment_points": {"id": best_df_dp_id, "point": best_df_dp_text},
                 "comparison_score": float(item.get("comparison_score") or 0),
                 "similarity_score": round(best_dp_score, 2),
@@ -449,6 +508,7 @@ async def _save_gap_analysis_result(
         if pga:
             logger.info("[GAP-RUNNER] Found PackageGapAnalysis by gap_id, updating")
             pga.gapAnalysis = gap_payload
+            pga.deploymentFrameworkId = df_id
             pga.updatedAt = _utcnow()
             session.add(pga)
         else:
@@ -456,7 +516,9 @@ async def _save_gap_analysis_result(
 
     if not pga:
         logger.warning("[GAP-RUNNER] No PackageGapAnalysis found, creating new")
-        pga = PackageGapAnalysis(id=new_id(), fileHashes=[], gapAnalysis=gap_payload)
+        pga = PackageGapAnalysis(
+            id=new_id(), deploymentFrameworkId=df_id, fileHashes=[], gapAnalysis=gap_payload
+        )
         session.add(pga)
 
     await session.flush()

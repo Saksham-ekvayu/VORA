@@ -2,21 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Helmet } from "react-helmet-async";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import { Award, CloudUpload, ExternalLink, LockKeyhole } from "lucide-react";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -31,6 +19,9 @@ import DateFilter from "./components/DateFilter";
 import { getExpertDashboardAnalytics } from "@/services/frameworkService";
 import LoadingSpinner from "@/components/custom/Loader/LoadingSpinner";
 import DashboardError from "./components/DashboardError";
+import StatCard from "./components/StatCard";
+import CardWrapper from "./components/CardWrapper";
+import UploadTrendChart from "./components/charts/UploadTrendChart";
 import {
   STATUS_APPROVED,
   STATUS_PENDING,
@@ -55,24 +46,6 @@ const CODE_BADGE_CLASSES = [
   "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
 ];
 
-const STAT_TONE_CLASSES = {
-  teal: {
-    icon: "bg-primary/10 text-primary border-primary/20",
-    value: "text-primary",
-    footer: "from-primary/10 to-primary/5 text-primary",
-  },
-  violet: {
-    icon: "bg-secondary/10 text-secondary border-secondary/20",
-    value: "text-secondary",
-    footer: "from-secondary/10 to-secondary/5 text-secondary",
-  },
-  orange: {
-    icon: "bg-warning/10 text-warning border-warning/20",
-    value: "text-warning",
-    footer: "from-warning/10 to-warning/5 text-foreground",
-  },
-};
-
 function getCodeBadgeClass(code) {
   if (!code) return "bg-muted text-muted-foreground";
 
@@ -89,19 +62,21 @@ function buildStats(stats) {
       title: "Framework Categories",
       value: stats.totalCategories || 0,
       description: "Approved, pending, rejected and revoked",
-      action: "View All Categories",
       actionPath: "/framework-categories",
-      icon: LockKeyhole,
-      tone: "teal",
+      icon: "lock",
+      iconColor: "text-teal-500",
+      iconBg: "bg-teal-500/10",
+      borderColor: "border-teal-500/40",
     },
     {
       title: "Framework Uploads",
       value: stats.totalUploads || 0,
       description: "Submitted in the selected date range",
-      action: "View All Uploads",
       actionPath: "/frameworks",
-      icon: CloudUpload,
-      tone: "violet",
+      icon: "cloud-upload",
+      iconColor: "text-violet-500",
+      iconBg: "bg-violet-500/10",
+      borderColor: "border-violet-500/40",
     },
     {
       title: "Framework Approval Progress",
@@ -109,11 +84,11 @@ function buildStats(stats) {
       description: `${stats.approvedUploads || 0} approved out of ${
         stats.totalUploads || 0
       } uploaded frameworks`,
-      action: "View Approval Details",
       actionPath: "/frameworks?approvalStatus=approved",
-      icon: Award,
-      tone: "orange",
-      progress: stats.approvalProgress || 0,
+      icon: "award",
+      iconColor: "text-orange-500",
+      iconBg: "bg-orange-500/10",
+      borderColor: "border-orange-500/40",
     },
   ];
 }
@@ -158,149 +133,6 @@ function PageHeader({ datePreset, startDate, endDate, handleDateChange }) {
   );
 }
 
-function StatCard({ stat }) {
-  const tone = STAT_TONE_CLASSES[stat.tone];
-  const IconComponent = stat.icon;
-
-  return (
-    <div className="flex h-full flex-col overflow-hidden rounded border border-border bg-card text-card-foreground hover:shadow-md transition-all group">
-      <Link to={stat.actionPath} className="flex flex-1 items-start gap-5 p-4">
-        <div
-          className={cn(
-            "flex size-14 shrink-0 items-center justify-center rounded border group-hover:scale-105 duration-300",
-            tone.icon
-          )}
-        >
-          <IconComponent className="size-7" strokeWidth={2} />
-        </div>
-        <div className="min-w-0 flex-1 pt-1">
-          <p className="text-sm font-semibold text-foreground">{stat.title}</p>
-          <p className={cn("mt-2 text-3xl font-bold leading-none", tone.value)}>
-            {stat.value}
-          </p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {stat.description}
-          </p>
-        </div>
-      </Link>
-    </div>
-  );
-}
-
-function CardShell({ title, actionLabel, actionPath, children, className }) {
-  let actionButton = null;
-
-  if (actionLabel && actionPath) {
-    actionButton = (
-      <Button
-        asChild
-        variant="outline"
-        size="sm"
-        className="h-9 gap-2 rounded border-border bg-card px-3 text-xs font-semibold text-primary"
-      >
-        <Link to={actionPath}>
-          {actionLabel}
-          <ExternalLink className="size-3.5" />
-        </Link>
-      </Button>
-    );
-  } else if (actionLabel) {
-    actionButton = (
-      <Button
-        variant="outline"
-        size="sm"
-        className="h-9 gap-2 rounded border-border bg-card px-3 text-xs font-semibold text-primary"
-      >
-        {actionLabel}
-        <ExternalLink className="size-3.5" />
-      </Button>
-    );
-  }
-
-  return (
-    <section
-      className={cn(
-        "rounded border border-border bg-card text-card-foreground shadow-sm",
-        className
-      )}
-    >
-      <div className="flex items-center justify-between gap-3 border-b border-transparent px-4 py-3">
-        <h2 className="text-base font-semibold text-foreground">{title}</h2>
-        {actionButton}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function UploadTrendChart({ data }) {
-  const maxUploads = Math.max(...data.map((item) => item.uploads || 0), 0);
-
-  return (
-    <ResponsiveContainer width="100%" height={230}>
-      <AreaChart data={data} margin={{ top: 8, right: 22, left: 0, bottom: 0 }}>
-        <defs>
-          <linearGradient id="uploadTrend" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="5%" stopColor="#0f9f93" stopOpacity={0.24} />
-            <stop offset="95%" stopColor="#0f9f93" stopOpacity={0.02} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid
-          stroke="var(--color-border)"
-          strokeDasharray="4 4"
-          vertical={false}
-        />
-        <XAxis
-          dataKey="month"
-          axisLine={{ stroke: "var(--color-border)" }}
-          tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
-          tickLine={false}
-        />
-        <YAxis
-          axisLine={{ stroke: "var(--color-border)" }}
-          allowDecimals={false}
-          domain={[0, Math.max(5, maxUploads + 2)]}
-          label={{
-            value: "Uploads",
-            angle: -90,
-            position: "insideLeft",
-            fill: "var(--color-muted-foreground)",
-            fontSize: 12,
-          }}
-          tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
-          tickLine={false}
-        />
-        <Tooltip
-          cursor={{ stroke: "#0f9f93", strokeDasharray: "3 3" }}
-          contentStyle={{
-            borderRadius: 6,
-            backgroundColor: "var(--color-card)",
-            borderColor: "var(--color-border)",
-            color: "var(--color-card-foreground)",
-            fontSize: 12,
-          }}
-        />
-        <Area
-          dataKey="uploads"
-          fill="url(#uploadTrend)"
-          stroke="#0f9f93"
-          strokeWidth={3}
-          dot={{ r: 5, fill: "#0f9f93", stroke: "#0f9f93" }}
-          activeDot={{ r: 6 }}
-          label={{
-            position: "top",
-            dy: -6,
-            fill: "var(--color-foreground)",
-            fontSize: 13,
-            fontWeight: 700,
-          }}
-          type="monotone"
-        />
-      </AreaChart>
-    </ResponsiveContainer>
-  );
-}
-
 function renderPieLabel({ cx, cy, midAngle, outerRadius, value, payload }) {
   if (!value) return null;
 
@@ -332,7 +164,7 @@ function renderPieLabel({ cx, cy, midAngle, outerRadius, value, payload }) {
 
 function AccessStatusChart({ data, total }) {
   return (
-    <div className="grid gap-5 px-4 pb-4 lg:grid-cols-[240px_1fr]">
+    <div className="grid gap-5 lg:grid-cols-[240px_1fr]">
       <div className="relative h-56">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -566,14 +398,6 @@ function ApprovedFrameworksTable({ rows }) {
   );
 }
 
-function TableCard({ title, actionLabel, actionPath, children }) {
-  return (
-    <CardShell title={title} actionLabel={actionLabel} actionPath={actionPath}>
-      {children}
-    </CardShell>
-  );
-}
-
 export default function ExpertDashboard() {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -643,48 +467,108 @@ export default function ExpertDashboard() {
 
       <div className="grid gap-2 lg:grid-cols-3">
         {statCards.map((stat) => (
-          <StatCard key={stat.title} stat={stat} />
+          <StatCard
+            key={stat.title}
+            title={stat.title}
+            icon={stat.icon}
+            iconColor={stat.iconColor}
+            iconBg={stat.iconBg}
+            borderColor={stat.borderColor}
+            navigation={stat.actionPath}
+          >
+            <div className="flex flex-col gap-1.5 pt-1">
+              <p
+                className={cn(
+                  "text-3xl font-bold leading-none",
+                  stat.iconColor
+                )}
+              >
+                {stat.value}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {stat.description}
+              </p>
+            </div>
+          </StatCard>
         ))}
       </div>
 
       <div className="grid gap-2 xl:grid-cols-2">
-        <CardShell
+        <CardWrapper
           title="Framework Upload Trend"
-          actionLabel="View Full Analytics"
-          actionPath="/frameworks"
+          className="flex flex-col"
+          right={
+            <Link
+              to={"/frameworks"}
+              className="text-primary cursor-pointer flex items-center gap-1"
+            >
+              <span className="text-xs font-semibold hover:underline">
+                View Full Analytics
+              </span>
+              <ExternalLink className="size-3" />
+            </Link>
+          }
         >
-          <div className="px-3 pb-4">
-            <UploadTrendChart data={dashboardData.uploadTrend || []} />
-          </div>
-        </CardShell>
+          <UploadTrendChart data={dashboardData.uploadTrend || []} />
+        </CardWrapper>
 
-        <CardShell
+        <CardWrapper
           title="Framework Category Access Status"
-          actionLabel="View Status Details"
-          actionPath="/framework-categories"
+          className="flex flex-col"
+          right={
+            <Link
+              to={"/framework-categories"}
+              className="text-primary cursor-pointer flex items-center gap-1"
+            >
+              <span className="text-xs font-semibold hover:underline">
+                View Status Details
+              </span>
+              <ExternalLink className="size-3" />
+            </Link>
+          }
         >
           <AccessStatusChart data={accessStatus} total={accessTotal} />
-        </CardShell>
+        </CardWrapper>
       </div>
 
       <div className="grid gap-2 xl:grid-cols-2">
-        <TableCard
+        <CardWrapper
           title="Recent Framework Uploads"
-          actionLabel="View All Uploads"
-          actionPath="/frameworks"
+          className="flex flex-col"
+          right={
+            <Link
+              to={"/frameworks"}
+              className="text-primary cursor-pointer flex items-center gap-1"
+            >
+              <span className="text-xs font-semibold hover:underline">
+                View All Uploads
+              </span>
+              <ExternalLink className="size-3" />
+            </Link>
+          }
         >
           <UploadsTable rows={dashboardData.recentUploads || []} />
-        </TableCard>
+        </CardWrapper>
 
-        <TableCard
+        <CardWrapper
           title="Recently Approved Frameworks"
-          actionLabel="View All Approved Frameworks"
-          actionPath="/frameworks?approvalStatus=approved"
+          className="flex flex-col"
+          right={
+            <Link
+              to={"/frameworks?approvalStatus=approved"}
+              className="text-primary cursor-pointer flex items-center gap-1"
+            >
+              <span className="text-xs font-semibold hover:underline">
+                View All Approved Frameworks
+              </span>
+              <ExternalLink className="size-3" />
+            </Link>
+          }
         >
           <ApprovedFrameworksTable
             rows={dashboardData.approvedFrameworks || []}
           />
-        </TableCard>
+        </CardWrapper>
       </div>
     </div>
   );

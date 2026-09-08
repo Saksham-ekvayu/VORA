@@ -9,7 +9,6 @@ import { useAuth } from "@/context/authContext/useAuth";
 import DateFilter from "./components/DateFilter";
 import { useDateFilter } from "./hooks/useDateFilter";
 import { Link } from "react-router-dom";
-import { cn } from "@/lib/utils";
 import Icon from "@/components/custom/Icon";
 import FrameworkMiniCard from "@/components/custom/FrameworkMiniCard";
 import UserMiniCard from "@/components/custom/UserMiniCard";
@@ -26,40 +25,7 @@ import {
   TableRow,
   TableCell,
 } from "@/components/ui/table";
-
-function MetricCard({
-  icon,
-  iconColor = "text-primary",
-  iconBg = "bg-primary/10",
-  borderColor = "border-primary/40",
-  title,
-  navigation,
-  children,
-}) {
-  return (
-    <Link
-      to={navigation}
-      className="rounded border border-border bg-linear-to-br from-background to-card p-2.5 flex justify-between shadow-lg hover:shadow-xl transition-shadow duration-300 hover:border-primary/50 cursor-pointer"
-    >
-      <div className="flex flex-col gap-2 w-full">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {title}
-        </p>
-        <div className="">{children}</div>
-      </div>
-      <span
-        className={cn(
-          "w-12 h-12 rounded shrink-0 flex items-center justify-center transition-transform duration-300 group-hover:scale-105 border",
-          borderColor,
-          iconBg,
-          iconColor
-        )}
-      >
-        <Icon name={icon} size="24px" />
-      </span>
-    </Link>
-  );
-}
+import StatCard from "./components/StatCard";
 
 export default function InternalExpertDashboard() {
   const { user } = useAuth();
@@ -184,12 +150,21 @@ export default function InternalExpertDashboard() {
           </div>
         </TableCell>
         <TableCell className="px-5 py-3 text-right">
-          <Button size="xs">
+          <Button
+            size="xs"
+            variant={
+              item.reviewStatus?.toLowerCase() === "approved"
+                ? "outline"
+                : "default"
+            }
+          >
             <Link
               to={`/deployment-frameworks/${item.id}/comparison-and-gap-analysis?package-version=${item.packageVersion}`}
               className="flex items-center gap-1"
             >
-              Review Now
+              {item.reviewStatus?.toLowerCase() === "approved"
+                ? "View"
+                : "Review Now"}
               <Icon name="chevron-right" size="16px" />
             </Link>
           </Button>
@@ -249,13 +224,13 @@ export default function InternalExpertDashboard() {
         <>
           {/* Metrics */}
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            <MetricCard
+            <StatCard
               icon="document"
               iconColor="text-primary"
               iconBg="bg-primary/10"
               borderColor="border-primary/40"
               title="Pending Review Framework"
-              navigation="/pending-reviews"
+              navigation="/deployment-frameworks?requestReviewStatus=pending"
             >
               {isLoading || !dashboardData ? (
                 <Skeleton className="h-10 w-16 mt-1" />
@@ -264,14 +239,14 @@ export default function InternalExpertDashboard() {
                   {dashboardData?.metrics?.pendingReview || 0}
                 </p>
               )}
-            </MetricCard>
-            <MetricCard
+            </StatCard>
+            <StatCard
               icon="history"
               iconColor="text-secondary"
               iconBg="bg-secondary/10"
               borderColor="border-secondary/40"
               title="In Review Framework"
-              navigation="/in-review"
+              navigation="/deployment-frameworks"
             >
               {isLoading || !dashboardData ? (
                 <Skeleton className="h-10 w-16 mt-1" />
@@ -280,14 +255,14 @@ export default function InternalExpertDashboard() {
                   {dashboardData?.metrics?.inReview || 0}
                 </p>
               )}
-            </MetricCard>
-            <MetricCard
+            </StatCard>
+            <StatCard
               icon="check-circle"
               iconColor="text-green-500"
               iconBg="bg-green-500/10"
               borderColor="border-green-500/40"
               title="Approved Framework"
-              navigation="/approved"
+              navigation="/deployment-frameworks?requestReviewStatus=approved"
             >
               {isLoading || !dashboardData ? (
                 <Skeleton className="h-10 w-16 mt-1" />
@@ -296,14 +271,14 @@ export default function InternalExpertDashboard() {
                   {dashboardData?.metrics?.approved || 0}
                 </p>
               )}
-            </MetricCard>
-            <MetricCard
+            </StatCard>
+            <StatCard
               icon="back"
               iconColor="text-destructive"
               iconBg="bg-destructive/10"
               borderColor="border-destructive/40"
               title="Returned Framework"
-              navigation="/returned"
+              navigation="/deployment-frameworks?requestReviewStatus=rejected"
             >
               {isLoading || !dashboardData ? (
                 <Skeleton className="h-10 w-16 mt-1" />
@@ -312,7 +287,7 @@ export default function InternalExpertDashboard() {
                   {dashboardData?.metrics?.returned || 0}
                 </p>
               )}
-            </MetricCard>
+            </StatCard>
           </div>
 
           <CardWrapper

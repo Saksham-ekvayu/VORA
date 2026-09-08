@@ -22,6 +22,10 @@ from vora_shared.models import (
 )
 
 UNKNOWN_FRAMEWORK = "Unknown Framework"
+FULLY_IMPLEMENTED = "fully implemented"
+IMPLEMENTED = "implemented"
+COMPLIANT = "compliant"
+PASSED = "passed"
 MAX_ACTIVE_GAPS = 50
 
 
@@ -39,7 +43,7 @@ def calculate_package_health(ga_results: list[Any]) -> int:
             if isinstance(result, dict)
             else getattr(result, "implementation_status", "")
         ).lower()
-        in ["implemented", "compliant", "passed", "fully implemented"]
+        in [IMPLEMENTED, COMPLIANT, PASSED, FULLY_IMPLEMENTED]
     )
 
     return round((impl_dps / total_dps) * 100) if total_dps > 0 else 0
@@ -341,7 +345,7 @@ def extract_actual_implemented(gap_results: list[Any]) -> dict[str, int]:
             actual_implemented[ctrl_id] = 0
 
         status = str(_get(result, "implementation_status") or "").lower()
-        if status in ["implemented", "compliant", "passed", "fully implemented"]:
+        if status in [IMPLEMENTED, COMPLIANT, PASSED, FULLY_IMPLEMENTED]:
             actual_implemented[ctrl_id] += 1
 
     return actual_implemented
@@ -1009,7 +1013,7 @@ def _process_gap_analysis_package(
         1
         for result in gap_results
         if str(get_nested(result, "implementation_status") or "").lower()
-        in ["implemented", "compliant", "passed", "fully implemented"]
+        in [IMPLEMENTED, COMPLIANT, PASSED, FULLY_IMPLEMENTED]
     )
     previous_dps = sum(previous_implemented.values()) if previous_implemented is not None else implemented_dps
     total_dps = len(gap_results)

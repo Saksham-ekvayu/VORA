@@ -81,7 +81,8 @@ function ChangePasswordModal({ isOpen, onClose }) {
         {
           type: "success",
           props: { id: "password-changed" },
-        }
+        },
+        true // skipApi: true, since token is already invalidated
       );
       // }, 1000);
     } catch (error) {

@@ -133,16 +133,6 @@ function Login() {
             Verify Email?
           </Link>
         </div>
-
-        <div className="mt-3 text-muted-foreground">
-          Don&apos;t have an account?{" "}
-          <Link
-            to="/auth/register"
-            className="font-medium text-primary hover:underline"
-          >
-            Register
-          </Link>
-        </div>
       </div>
     </div>
   );

@@ -3,7 +3,6 @@ import { createAuthRoutes } from "../utils/routeFactory";
 import {
   ForgotPassword,
   Login,
-  Register,
   ResetPassword,
   VerifyEmail,
   VerifyOtp,
@@ -11,7 +10,6 @@ import {
 
 const authRoutes = createAuthRoutes([
   { key: "login", path: "/auth/login", component: Login },
-  { key: "register", path: "/auth/register", component: Register },
   {
     key: "forgot-password",
     path: "/auth/forgot-password",
