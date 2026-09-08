@@ -104,13 +104,9 @@ def _log_llm_call(tag: str, response: Any, elapsed: float):
         finish_reason = response.choices[0].finish_reason
         usage = getattr(response, "usage", None)
         usage_str = (
-            f" | tokens(prompt={usage.prompt_tokens},completion={usage.completion_tokens})"
-            if usage
-            else ""
+            f" | tokens(prompt={usage.prompt_tokens},completion={usage.completion_tokens})" if usage else ""
         )
-        logger.info(
-            f"[{tag}] LLM call done in {elapsed:.1f}s | finish_reason={finish_reason}{usage_str}"
-        )
+        logger.info(f"[{tag}] LLM call done in {elapsed:.1f}s | finish_reason={finish_reason}{usage_str}")
         if finish_reason == "length":
             logger.warning(f"[{tag}] Response truncated — hit max_tokens limit")
         elif finish_reason == "content_filter":
@@ -333,9 +329,7 @@ def _drop_parent_prefix_duplicates(controls: list) -> list:
     control language).
     """
     ids = {
-        str(c.get("Control_id", "")).strip()
-        for c in controls
-        if isinstance(c, dict) and c.get("Control_id")
+        str(c.get("Control_id", "")).strip() for c in controls if isinstance(c, dict) and c.get("Control_id")
     }
 
     def has_child(cid: str) -> bool:
@@ -376,9 +370,7 @@ def _flattened_category_groups(controls: list) -> defaultdict:
 def _is_flattened_category_group(prefix: str, group: list) -> bool:
     if len(group) < 2:
         return False
-    if any(
-        _looks_like_objective_only(str(control.get("Control_description", ""))) for control in group
-    ):
+    if any(_looks_like_objective_only(str(control.get("Control_description", ""))) for control in group):
         return False
 
     first_id = str(group[0].get("Control_id", "")).strip()
@@ -434,9 +426,7 @@ def _flag_singleton_fabricated_children(controls: list) -> list:
     human to spot-check.
     """
     ids = {
-        str(c.get("Control_id", "")).strip()
-        for c in controls
-        if isinstance(c, dict) and c.get("Control_id")
+        str(c.get("Control_id", "")).strip() for c in controls if isinstance(c, dict) and c.get("Control_id")
     }
 
     by_parent = defaultdict(list)
@@ -694,9 +684,7 @@ TEXT:
 Return ONLY JSON. No markdown. No text outside JSON."""
 
 
-def _run_completeness_attempt(
-    prompt: str, round_num: int, attempt: int
-) -> tuple[list | None, bool]:
+def _run_completeness_attempt(prompt: str, round_num: int, attempt: int) -> tuple[list | None, bool]:
     try:
         t_start = datetime.now(UTC)
         response = get_openai_client().chat.completions.create(
@@ -793,9 +781,7 @@ def _run_completeness_check(text: str, controls: list, structural_rule: str) -> 
 
     for round_num in range(1, COMPLETENESS_MAX_ROUNDS + 1):
         schema_fields = '{"Control_id": "","Control_name": "","Control_type":"","Control_description": "","Section_name": ""}'
-        completeness_prompt = _build_completeness_prompt(
-            text, seen_ids, structural_rule, schema_fields
-        )
+        completeness_prompt = _build_completeness_prompt(text, seen_ids, structural_rule, schema_fields)
         round_missing = _run_completeness_round(completeness_prompt, round_num)
         if round_missing is None:
             break
@@ -932,9 +918,7 @@ def _parse_stage1_response(
         parsed = json.loads(raw_content)
         if isinstance(parsed, list):
             return parsed, best_salvage, False
-        logger.warning(
-            f"[EXTRACT] {tag} attempt {attempt}: parsed JSON was not a list — treating as empty"
-        )
+        logger.warning(f"[EXTRACT] {tag} attempt {attempt}: parsed JSON was not a list — treating as empty")
         return [], best_salvage, False
     except json.JSONDecodeError as exc:
         logger.warning(
@@ -947,9 +931,7 @@ def _parse_stage1_response(
         return [], best_salvage, attempt < TRUNCATION_RETRY_ATTEMPTS
 
 
-def _run_stage1_attempt(
-    prompt: str, tag: str, attempt: int, best_salvage: list
-) -> tuple[list, list, bool]:
+def _run_stage1_attempt(prompt: str, tag: str, attempt: int, best_salvage: list) -> tuple[list, list, bool]:
     try:
         t_start = datetime.now(UTC)
         response = get_openai_client().chat.completions.create(
@@ -960,9 +942,7 @@ def _run_stage1_attempt(
             timeout=3600,
         )
         elapsed = (datetime.now(UTC) - t_start).total_seconds()
-        finish_reason = _log_llm_call(
-            f"{tag}{'' if attempt == 1 else f'-retry{attempt}'}", response, elapsed
-        )
+        finish_reason = _log_llm_call(f"{tag}{'' if attempt == 1 else f'-retry{attempt}'}", response, elapsed)
         return _parse_stage1_response(
             response.choices[0].message.content, tag, attempt, finish_reason, best_salvage
         )
@@ -1049,8 +1029,7 @@ def _validate_deployment_points(raw: Any, control_name: str = "") -> str:
         points = points[:5]
     elif len(points) < 5:
         default_texts = [
-            re.sub(r"^\d+\.\s*", "", d)
-            for d in _generate_default_deployment_points(control_name).split("\n")
+            re.sub(r"^\d+\.\s*", "", d) for d in _generate_default_deployment_points(control_name).split("\n")
         ]
         i = 0
         while len(points) < 5 and i < len(default_texts):
@@ -1139,9 +1118,7 @@ def _run_stage2_batch(batch: list, batch_num: int) -> list:
     return _apply_deployment_points(batch)
 
 
-def extract_framework_controls(
-    chunks: list, framework_id: str, is_deployment: bool = False
-) -> list:
+def extract_framework_controls(chunks: list, framework_id: str, is_deployment: bool = False) -> list:
     """
     Extract controls from framework document using AI.
     Three-stage extraction:
@@ -1471,9 +1448,7 @@ def extract_deployment_controls(chunks: list) -> list:
 
     # Merge extracted controls across all batches, deduplicating by Control_id
     controls = _merge_by_control_id(*all_batch_results)
-    logger.info(
-        f"[DEPLOYMENT-EXTRACT] Total unique candidates extracted across batches: {len(controls)}"
-    )
+    logger.info(f"[DEPLOYMENT-EXTRACT] Total unique candidates extracted across batches: {len(controls)}")
 
     # Clean and validate deployment points for each control using _validate_deployment_points
     final_controls = []
@@ -1518,9 +1493,7 @@ def _control_entry(ctrl: dict, idx: int, resource_type: str) -> tuple[str, dict,
     )
 
 
-def _sub_control_entries(
-    ctrl_id: str, ordered_ids: list[str], control_by_id: dict[str, dict]
-) -> list[dict]:
+def _sub_control_entries(ctrl_id: str, ordered_ids: list[str], control_by_id: dict[str, dict]) -> list[dict]:
     entries = []
     for other_id in ordered_ids:
         other_parts = _split_id(other_id)
@@ -1552,11 +1525,7 @@ def _ensure_structure_section(sections: dict, section_key: str, display_name: st
     if section_key and section_key not in sections:
         sections[section_key] = {
             "id": section_key,
-            "name": (
-                clean_section_name(display_name).title()
-                if display_name
-                else f"Section {section_key}"
-            ),
+            "name": (clean_section_name(display_name).title() if display_name else f"Section {section_key}"),
             "controls": [],
         }
 
