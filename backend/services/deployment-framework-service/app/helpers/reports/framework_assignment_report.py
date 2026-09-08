@@ -10,7 +10,6 @@ from typing import Any
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import (
-    KeepTogether,
     NextPageTemplate,
     PageBreak,
     PageTemplate,
@@ -28,7 +27,6 @@ from vora_shared.pdf import (
     build_toc_story,
     control_separator,
     draw_common_footer,
-    format_pdf_date,
     get_cover_callback,
     get_cover_frame,
     get_shared_frame,

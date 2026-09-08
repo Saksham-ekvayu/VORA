@@ -249,7 +249,7 @@ def add_signatures_block(story: list, signatures: list[dict]):
     if not signatures:
         return
 
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    from reportlab.lib.enums import TA_LEFT, TA_RIGHT
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
     from reportlab.platypus import KeepTogether, Paragraph, Spacer, Table, TableStyle
@@ -277,9 +277,7 @@ def add_signatures_block(story: list, signatures: list[dict]):
     for idx, sig in enumerate(signatures):
         # Determine alignment
         align = TA_LEFT
-        if len(signatures) == 1:
-            align = TA_RIGHT
-        elif len(signatures) == 2 and idx == 1:
+        if len(signatures) == 1 or (len(signatures) == 2 and idx == 1):
             align = TA_RIGHT
 
         t_style = ParagraphStyle(f"T{idx}", parent=base_title, alignment=align)
