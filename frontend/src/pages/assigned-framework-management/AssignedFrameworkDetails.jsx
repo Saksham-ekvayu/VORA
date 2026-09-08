@@ -33,7 +33,7 @@ import {
   updateAssignmentFrameworkControlWeightage,
   finalizeAssignmentFramework,
   downloadAssignedFrameworkReport,
-} from "@/services/deploymentFrameworkService";
+} from "@/services/assignedFrameworkService";
 
 const FRAMEWORK_ID_NOT_FOUND = "Framework ID not found";
 const CANNOT_MODIFY_FINALIZED =
@@ -749,15 +749,9 @@ function AssignedFrameworkDetails() {
                           onChange={setGlobalSearch}
                           onClear={() => setGlobalSearch("")}
                           placeholder="Search Sections, Controls & DPs..."
+                          className="w-70 h-8 text-xs"
                         />
                       )}
-                      <SearchInput
-                        value={globalSearch}
-                        onChange={setGlobalSearch}
-                        onClear={() => setGlobalSearch("")}
-                        placeholder="Search Sections, Controls & DPs..."
-                        className="w-70 h-8 text-xs"
-                      />
                       <Button
                         variant="ghost"
                         size="icon"

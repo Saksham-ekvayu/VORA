@@ -13,8 +13,8 @@ import io
 
 from reportlab.lib import colors
 from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.units import mm
 from reportlab.platypus import (
-    BaseDocTemplate,
     KeepTogether,
     NextPageTemplate,
     PageBreak,
@@ -28,10 +28,14 @@ from vora_shared.pdf import (
     COLORS,
     REPORT_MARGINS,
     REPORT_PAGESIZE,
+    VoraDocTemplate,
     build_stat_card,
+    build_toc_story,
     control_separator,
     draw_common_footer,
     format_pdf_date,
+    get_cover_callback,
+    get_cover_frame,
     get_shared_frame,
     get_shared_styles,
 )
@@ -47,23 +51,23 @@ def _stat_status_color(ai_status: str) -> colors.Color:
 
 def _build_stats_table(sections: list[dict], styles: dict) -> Table:
     total_sections = len(sections)
-    total_controls = sum(len(s.get("controls") or []) for s in sections)
     all_controls = [c for s in sections for c in (s.get("controls") or [])]
+    total_controls = len(all_controls)
     total_dps = sum(len(c.get("deployment_points") or []) for c in all_controls)
-    avg_weightage = (
-        round(sum((c.get("weightage") or 0) for c in all_controls) / len(all_controls), 1)
-        if all_controls
-        else 0
-    )
+    total_weightage = sum((c.get("weightage") or 0) for c in all_controls)
+    avg_weightage = round(total_weightage / total_controls, 1) if total_controls > 0 else 0.0
+
+    usable_width = REPORT_PAGESIZE[0] - (REPORT_MARGINS["leftMargin"] + REPORT_MARGINS["rightMargin"])
+    card_width = usable_width / 4
 
     stats = [
-        ("TOTAL SECTIONS", str(total_sections)),
-        ("TOTAL CONTROLS", str(total_controls)),
-        ("DEPLOYMENT POINTS", str(total_dps)),
+        ("TOTAL SECTIONS", total_sections),
+        ("TOTAL CONTROLS", total_controls),
+        ("DEPLOYMENT POINTS", total_dps),
         ("AVG PRIORITY SCORE", f"{avg_weightage}/10"),
     ]
 
-    stat_cards = [build_stat_card(label, val, styles) for label, val in stats]
+    stat_cards = [build_stat_card(label, value, styles, width=card_width) for label, value in stats]
     rows = [stat_cards[i : i + 4] for i in range(0, len(stat_cards), 4)]
     stats_table = Table(rows, hAlign="LEFT", spaceBefore=0, spaceAfter=0)
     stats_table.setStyle(
@@ -137,11 +141,17 @@ def _build_control_block(control: dict, styles: dict) -> list:
 
     weight = control.get("weightage")
     weight_display = "—" if weight is None else str(weight)
+    name = control.get("name") or ""
+    if name:
+        name = name[0].upper() + name[1:]
+    text = f"[{control.get('id')}] {name}"
+    key = str(hash(text))
+    flow.append(Paragraph(text, styles["toc_invisible_control"]))
 
     header_table = Table(
         [
             [
-                Paragraph(f"[{control.get('id')}] {control.get('name')}", styles["control_title"]),
+                Paragraph(f'<a name="{key}"/>{text}', styles["control_title"]),
                 Paragraph(
                     f"Priority Weightage: {weight_display}/10",
                     styles["control_weightage"],
@@ -149,6 +159,7 @@ def _build_control_block(control: dict, styles: dict) -> list:
             ]
         ],
         colWidths=[340, 140],
+        hAlign="LEFT",
     )
     header_table.setStyle(
         TableStyle(
@@ -168,6 +179,7 @@ def _build_control_block(control: dict, styles: dict) -> list:
         remark_table = Table(
             [[Paragraph(f"<b>Remark:</b> {control['remark']}", styles["remark"])]],
             colWidths=[480],
+            hAlign="LEFT",
         )
         remark_table.setStyle(
             TableStyle(
@@ -258,42 +270,84 @@ def _framework_to_dict(framework, doc_extractions: dict | None = None) -> dict:
 
 def _create_header_story(framework, styles: dict) -> list:
     """Create the header section of the report."""
-    story = []
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import mm
+    from reportlab.platypus import HRFlowable
 
-    story.append(Paragraph("<u>Industry Framework Report</u>", styles["title"]))
-    story.append(Spacer(1, 10))
-    story.append(Paragraph(framework.frameworkName, styles["h1"]))
-    story.append(
-        Paragraph(
-            f"Version: {framework.frameworkVersion}  |  Current: v{framework.currentFileVersion}",
-            styles["meta"],
+    flow: list = []
+    flow.append(Spacer(1, 30))
+    flow.append(Paragraph("COMPLIANCE / SECURITY", styles["cover_over_title"]))
+
+    flow.append(Paragraph("Industry Framework", styles["cover_title1"]))
+    flow.append(Paragraph("Report", styles["cover_title2"]))
+    flow.append(
+        HRFlowable(
+            width=45 * mm, color=COLORS["primary"], thickness=3.5, spaceBefore=4, spaceAfter=20, hAlign="LEFT"
         )
     )
 
-    dates_text = []
-    if framework.createdAt:
-        dates_text.append(f"Created On: {format_pdf_date(framework.createdAt)}")
-    if framework.updatedAt:
-        dates_text.append(f"Updated On: {format_pdf_date(framework.updatedAt)}")
-    if dates_text:
-        story.append(Paragraph("  \u2022  ".join(dates_text), styles["meta"]))
+    flow.append(Spacer(1, 10))
+    flow.append(Paragraph(str(framework.frameworkName), styles["cover_subtitle1"]))
+    flow.append(Paragraph("Information security management system structure", styles["cover_subtitle2"]))
 
-    return story
+    # Version Info Box
+    v_styles = {
+        "lbl": ParagraphStyle("Lbl", fontName="Helvetica-Bold", fontSize=8, textColor=COLORS["primary"]),
+        "val": ParagraphStyle(
+            "Val", fontName="Helvetica", fontSize=12, textColor=COLORS["dark_text"], spaceBefore=5
+        ),
+    }
+
+    col1 = [
+        Paragraph("FRAMEWORK VERSION", v_styles["lbl"]),
+        Paragraph(str(framework.frameworkVersion), v_styles["val"]),
+    ]
+    col2 = [
+        Paragraph("CURRENT VERSION", v_styles["lbl"]),
+        Paragraph(f"v{framework.currentFileVersion}", v_styles["val"]),
+    ]
+
+    box_table = Table([[col1, col2]], colWidths=[80 * mm, 80 * mm])
+    box_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), COLORS["primary_light"]),
+                ("ROUNDEDCORNERS", [8, 8, 8, 8]),
+                ("BOX", (0, 0), (-1, -1), 0.5, COLORS["border"]),
+                ("LINEBEFORE", (1, 0), (1, -1), 0.5, COLORS["border"]),
+                ("LEFTPADDING", (0, 0), (-1, -1), 15),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 15),
+                ("TOPPADDING", (0, 0), (-1, -1), 15),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 15),
+            ]
+        )
+    )
+    flow.append(box_table)
+
+    return flow
 
 
 def _add_approval_status(story, framework, approval_by_user, styles: dict):
     """Add approval status to the story."""
+    from reportlab.lib.enums import TA_RIGHT
+    from reportlab.lib.styles import ParagraphStyle
+
     approval = framework.approval or {}
     approval_status = (_attr(approval, "status") if approval else "pending") or "pending"
-    status_text = f"Expert Review: {approval_status.upper()}"
+    status_text = f"Expert Review: <b>{approval_status.upper()}</b>"
     approver_name = approval_by_user.name if approval_by_user else None
+
     if approval_status in ("approved", "rejected") and approver_name:
         verb = "Reviewed By" if approval_status == "approved" else "Rejected By"
-        status_text += f"  \u2022  {verb}: {approver_name}"
+        status_text += f"<br/>{verb}: {approver_name}"
         approval_date = _attr(approval, "date")
         if approval and approval_date:
-            status_text += f" on {format_pdf_date(approval_date)}"
-    story.append(Paragraph(status_text, styles["meta"]))
+            status_text += f"<br/>Date: {format_pdf_date(approval_date)}"
+
+    sig_style = ParagraphStyle("Signature", parent=styles["meta"], alignment=TA_RIGHT)
+
+    story.append(Spacer(1, 40))
+    story.append(Paragraph(status_text, sig_style))
     story.append(Spacer(1, 14))
 
 
@@ -306,8 +360,6 @@ def _add_file_info(story, framework, styles: dict, doc_extractions: dict | None 
 
 def _add_controls_section(story, sections: list, styles: dict):
     """Add controls section to the story."""
-    story.append(NextPageTemplate("report"))
-    story.append(PageBreak())
     story.append(Paragraph("Controls", styles["section_title"]))
 
     if not sections:
@@ -322,9 +374,13 @@ def _add_controls_section(story, sections: list, styles: dict):
 
 def _add_section_block(story, section: dict, styles: dict):
     """Add a single section block to the story."""
+    text = f"{section['id']} {section['name']}"
+    key = str(hash(text))
+    story.append(Paragraph(text, styles["toc_invisible_section"]))
     header_table = Table(
-        [[Paragraph(f"{section['id']} {section['name']}", styles["section_header"])]],
+        [[Paragraph(f'<a name="{key}"/>{text}', styles["section_header"])]],
         colWidths=[520],
+        hAlign="LEFT",
     )
     header_table.setStyle(
         TableStyle(
@@ -360,37 +416,52 @@ def generate_framework_report_pdf(
     framework, approval_by_user=None, doc_extractions: dict | None = None
 ) -> bytes:
     styles = get_shared_styles()
+
     buffer = io.BytesIO()
 
     frame = get_shared_frame(id="normal")
+    cover_frame = get_cover_frame(id="cover")
 
     def page_callback(canvas, doc):
         _on_page(canvas, framework)
 
-    doc = BaseDocTemplate(
+    def cover_callback(canvas, doc):
+        get_cover_callback("Industry Framework Report", f"v{framework.currentFileVersion}")(canvas, doc)
+
+    doc = VoraDocTemplate(
         buffer,
         pagesize=REPORT_PAGESIZE,
         **REPORT_MARGINS,
         title=f"{framework.frameworkName} Report",
     )
-    doc.addPageTemplates([PageTemplate(id="report", frames=[frame], onPage=page_callback)])
+    doc.addPageTemplates(
+        [
+            PageTemplate(id="cover", frames=[cover_frame], onPage=cover_callback),
+            PageTemplate(id="report", frames=[frame], onPage=page_callback),
+        ]
+    )
 
     story = []
 
-    # Build header
+    # Build header (Page 1)
     story.extend(_create_header_story(framework, styles))
-    _add_approval_status(story, framework, approval_by_user, styles)
+    story.append(NextPageTemplate("report"))
+    story.append(PageBreak())
 
-    # Build stats
+    # Build TOC (Page 2)
+    story.extend(build_toc_story(styles))
+
+    # Build stats (Page 3)
+    story.append(Paragraph("Statistics", styles["section_title"]))
     fw_dict = _framework_to_dict(framework, doc_extractions)
     story.append(_build_stats_table(fw_dict["sections"], styles))
-    story.append(Spacer(1, 18))
+    story.append(Spacer(1, 10 * mm))
 
-    # Build file info
-    _add_file_info(story, framework, styles, doc_extractions)
-
-    # Build controls section
+    # Build controls section (Page 3 continued)
     _add_controls_section(story, fw_dict["sections"], styles)
 
-    doc.build(story)
+    # Add approval status as signature on last page
+    _add_approval_status(story, framework, approval_by_user, styles)
+
+    doc.multiBuild(story)
     return buffer.getvalue()

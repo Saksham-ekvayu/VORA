@@ -41,6 +41,23 @@ def extract_deployment_points(controls_data: dict[str, Any]) -> list[dict[str, A
     return deployment_points
 
 
+def count_deployment_points(controls_data: dict[str, Any]) -> int:
+    """
+    Total deployment points across all sections/controls, regardless of
+    whether path+source are actually set on them. Compare this against
+    len(extract_deployment_points(...)) / group_paths_by_source(...) to see
+    how many points are missing path/source configuration.
+    """
+
+    total = 0
+
+    for section in controls_data.get("controls_data", []):
+        for control in section.get("controls", []):
+            total += len(control.get("deployment_points", []))
+
+    return total
+
+
 def extract_source_paths(controls_data: dict[str, Any], source: str) -> list[str]:
     """
     Return only the file paths for a specific source type.

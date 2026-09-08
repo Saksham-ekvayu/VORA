@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@/context/authContext/useAuth";
-import { getAssignmentFrameworks } from "@/services/deploymentFrameworkService";
+import { getAssignmentFrameworks } from "@/services/assignedFrameworkService";
 
 /**
  * useAssignedFrameworks

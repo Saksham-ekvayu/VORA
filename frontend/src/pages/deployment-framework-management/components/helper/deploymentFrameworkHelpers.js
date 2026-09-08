@@ -161,12 +161,20 @@ export const getExpertReviewStep = (expertReview) => {
   };
 };
 
-export const getDeployStep = (isLive, version) => {
+export const getDeployStep = (isLive, isApproved, version) => {
   if (isLive) {
     return {
       status: STATUS_DONE,
       title: `Deploy as v${version}`,
       desc: "Package deployed successfully.",
+      meta: "",
+    };
+  }
+  if (isApproved) {
+    return {
+      status: STATUS_PENDING,
+      title: `Deploy as v${version}`,
+      desc: "Package has been approved and is ready for deployment.",
       meta: "",
     };
   }
@@ -304,7 +312,11 @@ export const buildGateSteps = (currentReviewPackage) => {
     getComparisonStep(currentReviewPackage.comparison),
     getGapAnalysisStep(currentReviewPackage.gapAnalysis),
     getExpertReviewStep(currentReviewPackage.expertReview),
-    getDeployStep(isLive, currentReviewPackage.packageVersion),
+    getDeployStep(
+      isLive,
+      currentReviewPackage.expertReview?.status === STATUS_APPROVED,
+      currentReviewPackage.packageVersion
+    ),
   ];
 };
 
