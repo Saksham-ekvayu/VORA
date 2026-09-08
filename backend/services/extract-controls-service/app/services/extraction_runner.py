@@ -103,10 +103,12 @@ def _extract_pdf_pymupdf_blocks(file_path: str, text_lines: list[str]) -> bool:
     doc = None
     try:
         import pymupdf
+
         doc = pymupdf.open(file_path)
     except ImportError:
         try:
             import fitz as pymupdf
+
             doc = pymupdf.open(file_path)
         except Exception:
             return False

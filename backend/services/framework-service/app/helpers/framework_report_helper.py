@@ -329,8 +329,8 @@ def _create_header_story(framework, styles: dict) -> list:
 
 def _add_approval_status(story, framework, approval_by_user, styles: dict):
     """Add approval status to the story."""
-    from vora_shared.pdf import format_pdf_date, add_signatures_block
-    
+    from vora_shared.pdf import add_signatures_block, format_pdf_date
+
     approval = framework.approval or {}
     approval_status = (_attr(approval, "status") if approval else "pending") or "pending"
     approver_name = approval_by_user.name if approval_by_user else None
@@ -339,7 +339,7 @@ def _add_approval_status(story, framework, approval_by_user, styles: dict):
         approver_email = ""
 
     title = f"EXPERT REVIEW: {approval_status.upper()}"
-    sig = { "title": title }
+    sig = {"title": title}
 
     if approval_status in ("approved", "rejected") and approver_name:
         sig["name"] = approver_name

@@ -202,30 +202,32 @@ def _add_stats_section(
     story.append(section_table)
     story.append(Spacer(1, 15 * mm))
 
+
 def _get_user_info(user: Any) -> tuple[str, str]:
     if not user:
         return "System / Unknown", ""
-        
+
     name = ""
     email = ""
     if hasattr(user, "name") and user.name:
         name = user.name
     elif isinstance(user, dict) and user.get("name"):
         name = user["name"]
-        
+
     if hasattr(user, "email") and user.email:
         email = user.email
     elif isinstance(user, dict) and user.get("email"):
         email = user["email"]
-        
+
     if not name and not email:
         return str(user), ""
-        
+
     if not name:
         name = email
         email = ""
-        
+
     return name, email
+
 
 def _safe_get(obj: Any, key: str, default: Any = None) -> Any:
     if obj is None:
@@ -234,19 +236,22 @@ def _safe_get(obj: Any, key: str, default: Any = None) -> Any:
         return obj.get(key, default)
     return getattr(obj, key, default)
 
+
 def _add_signatures_section(story: list[Any], assignment: Any):
-    from vora_shared.pdf import format_pdf_date, add_signatures_block
-    
+    from vora_shared.pdf import add_signatures_block, format_pdf_date
+
     assigned_name, assigned_email = _get_user_info(_safe_get(assignment.assignment, "assignedBy"))
     assigned_on = format_pdf_date(_safe_get(assignment.assignment, "assignedAt"))
 
     finalized = _safe_get(assignment.finalization, "isFinalized")
-    finalized_name, finalized_email = _get_user_info(_safe_get(assignment.finalization, "finalizedBy")) if finalized else ("N/A", "")
+    finalized_name, finalized_email = (
+        _get_user_info(_safe_get(assignment.finalization, "finalizedBy")) if finalized else ("N/A", "")
+    )
     finalized_on = format_pdf_date(_safe_get(assignment.finalization, "finalizedAt")) if finalized else "N/A"
 
     story.append(Spacer(1, 15 * mm))
     story.append(Paragraph("Signatures & Approvals", _styles_dict["section_title"]))
-    
+
     sigs = [
         {
             "title": "ASSIGNED BY",
@@ -259,7 +264,7 @@ def _add_signatures_section(story: list[Any], assignment: Any):
             "name": finalized_name,
             "email": finalized_email,
             "date": finalized_on,
-        }
+        },
     ]
     add_signatures_block(story, sigs)
 

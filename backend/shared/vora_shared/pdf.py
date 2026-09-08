@@ -241,27 +241,37 @@ def capitalize_first(text: str) -> str:
 def add_signatures_block(story: list, signatures: list[dict]):
     """
     Renders a unified signature block.
-    If 1 signature, right-aligns it. 
+    If 1 signature, right-aligns it.
     If 2 signatures, left-aligns the first and right-aligns the second.
     If >2, distributes them evenly.
     Signature dict keys: title, name, email, date, comment
     """
     if not signatures:
         return
-        
-    from reportlab.lib.enums import TA_RIGHT, TA_LEFT, TA_CENTER
+
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
     from reportlab.lib.styles import ParagraphStyle
-    from reportlab.platypus import Paragraph, Spacer, Table, TableStyle, KeepTogether
     from reportlab.lib.units import mm
-    from vora_shared.pdf import COLORS, REPORT_PAGESIZE, REPORT_MARGINS
-    
+    from reportlab.platypus import KeepTogether, Paragraph, Spacer, Table, TableStyle
+    from vora_shared.pdf import COLORS, REPORT_MARGINS, REPORT_PAGESIZE
+
     usable_width = REPORT_PAGESIZE[0] - (REPORT_MARGINS["leftMargin"] + REPORT_MARGINS["rightMargin"])
-    
-    base_title = ParagraphStyle("SigTitle", fontName="Helvetica-Bold", fontSize=9, textColor=COLORS["primary"])
-    base_name = ParagraphStyle("SigName", fontName="Helvetica-Bold", fontSize=12, textColor=COLORS["dark_text"], spaceBefore=4)
-    base_email = ParagraphStyle("SigEmail", fontName="Helvetica", fontSize=10, textColor=COLORS["muted_text"], spaceBefore=2)
-    base_date = ParagraphStyle("SigDate", fontName="Helvetica", fontSize=10, textColor=COLORS["muted_text"], spaceBefore=2)
-    base_comment = ParagraphStyle("SigComment", fontName="Helvetica-Oblique", fontSize=9, textColor=COLORS["muted_text"], spaceBefore=6)
+
+    base_title = ParagraphStyle(
+        "SigTitle", fontName="Helvetica-Bold", fontSize=9, textColor=COLORS["primary"]
+    )
+    base_name = ParagraphStyle(
+        "SigName", fontName="Helvetica-Bold", fontSize=12, textColor=COLORS["dark_text"], spaceBefore=4
+    )
+    base_email = ParagraphStyle(
+        "SigEmail", fontName="Helvetica", fontSize=10, textColor=COLORS["muted_text"], spaceBefore=2
+    )
+    base_date = ParagraphStyle(
+        "SigDate", fontName="Helvetica", fontSize=10, textColor=COLORS["muted_text"], spaceBefore=2
+    )
+    base_comment = ParagraphStyle(
+        "SigComment", fontName="Helvetica-Oblique", fontSize=9, textColor=COLORS["muted_text"], spaceBefore=6
+    )
 
     cells = []
     for idx, sig in enumerate(signatures):
@@ -271,7 +281,7 @@ def add_signatures_block(story: list, signatures: list[dict]):
             align = TA_RIGHT
         elif len(signatures) == 2 and idx == 1:
             align = TA_RIGHT
-            
+
         t_style = ParagraphStyle(f"T{idx}", parent=base_title, alignment=align)
         n_style = ParagraphStyle(f"N{idx}", parent=base_name, alignment=align)
         e_style = ParagraphStyle(f"E{idx}", parent=base_email, alignment=align)
@@ -290,9 +300,9 @@ def add_signatures_block(story: list, signatures: list[dict]):
         if sig.get("comment"):
             cell.append(Paragraph(f'"{sig["comment"]}"', c_style))
         cells.append(cell)
-        
+
     if len(signatures) == 1:
-        row_data = [[ "", cells[0] ]]
+        row_data = [["", cells[0]]]
         col_widths = [usable_width * 0.5, usable_width * 0.5]
         sig_table = Table(row_data, colWidths=col_widths, hAlign="RIGHT")
     else:
@@ -300,10 +310,14 @@ def add_signatures_block(story: list, signatures: list[dict]):
         col_widths = [usable_width / len(signatures)] * len(signatures)
         sig_table = Table(row_data, colWidths=col_widths, hAlign="LEFT")
 
-    sig_table.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-    ]))
-    
+    sig_table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]
+        )
+    )
+
     story.append(Spacer(1, 10 * mm))
     story.append(KeepTogether(sig_table))
 

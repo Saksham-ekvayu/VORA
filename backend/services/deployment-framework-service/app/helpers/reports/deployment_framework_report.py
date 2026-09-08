@@ -298,11 +298,11 @@ def _spider_drawing(controls: list[dict[str, Any]]) -> Drawing | None:
 
 def _add_expert_review_section(story: list, expert_review: dict):
     if expert_review and expert_review.get("assignedExpert"):
-        from vora_shared.pdf import format_pdf_date, add_signatures_block
+        from vora_shared.pdf import add_signatures_block, format_pdf_date
 
         status = expert_review.get("status") or "pending"
         title = f"EXPERT REVIEW: {status.upper()}"
-        
+
         assigned_expert = expert_review.get("assignedExpert")
         reviewer_name = ""
         reviewer_email = ""
@@ -313,21 +313,21 @@ def _add_expert_review_section(story: list, expert_review: dict):
                 reviewer_email = ""
         else:
             reviewer_name = str(assigned_expert)
-            
-        sig = { "title": title }
+
+        sig = {"title": title}
         if status.lower() in ("approved", "rejected") and reviewer_name:
             sig["name"] = reviewer_name
             if reviewer_email:
                 sig["email"] = reviewer_email
-            
+
             review_date = expert_review.get("reviewedAt") or expert_review.get("updatedAt")
             if review_date:
                 sig["date"] = format_pdf_date(review_date)
-                
+
         comments = expert_review.get("comments")
         if comments:
             sig["comment"] = comments
-            
+
         add_signatures_block(story, [sig])
 
 
@@ -372,7 +372,7 @@ def _add_implementation_status_table(story: list, controls: list, total_dp: int,
     key = str(hash(text))
     story.append(Paragraph(text, _shared_styles["toc_invisible_section"]))
     story.append(Paragraph(f'<a name="{key}"/>{text.replace("&", "&amp;")}', _SECTION))
-    
+
     stats = [
         ("TOTAL DEPLOYMENT POINTS", str(total_dp)),
         ("CONTROLS ASSESSED", str(total_compared)),
@@ -599,13 +599,13 @@ def _add_merge_details(story: list, merge_sections: list, counter: list[int]):
     total_merge_controls = sum(len(s.get("controls") or []) for s in merge_sections)
     if not total_merge_controls:
         return
-        
+
     text = f"{counter[0]}. Controls Details"
     counter[0] += 1
     key = str(hash(text))
     story.append(Paragraph(text, _shared_styles["toc_invisible_section"]))
     story.append(Paragraph(f'<a name="{key}"/>{text}', _shared_styles["section_title"]))
-    
+
     for section in merge_sections:
         story.extend(_build_merge_section_block(section))
     story.append(Spacer(1, 4 * mm))
@@ -614,13 +614,13 @@ def _add_merge_details(story: list, merge_sections: list, counter: list[int]):
 def _add_control_compliance_table(story: list, controls: list, counter: list[int]):
     if not controls:
         return
-        
+
     text = f"{counter[0]}. Control Compliance Detail"
     counter[0] += 1
     key = str(hash(text))
     story.append(Paragraph(text, _shared_styles["toc_invisible_section"]))
     story.append(Paragraph(f'<a name="{key}"/>{text}', _SECTION))
-    
+
     rows = [["ID", "Control Name", "Score", "Match", "Impl", "Part", "Not"]]
     for c in controls:
         rows.append(
@@ -650,16 +650,18 @@ def _add_control_compliance_table(story: list, controls: list, counter: list[int
     story.append(Spacer(1, 6 * mm))
 
 
-def _add_deployment_point_analysis(story: list, controls: list, dp_data: dict, total_dp: int, counter: list[int]):
+def _add_deployment_point_analysis(
+    story: list, controls: list, dp_data: dict, total_dp: int, counter: list[int]
+):
     if total_dp <= 0:
         return
-        
+
     text = f"{counter[0]}. Deployment Point Analysis"
     counter[0] += 1
     key = str(hash(text))
     story.append(Paragraph(text, _shared_styles["toc_invisible_section"]))
     story.append(Paragraph(f'<a name="{key}"/>{text}', _SECTION))
-    
+
     story.append(
         Paragraph(
             f"Granular view of all {total_dp} deployment points, mapped to their best-matched framework point.",
@@ -720,7 +722,9 @@ def _add_deployment_point_analysis(story: list, controls: list, dp_data: dict, t
         story.append(Spacer(1, 3 * mm))
 
 
-def _add_header_section(story: list[Any], framework: Any, package_data: dict[str, Any], fw_name: str, fw_version: str):
+def _add_header_section(
+    story: list[Any], framework: Any, package_data: dict[str, Any], fw_name: str, fw_version: str
+):
     story.append(Spacer(1, 30))
     story.append(Paragraph("COMPLIANCE / SECURITY", _shared_styles["cover_over_title"]))
 
@@ -728,13 +732,18 @@ def _add_header_section(story: list[Any], framework: Any, package_data: dict[str
     story.append(Paragraph("Report", _shared_styles["cover_title2"]))
     story.append(
         HRFlowable(
-            width=45 * mm, color=_COLORS["primary"], thickness=3.5, spaceBefore=4, spaceAfter=20, hAlign="LEFT"
+            width=45 * mm,
+            color=_COLORS["primary"],
+            thickness=3.5,
+            spaceBefore=4,
+            spaceAfter=20,
+            hAlign="LEFT",
         )
     )
 
     story.append(Spacer(1, 10))
     story.append(Paragraph(str(fw_name), _shared_styles["cover_subtitle1"]))
-    
+
     subtitle = (
         f"Deployment Framework Gap Analysis & Compliance Audit Report "
         f"— Package v{package_data.get('packageVersion', '1.0.0')}, {package_data.get('trigger', '')}"
