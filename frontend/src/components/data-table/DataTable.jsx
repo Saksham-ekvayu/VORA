@@ -170,22 +170,25 @@ export default function DataTable({
             {getSerialNumber(index, pagination)}
           </div>
         </TableCell>
-        {columns.map((column) => (
-          <TableCell
-            key={column.key}
-            className={`px-4 py-2.5 text-sm text-foreground align-middle ${
-              column.align === "center"
-                ? "text-center"
-                : column.align === "right"
-                  ? "text-right"
-                  : "text-left"
-            }`}
-          >
-            {column.render
-              ? column.render(row[column.key], row)
-              : row[column.key]}
-          </TableCell>
-        ))}
+        {columns.map((column) => {
+          let alignmentClass = "text-left";
+          if (column.align === "center") {
+            alignmentClass = "text-center";
+          } else if (column.align === "right") {
+            alignmentClass = "text-right";
+          }
+
+          return (
+            <TableCell
+              key={column.key}
+              className={`px-4 py-2.5 text-sm text-foreground align-middle ${alignmentClass}`}
+            >
+              {column.render
+                ? column.render(row[column.key], row)
+                : row[column.key]}
+            </TableCell>
+          );
+        })}
         {renderActions && (
           <TableCell className="w-20 px-2 py-2.5 text-center align-middle">
             {renderActions(row)}
@@ -246,36 +249,40 @@ export default function DataTable({
                   </span>
                 </div>
               </TableHead>
-              {columns.map((column) => (
-                <TableHead
-                  key={column.key}
-                  onClick={() => handleSort(column.key)}
-                  className={`px-4 py-2.5 border-b border-border font-semibold text-xs text-muted-foreground uppercase tracking-wider whitespace-nowrap bg-muted ${
-                    column.align === "center"
-                      ? "text-center"
-                      : column.align === "right"
-                        ? "text-right"
-                        : "text-left"
-                  } ${
-                    column.sortable
-                      ? "cursor-pointer select-none transition-all duration-200 hover:bg-accent/50 hover:text-primary"
-                      : ""
-                  }`}
-                >
-                  <div
-                    className={`flex items-center gap-2 ${
-                      column.align === "center"
-                        ? "justify-center"
-                        : column.align === "right"
-                          ? "justify-end"
-                          : ""
+              {columns.map((column) => {
+                let alignmentClass = "text-left";
+                if (column.align === "center") {
+                  alignmentClass = "text-center";
+                } else if (column.align === "right") {
+                  alignmentClass = "text-right";
+                }
+
+                let justificationClass = "";
+                if (column.align === "center") {
+                  justificationClass = "justify-center";
+                } else if (column.align === "right") {
+                  justificationClass = "justify-end";
+                }
+
+                return (
+                  <TableHead
+                    key={column.key}
+                    onClick={() => handleSort(column.key)}
+                    className={`px-4 py-2.5 border-b border-border font-semibold text-xs text-muted-foreground uppercase tracking-wider whitespace-nowrap bg-muted ${alignmentClass} ${
+                      column.sortable
+                        ? "cursor-pointer select-none transition-all duration-200 hover:bg-accent/50 hover:text-primary"
+                        : ""
                     }`}
                   >
-                    <span>{column.label}</span>
-                    {renderSortIndicator(column)}
-                  </div>
-                </TableHead>
-              ))}
+                    <div
+                      className={`flex items-center gap-2 ${justificationClass}`}
+                    >
+                      <span>{column.label}</span>
+                      {renderSortIndicator(column)}
+                    </div>
+                  </TableHead>
+                );
+              })}
               {renderActions && (
                 <TableHead className="w-20 px-2 py-2.5 text-center border-b border-border font-semibold text-xs text-muted-foreground uppercase tracking-wider whitespace-nowrap bg-muted">
                   Actions

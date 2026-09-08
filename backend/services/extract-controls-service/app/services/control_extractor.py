@@ -445,7 +445,7 @@ def _flag_singleton_fabricated_children(controls: list) -> list:
 
     if suspicious:
         logger.warning(
-            f"[EXTRACT] ⚠️ POSSIBLE MISCLASSIFICATION — {len(suspicious)} control(s) look like they "
+            f"[EXTRACT] POSSIBLE MISCLASSIFICATION — {len(suspicious)} control(s) look like they "
             f"may be a fabricated lone '.1' child of a parent that should have been a leaf control "
             f"itself (pattern copied from a neighboring sibling that genuinely needed children): "
             f"{sorted(suspicious)}. This is a heuristic, not a certainty — spot-check these IDs "

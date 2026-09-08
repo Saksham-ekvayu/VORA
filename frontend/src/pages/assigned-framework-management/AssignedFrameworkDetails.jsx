@@ -60,11 +60,11 @@ const OverviewActions = ({
     {canFinalize && (
       <Button
         size="sm"
-        className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center gap-1"
+        className="flex items-center gap-1"
         onClick={onFinalize}
         title="Finalize Framework Version"
       >
-        <Icon name="lock" size="12px" /> Finalize Framework
+        <Icon name="lock" size="14px" /> Finalize
       </Button>
     )}
 
@@ -76,7 +76,7 @@ const OverviewActions = ({
     >
       <Icon
         name={isDownloadingReport ? "loader" : "download"}
-        size="12px"
+        size="14px"
         className={isDownloadingReport ? "animate-spin" : ""}
       />
       {isDownloadingReport ? " Generating..." : " Report"}
@@ -88,7 +88,7 @@ const OverviewActions = ({
       onClick={() => setShowHistoryModal(true)}
       title="View assignment history"
     >
-      <Icon name="history" size="12px" />
+      <Icon name="history" size="14px" />
       Assignment History
     </Button>
 
@@ -97,7 +97,7 @@ const OverviewActions = ({
       onClick={() => navigate("/assigned-frameworks")}
       title="Go back"
     >
-      <Icon name="arrow-left" size="12px" /> Back
+      <Icon name="arrow-left" size="14px" /> Back
     </Button>
   </div>
 );
@@ -627,11 +627,10 @@ function AssignedFrameworkDetails() {
                   </p>
                   {framework.customer.isActive !== null && (
                     <span
-                      className={`rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase ${
-                        framework.customer.isActive
+                      className={`rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase ${framework.customer.isActive
                           ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                           : "bg-red-500/15 text-red-600 dark:text-red-400"
-                      }`}
+                        }`}
                     >
                       {framework.customer.isActive ? "Active" : "Inactive"}
                     </span>
@@ -648,11 +647,10 @@ function AssignedFrameworkDetails() {
 
             <div className="px-4 py-4">
               <p
-                className={`mb-3 text-[10px] font-bold uppercase tracking-wider ${
-                  isRevokedLatest
+                className={`mb-3 text-[10px] font-bold uppercase tracking-wider ${isRevokedLatest
                     ? "text-red-500 dark:text-red-400"
                     : "text-muted-foreground"
-                }`}
+                  }`}
               >
                 {isRevokedLatest ? "Revoked by" : "Assigned by"}
               </p>
@@ -693,18 +691,16 @@ function AssignedFrameworkDetails() {
               return (
                 <div
                   key={ver.fileVersion}
-                  className={`rounded overflow-hidden transition-all duration-300 hover:shadow-lg bg-card ${
-                    isCurrent ? "border border-primary" : "border border-border"
-                  }`}
+                  className={`rounded overflow-hidden transition-all duration-300 hover:shadow-lg bg-card ${isCurrent ? "border border-primary" : "border border-border"
+                    }`}
                 >
                   <div className="w-full flex items-center justify-between p-2 transition-colors duration-200 text-foreground ">
                     <div className="flex-1 flex items-center gap-3 flex-wrap cursor-pointer">
                       <span
-                        className={`px-3 py-1 rounded text-xs font-bold ${
-                          isCurrent
+                        className={`px-3 py-1 rounded text-xs font-bold ${isCurrent
                             ? "bg-primary text-primary-foreground"
                             : "bg-muted text-muted-foreground"
-                        }`}
+                          }`}
                       >
                         v{ver.fileVersion}
                         {isCurrent && " • Current"}
