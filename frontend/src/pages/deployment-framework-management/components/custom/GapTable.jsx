@@ -220,12 +220,15 @@ const SimilarityScore = ({ score }) => {
   );
 };
 
-const GapPointExpanded = ({ point, user, onReviewClick, packageStatus }) => {
+const GapPointExpanded = ({ point, user, onReviewClick, packageStatus, expertReviewStatus }) => {
   const hasComment = !!point.reviewComment?.trim();
 
+  const isApprovedOrReturned =
+    ["approved", "returned", "live", "deployed", "superseded"].includes(packageStatus?.toLowerCase()) ||
+    ["approved", "returned"].includes(expertReviewStatus?.toLowerCase());
+
   const showReviewButton =
-    !isAuditor(user?.role) ||
-    (hasComment && packageStatus?.toLowerCase() !== "pending");
+    !isAuditor(user?.role) || isApprovedOrReturned;
   const buttonVariant = hasComment ? "default" : "outline";
 
   return (
@@ -363,6 +366,7 @@ const GapPointCard = ({
   user,
   onReviewClick,
   packageStatus,
+  expertReviewStatus,
 }) => {
   return (
     <div className="border border-border rounded overflow-hidden bg-card">
@@ -395,6 +399,7 @@ const GapPointCard = ({
           user={user}
           onReviewClick={onReviewClick}
           packageStatus={packageStatus}
+          expertReviewStatus={expertReviewStatus}
         />
       )}
     </div>
@@ -461,6 +466,7 @@ export default function GapsTable({
   deploymentGaps,
   onRefresh,
   packageStatus,
+  expertReviewStatus,
   globalSearch = "",
 }) {
   const { user } = useAuth();
@@ -626,6 +632,7 @@ export default function GapsTable({
               user={user}
               onReviewClick={handleReviewClick}
               packageStatus={packageStatus}
+              expertReviewStatus={expertReviewStatus}
             />
           );
         })}

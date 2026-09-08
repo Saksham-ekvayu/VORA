@@ -529,6 +529,7 @@ export default function ComparisonGapAnalysis() {
                 <ComparisonsTable
                   comparisonDataSource={comparisonData}
                   packageStatus={activePackage?.status}
+                  expertReviewStatus={activePackage?.expertReview?.status}
                   onRefresh={() => fetchDetails(false)}
                   globalSearch={globalSearch}
                 />
@@ -577,6 +578,7 @@ export default function ComparisonGapAnalysis() {
                 <GapsTable
                   deploymentGaps={gapAnalysisData}
                   packageStatus={activePackage?.status}
+                  expertReviewStatus={activePackage?.expertReview?.status}
                   onRefresh={() => fetchDetails(false)}
                   globalSearch={globalSearch}
                 />
