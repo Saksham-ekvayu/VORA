@@ -103,14 +103,16 @@ def _extract_pdf_pymupdf_blocks(file_path: str, text_lines: list[str]) -> bool:
     doc = None
     try:
         import pymupdf
+
         doc = pymupdf.open(file_path)
     except ImportError:
         try:
             import fitz as pymupdf
+
             doc = pymupdf.open(file_path)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return False
-    except Exception:
+    except Exception:  # noqa: BLE001
         return False
 
     if not doc:
