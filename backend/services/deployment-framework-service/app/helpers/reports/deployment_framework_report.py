@@ -30,6 +30,8 @@ from vora_shared.pdf import (
     REPORT_MARGINS,
     REPORT_PAGESIZE,
     VoraDocTemplate,
+    build_toc_story,
+    capitalize_first,
     control_separator,
     draw_common_footer,
     get_cover_callback,
@@ -353,13 +355,18 @@ def _add_document_table(story: list, documents: list):
     story.append(Spacer(1, 6 * mm))
 
 
-def _add_implementation_status_table(story: list, controls: list, total_dp: int):
+def _add_implementation_status_table(story: list, controls: list, total_dp: int, counter: list[int]):
     total_compared = len(controls)
     avg_score = round(sum(c["score"] for c in controls) / total_compared) if total_compared else 0
     high_match = sum(1 for c in controls if c["match"] == HIGH)
     low_match = sum(1 for c in controls if c["match"] == LOW)
 
-    story.append(Paragraph("Implementation Status &amp; Match Distribution", _SECTION))
+    text = f"{counter[0]}. Implementation Status & Match Distribution"
+    counter[0] += 1
+    key = str(hash(text))
+    story.append(Paragraph(text, _shared_styles["toc_invisible_section"]))
+    story.append(Paragraph(f'<a name="{key}"/>{text.replace("&", "&amp;")}', _SECTION))
+    
     stats = [
         ("TOTAL DEPLOYMENT POINTS", str(total_dp)),
         ("CONTROLS ASSESSED", str(total_compared)),
@@ -401,7 +408,13 @@ def _add_implementation_status_table(story: list, controls: list, total_dp: int)
 
 
 def _add_charts(
-    story: list, controls: list, total_dp: int, total_impl: int, total_partial: int, total_not_impl: int
+    story: list,
+    controls: list,
+    total_dp: int,
+    total_impl: int,
+    total_partial: int,
+    total_not_impl: int,
+    counter: list[int],
 ):
     if total_dp > 0:
         impl_chart = _donut_drawing(
@@ -430,10 +443,17 @@ def _add_charts(
         story.append(charts_table)
         story.append(Spacer(1, 4 * mm))
 
+    if not controls:
+        return
+
     spider = _spider_drawing(controls)
     if spider:
+        text = f"{counter[0]}. Compliance Radar Analysis"
+        counter[0] += 1
+        key = str(hash(text))
         spider_elements = [
-            Paragraph("Compliance Radar Analysis", _SECTION),
+            Paragraph(text, _shared_styles["toc_invisible_section"]),
+            Paragraph(f'<a name="{key}"/>{text}', _SECTION),
             Paragraph(
                 f"Spider chart mapping all {len(controls)} controls by achieved compliance score.",
                 _SMALL_MUTED,
@@ -476,7 +496,7 @@ def _build_merge_control_block(ctrl: dict[str, Any]) -> list:
         [
             [
                 Paragraph(
-                    f"[{ctrl.get('id', '')}] {ctrl.get('name', 'Unnamed Control')}",
+                    f"[{ctrl.get('id', '')}] {capitalize_first(ctrl.get('name', 'Unnamed Control'))}",
                     _shared_styles["control_title"],
                 ),
                 Paragraph(f"Weightage: {weight_display}/10", _shared_styles["control_weightage"]),
@@ -567,28 +587,40 @@ def _build_merge_section_block(section: dict[str, Any]) -> list:
     return block
 
 
-def _add_merge_details(story: list, merge_sections: list):
+def _add_merge_details(story: list, merge_sections: list, counter: list[int]):
     if not merge_sections:
         return
     total_merge_controls = sum(len(s.get("controls") or []) for s in merge_sections)
     if not total_merge_controls:
         return
-    story.append(Paragraph("Merge Extraction Details", _shared_styles["section_title"]))
+        
+    text = f"{counter[0]}. Controls Details"
+    counter[0] += 1
+    key = str(hash(text))
+    story.append(Paragraph(text, _shared_styles["toc_invisible_section"]))
+    story.append(Paragraph(f'<a name="{key}"/>{text}', _shared_styles["section_title"]))
+    
     for section in merge_sections:
         story.extend(_build_merge_section_block(section))
     story.append(Spacer(1, 4 * mm))
 
 
-def _add_control_compliance_table(story: list, controls: list):
+def _add_control_compliance_table(story: list, controls: list, counter: list[int]):
     if not controls:
         return
-    story.append(Paragraph("Control Compliance Detail", _SECTION))
+        
+    text = f"{counter[0]}. Control Compliance Detail"
+    counter[0] += 1
+    key = str(hash(text))
+    story.append(Paragraph(text, _shared_styles["toc_invisible_section"]))
+    story.append(Paragraph(f'<a name="{key}"/>{text}', _SECTION))
+    
     rows = [["ID", "Control Name", "Score", "Match", "Impl", "Part", "Not"]]
     for c in controls:
         rows.append(
             [
                 c["assigned_id"] or c["id"],
-                Paragraph(c["name"], _shared_styles["table_cell"]),
+                Paragraph(capitalize_first(c.get("name", "")), _shared_styles["table_cell"]),
                 f"{c['score']}%",
                 c["match"],
                 str(c["impl"]),
@@ -612,10 +644,16 @@ def _add_control_compliance_table(story: list, controls: list):
     story.append(Spacer(1, 6 * mm))
 
 
-def _add_deployment_point_analysis(story: list, controls: list, dp_data: dict, total_dp: int):
+def _add_deployment_point_analysis(story: list, controls: list, dp_data: dict, total_dp: int, counter: list[int]):
     if total_dp <= 0:
         return
-    story.append(Paragraph("Deployment Point Analysis", _SECTION))
+        
+    text = f"{counter[0]}. Deployment Point Analysis"
+    counter[0] += 1
+    key = str(hash(text))
+    story.append(Paragraph(text, _shared_styles["toc_invisible_section"]))
+    story.append(Paragraph(f'<a name="{key}"/>{text}', _SECTION))
+    
     story.append(
         Paragraph(
             f"Granular view of all {total_dp} deployment points, mapped to their best-matched framework point.",
@@ -628,8 +666,8 @@ def _add_deployment_point_analysis(story: list, controls: list, dp_data: dict, t
             continue
         story.append(
             Paragraph(
-                f"Assigned: [{ctrl['assigned_id'] or 'N/A'}] {ctrl['assigned_name'] or '—'}<br/>"
-                f"Deployment: [{ctrl['deployment_id'] or 'N/A'}] {ctrl['deployment_name'] or '—'}",
+                f"Assigned: [{ctrl['assigned_id'] or 'N/A'}] {capitalize_first(ctrl.get('assigned_name') or '—')}<br/>"
+                f"Deployment: [{ctrl['deployment_id'] or 'N/A'}] {capitalize_first(ctrl.get('deployment_name') or '—')}",
                 ParagraphStyle(
                     "DFRGapHeader",
                     parent=_base_styles["Normal"],
@@ -643,7 +681,7 @@ def _add_deployment_point_analysis(story: list, controls: list, dp_data: dict, t
                 ),
             )
         )
-        gap_rows = [["DP", "Assigned Point", "Matched Point", "Sim", "Status"]]
+        gap_rows = [["DP", "Assigned Point", "Deployment Point", "Similarity", "Status"]]
         for idx, gap in enumerate(gaps):
             gap_rows.append(
                 [
@@ -774,11 +812,14 @@ def generate_deployment_framework_report_pdf(framework: Any, package_data: dict[
     story.append(NextPageTemplate("report"))
     story.append(PageBreak())
 
-    _add_implementation_status_table(story, controls, total_dp)
-    _add_charts(story, controls, total_dp, total_impl, total_partial, total_not_impl)
-    _add_merge_details(story, (package_data.get("mergeDocument") or {}).get("controls_data") or [])
-    _add_control_compliance_table(story, controls)
-    _add_deployment_point_analysis(story, controls, dp_data, total_dp)
+    story.extend(build_toc_story(_shared_styles))
+
+    counter = [1]
+    _add_implementation_status_table(story, controls, total_dp, counter)
+    _add_charts(story, controls, total_dp, total_impl, total_partial, total_not_impl, counter)
+    _add_merge_details(story, (package_data.get("mergeDocument") or {}).get("controls_data") or [], counter)
+    _add_control_compliance_table(story, controls, counter)
+    _add_deployment_point_analysis(story, controls, dp_data, total_dp, counter)
 
     _add_expert_review_section(story, package_data.get("expertReview"))
 

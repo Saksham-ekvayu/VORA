@@ -231,6 +231,13 @@ def format_pdf_date(value: Any, include_time: bool = False) -> str:
     return str(value)
 
 
+def capitalize_first(text: str) -> str:
+    """Capitalizes the first character of a string without modifying the rest."""
+    if not text:
+        return text
+    return text[0].upper() + text[1:]
+
+
 def draw_common_footer(canvas, page_num: int, pagesize: tuple, header_text: str | None = None):
     """Draws a standardized header (page>1) and footer for PDF reports."""
     canvas.saveState()
@@ -367,6 +374,7 @@ def build_toc_story(styles: dict) -> list:
     story.append(Paragraph("Table of Contents", styles["h1"]))
     story.append(Spacer(1, 10))
     toc = TableOfContents()
+    toc.dotsMinLevel = 0
     toc.levelStyles = [
         ParagraphStyle(
             fontName="Helvetica-Bold",
