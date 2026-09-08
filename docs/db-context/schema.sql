@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict Qu9aPxa0hWEEcaaEWcnhkuqryQeNwWKHnrlmxc1BziA1wTAmtFA9jxA1SWnt72j
+\restrict fpCeaLtehP49ZhHvPjuOpcPBxenAhkLWjeShH8WdugjwXgLlZLtJtXh6phddU1G
 
 -- Dumped from database version 18.4
 -- Dumped by pg_dump version 18.4
@@ -288,106 +288,6 @@ CREATE TABLE public.package_gap_analyses (
 
 
 --
--- Name: processed_files; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.processed_files (
-    id integer NOT NULL,
-    file_path character varying NOT NULL,
-    status character varying,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
--- Name: processed_files_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.processed_files_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: processed_files_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.processed_files_id_seq OWNED BY public.processed_files.id;
-
-
---
--- Name: source_configs; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.source_configs (
-    id integer NOT NULL,
-    control_name character varying NOT NULL,
-    dp_name character varying NOT NULL,
-    organization_name character varying NOT NULL,
-    source_type character varying NOT NULL,
-    source_name character varying,
-    is_active integer NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
--- Name: source_configs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.source_configs_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: source_configs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.source_configs_id_seq OWNED BY public.source_configs.id;
-
-
---
--- Name: source_credentials; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.source_credentials (
-    id integer NOT NULL,
-    source_config_id integer NOT NULL,
-    config_json text NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
--- Name: source_credentials_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.source_credentials_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: source_credentials_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.source_credentials_id_seq OWNED BY public.source_credentials.id;
-
-
---
 -- Name: uploaded_files; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -427,27 +327,6 @@ CREATE TABLE public.users (
     "createdAt" timestamp with time zone NOT NULL,
     "updatedAt" timestamp with time zone NOT NULL
 );
-
-
---
--- Name: processed_files id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.processed_files ALTER COLUMN id SET DEFAULT nextval('public.processed_files_id_seq'::regclass);
-
-
---
--- Name: source_configs id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.source_configs ALTER COLUMN id SET DEFAULT nextval('public.source_configs_id_seq'::regclass);
-
-
---
--- Name: source_credentials id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.source_credentials ALTER COLUMN id SET DEFAULT nextval('public.source_credentials_id_seq'::regclass);
 
 
 --
@@ -576,38 +455,6 @@ ALTER TABLE ONLY public.package_comparisons
 
 ALTER TABLE ONLY public.package_gap_analyses
     ADD CONSTRAINT package_gap_analyses_pkey PRIMARY KEY (id);
-
-
---
--- Name: processed_files processed_files_file_path_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.processed_files
-    ADD CONSTRAINT processed_files_file_path_key UNIQUE (file_path);
-
-
---
--- Name: processed_files processed_files_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.processed_files
-    ADD CONSTRAINT processed_files_pkey PRIMARY KEY (id);
-
-
---
--- Name: source_configs source_configs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.source_configs
-    ADD CONSTRAINT source_configs_pkey PRIMARY KEY (id);
-
-
---
--- Name: source_credentials source_credentials_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.source_credentials
-    ADD CONSTRAINT source_credentials_pkey PRIMARY KEY (id);
 
 
 --
@@ -830,27 +677,6 @@ CREATE UNIQUE INDEX ix_gap_threshold_unique ON public.gap_threshold_config USING
 
 
 --
--- Name: ix_processed_files_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_processed_files_id ON public.processed_files USING btree (id);
-
-
---
--- Name: ix_source_configs_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_source_configs_id ON public.source_configs USING btree (id);
-
-
---
--- Name: ix_source_credentials_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_source_credentials_id ON public.source_credentials USING btree (id);
-
-
---
 -- Name: ix_uploaded_files_ref; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -900,16 +726,8 @@ CREATE INDEX ix_users_tenant_role ON public.users USING btree ("tenantId", role)
 
 
 --
--- Name: source_credentials source_credentials_source_config_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.source_credentials
-    ADD CONSTRAINT source_credentials_source_config_id_fkey FOREIGN KEY (source_config_id) REFERENCES public.source_configs(id);
-
-
---
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Qu9aPxa0hWEEcaaEWcnhkuqryQeNwWKHnrlmxc1BziA1wTAmtFA9jxA1SWnt72j
+\unrestrict fpCeaLtehP49ZhHvPjuOpcPBxenAhkLWjeShH8WdugjwXgLlZLtJtXh6phddU1G
 

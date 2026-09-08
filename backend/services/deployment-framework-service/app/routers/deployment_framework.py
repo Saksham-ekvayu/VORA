@@ -1194,6 +1194,7 @@ def _apply_review_action(
     comments: str | None,
 ) -> None:
     if action == "approve":
+        found_package.type = "pre-release"
         found_package.expertReview.status = "approved"
         found_package.expertReview.reviewedAt = _utcnow()
         found_package.expertReview.comments = comments

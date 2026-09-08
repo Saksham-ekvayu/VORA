@@ -649,6 +649,7 @@ const DeploymentFrameworkDetail = () => {
           showViewAction={false}
           onExtractionTriggered={handleExtractionTriggered}
           onSuccess={() => fetchFrameworkDetails(true)}
+          documentWidth="max-w-250"
         />
       </div>
 
