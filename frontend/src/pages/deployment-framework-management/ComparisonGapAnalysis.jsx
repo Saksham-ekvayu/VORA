@@ -424,7 +424,7 @@ export default function ComparisonGapAnalysis() {
             <DeploymentFrameworkPackageTable
               preReleasePackage={activePackage}
               frameworkId={framework?.id}
-              documentWidth="max-w-full"
+              documentWidth="max-w-200"
               showAllColumns={true}
               showActions={showAuditorActions}
               onExtractionTriggered={handleExtractionTriggered}

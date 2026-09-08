@@ -220,15 +220,21 @@ const SimilarityScore = ({ score }) => {
   );
 };
 
-const GapPointExpanded = ({ point, user, onReviewClick, packageStatus, expertReviewStatus }) => {
+const GapPointExpanded = ({
+  point,
+  user,
+  onReviewClick,
+  packageStatus,
+  expertReviewStatus,
+}) => {
   const hasComment = !!point.reviewComment?.trim();
 
   const isApprovedOrReturned =
-    ["approved", "returned", "live", "deployed", "superseded"].includes(packageStatus?.toLowerCase()) ||
-    ["approved", "returned"].includes(expertReviewStatus?.toLowerCase());
+    ["approved", "returned", "live", "deployed", "superseded"].includes(
+      packageStatus?.toLowerCase()
+    ) || ["approved", "returned"].includes(expertReviewStatus?.toLowerCase());
 
-  const showReviewButton =
-    !isAuditor(user?.role) || isApprovedOrReturned;
+  const showReviewButton = !isAuditor(user?.role) || isApprovedOrReturned;
   const buttonVariant = hasComment ? "default" : "outline";
 
   return (

@@ -120,11 +120,11 @@ function ControlRow({
   expertReviewStatus,
 }) {
   const isApprovedOrReturned =
-    ["approved", "returned", "live", "deployed", "superseded"].includes(packageStatus?.toLowerCase()) ||
-    ["approved", "returned"].includes(expertReviewStatus?.toLowerCase());
+    ["approved", "returned", "live", "deployed", "superseded"].includes(
+      packageStatus?.toLowerCase()
+    ) || ["approved", "returned"].includes(expertReviewStatus?.toLowerCase());
 
-  const showReviewButton =
-    !isAuditor(user?.role) || isApprovedOrReturned;
+  const showReviewButton = !isAuditor(user?.role) || isApprovedOrReturned;
   const buttonVariant = hasComment ? "default" : "outline";
 
   return (
