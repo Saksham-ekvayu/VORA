@@ -888,10 +888,13 @@ attached DIRECTLY to that ID.
 
 Rules for Control IDs and Section IDs:
 1. If explicit Section and Control IDs exist in the document text, you MUST extract and use them EXACTLY as they appear — numeric, letter-prefixed, or any other scheme, and regardless of ID depth relative to other controls in the same document.
-2. If the document does NOT contain explicit IDs, generate them sequentially starting strictly from A.1.
+2. Section/Category headings (e.g. "A.5", "A.6", "A.7", "A.8" or "Clause 5", "Clause 6") are container headings ONLY. NEVER extract section/category headings as controls, and NEVER pair a control description paragraph with a section heading.
 3. Control IDs MUST be based on their Section ID.
 4. NEVER invent or generate IDs not explicitly shown when explicit IDs already exist in the text.
-5. If this document uses explicit "Control"/"Objective:" labels (TIER 0 above), ONLY extract items literally labelled "Control". Otherwise apply TIER 1.
+6. CRITICAL EXACT DESCRIPTION PAIRING: Each Control_id MUST be paired strictly with its OWN description text printed directly beneath/beside that specific Control_id and Control_name in the document.
+   - Match each Control_id to the requirement text that immediately follows that specific Control_id and Control_name.
+   - Container headings (like "A.5", "A.6", "Clause 5", "Clause 6") carry NO control description of their own; do NOT assign any control text to a container heading.
+   - NEVER shift descriptions by +1 or -1 between adjacent control IDs under any circumstance. If a text slice starts with a trailing sentence fragment from a previous page, ignore that trailing fragment — do NOT attach it to the next control ID.
 
 For Section_name: Extract the EXACT section heading, NOT the ID. When TIER 0 applies, use the nearest parent heading's title.
 
