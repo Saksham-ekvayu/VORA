@@ -1,598 +1,148 @@
 ﻿{
-    "public.deployment_documents": [
+    "public.deployment_frameworks": [
         {
-            "id": "6a9ab14b49304505272b16aa",
-            "document": {
-                "fileId": "6a9ab14b08dc2b1f6bd21b04",
-                "fileUrl": "C:\\EKVAYU\\VORA\\backend\\shared\\uploads\\file\\deployment-document\\ISO27001_2022_Deployment_Framework.docx",
-                "fileHash": "2a414d4181dca640b56ad1aed7c8494f363cfb2bb74dd5777d400e0d23a6776b",
-                "fileSize": 58098,
-                "fileType": "docx",
-                "uploadedAt": "2026-09-04T11:53:47.217816Z",
-                "fileVersion": "1.0.0",
-                "aiExtraction": "6a9ab14d9280067e9c326cee",
-                "originalFileName": "ISO27001_2022_Deployment_Framework.docx"
-            },
-            "tenantId": "tenant_7395cd7778fbc058",
-            "createdAt": "2026-09-04T17:23:47.22337+05:30",
-            "updatedAt": "2026-09-04T17:23:49.356528+05:30",
-            "uploadedBy": "system-pipeline",
+            "id": "6a9f9a3224c0a7dee7c29b00",
+            "packages": [
+                {
+                    "type": "in-review",
+                    "status": "pending",
+                    "trigger": "Initial package draft",
+                    "createdAt": "2026-09-08T05:16:34.221723Z",
+                    "documents": [
+                        {
+                            "fileId": "6a9f9a3263c73932fd68d5c8",
+                            "fileUrl": "/uploads/file/deployment-framework/ISO27001-2022/6a9e55719ab2415424bdd525/ISO27001_2022_Deployment_Framework-1788844592224.docx",
+                            "fileHash": "635b1d8443e8c889b5e755227823895fb031563149a3091997b5da5024fe19cc",
+                            "fileSize": 58047,
+                            "fileType": "docx",
+                            "replicated": false,
+                            "uploadedAt": "2026-09-08T05:16:34.196694Z",
+                            "fileVersion": "1.0.0",
+                            "aiExtraction": "6a9f9a32fccffbd3df9fe696",
+                            "originalFileName": "ISO27001_2022_Deployment_Framework.docx"
+                        }
+                    ],
+                    "updatedAt": "2026-09-08T05:16:34.221729Z",
+                    "comparison": "6a9f9a320ab6ebdedbcb5f85",
+                    "gapAnalysis": "6a9f9a32c7d53225d6b75528",
+                    "expertReview": {
+                        "status": "requested",
+                        "comments": null,
+                        "reviewedAt": null,
+                        "requestedAt": "2026-09-08T05:22:47.495684Z",
+                        "assignedExpert": "6a9e55891fca041c11c74d95"
+                    },
+                    "mergeDocument": "6a9f9a32bb61b842b03204d9",
+                    "packageVersion": "1.0.0"
+                }
+            ],
+            "tenantId": "tenant_315fd9c01ffedd84",
+            "createdAt": "2026-09-08T10:46:34.222438+05:30",
+            "updatedAt": "2026-09-08T10:52:47.495933+05:30",
+            "uploadedBy": "6a9e55719ab2415424bdd525",
+            "frameworkId": "6a9e938340525d354ee55118",
             "frameworkCode": "iso27001",
             "frameworkName": "Information Security Management System",
             "frameworkVersion": "ISO27001:2022",
-            "deploymentFrameworkId": "6a9aae6e637ab9201482f17e"
-        }
-    ],
-    "public.document_extractions": [
+            "assignedFrameworkId": "6a9f99f4a596f042f09b4ce7",
+            "frameworkCategoryId": "6a9e93626aa8dbbc7dc29904",
+            "currentPackageVersion": "1.0.0"
+        },
         {
-            "id": "6a9aae58f187675564d7b6a1",
-            "fileHash": "30ec79f51ec41a2b26f4667cf31113066712f48ddf0562fa3f696491b1da087a",
-            "createdAt": "2026-09-04T17:11:12.458658+05:30",
-            "updatedAt": "2026-09-04T17:12:30.025021+05:30",
-            "aiExtraction": {
-                "status": "extracted",
-                "message": "Deployment framework extraction completed",
-                "controls": {
-                    "controls_data": [
+            "id": "6a9f9a2479269bb0e5c8bf70",
+            "packages": [
+                {
+                    "type": "in-review",
+                    "status": "pending",
+                    "trigger": "Initial package draft",
+                    "createdAt": "2026-09-08T05:16:20.961755Z",
+                    "documents": [
                         {
-                            "id": "4",
-                            "name": "Quality Management System",
-                            "controls": [
-                                {
-                                    "id": "4.1.1",
-                                    "name": "control of outsourced processes",
-                                    "description": "Where an organization chooses to outsource any process that affects product conformity with requirements, the organization shall ensure control over such processes. Control of such outsourced processes shall be identified within the quality management system.",
-                                    "deployment_points": [
-                                        {
-                                            "id": "DP-001",
-                                            "name": "Identify all processes that are outsourced and assess their impact on product conformity.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-002",
-                                            "name": "Establish criteria for selecting and evaluating outsourcing partners to ensure they meet quality standards.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-003",
-                                            "name": "Document the controls and monitoring processes for outsourced activities within the quality management system.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-004",
-                                            "name": "Regularly review and audit outsourced processes to ensure compliance with established quality requirements.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-005",
-                                            "name": "Provide training and resources to internal staff to effectively manage and oversee outsourced processes.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        }
-                                    ]
-                                },
-                                {
-                                    "id": "4.2.2",
-                                    "name": "quality manual",
-                                    "description": "The organization shall establish and maintain a quality manual that includes the scope of the quality management system, including details of and justification for any exclusions, the documented procedures established for the quality management system, or reference to them, and a description of the interaction between the processes of the quality management system.",
-                                    "deployment_points": [
-                                        {
-                                            "id": "DP-001",
-                                            "name": "Develop a comprehensive quality manual that outlines the scope and objectives of the quality management system.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-002",
-                                            "name": "Include justifications for any exclusions and ensure they are documented clearly.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-003",
-                                            "name": "Reference all documented procedures related to the quality management system within the manual.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-004",
-                                            "name": "Describe the interactions between different processes in the quality management system to ensure clarity.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-005",
-                                            "name": "Regularly review and update the quality manual to reflect changes in processes or organizational structure.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        }
-                                    ]
-                                },
-                                {
-                                    "id": "4.2.3",
-                                    "name": "control of documents",
-                                    "description": "Documents required by the quality management system shall be controlled. A documented procedure shall be established to define the controls needed to approve documents for adequacy prior to issue, to review and update as necessary and re-approve documents, to ensure that changes and the current revision status of documents are identified, to ensure that relevant versions of applicable documents are available at points of use, to ensure that documents remain legible and identifiable, to ensure that documents of external origin are identified and their distribution controlled, and to prevent the unintended use of obsolete documents.",
-                                    "deployment_points": [
-                                        {
-                                            "id": "DP-001",
-                                            "name": "Establish a documented procedure for the approval and review of all quality management system documents.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-002",
-                                            "name": "Implement a version control system to track changes and current revision status of documents.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-003",
-                                            "name": "Ensure that all relevant documents are accessible at points of use for employees.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-004",
-                                            "name": "Regularly train staff on document control procedures to maintain compliance and awareness.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-005",
-                                            "name": "Conduct periodic audits to ensure that obsolete documents are removed from circulation and that current documents are being used.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        }
-                                    ]
-                                },
-                                {
-                                    "id": "4.2.4",
-                                    "name": "control of records",
-                                    "description": "Records shall be established and maintained to provide evidence of conformity to requirements and of the effective operation of the quality management system. Records shall remain legible, readily identifiable and retrievable. A documented procedure shall be established to define the controls needed for the identification, storage, protection, retrieval, retention time and disposition of records.",
-                                    "deployment_points": [
-                                        {
-                                            "id": "DP-001",
-                                            "name": "Create a documented procedure for the management of records, including identification, storage, and protection.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-002",
-                                            "name": "Define retention times for different types of records based on regulatory and organizational requirements.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-003",
-                                            "name": "Ensure that all records are easily retrievable and legible for audits and reviews.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-004",
-                                            "name": "Implement security measures to protect sensitive records from unauthorized access or loss.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-005",
-                                            "name": "Regularly review and update record management procedures to ensure compliance with current standards.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        }
-                                    ]
-                                }
-                            ]
-                        },
-                        {
-                            "id": "5",
-                            "name": "Management Responsibility",
-                            "controls": [
-                                {
-                                    "id": "5.1",
-                                    "name": "management commitment",
-                                    "description": "Top management shall demonstrate leadership and commitment with respect to the quality management system by ensuring that the quality policy and objectives are established and are compatible with the strategic direction and the context of the organization, and that the quality management system is integrated into the organization\u0027s business processes.",
-                                    "deployment_points": [
-                                        {
-                                            "id": "DP-001",
-                                            "name": "Develop a quality policy that aligns with the organization\u0027s strategic direction and objectives.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-002",
-                                            "name": "Communicate the quality policy and objectives to all employees to ensure understanding and alignment.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-003",
-                                            "name": "Integrate quality management practices into all business processes to enhance overall effectiveness.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-004",
-                                            "name": "Regularly review the quality policy and objectives to ensure they remain relevant and effective.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-005",
-                                            "name": "Provide resources and support to promote a culture of quality throughout the organization.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        }
-                                    ]
-                                },
-                                {
-                                    "id": "5.2",
-                                    "name": "customer focus",
-                                    "description": "Top management shall demonstrate leadership and commitment with respect to customer focus by ensuring that customer requirements are determined and are met with the aim of enhancing customer satisfaction.",
-                                    "deployment_points": [
-                                        {
-                                            "id": "DP-001",
-                                            "name": "Establish processes to gather and analyze customer feedback to understand their requirements.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-002",
-                                            "name": "Ensure that customer requirements are documented and communicated to relevant departments.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-003",
-                                            "name": "Implement measures to monitor customer satisfaction and address any issues promptly.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-004",
-                                            "name": "Train employees on the importance of customer focus and how it impacts the organization.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-005",
-                                            "name": "Regularly review customer satisfaction data to identify areas for improvement and enhance service delivery.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        }
-                                    ]
-                                },
-                                {
-                                    "id": "5.3",
-                                    "name": "quality policy",
-                                    "description": "Top management shall establish, implement and maintain a quality policy that: a) is appropriate to the purpose and context of the organization; b) provides a framework for setting quality objectives; c) includes a commitment to satisfy applicable requirements; and d) includes a commitment to continual improvement of the quality management system.",
-                                    "deployment_points": [
-                                        {
-                                            "id": "DP-001",
-                                            "name": "Draft a quality policy that reflects the organization\u0027s purpose and context, ensuring it is clear and concise.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-002",
-                                            "name": "Ensure the quality policy provides a framework for setting measurable quality objectives across the organization.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-003",
-                                            "name": "Communicate the quality policy to all employees and stakeholders to ensure understanding and compliance.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-004",
-                                            "name": "Establish a process for regularly reviewing and updating the quality policy to reflect changes in the organization.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-005",
-                                            "name": "Promote a culture of continual improvement by encouraging feedback and suggestions from employees.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        }
-                                    ]
-                                },
-                                {
-                                    "id": "5.4",
-                                    "name": "planning",
-                                    "description": "Top management shall ensure that: a) the planning of the quality management system is aligned with the strategic direction of the organization; b) quality objectives are established at relevant functions and levels; and c) the planning of the quality management system is carried out in such a way that it is integrated into the organization\u0027s business processes.",
-                                    "deployment_points": [
-                                        {
-                                            "id": "DP-001",
-                                            "name": "Align the planning of the quality management system with the organization\u0027s strategic goals and objectives.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-002",
-                                            "name": "Set specific, measurable quality objectives at all relevant levels and functions within the organization.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-003",
-                                            "name": "Integrate quality management planning into existing business processes to ensure consistency.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-004",
-                                            "name": "Involve key stakeholders in the planning process to gather diverse perspectives and insights.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-005",
-                                            "name": "Regularly review and adjust the quality management plan to respond to changes in the business environment.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        }
-                                    ]
-                                },
-                                {
-                                    "id": "5.5.2",
-                                    "name": "management representative",
-                                    "description": "Top management shall appoint a member of management who, irrespective of other responsibilities, shall have responsibility and authority that includes ensuring that processes needed for the quality management system are established, implemented and maintained.",
-                                    "deployment_points": [
-                                        {
-                                            "id": "DP-001",
-                                            "name": "Appoint a qualified management representative with clear authority over the quality management system processes.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-002",
-                                            "name": "Define the roles and responsibilities of the management representative in relation to quality management.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-003",
-                                            "name": "Ensure the management representative has access to necessary resources and support to fulfill their duties.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-004",
-                                            "name": "Facilitate regular communication between the management representative and other departments to promote quality initiatives.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-005",
-                                            "name": "Monitor the effectiveness of the management representative\u0027s role and make adjustments as necessary.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        }
-                                    ]
-                                },
-                                {
-                                    "id": "5.6",
-                                    "name": "5.6",
-                                    "description": "The organization shall conduct management reviews at planned intervals to ensure the quality management system is still adequate, effective and aligned with the strategic direction of the organization.",
-                                    "deployment_points": [
-                                        {
-                                            "id": "DP-001",
-                                            "name": "Schedule regular management review meetings to assess the quality management system\u0027s performance.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-002",
-                                            "name": "Prepare an agenda that includes key performance indicators, audit results, and customer feedback for discussion.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-003",
-                                            "name": "Document the outcomes of management reviews, including decisions made and actions assigned.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-004",
-                                            "name": "Ensure that follow-up actions from previous reviews are addressed and reported on in subsequent meetings.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        },
-                                        {
-                                            "id": "DP-005",
-                                            "name": "Use the findings from management reviews to drive continuous improvement initiatives within the organization.",
-                                            "path": "",
-                                            "remark": "",
-                                            "source": "",
-                                            "status": "pending",
-                                            "weightage": 10
-                                        }
-                                    ]
-                                }
-                            ]
+                            "fileId": "6a9f9a24fecf8f89fa10c4b6",
+                            "fileUrl": "/uploads/file/deployment-framework/ISO27001-2013/6a9e55719ab2415424bdd525/ISO27001_2013_Deployment_Framework-1788844580837.docx",
+                            "fileHash": "257f5d99751586241a9366b0b9196782da5887c23b33930a16ce253d52e2d795",
+                            "fileSize": 65511,
+                            "fileType": "docx",
+                            "replicated": false,
+                            "uploadedAt": "2026-09-08T05:16:20.880206Z",
+                            "fileVersion": "1.0.0",
+                            "aiExtraction": "6a9f9a247b5da79ccd82a942",
+                            "originalFileName": "ISO27001_2013_Deployment_Framework.docx"
                         }
                     ],
-                    "total_controls": 25,
-                    "total_sections": 5
-                },
-                "timestamp": "2026-09-04T11:42:30.015864+00:00",
-                "statusHistory": {
-                    "history": [
-                        {
-                            "status": "uploaded",
-                            "message": "Document uploaded",
-                            "timestamp": "2026-09-04T11:41:55.572342+00:00"
-                        },
-                        {
-                            "status": "processing",
-                            "message": "Extraction in progress",
-                            "timestamp": "2026-09-04T11:41:55.572342+00:00"
-                        },
-                        {
-                            "status": "extracted",
-                            "message": "Extraction completed",
-                            "timestamp": "2026-09-04T11:42:30.015864+00:00"
-                        }
-                    ],
-                    "completedAt": "2026-09-04T11:42:30.015864+00:00",
-                    "processingTimeSeconds": 34.443522
+                    "updatedAt": "2026-09-08T05:16:20.961764Z",
+                    "comparison": "6a9f9a2414411a9c75e415f0",
+                    "gapAnalysis": "6a9f9a2412461259e1700c2f",
+                    "expertReview": {
+                        "status": "requested",
+                        "comments": null,
+                        "reviewedAt": null,
+                        "requestedAt": "2026-09-08T05:22:54.451023Z",
+                        "assignedExpert": "6a9e55891fca041c11c74d95"
+                    },
+                    "mergeDocument": "6a9f9a241d868c6efb541e50",
+                    "packageVersion": "1.0.0"
                 }
-            }
+            ],
+            "tenantId": "tenant_315fd9c01ffedd84",
+            "createdAt": "2026-09-08T10:46:20.964839+05:30",
+            "updatedAt": "2026-09-08T10:52:54.45131+05:30",
+            "uploadedBy": "6a9e55719ab2415424bdd525",
+            "frameworkId": "6a9e96e4697722671fe5a457",
+            "frameworkCode": "iso27001",
+            "frameworkName": "Information Security Management System",
+            "frameworkVersion": "ISO27001:2013",
+            "assignedFrameworkId": "6a9f99f4bf7a41aa9711bc4e",
+            "frameworkCategoryId": "6a9e93626aa8dbbc7dc29904",
+            "currentPackageVersion": "1.0.0"
+        },
+        {
+            "id": "6a9f9a3c5fa35d5b4fd0d5a1",
+            "packages": [
+                {
+                    "type": "in-review",
+                    "status": "pending",
+                    "trigger": "Initial package draft",
+                    "createdAt": "2026-09-08T05:16:44.523015Z",
+                    "documents": [
+                        {
+                            "fileId": "6a9f9a3cc669ccd4997d2416",
+                            "fileUrl": "/uploads/file/deployment-framework/ISO27001-2005/6a9e55719ab2415424bdd525/ISO27001_2005_Deployment_Framework-1788844604465.docx",
+                            "fileHash": "abba31ac1fffd04d76902cb423131e78f6bf65d5deaf713404543d87989151a5",
+                            "fileSize": 70155,
+                            "fileType": "docx",
+                            "replicated": false,
+                            "uploadedAt": "2026-09-08T05:16:44.501001Z",
+                            "fileVersion": "1.0.0",
+                            "aiExtraction": "6a9f9a3cf30e1bd83d4ef4c8",
+                            "originalFileName": "ISO27001_2005_Deployment_Framework.docx"
+                        }
+                    ],
+                    "updatedAt": "2026-09-08T05:33:53.440232Z",
+                    "comparison": "6a9f9a3cfa4df08071c5ab4c",
+                    "gapAnalysis": "6a9f9a3c91d44367dcb12a92",
+                    "expertReview": {
+                        "status": "approved",
+                        "comments": "ok, ok",
+                        "reviewedAt": "2026-09-08T05:33:53.440176Z",
+                        "requestedAt": "2026-09-08T05:21:59.826608Z",
+                        "assignedExpert": "6a9e55891fca041c11c74d95"
+                    },
+                    "mergeDocument": "6a9f9a3cc9628ad17585e104",
+                    "packageVersion": "1.0.0"
+                }
+            ],
+            "tenantId": "tenant_315fd9c01ffedd84",
+            "createdAt": "2026-09-08T10:46:44.523645+05:30",
+            "updatedAt": "2026-09-08T11:03:53.440445+05:30",
+            "uploadedBy": "6a9e55719ab2415424bdd525",
+            "frameworkId": "6a9e961d383dc0dc7c1f5d0d",
+            "frameworkCode": "iso27001",
+            "frameworkName": "Information Security Management System",
+            "frameworkVersion": "ISO27001:2005",
+            "assignedFrameworkId": "6a9ead0b5c6a7cd9e252ad29",
+            "frameworkCategoryId": "6a9e93626aa8dbbc7dc29904",
+            "currentPackageVersion": "1.0.0"
         }
     ]
 }
