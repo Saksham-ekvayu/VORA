@@ -202,81 +202,66 @@ def _add_stats_section(
     story.append(section_table)
     story.append(Spacer(1, 15 * mm))
 
+def _get_user_info(user: Any) -> tuple[str, str]:
+    if not user:
+        return "System / Unknown", ""
+        
+    name = ""
+    email = ""
+    if hasattr(user, "name") and user.name:
+        name = user.name
+    elif isinstance(user, dict) and user.get("name"):
+        name = user["name"]
+        
+    if hasattr(user, "email") and user.email:
+        email = user.email
+    elif isinstance(user, dict) and user.get("email"):
+        email = user["email"]
+        
+    if not name and not email:
+        return str(user), ""
+        
+    if not name:
+        name = email
+        email = ""
+        
+    return name, email
+
+def _safe_get(obj: Any, key: str, default: Any = None) -> Any:
+    if obj is None:
+        return default
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)
 
 def _add_signatures_section(story: list[Any], assignment: Any):
-    def _safe_get(obj, key):
-        if not obj:
-            return None
-        if hasattr(obj, key):
-            return getattr(obj, key)
-        if isinstance(obj, dict):
-            return obj.get(key)
-        return None
-
-    assigned_by = _display_user(_safe_get(assignment.assignment, "assignedBy"))
+    from vora_shared.pdf import format_pdf_date, add_signatures_block
+    
+    assigned_name, assigned_email = _get_user_info(_safe_get(assignment.assignment, "assignedBy"))
     assigned_on = format_pdf_date(_safe_get(assignment.assignment, "assignedAt"))
 
     finalized = _safe_get(assignment.finalization, "isFinalized")
-    finalized_by = _display_user(_safe_get(assignment.finalization, "finalizedBy")) if finalized else "N/A"
+    finalized_name, finalized_email = _get_user_info(_safe_get(assignment.finalization, "finalizedBy")) if finalized else ("N/A", "")
     finalized_on = format_pdf_date(_safe_get(assignment.finalization, "finalizedAt")) if finalized else "N/A"
 
     story.append(Spacer(1, 15 * mm))
     story.append(Paragraph("Signatures & Approvals", _styles_dict["section_title"]))
-    story.append(Spacer(1, 6 * mm))
-
-    sig_data = [
-        [
-            Paragraph(
-                "ASSIGNED BY",
-                ParagraphStyle("SigHead", fontName="Helvetica-Bold", fontSize=9, textColor=COLORS["primary"]),
-            ),
-            Paragraph(
-                "FINALIZED BY",
-                ParagraphStyle("SigHead", fontName="Helvetica-Bold", fontSize=9, textColor=COLORS["primary"]),
-            ),
-        ],
-        [Spacer(1, 2 * mm), Spacer(1, 2 * mm)],
-        [
-            Paragraph(
-                assigned_by,
-                ParagraphStyle(
-                    "SigName", fontName="Helvetica-Bold", fontSize=12, textColor=COLORS["dark_text"]
-                ),
-            ),
-            Paragraph(
-                finalized_by,
-                ParagraphStyle(
-                    "SigName", fontName="Helvetica-Bold", fontSize=12, textColor=COLORS["dark_text"]
-                ),
-            ),
-        ],
-        [
-            Paragraph(
-                f"Date: {assigned_on}",
-                ParagraphStyle("SigDate", fontName="Helvetica", fontSize=10, textColor=COLORS["muted_text"]),
-            ),
-            Paragraph(
-                f"Date: {finalized_on}",
-                ParagraphStyle("SigDate", fontName="Helvetica", fontSize=10, textColor=COLORS["muted_text"]),
-            ),
-        ],
+    
+    sigs = [
+        {
+            "title": "ASSIGNED BY",
+            "name": assigned_name,
+            "email": assigned_email,
+            "date": assigned_on,
+        },
+        {
+            "title": "FINALIZED BY",
+            "name": finalized_name,
+            "email": finalized_email,
+            "date": finalized_on,
+        }
     ]
-
-    usable_width = REPORT_PAGESIZE[0] - (REPORT_MARGINS["leftMargin"] + REPORT_MARGINS["rightMargin"])
-    sig_table = Table(sig_data, colWidths=[usable_width / 2, usable_width / 2], hAlign="LEFT")
-    sig_table.setStyle(
-        TableStyle(
-            [
-                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-                ("LINEBELOW", (0, 1), (0, 1), 0.5, COLORS["border"]),
-                ("LINEBELOW", (1, 1), (1, 1), 0.5, COLORS["border"]),
-            ]
-        )
-    )
-
-    story.append(KeepTogether(sig_table))
+    add_signatures_block(story, sigs)
 
 
 def _get_control_label_info(control: Any) -> tuple[str, Any]:

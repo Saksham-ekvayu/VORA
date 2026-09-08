@@ -329,26 +329,27 @@ def _create_header_story(framework, styles: dict) -> list:
 
 def _add_approval_status(story, framework, approval_by_user, styles: dict):
     """Add approval status to the story."""
-    from reportlab.lib.enums import TA_RIGHT
-    from reportlab.lib.styles import ParagraphStyle
-
+    from vora_shared.pdf import format_pdf_date, add_signatures_block
+    
     approval = framework.approval or {}
     approval_status = (_attr(approval, "status") if approval else "pending") or "pending"
-    status_text = f"Expert Review: <b>{approval_status.upper()}</b>"
     approver_name = approval_by_user.name if approval_by_user else None
+    approver_email = getattr(approval_by_user, "email", "") if approval_by_user else ""
+    if approver_name == approver_email:
+        approver_email = ""
+
+    title = f"EXPERT REVIEW: {approval_status.upper()}"
+    sig = { "title": title }
 
     if approval_status in ("approved", "rejected") and approver_name:
-        verb = "Reviewed By" if approval_status == "approved" else "Rejected By"
-        status_text += f"<br/>{verb}: {approver_name}"
+        sig["name"] = approver_name
+        if approver_email:
+            sig["email"] = approver_email
         approval_date = _attr(approval, "date")
         if approval and approval_date:
-            status_text += f"<br/>Date: {format_pdf_date(approval_date)}"
+            sig["date"] = format_pdf_date(approval_date)
 
-    sig_style = ParagraphStyle("Signature", parent=styles["meta"], alignment=TA_RIGHT)
-
-    story.append(Spacer(1, 40))
-    story.append(Paragraph(status_text, sig_style))
-    story.append(Spacer(1, 14))
+    add_signatures_block(story, [sig])
 
 
 def _add_file_info(story, framework, styles: dict, doc_extractions: dict | None = None):

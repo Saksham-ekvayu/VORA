@@ -298,31 +298,37 @@ def _spider_drawing(controls: list[dict[str, Any]]) -> Drawing | None:
 
 def _add_expert_review_section(story: list, expert_review: dict):
     if expert_review and expert_review.get("assignedExpert"):
-        from reportlab.lib.enums import TA_RIGHT
-        from reportlab.lib.styles import ParagraphStyle
-        from vora_shared.pdf import format_pdf_date
-        
-        expert = expert_review["assignedExpert"]
-        status = str(expert_review.get("status", "pending")).upper()
-        
-        status_text = f"Expert Review: <b>{status}</b>"
-        
-        if status in ("APPROVED", "REJECTED") and expert.get("name"):
-            verb = "Reviewed By" if status == "APPROVED" else "Rejected By"
-            status_text += f"<br/>{verb}: {expert.get('name')}"
-            review_date = expert_review.get("date") or expert_review.get("reviewedAt") or expert_review.get("updatedAt")
-            if review_date:
-                status_text += f"<br/>Date: {format_pdf_date(review_date)}"
-                
-        sig_style = ParagraphStyle("DFRSig", parent=_shared_styles["meta"], alignment=TA_RIGHT)
-        
-        story.append(Spacer(1, 40))
-        story.append(Paragraph(status_text, sig_style))
-        story.append(Spacer(1, 14))
+        from vora_shared.pdf import format_pdf_date, add_signatures_block
 
-        if expert_review.get("comments"):
-            comment_style = ParagraphStyle("DFRSigComment", parent=_SMALL_MUTED, alignment=TA_RIGHT)
-            story.append(Paragraph(f"“{expert_review['comments']}”", comment_style))
+        status = expert_review.get("status") or "pending"
+        title = f"EXPERT REVIEW: {status.upper()}"
+        
+        assigned_expert = expert_review.get("assignedExpert")
+        reviewer_name = ""
+        reviewer_email = ""
+        if isinstance(assigned_expert, dict):
+            reviewer_name = assigned_expert.get("name") or assigned_expert.get("email") or ""
+            reviewer_email = assigned_expert.get("email") or ""
+            if reviewer_name == reviewer_email:
+                reviewer_email = ""
+        else:
+            reviewer_name = str(assigned_expert)
+            
+        sig = { "title": title }
+        if status.lower() in ("approved", "rejected") and reviewer_name:
+            sig["name"] = reviewer_name
+            if reviewer_email:
+                sig["email"] = reviewer_email
+            
+            review_date = expert_review.get("reviewedAt") or expert_review.get("updatedAt")
+            if review_date:
+                sig["date"] = format_pdf_date(review_date)
+                
+        comments = expert_review.get("comments")
+        if comments:
+            sig["comment"] = comments
+            
+        add_signatures_block(story, [sig])
 
 
 def _add_document_table(story: list, documents: list):
