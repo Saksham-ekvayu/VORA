@@ -15,15 +15,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CheckIcon, ChevronDownIcon, FilterIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon, FilterIcon, LayersIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   getDeploymentFrameworkClientControls,
-  updateDeploymentPointPath,
+  updateDeploymentPointPath, bulkUpdateDeploymentPointPaths
 } from "@/services/deploymentFrameworkService";
 import { toast } from "sonner";
 import LoadingSpinner from "@/components/custom/Loader/LoadingSpinner";
 import { capitalizeFirst } from "@/utils/commonUtils";
+import BulkSetupModal from "./components/BulkSetupModal";
 
 // ─── Pure helpers ─────────────────────────────────────────────────────────────
 
@@ -327,6 +328,7 @@ export default function MonitoringSetup() {
   const [sources, setSources] = useState({});
   const [savedSources, setSavedSources] = useState({});
   const [savingDp, setSavingDp] = useState(null);
+  const [isBulkSetupOpen, setIsBulkSetupOpen] = useState(false);
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
   const fetchClientControls = useCallback(async () => {
@@ -507,8 +509,8 @@ export default function MonitoringSetup() {
       const pathVal = (paths[pathKey] ?? "").trim();
       const sourceVal = (sources[pathKey] ?? "").trim();
 
-      if (!pathVal) {
-        toast.error("Please enter a path before saving");
+      if (!pathVal || !sourceVal) {
+        toast.error("Both path and source are required before saving");
         return;
       }
 
@@ -539,6 +541,54 @@ export default function MonitoringSetup() {
     [selectedFw, selectedSection, selectedControl, paths, sources]
   );
 
+  const handleBulkApply = useCallback(
+    async (bulkPath, bulkSource) => {
+      if (!selectedFw) return;
+      try {
+        const payload = {
+          frameworkId: selectedFw.id || selectedFw.frameworkId,
+          frameworkVersion: selectedFw.frameworkVersion,
+          packageVersion: selectedFw.packageVersion ?? selectedFw.package?.packageVersion,
+          path: bulkPath.trim(),
+          source: bulkSource.trim(),
+        };
+
+        const res = await bulkUpdateDeploymentPointPaths(selectedFw.id, payload);
+
+        if (res.success) {
+          toast.success(res.message);
+
+          // Update local state for all points in this framework
+          const newSavedPaths = { ...savedPaths };
+          const newSavedSources = { ...savedSources };
+          const newPaths = { ...paths };
+          const newSources = { ...sources };
+
+          for (const s of selectedFw.sections || []) {
+            for (const c of s.controls || []) {
+              for (const dp of c.dps || []) {
+                const pKey = getPathKey(selectedFw.id, s._key, c.id, dp.id);
+                newSavedPaths[pKey] = payload.path;
+                newSavedSources[pKey] = payload.source;
+                newPaths[pKey] = payload.path;
+                newSources[pKey] = payload.source;
+              }
+            }
+          }
+
+          setSavedPaths(newSavedPaths);
+          setSavedSources(newSavedSources);
+          setPaths(newPaths);
+          setSources(newSources);
+        }
+      } catch (err) {
+        console.error("Failed to bulk update paths:", err);
+        toast.error(err.message || "Failed to apply bulk update");
+      }
+    },
+    [selectedFw, paths, sources, savedPaths, savedSources]
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
@@ -562,7 +612,7 @@ export default function MonitoringSetup() {
             <h2 className="text-sm font-semibold text-foreground">
               Monitoring Setup
             </h2>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground max-w-150">
               Configure control monitoring paths. VORA&apos;s AI compliance
               engine uses these paths to automatically retrieve and verify
               evidence documents for automated audits.
@@ -591,6 +641,24 @@ export default function MonitoringSetup() {
 
           <Button
             variant="outline"
+            size="sm"
+            disabled={!selectedFw}
+            onClick={() => setIsBulkSetupOpen(true)}
+            className="text-xs font-medium h-9 border-border bg-accent hover:border-primary hover:bg-primary/10 gap-2"
+          >
+            <LayersIcon className="size-4 text-primary shrink-0" />
+            Bulk Setup
+          </Button>
+
+          <BulkSetupModal
+            isOpen={isBulkSetupOpen}
+            onClose={() => setIsBulkSetupOpen(false)}
+            selectedFw={selectedFw}
+            onApply={handleBulkApply}
+          />
+
+          <Button
+            variant="outline"
             onClick={() => navigate("/mcp-server/monitoring")}
             className="text-xs font-medium border-border bg-accent hover:border-primary hover:bg-primary/10"
           >
@@ -599,7 +667,7 @@ export default function MonitoringSetup() {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-3 h-[70vh]">
+      <div className="grid grid-cols-4 gap-3 h-[68vh]">
         {/* ── Col 1: Sections ───────────────────────────────────────────── */}
         <ColPanel
           title="Sections"
@@ -624,11 +692,10 @@ export default function MonitoringSetup() {
                 setSelectedSection(sec);
                 setSelectedControl(sec.controls?.[0] ?? null);
               }}
-              className={`w-full flex items-center justify-between gap-2 rounded p-2 transition-all cursor-pointer ${
-                selectedSection?._key === sec._key
-                  ? "bg-primary/10 text-primary"
-                  : "hover:bg-accent"
-              }`}
+              className={`w-full flex items-center justify-between gap-2 rounded p-2 transition-all cursor-pointer ${selectedSection?._key === sec._key
+                ? "bg-primary/10 text-primary"
+                : "hover:bg-accent"
+                }`}
             >
               <div className="flex gap-2">
                 <span className="text-[10px] font-bold text-primary shrink-0">
@@ -636,11 +703,10 @@ export default function MonitoringSetup() {
                 </span>
                 <p
                   title={sec.name}
-                  className={`text-xs font-semibold leading-snug line-clamp-1 text-left ${
-                    selectedSection?._key === sec._key
-                      ? "text-primary"
-                      : "text-foreground"
-                  }`}
+                  className={`text-xs font-semibold leading-snug line-clamp-1 text-left ${selectedSection?._key === sec._key
+                    ? "text-primary"
+                    : "text-foreground"
+                    }`}
                 >
                   {capitalizeFirst(sec.name)}
                 </p>
@@ -679,22 +745,20 @@ export default function MonitoringSetup() {
               type="button"
               key={ctrl.id}
               onClick={() => setSelectedControl(ctrl)}
-              className={`w-full text-left flex items-center justify-between gap-2 rounded px-1 py-1.5 transition-all cursor-pointer ${
-                selectedControl?.id === ctrl.id
-                  ? "bg-primary/10"
-                  : "hover:bg-accent"
-              }`}
+              className={`w-full text-left flex items-center justify-between gap-2 rounded px-1 py-1.5 transition-all cursor-pointer ${selectedControl?.id === ctrl.id
+                ? "bg-primary/10"
+                : "hover:bg-accent"
+                }`}
             >
               <div className="flex items-start gap-2 overflow-hidden flex-1">
                 <span className="text-[10px] font-bold text-primary shrink-0">
                   {ctrl.id}
                 </span>
                 <span
-                  className={`text-xs leading-snug line-clamp-1 ${
-                    selectedControl?.id === ctrl.id
-                      ? "text-primary"
-                      : "text-foreground"
-                  }`}
+                  className={`text-xs leading-snug line-clamp-1 ${selectedControl?.id === ctrl.id
+                    ? "text-primary"
+                    : "text-foreground"
+                    }`}
                 >
                   {capitalizeFirst(ctrl.name)}
                 </span>
@@ -757,10 +821,11 @@ export default function MonitoringSetup() {
                       disabled={
                         savingDp === getCurrentPathKey(dp.id) ||
                         !getPath(dp.id).trim() ||
+                        !getSource(dp.id).trim() ||
                         (getPath(dp.id).trim() ===
                           (savedPaths[getCurrentPathKey(dp.id)] ?? "") &&
                           getSource(dp.id).trim() ===
-                            (savedSources[getCurrentPathKey(dp.id)] ?? ""))
+                          (savedSources[getCurrentPathKey(dp.id)] ?? ""))
                       }
                       onClick={() => handleSavePath(dp.id)}
                     >
