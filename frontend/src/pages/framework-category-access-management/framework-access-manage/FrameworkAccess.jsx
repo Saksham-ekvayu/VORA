@@ -317,6 +317,7 @@ function FrameworkAccess() {
           id: `approve-${row.id}`,
           label: "Approve Access",
           icon: "check",
+          variant: "primary",
           onClick: () =>
             setApproveModalState({ isOpen: true, accessRecord: row }),
         },
