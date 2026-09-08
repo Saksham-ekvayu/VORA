@@ -15,11 +15,17 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CheckIcon, ChevronDownIcon, FilterIcon, LayersIcon } from "lucide-react";
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  FilterIcon,
+  LayersIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   getDeploymentFrameworkClientControls,
-  updateDeploymentPointPath, bulkUpdateDeploymentPointPaths
+  updateDeploymentPointPath,
+  bulkUpdateDeploymentPointPaths,
 } from "@/services/deploymentFrameworkService";
 import { toast } from "sonner";
 import LoadingSpinner from "@/components/custom/Loader/LoadingSpinner";
@@ -548,12 +554,16 @@ export default function MonitoringSetup() {
         const payload = {
           frameworkId: selectedFw.id || selectedFw.frameworkId,
           frameworkVersion: selectedFw.frameworkVersion,
-          packageVersion: selectedFw.packageVersion ?? selectedFw.package?.packageVersion,
+          packageVersion:
+            selectedFw.packageVersion ?? selectedFw.package?.packageVersion,
           path: bulkPath.trim(),
           source: bulkSource.trim(),
         };
 
-        const res = await bulkUpdateDeploymentPointPaths(selectedFw.id, payload);
+        const res = await bulkUpdateDeploymentPointPaths(
+          selectedFw.id,
+          payload
+        );
 
         if (res.success) {
           toast.success(res.message);
@@ -692,10 +702,11 @@ export default function MonitoringSetup() {
                 setSelectedSection(sec);
                 setSelectedControl(sec.controls?.[0] ?? null);
               }}
-              className={`w-full flex items-center justify-between gap-2 rounded p-2 transition-all cursor-pointer ${selectedSection?._key === sec._key
-                ? "bg-primary/10 text-primary"
-                : "hover:bg-accent"
-                }`}
+              className={`w-full flex items-center justify-between gap-2 rounded p-2 transition-all cursor-pointer ${
+                selectedSection?._key === sec._key
+                  ? "bg-primary/10 text-primary"
+                  : "hover:bg-accent"
+              }`}
             >
               <div className="flex gap-2">
                 <span className="text-[10px] font-bold text-primary shrink-0">
@@ -703,10 +714,11 @@ export default function MonitoringSetup() {
                 </span>
                 <p
                   title={sec.name}
-                  className={`text-xs font-semibold leading-snug line-clamp-1 text-left ${selectedSection?._key === sec._key
-                    ? "text-primary"
-                    : "text-foreground"
-                    }`}
+                  className={`text-xs font-semibold leading-snug line-clamp-1 text-left ${
+                    selectedSection?._key === sec._key
+                      ? "text-primary"
+                      : "text-foreground"
+                  }`}
                 >
                   {capitalizeFirst(sec.name)}
                 </p>
@@ -745,20 +757,22 @@ export default function MonitoringSetup() {
               type="button"
               key={ctrl.id}
               onClick={() => setSelectedControl(ctrl)}
-              className={`w-full text-left flex items-center justify-between gap-2 rounded px-1 py-1.5 transition-all cursor-pointer ${selectedControl?.id === ctrl.id
-                ? "bg-primary/10"
-                : "hover:bg-accent"
-                }`}
+              className={`w-full text-left flex items-center justify-between gap-2 rounded px-1 py-1.5 transition-all cursor-pointer ${
+                selectedControl?.id === ctrl.id
+                  ? "bg-primary/10"
+                  : "hover:bg-accent"
+              }`}
             >
               <div className="flex items-start gap-2 overflow-hidden flex-1">
                 <span className="text-[10px] font-bold text-primary shrink-0">
                   {ctrl.id}
                 </span>
                 <span
-                  className={`text-xs leading-snug line-clamp-1 ${selectedControl?.id === ctrl.id
-                    ? "text-primary"
-                    : "text-foreground"
-                    }`}
+                  className={`text-xs leading-snug line-clamp-1 ${
+                    selectedControl?.id === ctrl.id
+                      ? "text-primary"
+                      : "text-foreground"
+                  }`}
                 >
                   {capitalizeFirst(ctrl.name)}
                 </span>
@@ -825,7 +839,7 @@ export default function MonitoringSetup() {
                         (getPath(dp.id).trim() ===
                           (savedPaths[getCurrentPathKey(dp.id)] ?? "") &&
                           getSource(dp.id).trim() ===
-                          (savedSources[getCurrentPathKey(dp.id)] ?? ""))
+                            (savedSources[getCurrentPathKey(dp.id)] ?? ""))
                       }
                       onClick={() => handleSavePath(dp.id)}
                     >

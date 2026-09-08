@@ -7,7 +7,12 @@ import { Label } from "@/components/ui/label";
 import { ModalHeader } from "@/components/custom/modal";
 import Icon from "@/components/custom/Icon";
 
-export default function BulkSetupModal({ isOpen, onClose, selectedFw, onApply }) {
+export default function BulkSetupModal({
+  isOpen,
+  onClose,
+  selectedFw,
+  onApply,
+}) {
   const [pathVal, setPathVal] = useState("");
   const [sourceVal, setSourceVal] = useState("");
   const [isApplying, setIsApplying] = useState(false);
@@ -47,11 +52,19 @@ export default function BulkSetupModal({ isOpen, onClose, selectedFw, onApply })
               <span className="text-primary font-semibold leading-tight">
                 Deployment Framework: {selectedFw?.frameworkName}
               </span>
-              {(selectedFw?.frameworkVersion || selectedFw?.package?.packageVersion || selectedFw?.packageVersion) && (
+              {(selectedFw?.frameworkVersion ||
+                selectedFw?.package?.packageVersion ||
+                selectedFw?.packageVersion) && (
                 <span className="text-xs text-primary/80 font-medium">
-                  {selectedFw?.frameworkVersion && `${selectedFw.frameworkVersion}`}
-                  {selectedFw?.frameworkVersion && (selectedFw?.package?.packageVersion || selectedFw?.packageVersion) && " | "}
-                  {(selectedFw?.package?.packageVersion || selectedFw?.packageVersion) && `Package v${selectedFw?.package?.packageVersion || selectedFw?.packageVersion}`}
+                  {selectedFw?.frameworkVersion &&
+                    `${selectedFw.frameworkVersion}`}
+                  {selectedFw?.frameworkVersion &&
+                    (selectedFw?.package?.packageVersion ||
+                      selectedFw?.packageVersion) &&
+                    " | "}
+                  {(selectedFw?.package?.packageVersion ||
+                    selectedFw?.packageVersion) &&
+                    `Package v${selectedFw?.package?.packageVersion || selectedFw?.packageVersion}`}
                 </span>
               )}
             </div>
@@ -95,7 +108,10 @@ export default function BulkSetupModal({ isOpen, onClose, selectedFw, onApply })
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isApplying || !pathVal.trim() || !sourceVal.trim()}>
+              <Button
+                type="submit"
+                disabled={isApplying || !pathVal.trim() || !sourceVal.trim()}
+              >
                 {isApplying ? (
                   <>
                     <Icon

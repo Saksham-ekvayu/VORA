@@ -515,10 +515,10 @@ export default function ControlsPanel({
   const sections = useMemo(() => {
     return propSections.map((s, sIdx) => ({
       ...s,
-      _uiKey: s._uiKey || `${s.id}-${sIdx}`,
+      _uiKey: s._uiKey || (s.id ? String(s.id) : `${sIdx}`),
       controls: (s.controls || []).map((c, cIdx) => ({
         ...c,
-        _uiKey: c._uiKey || `${c.id}-${sIdx}-${cIdx}`,
+        _uiKey: c._uiKey || (c.id ? String(c.id) : `${sIdx}-${cIdx}`),
       })),
     }));
   }, [propSections]);
