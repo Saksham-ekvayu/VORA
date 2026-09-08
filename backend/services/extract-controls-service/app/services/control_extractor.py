@@ -696,7 +696,7 @@ def _run_completeness_attempt(prompt: str, round_num: int, attempt: int) -> tupl
         )
         elapsed = (datetime.now(UTC) - t_start).total_seconds()
         finish_reason = _log_llm_call(
-            f"EXTRACT-COMPLETENESS-round{round_num}" f"{'' if attempt == 1 else f'-retry{attempt}'}",
+            f"EXTRACT-COMPLETENESS-round{round_num}{'' if attempt == 1 else f'-retry{attempt}'}",
             response,
             elapsed,
         )

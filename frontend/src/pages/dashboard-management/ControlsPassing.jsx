@@ -96,7 +96,7 @@ export default function ControlsPassing() {
       sortable: false,
       render: (value, row) => (
         <Link
-          to={`/deployment-frameworks/${row.id}/comparison-and-gap-analysis?package-version=${row.packageVersion}&tab=controls&control=${row.ctrlNo}&section=${row.sectionId}`}
+          to={`/deployment-frameworks/${row.id}/comparison-and-gap-analysis?package-version=${row.packageVersion}&tab=gap-analysis&control=${row.ctrlId}&section=${row.sectionId}`}
           className="hover:underline hover:text-primary"
         >
           {capitalizeFirstLetter(value)}

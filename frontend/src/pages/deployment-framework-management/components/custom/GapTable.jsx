@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 
 import { useState, useMemo, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/custom/Icon";
 import { Shield } from "lucide-react";
@@ -476,9 +477,49 @@ export default function GapsTable({
   globalSearch = "",
 }) {
   const { user } = useAuth();
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [activeSectionId, setActiveSectionId] = useState(null);
-  const [activeControlId, setActiveControlId] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const filterStatus = searchParams.get("status") || "all";
+  const activeSectionId = searchParams.get("section");
+  const activeControlId = searchParams.get("control");
+
+  const setFilterStatus = (status) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (status && status !== "all") next.set("status", status);
+        else next.delete("status");
+        return next;
+      },
+      { replace: true }
+    );
+  };
+
+  const setActiveSectionId = (id) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (id) next.set("section", id);
+        else next.delete("section");
+        next.delete("control"); // clear control when section changes
+        return next;
+      },
+      { replace: true }
+    );
+  };
+
+  const setActiveControlId = (id) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (id) next.set("control", id);
+        else next.delete("control");
+        return next;
+      },
+      { replace: true }
+    );
+  };
+
   const [expandedPoints, setExpandedPoints] = useState(new Set());
 
   const [reviewModalOpen, setReviewModalOpen] = useState(false);

@@ -87,9 +87,9 @@ export default function CriticalGaps() {
       key: "ctrlNo",
       label: "Ctrl ID",
       sortable: false,
-      align: "center",
+      align: "left",
       render: (value) => (
-        <span className="font-mono font-bold text-secondary bg-muted px-2 py-1 rounded whitespace-nowrap">
+        <span className="font-mono font-bold text-secondary whitespace-nowrap">
           {value}
         </span>
       ),
@@ -100,8 +100,8 @@ export default function CriticalGaps() {
       sortable: false,
       render: (value, row) => (
         <Link
-          to={`/deployment-frameworks/${row.id}/comparison-and-gap-analysis?package-version=${row.packageVersion}&tab=controls&control=${row.ctrlNo}&section=${row.sectionId}`}
-          className="hover:underline hover:text-primary"
+          to={`/deployment-frameworks/${row.id}/comparison-and-gap-analysis?package-version=${row.packageVersion}&tab=gap-analysis&control=${row.ctrlNo}&section=${row.sectionId}`}
+          className="inline-block max-w-150 text-wrap hover:underline hover:text-primary"
         >
           {capitalizeFirstLetter(value)}
         </Link>

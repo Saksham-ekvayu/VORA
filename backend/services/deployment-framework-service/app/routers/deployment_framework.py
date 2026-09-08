@@ -320,6 +320,21 @@ def _update_deployment_point_path(
     return False
 
 
+def _bulk_update_deployment_point_paths(
+    controls_data: list[Any],
+    path_value: str,
+    source_value: str,
+) -> int:
+    updated_count = 0
+    for section in controls_data:
+        for control in section.get("controls") or []:
+            for dp in control.get("deployment_points") or []:
+                dp["path"] = path_value
+                dp["source"] = source_value
+                updated_count += 1
+    return updated_count
+
+
 @router.patch("/{id}/deployment-points")
 async def update_deployment_package_point_path(
     id: str,
@@ -395,6 +410,74 @@ async def update_deployment_package_point_path(
                 "source": source_value,
             },
             "Deployment point path updated successfully",
+        )
+
+
+# ─── PATCH /:id/bulk-update-points ──────────────────────────────────────────
+
+
+@router.patch("/{id}/bulk-update-points")
+async def bulk_update_deployment_package_points_path(
+    id: str,
+    ctx: Annotated[RequestContext, Depends(get_context)],
+    body: Annotated[dict[str, Any], Body(...)],
+):
+    logger.info(f"[BULK-UPDATE-DEPLOYMENT-POINTS] Request | id={id} | user_id={ctx.user.id}")
+    path_value = body.get("path")
+    source_value = body.get("source")
+    package_version = body.get("packageVersion")
+
+    if not package_version or path_value is None or source_value is None:
+        return error("packageVersion, path and source are required fields", 400)
+
+    async with session_scope() as session:
+        framework = (
+            await session.execute(
+                select(DeploymentFramework).where(
+                    DeploymentFramework.id == str(id),
+                    DeploymentFramework.tenantId == ctx.tenant_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not framework:
+            return not_found(_RESOURCE_DEPLOYMENT_FRAMEWORK)
+
+        packages = coerce_packages(framework.packages)
+        target_package = next((p for p in packages if p.packageVersion == package_version), None)
+        if not target_package:
+            return not_found(_RESOURCE_PACKAGE_VERSION)
+
+        if not target_package.mergeDocument:
+            return not_found(FRAMEWORK_SERVICE_MESSAGES["PACKAGE_MERGE_DOCUMENT_NOT_FOUND"])
+
+        package_merge = (
+            await session.execute(
+                select(DeploymentPackageMerge).where(
+                    DeploymentPackageMerge.id == str(target_package.mergeDocument)
+                )
+            )
+        ).scalar_one_or_none()
+        if not package_merge:
+            return not_found(FRAMEWORK_SERVICE_MESSAGES["PACKAGE_MERGE_DOCUMENT_NOT_FOUND"])
+
+        merge_data = dict(package_merge.controls or {})
+        controls_data = list(merge_data.get("controls_data") or [])
+
+        updated_count = _bulk_update_deployment_point_paths(controls_data, path_value, source_value)
+
+        merge_data["controls_data"] = controls_data
+        package_merge.controls = merge_data
+        flag_modified(package_merge, "controls")
+
+        return success(
+            {
+                "frameworkId": (str(framework.id) if framework and getattr(framework, "id", None) else None),
+                "packageVersion": package_version,
+                "path": path_value,
+                "source": source_value,
+                "updatedCount": updated_count,
+            },
+            f"Bulk updated {updated_count} deployment points successfully",
         )
 
 

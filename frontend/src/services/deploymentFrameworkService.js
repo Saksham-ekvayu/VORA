@@ -65,6 +65,23 @@ export function updateDeploymentPointPath(frameworkId, data) {
 }
 
 /**
+ * Bulk update deployment points path and source
+ * @param {string} frameworkId
+ * @param {Object} payload
+ * @returns {Promise}
+ */
+export async function bulkUpdateDeploymentPointPaths(frameworkId, payload) {
+  return apiRequest(
+    `${FRAMEWORK_BASE}/${frameworkId}/bulk-update-points`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    },
+    true
+  );
+}
+
+/**
  * Upload deployment framework file
  */
 export function uploadDeploymentFramework(formData) {
@@ -437,6 +454,7 @@ export default {
   getAllDeploymentFrameworks,
   getDeploymentFrameworkClientControls,
   updateDeploymentPointPath,
+  bulkUpdateDeploymentPointPaths,
   uploadDeploymentFramework,
   updateDeploymentFramework,
   downloadDeploymentFrameworkFile,
