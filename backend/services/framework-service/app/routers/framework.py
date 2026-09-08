@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from app.helpers import framework_helper
-from app.helpers.report_helper import generate_framework_report_pdf
+from app.helpers.framework_report_helper import generate_framework_report_pdf
 from app.schemas.framework import (
     AddControlBody,
     AssignFrameworkToCustomerBody,

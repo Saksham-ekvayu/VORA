@@ -99,16 +99,53 @@ def _extract_pdf_page_text(
     return extracted
 
 
+def _extract_pdf_pymupdf_blocks(file_path: str, text_lines: list[str]) -> bool:
+    doc = None
+    try:
+        import pymupdf
+
+        doc = pymupdf.open(file_path)
+    except ImportError:
+        try:
+            import fitz as pymupdf
+
+            doc = pymupdf.open(file_path)
+        except Exception:  # noqa: BLE001
+            return False
+    except Exception:  # noqa: BLE001
+        return False
+
+    if not doc:
+        return False
+
+    try:
+        logger.info(f"[LOAD] Attempt 1: PyMuPDF block text extraction ({doc.page_count} pages)...")
+        extracted = False
+        for page_num, page in enumerate(doc, 1):
+            try:
+                blocks = page.get_text("blocks")
+                page_text = "\n".join(b[4].strip() for b in blocks if len(b) > 4 and b[4].strip())
+                if _append_lines(text_lines, page_text):
+                    extracted = True
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(f"[LOAD] Page {page_num} PyMuPDF block extraction failed: {exc}")
+        if extracted:
+            logger.info(f"[LOAD] PyMuPDF block extraction complete: {len(text_lines)} total lines")
+        return extracted
+    finally:
+        doc.close()
+
+
 def _extract_pdf_pages(file_path: str, text_lines: list[str], module_name: str) -> bool:
     module = __import__(module_name)
     if module_name == "pdfplumber":
-        logger.info("[LOAD] Attempt 1: pdfplumber text extraction...")
+        logger.info("[LOAD] Attempt 2: pdfplumber text extraction...")
         with module.open(file_path) as pdf:
             logger.info(f"[LOAD] PDF has {len(pdf.pages)} pages")
             return _extract_pdf_page_text(
                 pdf.pages, text_lines, lambda page: page.extract_text(), "pdfplumber"
             )
-    logger.info("[LOAD] Attempt 1.5: PyMuPDF (fitz) text extraction...")
+    logger.info("[LOAD] Attempt 2.5: PyMuPDF (fitz) plain text extraction...")
     doc = module.open(file_path)
     try:
         logger.info(f"[LOAD] PyMuPDF reports {doc.page_count} pages")
@@ -167,21 +204,18 @@ def _load_pdf_lines(file_path: str) -> list[str]:
     text_lines: list[str] = []
     logger.info("[LOAD] Starting PDF extraction...")
     try:
-        extracted = _extract_pdf_pages(file_path, text_lines, "pdfplumber")
+        extracted = _extract_pdf_pymupdf_blocks(file_path, text_lines)
     except Exception as e:  # noqa: BLE001
-        logger.warning(f"[LOAD] pdfplumber failed: {e}")
+        logger.warning(f"[LOAD] PyMuPDF block extraction failed: {e}")
         extracted = False
     if not extracted:
         try:
-            extracted = _extract_pdf_pages(file_path, text_lines, "fitz")
-        except ImportError:
-            logger.warning("[LOAD] PyMuPDF not installed — skipping Attempt 1.5. Run: pip install PyMuPDF")
-            extracted = False
+            extracted = _extract_pdf_pages(file_path, text_lines, "pdfplumber")
         except Exception as e:  # noqa: BLE001
-            logger.warning(f"[LOAD] PyMuPDF attempt failed: {e}")
+            logger.warning(f"[LOAD] pdfplumber failed: {e}")
             extracted = False
     if not extracted:
-        logger.info("[LOAD] Attempt 2: OCR extraction (pdf2image + pytesseract)...")
+        logger.info("[LOAD] Attempt 3: OCR extraction (pdf2image + pytesseract)...")
         try:
             extracted = _extract_pdf_ocr(file_path, text_lines)
         except ImportError:
@@ -193,7 +227,7 @@ def _load_pdf_lines(file_path: str) -> list[str]:
             logger.exception("[LOAD]  OCR extraction failed")
             extracted = False
     if not extracted:
-        logger.info("[LOAD] Attempt 3: pypdf text extraction...")
+        logger.info("[LOAD] Attempt 4: pypdf text extraction...")
         try:
             _extract_pdf_pypdf(file_path, text_lines)
         except Exception as e:  # noqa: BLE001
@@ -248,7 +282,7 @@ def _chunk_lines(text_lines: list[str], chunk_size: int) -> list[str]:
     return chunks
 
 
-def _load_document_chunks(file_path: str, chunk_size: int = 1000) -> list[str]:
+def _load_document_chunks(file_path: str, chunk_size: int = 4000) -> list[str]:
     """Load document from file and chunk it for processing"""
     try:
         if not file_path or not os.path.exists(file_path):

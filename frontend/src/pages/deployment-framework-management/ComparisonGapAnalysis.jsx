@@ -424,7 +424,7 @@ export default function ComparisonGapAnalysis() {
             <DeploymentFrameworkPackageTable
               preReleasePackage={activePackage}
               frameworkId={framework?.id}
-              documentWidth="max-w-full"
+              documentWidth="max-w-200"
               showAllColumns={true}
               showActions={showAuditorActions}
               onExtractionTriggered={handleExtractionTriggered}
@@ -529,6 +529,7 @@ export default function ComparisonGapAnalysis() {
                 <ComparisonsTable
                   comparisonDataSource={comparisonData}
                   packageStatus={activePackage?.status}
+                  expertReviewStatus={activePackage?.expertReview?.status}
                   onRefresh={() => fetchDetails(false)}
                   globalSearch={globalSearch}
                 />
@@ -577,6 +578,7 @@ export default function ComparisonGapAnalysis() {
                 <GapsTable
                   deploymentGaps={gapAnalysisData}
                   packageStatus={activePackage?.status}
+                  expertReviewStatus={activePackage?.expertReview?.status}
                   onRefresh={() => fetchDetails(false)}
                   globalSearch={globalSearch}
                 />
