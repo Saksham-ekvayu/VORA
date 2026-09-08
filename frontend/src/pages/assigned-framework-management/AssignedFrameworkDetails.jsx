@@ -60,11 +60,11 @@ const OverviewActions = ({
     {canFinalize && (
       <Button
         size="sm"
-        className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center gap-1"
+        className="flex items-center gap-1"
         onClick={onFinalize}
         title="Finalize Framework Version"
       >
-        <Icon name="lock" size="12px" /> Finalize Framework
+        <Icon name="lock" size="14px" /> Finalize Framework
       </Button>
     )}
 
@@ -76,7 +76,7 @@ const OverviewActions = ({
     >
       <Icon
         name={isDownloadingReport ? "loader" : "download"}
-        size="12px"
+        size="14px"
         className={isDownloadingReport ? "animate-spin" : ""}
       />
       {isDownloadingReport ? " Generating..." : " Report"}
@@ -88,7 +88,7 @@ const OverviewActions = ({
       onClick={() => setShowHistoryModal(true)}
       title="View assignment history"
     >
-      <Icon name="history" size="12px" />
+      <Icon name="history" size="14px" />
       Assignment History
     </Button>
 
@@ -97,7 +97,7 @@ const OverviewActions = ({
       onClick={() => navigate("/assigned-frameworks")}
       title="Go back"
     >
-      <Icon name="arrow-left" size="12px" /> Back
+      <Icon name="arrow-left" size="14px" /> Back
     </Button>
   </div>
 );
