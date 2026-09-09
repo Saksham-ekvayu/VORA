@@ -197,6 +197,7 @@ function FrameworkAccess() {
           name={row.expert?.name}
           email={row.expert?.email}
           avatar={row.expert?.avatar}
+          link={`/profiles/${row.expert?.id}`}
         />
       ),
     },
@@ -352,11 +353,7 @@ function FrameworkAccess() {
       });
     }
 
-    return (
-      <div className="flex justify-center">
-        <ActionDropdown actions={actions} />
-      </div>
-    );
+    return <ActionDropdown actions={actions} />;
   };
 
   const getHeaderActions = () => {
@@ -400,7 +397,7 @@ function FrameworkAccess() {
 
   /* ---------------- UI ---------------- */
   return (
-    <div className="mt-5 pb-5 space-y-8">
+    <div className="my-2">
       <Helmet>
         <title>VORA - Framework Access</title>
       </Helmet>

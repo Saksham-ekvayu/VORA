@@ -108,9 +108,9 @@ export default function DataTable({
       }).map((_, i) => (
         <TableRow
           key={`skeleton-${i + 1}`}
-          className="border-b border-border hover:bg-transparent"
+          className="border-b border-border hover:bg-transparent pointer-events-none"
         >
-          <TableCell className="sticky left-0 z-10 w-16 px-4 py-3 sticky-sr-col">
+          <TableCell className="sticky left-0 z-10 w-16 px-4 py-3 sticky-sr-col bg-card">
             <Skeleton className="w-8 h-8 rounded-full" />
           </TableCell>
           {columns.map((column) => (
@@ -162,10 +162,10 @@ export default function DataTable({
     return sortedData.map((row, index) => (
       <TableRow
         key={row.id ? `${row.id}-${index}` : index}
-        className="transition-all duration-200 hover:bg-accent group"
+        className="transition-all duration-200 hover:bg-accent/70 group"
       >
         {/* SR NO */}
-        <TableCell className="sticky left-0 z-10 w-16 px-4 py-2.5 text-sm text-foreground align-middle sticky-sr-col transition-colors duration-200">
+        <TableCell className="sticky left-0 z-10 w-16 bg-card group-hover:bg-[color-mix(in_srgb,var(--accent)_70%,var(--card))] px-4 py-2.5 text-sm text-foreground align-middle transition-colors duration-200">
           <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-xs font-medium group-hover:bg-primary/10 group-hover:text-primary transition-all duration-200">
             {getSerialNumber(index, pagination)}
           </div>
@@ -190,7 +190,7 @@ export default function DataTable({
           );
         })}
         {renderActions && (
-          <TableCell className="w-20 px-2 py-2.5 text-center align-middle">
+          <TableCell className="px-2 py-2.5 flex items-center justify-center">
             {renderActions(row)}
           </TableCell>
         )}
@@ -234,7 +234,7 @@ export default function DataTable({
       {/* Table Container with Scrollable Body and Sticky Header */}
       <div
         className="overflow-auto sidebar-scroll"
-        style={{ maxHeight: "calc(100vh - 200px)" }}
+        style={{ maxHeight: "calc(100vh - 246px)" }}
       >
         <Table
           className="border-collapse"

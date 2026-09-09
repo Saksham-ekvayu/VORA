@@ -230,6 +230,7 @@ function Profiles() {
             email={row.email}
             avatar={row.avatar}
             isEmailVerified={row.isEmailVerified}
+            link={`/profiles/${row.id}`}
           />
         </div>
       ),
@@ -347,11 +348,7 @@ function Profiles() {
       },
     ].filter(Boolean);
 
-    return (
-      <div className="flex justify-center">
-        <ActionDropdown actions={actions} />
-      </div>
-    );
+    return <ActionDropdown actions={actions} />;
   };
 
   const getHeaderActions = () => {

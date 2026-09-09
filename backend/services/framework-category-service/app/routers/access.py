@@ -890,7 +890,11 @@ async def _get_records_with_filters(
     limit_num: int,
 ) -> tuple[list, int]:
     """Get filtered and paginated records."""
-    stmt = select(FrameworkAccess).where(FrameworkAccess.expertId == user_id)
+    active_category_ids = select(FrameworkCategory.id).where(FrameworkCategory.isActive.is_(True))
+    stmt = select(FrameworkAccess).where(
+        FrameworkAccess.expertId == user_id,
+        FrameworkAccess.frameworkCategoryId.in_(active_category_ids),
+    )
 
     if status:
         stmt = stmt.where(FrameworkAccess.status == status)

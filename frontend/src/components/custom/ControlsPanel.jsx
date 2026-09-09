@@ -580,7 +580,7 @@ export default function ControlsPanel({
           }
         }
         return nextParams;
-      });
+      }, { replace: true });
     },
     [setSearchParams]
   );
