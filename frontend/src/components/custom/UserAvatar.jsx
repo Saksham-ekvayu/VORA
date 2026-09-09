@@ -139,7 +139,7 @@ const UserAvatar = ({
         type={isPreviewTrigger ? "button" : undefined}
         className={cn(
           avatarSize,
-          "relative flex items-center justify-center rounded border border-background shrink-0 overflow-hidden",
+          "relative flex items-center justify-center rounded border border-border/50 shrink-0 overflow-hidden",
           isPreviewTrigger && "cursor-pointer",
           className
         )}

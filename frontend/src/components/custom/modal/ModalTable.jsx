@@ -22,7 +22,7 @@ export function ModalTableBody({
   colSpan = 2,
   loadingLabel = "Loading...",
 }) {
-  if (loading) {
+  if (loading && (!items || items.length === 0)) {
     return (
       <tr>
         <td colSpan={colSpan} className="px-3 py-6 text-center">
@@ -37,7 +37,7 @@ export function ModalTableBody({
     );
   }
 
-  if (!items || items.length === 0) {
+  if (!loading && (!items || items.length === 0)) {
     return (
       <tr>
         <td
@@ -61,7 +61,11 @@ export function ModalTableBody({
  *   pagination  – { currentPage, totalPages, totalItems, limit, hasPrevPage, hasNextPage }
  *   onPageChange – (page: number) => void
  */
-export function ModalTablePagination({ pagination, onPageChange }) {
+export function ModalTablePagination({
+  pagination,
+  onPageChange,
+  loading = false,
+}) {
   const from = (pagination.currentPage - 1) * pagination.limit + 1;
   const to = Math.min(
     pagination.currentPage * pagination.limit,
@@ -76,7 +80,7 @@ export function ModalTablePagination({ pagination, onPageChange }) {
       <div className="flex items-center gap-1">
         <button
           onClick={() => onPageChange(pagination.currentPage - 1)}
-          disabled={!pagination.hasPrevPage}
+          disabled={!pagination.hasPrevPage || loading}
           className="px-2 py-1 text-xs border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         >
           Prev
@@ -86,7 +90,7 @@ export function ModalTablePagination({ pagination, onPageChange }) {
         </span>
         <button
           onClick={() => onPageChange(pagination.currentPage + 1)}
-          disabled={!pagination.hasNextPage}
+          disabled={!pagination.hasNextPage || loading}
           className="px-2 py-1 text-xs border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         >
           Next
@@ -113,11 +117,16 @@ export function ModalSearchInput({
   onClear,
   placeholder = "Search...",
   className = "",
+  loading = false,
 }) {
   return (
     <div className={`relative flex-1 ${className}`}>
       <div className="absolute inset-y-0 left-0 flex items-center pl-2.5 pointer-events-none">
-        <Icon name="search" size="14px" className="text-muted-foreground" />
+        {loading ? (
+          <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <Icon name="search" size="14px" className="text-muted-foreground" />
+        )}
       </div>
       <input
         type="text"
