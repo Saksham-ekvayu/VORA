@@ -2,24 +2,24 @@
 
 import { useState } from "react";
 import { Helmet } from "react-helmet-async";
-import Icon from "@/components/custom/Icon";
 import { getFrameworkCategory } from "@/services/frameworkService";
 import RequestAccessModal from "./components/RequestAccessModal";
 import ActionDropdown from "@/components/custom/ActionDropdown";
 import { useTableData } from "@/components/data-table/hooks/useTableData";
-import GridCardView from "@/components/grid-card/GridCardView";
-import FrameworkCategoryCard from "../framework-category-access-management/framework-category-manage/components/custom/FrameworkCategoryCard";
-import { Button } from "@/components/ui/button";
+import DataTable from "@/components/data-table/DataTable";
+import CustomBadge from "@/components/custom/CustomBadge";
+import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
 import {
   getAccessStatusFilterLabel,
   getRequestActionIcon,
   getRequestActionLabel,
   getStatusFilterLabel,
-  STATUS_APPROVED,
   STATUS_PENDING,
+  STATUS_APPROVED,
   STATUS_REJECTED,
   STATUS_REVOKED,
 } from "@/utils/commonUtils";
+import FrameworkMiniCard from "@/components/custom/FrameworkMiniCard";
 
 function FrameworkCategory() {
   const [requestModalState, setRequestModalState] = useState({
@@ -62,41 +62,57 @@ function FrameworkCategory() {
     setRequestModalState({ isOpen: false, framework: null });
   };
 
-  /* ---------------- CONFIG ---------------- */
-  const renderPrimaryAction = (category) => {
-    const { hasRequested, requestStatus, isActive } = category;
+  /* ---------------- TABLE CONFIG ---------------- */
+  const columns = [
+    {
+      key: "frameworkCategoryName",
+      label: "Framework Category",
+      sortable: true,
+      render: (value, row) => (
+        <FrameworkMiniCard
+          name={row.frameworkCategoryName}
+          description={row.code}
+        />
+      ),
+    },
+    {
+      key: "description",
+      label: "Description",
+      sortable: false,
+      render: (value) => (
+        <span className="block w-96 max-w-full text-xs line-clamp-2 whitespace-normal wrap-break-word">
+          {value || "No description provided"}
+        </span>
+      ),
+    },
+    {
+      key: "isActive",
+      label: "Status",
+      sortable: true,
+      render: (value) => (
+        <CustomBadge size="sm" isActive={value} className="w-fit" />
+      ),
+    },
+    {
+      key: "requestStatus",
+      label: "Access Status",
+      sortable: false,
+      render: (value) => {
+        if (!value)
+          return <span className="text-muted-foreground text-sm">—</span>;
 
-    // We show the "Request" button if:
-    // 1. It hasn't been requested yet
-    // 2. OR it was previously requested but is now STATUS_REVOKED or "rejected"
-    const canRequest =
-      !hasRequested ||
-      requestStatus === STATUS_REVOKED ||
-      requestStatus === STATUS_REJECTED;
-
-    if (!isActive || !canRequest) return null;
-
-    const isReRequest =
-      requestStatus === STATUS_REVOKED || requestStatus === STATUS_REJECTED;
-
-    return (
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
-        <Button
-          size="xs"
-          onClick={() =>
-            setRequestModalState({ isOpen: true, framework: category })
-          }
-        >
-          <Icon
-            name={isReRequest ? "refresh" : "plus"}
-            size="14px"
-            className="mr-2"
-          />
-          {isReRequest ? "Re-request Access" : "Request Access"}
-        </Button>
-      </div>
-    );
-  };
+        return <CustomBadge size="sm" status={value} className="w-fit" />;
+      },
+    },
+    {
+      key: "createdAt",
+      label: "Created At",
+      sortable: true,
+      render: (value) => (
+        <span className="">{formatDateWithMonthNameAndTime(value)}</span>
+      ),
+    },
+  ];
 
   const renderActions = (row) => {
     const isActive = row.isActive;
@@ -180,7 +196,7 @@ function FrameworkCategory() {
           },
         ],
       },
-    ].filter(Boolean);
+    ];
   };
 
   /* ---------------- UI ---------------- */
@@ -189,28 +205,21 @@ function FrameworkCategory() {
       <Helmet>
         <title>VORA - Framework Categories</title>
       </Helmet>
-      <GridCardView
+      <DataTable
+        columns={columns}
         data={categories}
         loading={loading}
         onSearch={handleSearch}
         searchTerm={searchTerm}
-        sortOrder={sortConfig.sortOrder}
-        onSortChange={() => handleSort(sortConfig.sortBy)}
+        onSort={handleSort}
+        sortConfig={sortConfig}
         pagination={pagination}
         headerActions={getHeaderActions()}
-        renderCard={(category) => (
-          <div key={category.id} className="relative group">
-            <FrameworkCategoryCard
-              category={category}
-              renderActions={renderActions}
-            />
-            {renderPrimaryAction(category)}
-          </div>
-        )}
+        renderActions={renderActions}
         searchPlaceholder="Filter categories by name or code..."
         emptyMessage={emptyMessage}
         error={error}
-        gridCols="grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3"
+        entityName="Framework Categories"
       />
 
       {/* Request Access Modal */}

@@ -13,14 +13,17 @@ import CategoryModal from "./components/CategoryModal";
 import { ConfirmDeleteModal } from "@/components/custom/modal";
 import ActionDropdown from "@/components/custom/ActionDropdown";
 import { useTableData } from "@/components/data-table/hooks/useTableData";
-import GridCardView from "@/components/grid-card/GridCardView";
-import FrameworkCategoryCard from "./components/custom/FrameworkCategoryCard";
+import DataTable from "@/components/data-table/DataTable";
+import CustomBadge from "@/components/custom/CustomBadge";
+import { formatDateWithMonthNameAndTime } from "@/utils/dateFormatter";
 import {
   getStatusFilterLabel,
   STATUS_LABELS,
   STATUS_ACTIVE,
   STATUS_INACTIVE,
 } from "@/utils/commonUtils";
+import FrameworkMiniCard from "@/components/custom/FrameworkMiniCard";
+import UserMiniCard from "@/components/custom/UserMiniCard";
 
 function Category() {
   const [modalState, setModalState] = useState({
@@ -107,7 +110,6 @@ function Category() {
     }
   };
 
-  /* ---------------- CONFIG ---------------- */
   const renderActions = (row) => {
     const actions = [
       {
@@ -131,6 +133,60 @@ function Category() {
       </div>
     );
   };
+
+  const columns = [
+    {
+      key: "code",
+      label: "Code",
+      sortable: true,
+      render: (value, row) => (
+        <FrameworkMiniCard
+          name={row.frameworkCategoryName}
+          description={row.code}
+        />
+      ),
+    },
+    {
+      key: "description",
+      label: "Description",
+      sortable: false,
+      render: (value) => (
+        <span className="block w-96 max-w-full text-xs line-clamp-2 whitespace-normal wrap-break-word">
+          {value || "No description provided"}
+        </span>
+      ),
+    },
+    {
+      key: "isActive",
+      label: "Status",
+      sortable: true,
+      render: (value) => (
+        <CustomBadge size="sm" isActive={value} className="w-fit" />
+      ),
+    },
+    {
+      key: "createdBy",
+      label: "Created By",
+      sortable: false,
+      render: (value) => (
+        <UserMiniCard
+          name={value.name}
+          email={value.email}
+          avatar={value.avatar}
+        />
+      ),
+    },
+    {
+      key: "createdAt",
+      label: "Created At",
+      sortable: true,
+      render: (value) => (
+        <span className="">
+          {formatDateWithMonthNameAndTime(value)}
+        </span>
+      ),
+    },
+  ];
 
   const getHeaderActions = () => {
     const urlParams = new URLSearchParams(globalThis.location.search);
@@ -170,28 +226,21 @@ function Category() {
       <Helmet>
         <title>VORA - Categories</title>
       </Helmet>
-      <GridCardView
+      <DataTable
+        columns={columns}
         data={frameworkCategories}
         loading={loading}
         onSearch={handleSearch}
         searchTerm={searchTerm}
-        sortOrder={sortConfig.sortOrder}
-        onSortChange={() => handleSort(sortConfig.sortBy)}
+        onSort={handleSort}
+        sortConfig={sortConfig}
         pagination={pagination}
         headerActions={getHeaderActions()}
-        renderCard={(category) => (
-          <FrameworkCategoryCard
-            key={category.id || category._id}
-            category={category}
-            renderActions={renderActions}
-            onEdit={handleEditCategory}
-            onDelete={handleDeleteInitiate}
-          />
-        )}
+        renderActions={renderActions}
         searchPlaceholder="Search categories by name or code..."
         emptyMessage={emptyMessage}
         error={error}
-        gridCols="grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3"
+        entityName="Categories"
       />
 
       {modalState.isOpen && (

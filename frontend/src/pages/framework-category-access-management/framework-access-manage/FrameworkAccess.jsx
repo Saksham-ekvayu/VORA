@@ -400,7 +400,7 @@ function FrameworkAccess() {
 
   /* ---------------- UI ---------------- */
   return (
-    <div className="mt-5 pb-5 space-y-8">
+    <div className="my-2">
       <Helmet>
         <title>VORA - Framework Access</title>
       </Helmet>
