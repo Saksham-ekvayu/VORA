@@ -108,7 +108,7 @@ export default function DataTable({
       }).map((_, i) => (
         <TableRow
           key={`skeleton-${i + 1}`}
-          className="border-b border-border hover:bg-transparent"
+          className="border-b border-border hover:bg-transparent pointer-events-none"
         >
           <TableCell className="sticky left-0 z-10 w-16 px-4 py-3 sticky-sr-col bg-transparent">
             <Skeleton className="w-8 h-8 rounded-full" />
@@ -234,7 +234,7 @@ export default function DataTable({
       {/* Table Container with Scrollable Body and Sticky Header */}
       <div
         className="overflow-auto sidebar-scroll"
-        style={{ maxHeight: "calc(100vh - 200px)" }}
+        style={{ maxHeight: "calc(100vh - 246px)" }}
       >
         <Table
           className="border-collapse"
