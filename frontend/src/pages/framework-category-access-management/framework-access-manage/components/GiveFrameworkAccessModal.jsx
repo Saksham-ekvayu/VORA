@@ -35,11 +35,10 @@ export default function GiveFrameworkAccessModal({
       <tr
         key={user.id}
         onClick={() => handleUserSelect(user)}
-        className={`cursor-pointer transition-all duration-200 hover:bg-muted/80 ${
-          selectedUser?.id === user.id
-            ? "bg-primary/10 border-l-4 border-primary"
-            : "border-l-4 border-transparent"
-        }`}
+        className={`cursor-pointer transition-all duration-200 hover:bg-muted/80 ${selectedUser?.id === user.id
+          ? "bg-primary/10 border-l-4 border-primary"
+          : "border-l-4 border-transparent"
+          }`}
       >
         <td className="px-3 py-2 w-[80%]">
           <div className="flex items-center gap-2">
@@ -66,15 +65,14 @@ export default function GiveFrameworkAccessModal({
         <tr
           key={framework.id}
           onClick={() => handleFrameworkSelect(framework)}
-          className={`cursor-pointer transition-all duration-200 hover:bg-muted/50 ${
-            isSelected
-              ? "bg-primary/10 border-l-4 border-primary"
-              : "border-l-4 border-transparent"
-          }`}
+          className={`cursor-pointer transition-all duration-200 hover:bg-muted/50 ${isSelected
+            ? "bg-primary/10 border-l-4 border-primary"
+            : "border-l-4 border-transparent"
+            }`}
         >
           <td className="px-3 py-2 align-top">
             <div className="flex items-start gap-2">
-              <div className="w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center border border-purple-200 dark:border-purple-800">
+              <div className="shrink-0 w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center border border-purple-200 dark:border-purple-800">
                 <Icon
                   name="shield"
                   size="16px"
@@ -114,7 +112,7 @@ export default function GiveFrameworkAccessModal({
   };
 
   const rightConfig = {
-    title: "Select Active Framework Categories",
+    title: "Select Framework Categories",
     icon: "shield",
     fetchFn: fetchFrameworkCategoriesFn,
     errorMessage: "Failed to load framework categories",
@@ -127,7 +125,7 @@ export default function GiveFrameworkAccessModal({
       isOpen={isOpen}
       onClose={onClose}
       onSubmit={handleAssignAccess}
-      title="Give Framework Access"
+      title="Give Framework Category Access"
       description="Select an expert and one or more framework categories to assign access"
       icon="user-plus"
       actionLabel={(left, right) => `Assign Access (${right.length})`}

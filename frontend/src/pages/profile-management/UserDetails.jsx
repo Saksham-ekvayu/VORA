@@ -133,23 +133,23 @@ export default function UserDetails() {
   const accessColumns = [
     {
       key: "frameworkCategory.frameworkCode",
-      label: "Framework Code",
-      sortable: false,
-      render: (_, row) => (
-        <span className="font-mono text-sm bg-muted px-2 py-1 rounded uppercase">
-          {row.frameworkCategory?.frameworkCode ?? "—"}
-        </span>
-      ),
-    },
-    {
-      key: "frameworkCategory.frameworkCategoryName",
-      label: "Framework",
+      label: "Framework Category",
       sortable: false,
       render: (_, row) => (
         <FrameworkMiniCard
           name={row.frameworkCategory?.frameworkCategoryName}
-          description={row.frameworkCategory?.description}
+          description={row.frameworkCategory?.frameworkCode}
         />
+      ),
+    },
+    {
+      key: "frameworkCategory.frameworkCategoryName",
+      label: "Description",
+      sortable: false,
+      render: (_, row) => (
+        <span className="text-xs whitespace-nowrap line-clamp-2">
+          {row.frameworkCategory?.description}
+        </span>
       ),
     },
     {

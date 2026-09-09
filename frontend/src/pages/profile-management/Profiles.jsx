@@ -230,6 +230,7 @@ function Profiles() {
             email={row.email}
             avatar={row.avatar}
             isEmailVerified={row.isEmailVerified}
+            link={`/profiles/${row.id}`}
           />
         </div>
       ),

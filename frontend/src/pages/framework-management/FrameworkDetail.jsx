@@ -507,7 +507,7 @@ function FrameworkDetail() {
                   </>
                 )}
                 <Button
-                  onClick={() => navigate("/frameworks")}
+                  onClick={() => navigate(-1)}
                   size="sm"
                   className="flex items-center gap-2"
                 >

@@ -197,6 +197,7 @@ function FrameworkAccess() {
           name={row.expert?.name}
           email={row.expert?.email}
           avatar={row.expert?.avatar}
+          link={`/profiles/${row.expert?.id}`}
         />
       ),
     },
