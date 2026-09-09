@@ -144,11 +144,7 @@ function FrameworkCategory() {
       },
     ];
 
-    return (
-      <div className="h-8 w-8 flex items-center justify-center bg-muted/40 rounded border border-border/40 hover:bg-muted/60 transition-colors">
-        <ActionDropdown actions={actions} />
-      </div>
-    );
+    return <ActionDropdown actions={actions} />;
   };
 
   const getHeaderActions = () => {

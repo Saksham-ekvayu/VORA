@@ -225,11 +225,7 @@ function DeploymentDocument() {
       },
     ].filter(Boolean);
 
-    return (
-      <div className="flex justify-center">
-        <ActionDropdown actions={actions} />
-      </div>
-    );
+    return <ActionDropdown actions={actions} />;
   };
 
   const getHeaderActions = () =>
