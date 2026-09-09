@@ -41,7 +41,7 @@ function FrameworkCategory() {
     onSort: handleSort,
     refetch,
   } = useTableData(getFrameworkCategory, {
-    defaultLimit: 12,
+    defaultLimit: 10,
     defaultSortBy: "createdAt",
     defaultSortOrder: "desc",
     emptyMessage: "No framework category found",

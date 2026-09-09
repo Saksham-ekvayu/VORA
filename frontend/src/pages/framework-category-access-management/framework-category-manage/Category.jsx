@@ -51,7 +51,7 @@ function Category() {
     onSort: handleSort,
     refetch,
   } = useTableData(getAdminFrameworkCategory, {
-    defaultLimit: 12,
+    defaultLimit: 10,
     defaultSortBy: "createdAt",
     defaultSortOrder: "desc",
     emptyMessage: "No framework categories found",
