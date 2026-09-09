@@ -971,30 +971,37 @@ def _run_stage1_call(prompt: str, tag: str) -> list:
 
 
 # ---------------------------------------------------------------------------
-# Deployment-points guarantee helpers (THE FIX)
+# Deployment-points helpers
 #
-# Two related bugs this addresses:
-#   1) Deployment point COUNT was inconsistent (sometimes 4, sometimes 5)
-#      because the old Stage-2 prompt literally asked for "4-5 points".
-#   2) Deployment points were sometimes 0/empty entirely, because any
-#      control whose description was <=100 chars was SKIPPED from Stage 2
-#      completely and hard-set to "" (see the old needs_dp/no_dp_needed
-#      split). A control with an empty/short/low-quality description
-#      would silently end up with zero deployment points in the UI.
+# History: an earlier version of this pipeline forced every control to
+# EXACTLY 5 deployment points (padding short lists with generic filler,
+# truncating long ones) as a blunt fix for two real bugs: (1) point count
+# used to be inconsistent (4 vs 5) because the old prompt asked for
+# "4-5 points", and (2) controls with a short description sometimes got
+# 0 points because they were skipped from Stage 2 entirely.
 #
-# Fix: every control now goes through Stage 2, the prompt strictly
-# requires exactly 5 points, and — regardless of what the LLM actually
-# returns — _validate_deployment_points() deterministically pads/trims
-# the result to guarantee exactly 5 points every single time. This never
-# depends on the LLM "behaving"; it's enforced in code after the fact.
+# That "always exactly 5" fix traded accuracy for consistency: a
+# 2-step control got 3 fabricated filler points, and a genuinely
+# 8-step control had 3 real points silently discarded. Real documents
+# don't have a fixed number of implementation steps per control.
+#
+# Current behavior: every control still goes through Stage 2 (so #2
+# above stays fixed — no control silently gets 0 points), but the
+# point COUNT now reflects whatever the LLM genuinely extracted/
+# generated for that specific control — 2, 5, 7, whatever is accurate.
+# _validate_deployment_points() only falls back to a small generic set
+# when the LLM returned literally nothing usable; it never pads or
+# trims a real result to hit a fixed number.
 # ---------------------------------------------------------------------------
 
 
 def _generate_default_deployment_points(control_name: str) -> str:
     """
-    Generate 5 generic-but-sensible deployment points when the control's
-    description is too thin/empty for the LLM to derive real steps from.
-    Used as a guaranteed fallback so a control NEVER ends up with 0 points.
+    Generate a small set of generic-but-sensible deployment points.
+    Used ONLY as a last-resort fallback when the LLM returned nothing at
+    all (empty/unparseable) so a control never ends up with 0 points.
+    This is NOT used to pad or trim genuine LLM output to a fixed count
+    — see _validate_deployment_points().
     """
     name = (control_name or "this control").strip() or "this control"
     points = [
@@ -1002,18 +1009,18 @@ def _generate_default_deployment_points(control_name: str) -> str:
         f"Document the policy or procedure required to operationalize {name}.",
         f"Communicate the requirements of {name} to all relevant personnel.",
         f"Establish periodic monitoring/review to verify {name} is being followed.",
-        f"Maintain records or evidence demonstrating {name} is implemented and maintained.",
     ]
     return "\n".join(f"{i+1}. {p}" for i, p in enumerate(points))
 
 
 def _validate_deployment_points(raw: Any, control_name: str = "") -> str:
     """
-    Deterministic safety net: guarantees the returned string ALWAYS has
-    EXACTLY 5 numbered deployment points, no matter what the LLM returned
-    (0, 3, 4, 6, malformed, or empty). This is what actually fixes the
-    "sometimes 4, sometimes 0" bug — it doesn't rely on the LLM behaving,
-    it enforces the count in code after the fact.
+    Cleans up whatever the LLM returned into a numbered string WITHOUT
+    forcing a fixed count. The number of deployment points now reflects
+    what was genuinely extracted/generated for that specific control — a
+    simple control may end up with 2 points, a complex one with 8+.
+    Falls back to a small generic set ONLY when the LLM returned nothing
+    usable at all, so a control never ends up with 0 points.
     """
     if not raw or not str(raw).strip():
         return _generate_default_deployment_points(control_name)
@@ -1025,20 +1032,8 @@ def _validate_deployment_points(raw: Any, control_name: str = "") -> str:
     if not points:
         return _generate_default_deployment_points(control_name)
 
-    if len(points) > 5:
-        points = points[:5]
-    elif len(points) < 5:
-        default_texts = [
-            re.sub(r"^\d+\.\s*", "", d) for d in _generate_default_deployment_points(control_name).split("\n")
-        ]
-        i = 0
-        while len(points) < 5 and i < len(default_texts):
-            if default_texts[i] not in points:
-                points.append(default_texts[i])
-            i += 1
-        while len(points) < 5:
-            points.append("Review and reinforce adherence to this control periodically.")
-
+    # No forced trim, no forced pad — keep exactly what was genuinely
+    # produced for this control.
     return "\n".join(f"{i+1}. {p}" for i, p in enumerate(points))
 
 
@@ -1046,10 +1041,19 @@ def _build_stage2_prompt(batch: list) -> str:
     return f"""You are an analyser of framework controls.
 
 CRITICAL RULES (no exceptions):
-- EVERY control MUST have EXACTLY 5 deployment points. NOT 4, NOT 6, NEVER empty.
-- If the control description is vague, short, or minimal, you MUST still generate 5
-  sensible, generic deployment points based on the control's NAME and general best
-  practice for that type of control. Do NOT return an empty string under any circumstance.
+- Generate deployment points based ONLY on what THIS SPECIFIC control genuinely
+  requires. Do NOT target a fixed number of points — use as many as are truly
+  needed to cover distinct, non-redundant implementation steps. A simple control
+  may need only 2-3 points; a complex, multi-part control may need 6-8+. NEVER
+  invent filler points just to hit a round number, and NEVER omit a genuine step
+  just to keep the count low.
+- Every point must be a distinct, actionable, non-redundant implementation step —
+  do not split one action into two near-identical points, and do not merge two
+  unrelated actions into one point.
+- If the control description is vague, short, or minimal, you MUST still generate
+  a reasonable, non-empty set of points based on the control's NAME and general
+  best practice for that type of control. Do NOT return an empty string under any
+  circumstance.
 
 Deployment points must describe:
 - How to implement this control based on what the document says (or general best
@@ -1058,17 +1062,18 @@ Deployment points must describe:
 - How to operationalize it
 - Important implementation details
 
-Every point must be numbered: 1. 2. 3. 4. 5.
-Store all 5 points as a SINGLE string with newlines between them.
+Every point must be numbered sequentially starting at 1 (1. 2. 3. ... as many as
+genuinely needed). Store all points as a SINGLE string with newlines between them.
 
 IMPORTANT: Keep Section_name exactly as provided. Do NOT change it.
 
 Input JSON:
 {json.dumps(batch)}
 
-Add Deployment_points field to each control (a string with EXACTLY 5 numbered points).
+Add Deployment_points field to each control (a string with as many numbered
+points as this control genuinely needs — do not force a fixed count).
 Use JSON list ONLY:
-[{{"Control_id": "","Control_name":"","Control_type":"","Control_description": "","Section_name": "","Deployment_points": "1. ...\\n2. ...\\n3. ...\\n4. ...\\n5. ..."}}]
+[{{"Control_id": "","Control_name":"","Control_type":"","Control_description": "","Section_name": "","Deployment_points": "1. ...\\n2. ...\\n3. ..."}}]
 
 Return ONLY JSON. No markdown."""
 
@@ -1104,7 +1109,7 @@ def _run_stage2_batch(batch: list, batch_num: int) -> list:
         merged_batch = _apply_deployment_points(batch, batch_result)
         logger.info(
             f"[EXTRACT] DP Batch {batch_num} OK — added {len(merged_batch)} controls, "
-            "all guaranteed exactly 5 deployment points"
+            "deployment points added (count varies per control based on actual need)"
         )
         return merged_batch
     except json.JSONDecodeError:
@@ -1132,7 +1137,8 @@ def extract_framework_controls(chunks: list, framework_id: str, is_deployment: b
        still missed (second-layer safety net, catches batch-boundary
        edge cases).
     3. Generate Deployment_points for EVERY control (in batches) —
-       guaranteed exactly 5 points per control, never 0, never 4/6.
+       point count now reflects what each control genuinely needs (never 0,
+       but no longer forced to a fixed number).
     """
     if not chunks:
         logger.warning("[EXTRACT] No chunks provided")
@@ -1344,13 +1350,13 @@ slice you were given.
 
     # ------------------------------------------------------------------
     # STAGE 2 — Deployment points. Generated for EVERY control, no
-    # skipping based on description length. Guaranteed exactly 5 points
-    # per control via _validate_deployment_points(), regardless of what
-    # the LLM actually returns.
+    # skipping based on description length. Point count per control is
+    # dynamic — determined by _validate_deployment_points() from what the
+    # LLM actually returns for that specific control, never forced.
     # ------------------------------------------------------------------
     logger.info(
         f"[EXTRACT] Stage 2: Generating deployment points in batches of {DEPLOYMENT_BATCH_SIZE} "
-        f"(every control gets exactly 5 points — no skipping based on description length)"
+        f"(point count is dynamic per control — no skipping based on description length)"
     )
 
     final_controls = []
@@ -1371,7 +1377,7 @@ slice you were given.
 
     logger.info(
         f"[EXTRACT] Stage 2 complete: {len(final_controls)} controls — every single one has "
-        f"exactly 5 deployment points guaranteed"
+        f"deployment points added, count varies per control based on actual need"
     )
     logger.info(f"[EXTRACT] Complete: {len(final_controls)} total controls extracted")
     return final_controls
@@ -1389,11 +1395,14 @@ Each control in the document follows this structure:
 Your task:
 1. Identify each control heading. Extract the ID as Control_id and the text after the em-dash/dash as Control_name.
 2. Extract the text after 'Description:' as Control_description.
-3. Extract all bullet points under 'Deployment Points' as five numbered lines.
+3. Extract EVERY bullet point under 'Deployment Points' as numbered lines — however
+   many actually appear in the source text for that control. Do NOT add, remove, merge,
+   or split bullets to hit a specific count; the output count must match the document
+   exactly (2 bullets in the source -> 2 numbered lines out, 7 bullets -> 7 lines out).
 4. For Section_name, identify the nearest parent heading and strip IDs or numbering.
 
 Use JSON list ONLY:
-[{{"Control_id":"","Control_name":"","Control_description":"","Section_name":"","Deployment_points":"1. ...\\n2. ...\\n3. ...\\n4. ...\\n5. ..."}}]
+[{{"Control_id":"","Control_name":"","Control_description":"","Section_name":"","Deployment_points":"1. ...\\n2. ...\\n3. ..."}}]
 
 TEXT:
 {batch_text}
@@ -1457,7 +1466,7 @@ def extract_deployment_controls(chunks: list) -> list:
             c_name = str(ctrl.get("Control_name", "")).strip()
             raw_dp = ctrl.get("Deployment_points", "")
 
-            # Enforce exactly 5 points
+            # Normalize into a numbered string (count preserved as-is)
             ctrl["Deployment_points"] = _validate_deployment_points(raw_dp, c_name)
             final_controls.append(ctrl)
 

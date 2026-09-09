@@ -77,6 +77,18 @@ def _status_history(
 def _append_lines(text_lines: list[str], text: str) -> bool:
     if not text or not text.strip():
         return False
+    # Many framework PDFs (ISO/GDPR/etc.) are produced by tools like Adobe
+    # InDesign with custom-encoded fonts. PyMuPDF/pdfplumber sometimes
+    # decode smart quotes/em-dashes from those fonts into mojibake
+    # (e.g. an em-dash becomes "ΓÇö", a right single quote becomes
+    # "ΓÇÖ"). ftfy detects and repairs exactly this class of mis-decoded
+    # text before it ever reaches the LLM prompt or gets stored.
+    try:
+        import ftfy
+
+        text = ftfy.fix_text(text)
+    except ImportError:
+        logger.warning("[LOAD] ftfy not installed — mojibake in source text will not be repaired")
     text_lines.extend(line.strip() for line in text.split("\n") if line.strip())
     return True
 
