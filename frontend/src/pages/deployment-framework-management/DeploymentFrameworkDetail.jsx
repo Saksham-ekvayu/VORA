@@ -13,7 +13,6 @@ import {
 import { useAuth } from "@/context/authContext/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import {
-  isInternalExpert,
   isAuditor,
   isCustomerAdmin,
   STATUS_PENDING,
@@ -28,7 +27,6 @@ import {
   STATUS_FAILED,
   STATUS_LOCKED,
   STATUS_UPLOADED,
-  STATUS_LIVE,
   typeVariantMap,
   packageTypeColorMap,
 } from "@/utils/commonUtils";
@@ -659,15 +657,19 @@ const DeploymentFrameworkDetail = () => {
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
             🏅 Sign-off Gate
           </h2>
-          <AnalysisActions
-            frameworkId={id}
-            currentPackage={currentPackage}
-            isAssignedFrameworkRevoked={isAssignedFrameworkRevoked}
-            isAssignedFrameworkFinalized={isAssignedFrameworkFinalized}
-            viewContext="detail"
-            onRefresh={() => fetchFrameworkDetails(true)}
-            setRequestReviewModalOpen={setRequestReviewModalOpen}
-          />
+          <div className="flex items-center gap-2">
+            <AnalysisActions
+              frameworkId={id}
+              currentPackage={currentReviewPackage}
+              isAssignedFrameworkRevoked={isAssignedFrameworkRevoked}
+              isAssignedFrameworkFinalized={isAssignedFrameworkFinalized}
+              viewContext="detail"
+              onRefresh={() => fetchFrameworkDetails(true)}
+              setRequestReviewModalOpen={setRequestReviewModalOpen}
+              setExpertReviewModal={setExpertReviewModal}
+              setDeployModalOpen={setDeployModalOpen}
+            />
+          </div>
         </div>
         <p className="text-[11px] text-muted-foreground mb-4">
           No version is deployed without explicit expert approval
@@ -832,64 +834,6 @@ const DeploymentFrameworkDetail = () => {
             </div>
           );
         })()}
-
-        {/* action required box */}
-        {isInternalExpert(user?.role) &&
-          currentReviewPackage?.expertReview?.status === "requested" && (
-            <div className="mt-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded p-3">
-              <p className="text-[12px] font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1.5 mb-1.5">
-                <Icon name="alert" size={13} /> Expert Action Required
-              </p>
-              <p className="text-[11px] text-muted-foreground mb-3">
-                Review gap analysis and confirm or reject this deployment
-                package version.
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="default"
-                  size="xs"
-                  onClick={() =>
-                    setExpertReviewModal({ open: true, action: "approve" })
-                  }
-                >
-                  <Icon name="check" size={12} /> Approve
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="xs"
-                  onClick={() =>
-                    setExpertReviewModal({ open: true, action: "return" })
-                  }
-                >
-                  <Icon name="x" size={12} /> Return
-                </Button>
-              </div>
-            </div>
-          )}
-
-        {isAuditor(user?.role) &&
-          assignedFramework?.finalization?.isFinalized === true &&
-          currentReviewPackage?.expertReview?.status === STATUS_APPROVED &&
-          currentReviewPackage?.status !== STATUS_LIVE && (
-            <div className="mt-4 bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 rounded p-3 flex justify-between items-center gap-2">
-              <div className="flex flex-col">
-                <p className="text-[12px] font-semibold text-green-700 dark:text-green-400 flex items-center gap-1.5 mb-1.5">
-                  <Icon name="check-circle" size={13} /> Ready for Deployment
-                </p>
-                <p className="text-[11px] text-muted-foreground mb-3">
-                  The deployment package has been approved by the expert and is
-                  ready to be deployed.
-                </p>
-              </div>
-              <Button
-                variant="default"
-                size="xs"
-                onClick={() => setDeployModalOpen(true)}
-              >
-                <Icon name="rocket" size={12} /> Deploy Package
-              </Button>
-            </div>
-          )}
       </div>
 
       {/* ── version history ── */}

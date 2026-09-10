@@ -491,6 +491,7 @@ export default function ControlsPanel({
   onEdit,
   onDelete,
   onAdd,
+  onEditSection,
   onUpdateWeightage,
   // Applicability features
   showApplicability = false,
@@ -563,24 +564,27 @@ export default function ControlsPanel({
 
   const updateActiveSelection = useCallback(
     (sectId, ctrlId) => {
-      setSearchParams((prev) => {
-        const nextParams = new URLSearchParams(prev);
-        if (sectId !== undefined) {
-          if (sectId) {
-            nextParams.set("section", sectId);
-          } else {
-            nextParams.delete("section");
+      setSearchParams(
+        (prev) => {
+          const nextParams = new URLSearchParams(prev);
+          if (sectId !== undefined) {
+            if (sectId) {
+              nextParams.set("section", sectId);
+            } else {
+              nextParams.delete("section");
+            }
           }
-        }
-        if (ctrlId !== undefined) {
-          if (ctrlId) {
-            nextParams.set("control", ctrlId);
-          } else {
-            nextParams.delete("control");
+          if (ctrlId !== undefined) {
+            if (ctrlId) {
+              nextParams.set("control", ctrlId);
+            } else {
+              nextParams.delete("control");
+            }
           }
-        }
-        return nextParams;
-      }, { replace: true });
+          return nextParams;
+        },
+        { replace: true }
+      );
     },
     [setSearchParams]
   );
@@ -881,6 +885,20 @@ export default function ControlsPanel({
               <h3 className="font-bold text-foreground truncate">
                 {activeSection?.name ?? "—"}
               </h3>
+              {canModify &&
+                !showApplicability &&
+                activeSection &&
+                !!onEditSection && (
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    className="h-6 w-6 text-muted-foreground hover:text-foreground shrink-0"
+                    onClick={() => onEditSection?.(activeSection)}
+                    title="Update Section Name"
+                  >
+                    <Icon name="edit" size="14px" />
+                  </Button>
+                )}
             </div>
             <div className="flex items-center gap-1.5 shrink-0 ml-2">
               <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-primary/15 text-primary whitespace-nowrap">

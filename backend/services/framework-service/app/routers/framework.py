@@ -15,6 +15,7 @@ from app.schemas.framework import (
     RejectFrameworkBody,
     UpdateControlBody,
     UpdateControlWeightageBody,
+    UpdateSectionBody,
 )
 from fastapi import APIRouter, Depends, File, Form
 from fastapi import Path as ApiPath
@@ -1432,4 +1433,64 @@ async def delete_framework_control(
     return success(
         {"controlId": control_id, msg.FRAMEWORK_SERVICE_MESSAGES["FILEVERSION"]: file_version},
         f"Control {control_id} deleted successfully from version {file_version}",
+    )
+
+
+@router.patch("/{id}/file-versions/{fileVersion}/sections/{sectionId}")
+async def update_framework_section(
+    id: str,
+    file_version: Annotated[str, ApiPath(alias="fileVersion")],
+    section_id: Annotated[str, ApiPath(alias="sectionId")],
+    body: UpdateSectionBody,
+    ctx: Annotated[AuthenticatedUser, Depends(authenticate)],
+):
+    logger.info(
+        f"[UPDATE-SECTION] Updating section | id={id} | file_version={file_version} | section_id={section_id} | user_id={ctx.user.id}"
+    )
+    user = ctx.user
+
+    if not body.name:
+        return error("Section name is required", 400)
+
+    async with session_scope() as session:
+        framework = await session.get(Framework, str(id))
+        if not framework:
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["FRAMEWORK_NOT_FOUND"], 404)
+
+        if str(framework.uploadedBy) != str(user.id):
+            return error(msg.FRAMEWORK_SERVICE_MESSAGES["YOU_DON_T_HAVE_PERMISSION_TO_MODIFY_THIS"], 403)
+
+        if framework_helper.approval_status(framework) == "approved":
+            return error("Cannot edit sections in an approved framework version", 403)
+
+        versions = framework_helper.parse_file_versions(framework)
+        file_version_doc = next((fv for fv in versions if fv.fileVersion == file_version), None)
+        if not file_version_doc:
+            return error(f"Version {file_version} not found in this framework", 404)
+
+        controls, doc_ext, ai_data, load_err_msg, load_status = await framework_helper.load_ai_controls(
+            session, file_version_doc
+        )
+        if load_err_msg:
+            return error(load_err_msg, load_status)
+        if not controls or not controls.controls_data:
+            return error(f"Version {file_version} does not have any sections", 404)
+
+        target_section = next((s for s in controls.controls_data if s.id == section_id), None)
+        if not target_section:
+            return error(f"Section with ID {section_id} not found in version {file_version}", 404)
+
+        target_section.name = body.name.strip()
+
+        framework_helper.save_ai_controls(session, file_version_doc, controls, doc_ext, ai_data)
+
+        framework.fileVersions = framework_helper.dump_file_versions(versions)
+        framework.updatedAt = _now()
+        await session.flush()
+
+        section_payload = target_section.model_dump(mode="json")
+
+    return success(
+        {"section": section_payload, msg.FRAMEWORK_SERVICE_MESSAGES["FILEVERSION"]: file_version},
+        f"Section {section_id} updated successfully in version {file_version}",
     )

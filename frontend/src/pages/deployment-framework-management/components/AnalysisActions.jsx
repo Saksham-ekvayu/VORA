@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/authContext/useAuth";
 import {
   isAuditor,
+  isInternalExpert,
   STATUS_EXTRACTED,
   STATUS_PENDING,
   STATUS_APPROVED,
@@ -152,7 +153,12 @@ const MergeButton = ({ state, onMerge }) => {
   );
 };
 
-const DetailViewActions = ({ state, actions }) => {
+const DetailViewActions = ({ state, actions, userRole }) => {
+  const showAuditorActions = isAuditor(userRole);
+  const isExpert = isInternalExpert(userRole);
+  const showApproveReturn =
+    isExpert && state.expertReviewStatus === "requested";
+
   let analysisButtonText = "Run Analysis";
   if (state.isAnalysisCurrentlyRunning) {
     analysisButtonText = "Analysis Running...";
@@ -166,51 +172,93 @@ const DetailViewActions = ({ state, actions }) => {
 
   return (
     <div className="flex items-center gap-2">
-      <MergeButton state={state} onMerge={actions.handleMergeControls} />
-      {!state.isCurrentPackageLive && (
-        <Button
-          size="xs"
-          onClick={actions.handleRunAnalysis}
-          disabled={
-            state.isAssignedFrameworkRevoked ||
-            !state.isAssignedFrameworkFinalized ||
-            state.isAnalysisCurrentlyRunning ||
-            !state.isMergeCompleted
-          }
-          title={
-            !state.isMergeCompleted
-              ? "Controls must be merged before running analysis."
-              : "Run AI gap analysis and comparison."
-          }
-        >
-          <Icon
-            name={state.isAnalysisCurrentlyRunning ? "loader" : "play"}
-            size={11}
-            className={`animate-${state.isAnalysisCurrentlyRunning ? "spin" : ""}`}
-          />{" "}
-          {analysisButtonText}
-        </Button>
-      )}
-      {state.isAnalysisCompleted &&
-        !state.isExpertReviewApproved &&
-        state.setRequestReviewModalOpen && (
+      {showApproveReturn && state.setExpertReviewModal && (
+        <>
           <Button
+            variant="default"
             size="xs"
-            onClick={() => state.setRequestReviewModalOpen(true)}
-            disabled={
-              state.isAssignedFrameworkRevoked ||
-              !state.isAssignedFrameworkFinalized ||
-              state.isAnalysisCurrentlyRunning ||
-              state.isReviewAlreadyRequested
+            onClick={() =>
+              state.setExpertReviewModal({ open: true, action: "approve" })
             }
-            title={requestReviewTitle}
           >
-            <Icon name="user-check" size={11} />{" "}
-            {state.isReviewAlreadyRequested
-              ? `Review ${state.expertReviewStatus}`
-              : "Request Review"}
+            <Icon name="check" size={12} className="mr-1" /> Approve
           </Button>
-        )}
+          <Button
+            variant="destructive"
+            size="xs"
+            onClick={() =>
+              state.setExpertReviewModal({ open: true, action: "return" })
+            }
+          >
+            <Icon name="x" size={12} className="mr-1" /> Return
+          </Button>
+        </>
+      )}
+
+      {showAuditorActions && (
+        <>
+          {!state.isExpertReviewApproved && (
+            <MergeButton state={state} onMerge={actions.handleMergeControls} />
+          )}
+          {!state.isCurrentPackageLive && !state.isExpertReviewApproved && (
+            <Button
+              size="xs"
+              onClick={actions.handleRunAnalysis}
+              disabled={
+                state.isAssignedFrameworkRevoked ||
+                !state.isAssignedFrameworkFinalized ||
+                state.isAnalysisCurrentlyRunning ||
+                !state.isMergeCompleted
+              }
+              title={
+                !state.isMergeCompleted
+                  ? "Controls must be merged before running analysis."
+                  : "Run AI gap analysis and comparison."
+              }
+            >
+              <Icon
+                name={state.isAnalysisCurrentlyRunning ? "loader" : "play"}
+                size={11}
+                className={`animate-${state.isAnalysisCurrentlyRunning ? "spin" : ""}`}
+              />{" "}
+              {analysisButtonText}
+            </Button>
+          )}
+          {state.isAnalysisCompleted &&
+            !state.isExpertReviewApproved &&
+            state.setRequestReviewModalOpen && (
+              <Button
+                size="xs"
+                onClick={() => state.setRequestReviewModalOpen(true)}
+                disabled={
+                  state.isAssignedFrameworkRevoked ||
+                  !state.isAssignedFrameworkFinalized ||
+                  state.isAnalysisCurrentlyRunning ||
+                  state.isReviewAlreadyRequested
+                }
+                title={requestReviewTitle}
+              >
+                <Icon name="user-check" size={11} />{" "}
+                {state.isReviewAlreadyRequested
+                  ? `Review ${state.expertReviewStatus}`
+                  : "Request Review"}
+              </Button>
+            )}
+          {state.isAssignedFrameworkFinalized &&
+            state.isExpertReviewApproved &&
+            !state.isCurrentPackageLive &&
+            state.setDeployModalOpen && (
+              <Button
+                size="xs"
+                onClick={() => state.setDeployModalOpen(true)}
+                className="bg-green-600 hover:bg-green-700 text-white"
+                title="Deploy this package version"
+              >
+                <Icon name="rocket" size={11} /> Deploy Package
+              </Button>
+            )}
+        </>
+      )}
       <Button
         size="xs"
         onClick={() => {
@@ -286,6 +334,8 @@ const AnalysisActions = ({
   viewContext,
   onRefresh,
   setRequestReviewModalOpen,
+  setExpertReviewModal,
+  setDeployModalOpen,
 }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -327,6 +377,8 @@ const AnalysisActions = ({
     isAssignedFrameworkRevoked,
     isAssignedFrameworkFinalized,
     setRequestReviewModalOpen,
+    setExpertReviewModal,
+    setDeployModalOpen,
     isCurrentPackageLive: currentPackage?.status === STATUS_LIVE,
     isMergeCompleted: currentPackage?.mergeDocument?.status === STATUS_MERGED,
     isMergeFailed: currentPackage?.mergeDocument?.status === STATUS_FAILED,
@@ -357,8 +409,9 @@ const AnalysisActions = ({
     state.isMergeCompleted;
 
   const actions = { ...ops, navigate };
+  const isExpert = isInternalExpert(user?.role);
 
-  if (!showAuditorActions) {
+  if (!showAuditorActions && !isExpert) {
     if (viewContext === "detail") {
       return (
         <div className="flex items-center gap-2">
@@ -380,16 +433,51 @@ const AnalysisActions = ({
 
   switch (viewContext) {
     case "detail":
-      return <DetailViewActions state={state} actions={actions} />;
+      return (
+        <DetailViewActions
+          state={state}
+          actions={actions}
+          userRole={user?.role}
+        />
+      );
+    case "comparison-header": {
+      const showApproveReturn = isExpert && expertReviewStatus === "requested";
+      if (!showApproveReturn) return null;
+      return (
+        <>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() =>
+              setExpertReviewModal({ open: true, action: "approve" })
+            }
+          >
+            <Icon name="check" size={13} className="mr-1" /> Approve
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() =>
+              setExpertReviewModal({ open: true, action: "return" })
+            }
+          >
+            <Icon name="x" size={13} className="mr-1" /> Return
+          </Button>
+        </>
+      );
+    }
     case "controls-tab":
+      if (!showAuditorActions) return null;
       return (
         <div className="flex items-center gap-2">
           <MergeButton state={state} onMerge={actions.handleMergeControls} />
         </div>
       );
     case "comparison-tab":
+      if (!showAuditorActions) return null;
       return <ComparisonTabActions state={state} actions={actions} />;
     case "gap-tab":
+      if (!showAuditorActions) return null;
       return <GapTabActions state={state} actions={actions} />;
     default:
       return null;

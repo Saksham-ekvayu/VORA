@@ -25,6 +25,7 @@ import {
   STATUS_FAILED,
   STATUS_PROCESSING,
   STATUS_EXTRACTED,
+  isInternalExpert,
 } from "@/utils/commonUtils";
 import DataTable from "@/components/data-table/DataTable";
 import StatusCard from "@/components/custom/StatusCard";
@@ -226,6 +227,24 @@ function DeploymentFramework() {
       urlParams.get("requestReviewStatus") || "";
 
     return [
+      isInternalExpert(user.role) && {
+        type: "dropdown",
+        label: getReviewStatusFilterLabel(requestReviewStatusFilter),
+        triggerClassName: "w-fit",
+        options: [
+          {
+            label: "All Status",
+            onClick: () => handleRequestReviewStatusFilter(""),
+          },
+          ...[STATUS_REQUESTED, STATUS_APPROVED, STATUS_REJECTED]
+            .filter((s) => !(isExpert(user.role) && s === STATUS_PENDING))
+            .map((s, idx) => ({
+              label: s,
+              onClick: () => handleRequestReviewStatusFilter(s),
+              separatorBefore: idx === 0,
+            })),
+        ],
+      },
       {
         type: "dropdown",
         label: getReviewStatusFilterLabel(requestReviewStatusFilter),
