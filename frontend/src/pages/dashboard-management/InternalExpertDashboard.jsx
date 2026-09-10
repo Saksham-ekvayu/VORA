@@ -230,7 +230,7 @@ export default function InternalExpertDashboard() {
               iconBg="bg-primary/10"
               borderColor="border-primary/40"
               title="Pending Review Framework"
-              navigation="/deployment-frameworks?requestReviewStatus=pending"
+              navigation="/deployment-frameworks?requestReviewStatus=requested"
             >
               {isLoading || !dashboardData ? (
                 <Skeleton className="h-10 w-16 mt-1" />

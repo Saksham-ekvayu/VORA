@@ -32,11 +32,13 @@ import {
   typeVariantMap,
   STATUS_UPLOADED,
   STATUS_PROCESSING,
+  isInternalExpert,
 } from "@/utils/commonUtils";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ControlsPanel from "@/components/custom/ControlsPanel";
 import AnalysisActions from "./components/AnalysisActions";
+import ExpertReviewModal from "./components/ExpertReviewModal";
 import { useAssignedFrameworks } from "@/hooks/useAssignedFrameworks";
 import { useStatusPolling } from "@/hooks/useStatusPolling";
 import SearchInput from "@/components/custom/SearchInput";
@@ -153,6 +155,10 @@ export default function ComparisonGapAnalysis() {
   const [framework, setFramework] = useState(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [expertReviewModal, setExpertReviewModal] = useState({
+    open: false,
+    action: null,
+  });
 
   const fetchDetails = useCallback(
     async (showSpinner = true) => {
@@ -365,6 +371,24 @@ export default function ComparisonGapAnalysis() {
 
         {/* RIGHT */}
         <div className="flex items-center gap-2">
+          {isInternalExpert(user?.role) && activePackage?.expertReview?.status === "requested" && (
+            <>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => setExpertReviewModal({ open: true, action: "approve" })}
+              >
+                <Icon name="check" size={13} className="mr-1" /> Approve
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setExpertReviewModal({ open: true, action: "return" })}
+              >
+                <Icon name="x" size={13} className="mr-1" /> Return
+              </Button>
+            </>
+          )}
           <Button
             size="sm"
             onClick={handleDownloadReport}
@@ -593,6 +617,16 @@ export default function ComparisonGapAnalysis() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <ExpertReviewModal
+        isOpen={expertReviewModal.open}
+        onClose={() => setExpertReviewModal({ open: false, action: null })}
+        action={expertReviewModal.action}
+        frameworkId={framework?.id || id}
+        packageVersion={activePackage?.packageVersion}
+        packageData={activePackage}
+        onSuccess={() => fetchDetails(false)}
+      />
     </div>
   );
-}
+};
