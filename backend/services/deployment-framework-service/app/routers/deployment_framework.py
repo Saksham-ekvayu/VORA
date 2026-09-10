@@ -516,9 +516,16 @@ async def update_deployment_framework_section(
             return not_found(_RESOURCE_PACKAGE_VERSION)
 
         if user.role not in ["auditor", "customer-admin"]:
-            return error(FRAMEWORK_SERVICE_MESSAGES.get("YOU_DON_T_HAVE_PERMISSION_TO_MODIFY_THIS", "You don't have permission to modify this"), 403)
+            return error(
+                FRAMEWORK_SERVICE_MESSAGES.get(
+                    "YOU_DON_T_HAVE_PERMISSION_TO_MODIFY_THIS", "You don't have permission to modify this"
+                ),
+                403,
+            )
 
-        if target_package.status == "live" or (target_package.expertReview and target_package.expertReview.status == "approved"):
+        if target_package.status == "live" or (
+            target_package.expertReview and target_package.expertReview.status == "approved"
+        ):
             return error("Cannot edit sections in an approved or live package", 403)
 
         if not getattr(target_package, "documents", None):
@@ -529,14 +536,16 @@ async def update_deployment_framework_section(
 
         # Update the section name in all individual document extractions in this package
         for doc in target_package.documents:
-            extraction_id = doc.get("aiExtraction") if isinstance(doc, dict) else getattr(doc, "aiExtraction", None)
+            extraction_id = (
+                doc.get("aiExtraction") if isinstance(doc, dict) else getattr(doc, "aiExtraction", None)
+            )
             if extraction_id:
                 extraction_obj = await session.get(DocumentExtraction, str(extraction_id))
                 if extraction_obj and extraction_obj.aiExtraction:
                     doc_ai_data = dict(extraction_obj.aiExtraction)
                     doc_controls = doc_ai_data.get("controls", {})
                     doc_controls_data = doc_controls.get("controls_data", [])
-                    
+
                     updated = False
                     for s in doc_controls_data:
                         if str(s.get("id")) == str(section_id):
@@ -544,7 +553,7 @@ async def update_deployment_framework_section(
                             updated = True
                             if not target_section:
                                 target_section = s
-                    
+
                     if updated:
                         doc_controls["controls_data"] = doc_controls_data
                         doc_ai_data["controls"] = doc_controls
@@ -553,7 +562,9 @@ async def update_deployment_framework_section(
                         updated_any = True
 
         if not updated_any or not target_section:
-            return error(f"Section with ID {section_id} not found in any document in package {package_version}", 404)
+            return error(
+                f"Section with ID {section_id} not found in any document in package {package_version}", 404
+            )
 
         framework.updatedAt = _utcnow()
 
@@ -562,8 +573,8 @@ async def update_deployment_framework_section(
                 "section": {
                     "id": target_section.get("id"),
                     "name": target_section.get("name"),
-                }, 
-                "packageVersion": package_version
+                },
+                "packageVersion": package_version,
             },
             f"Section {section_id} updated successfully in package {package_version}",
         )
