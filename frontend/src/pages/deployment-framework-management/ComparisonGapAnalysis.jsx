@@ -277,11 +277,6 @@ export default function ComparisonGapAnalysis() {
   );
   const status = activePackage?.mergeDocument?.status;
 
-  const canModifyPackage =
-    activePackage?.status !== "live" &&
-    activePackage?.expertReview?.status !== "approved" &&
-    showAuditorActions;
-
   const handleDownloadReport = async () => {
     if (!framework || !activePackage || !isReportReady) return;
     try {
@@ -482,7 +477,7 @@ export default function ComparisonGapAnalysis() {
                       0
                     ) || 0
                   }
-                  canModify={canModifyPackage}
+                  canModify={false}
                   showApplicability={false}
                   globalSearch={globalSearch}
                 />
