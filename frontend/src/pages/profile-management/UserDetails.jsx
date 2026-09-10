@@ -32,8 +32,7 @@ import {
 } from "@/utils/commonUtils";
 import UserAvatar from "@/components/custom/UserAvatar";
 import { usePageTitle } from "@/hooks/usePageTitle";
-
-const renderField = (value) => value || "N/A";
+import AddressCard from "@/components/custom/AddressCard";
 
 export default function UserDetails() {
   const { id } = useParams();
@@ -362,66 +361,20 @@ export default function UserDetails() {
 
       {/* ─── MAIN GRID ─── */}
       <div className="grid grid-cols-13 gap-4">
-        <div className="col-span-5 p-4 rounded border border-border bg-card shadow-lg border-l-4 border-l-primary/80">
-          <div className="flex items-center gap-2 mb-4 pb-2 border-b border-border/40">
-            <div className="p-1 rounded bg-primary/10 text-primary flex items-center justify-center">
-              <Icon name="home" size="16px" />
-            </div>
-            <h3 className="font-bold text-foreground">Permanent Address</h3>
-          </div>
-          <div className="space-y-2.5 text-sm">
-            <div>
-              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest block opacity-70">
-                Locality
-              </span>
-              <span className="font-semibold text-foreground wrap-break-words">
-                {renderField(displayAddress?.permanentAddress?.locality)}
-              </span>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {["city", "state", "country"].map((field) => (
-                <div key={field}>
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest block opacity-70">
-                    {field}
-                  </span>
-                  <span className="font-semibold text-foreground truncate block">
-                    {renderField(displayAddress?.permanentAddress?.[field])}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div className="col-span-5">
+          <AddressCard
+            title="Permanent Address"
+            iconName="home"
+            address={displayAddress?.permanentAddress}
+          />
         </div>
 
-        <div className="col-span-5 p-4 rounded border border-border bg-card shadow-lg border-l-4 border-l-primary/80">
-          <div className="flex items-center gap-2 mb-4 pb-2 border-b border-border/40">
-            <div className="p-1 rounded bg-primary/10 text-primary flex items-center justify-center">
-              <Icon name="building" size="16px" />
-            </div>
-            <h3 className="font-bold text-foreground">Temporary Address</h3>
-          </div>
-          <div className="space-y-2.5 text-sm">
-            <div>
-              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest block opacity-70">
-                Locality
-              </span>
-              <span className="font-semibold text-foreground wrap-break-words">
-                {renderField(displayAddress?.temporaryAddress?.locality)}
-              </span>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {["city", "state", "country"].map((field) => (
-                <div key={field}>
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest block opacity-70">
-                    {field}
-                  </span>
-                  <span className="font-semibold text-foreground truncate block">
-                    {renderField(displayAddress?.temporaryAddress?.[field])}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div className="col-span-5">
+          <AddressCard
+            title="Temporary Address"
+            iconName="building"
+            address={displayAddress?.temporaryAddress}
+          />
         </div>
 
         <div className="col-span-3 p-4 rounded border border-border bg-card shadow-lg border-l-4 border-l-primary/80">

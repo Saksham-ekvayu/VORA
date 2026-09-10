@@ -115,6 +115,7 @@ function FrameworkAssignment() {
           name={row.customer?.name}
           email={row.customer?.email}
           avatar={row.customer?.avatar}
+          link={`/customers/${row.customer?.id}`}
         />
       ),
     },
