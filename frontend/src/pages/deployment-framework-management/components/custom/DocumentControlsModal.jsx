@@ -107,8 +107,8 @@ export default function DocumentControlsModal({
         const updatedControlsData = controlsData.map((section) => ({
           ...section,
           controls: (section.controls || []).map((c) =>
-            c.id === updatedControl.id || c._uiKey === updatedControl._uiKey
-              ? updatedControl
+            c.id === updatedControl.id || (c._uiKey && c._uiKey === editingControl._uiKey)
+              ? { ...c, ...updatedControl }
               : c
           ),
         }));
