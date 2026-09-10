@@ -12,6 +12,7 @@ import UserAvatar from "@/components/custom/UserAvatar";
 import CustomBadge from "@/components/custom/CustomBadge";
 import { cn } from "@/lib/utils";
 import LoadingSpinner from "@/components/custom/Loader/LoadingSpinner";
+import AddressCard from "@/components/custom/AddressCard";
 import {
   isAdmin,
   isCustomerAdmin,
@@ -395,112 +396,17 @@ function MyProfile() {
             </div>
           </div>
 
-          {/* Address Sections - Conditional rendering */}
-          {/* Permanent Address Section */}
-          <div className="p-4 rounded border border-border bg-card shadow-xl overflow-hidden relative group border-l-4 border-l-primary/80">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="p-1.5 rounded bg-primary/10 text-primary flex items-center justify-center">
-                <Icon name="home" size="18px" />
-              </div>
-              <h3 className="text-lg font-bold tracking-tight">
-                Permanent Address
-              </h3>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 relative z-10">
-              <div className="group">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 opacity-60">
-                  Country
-                </p>
-                <p className="text-sm font-semibold text-foreground">
-                  {renderAddressField(
-                    displayAddress?.permanentAddress?.country
-                  )}
-                </p>
-              </div>
-              <div className="group">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 opacity-60">
-                  State / Province
-                </p>
-                <p className="text-sm font-semibold text-foreground">
-                  {renderAddressField(displayAddress?.permanentAddress?.state)}
-                </p>
-              </div>
-              <div className="group">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 opacity-60">
-                  City / Town
-                </p>
-                <p className="text-sm font-semibold text-foreground">
-                  {renderAddressField(displayAddress?.permanentAddress?.city)}
-                </p>
-              </div>
-              <div className="group sm:col-span-2">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 opacity-60">
-                  Locality / Area
-                </p>
-                <p className="text-sm font-semibold text-foreground">
-                  {renderAddressField(
-                    displayAddress?.permanentAddress?.locality
-                  )}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Temporary Address Section */}
-          <div className="p-4 rounded border border-border bg-card shadow-xl overflow-hidden relative group border-l-4 border-l-primary/80">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="p-1.5 rounded bg-primary/10 text-primary flex items-center justify-center">
-                <Icon name="building" size="18px" />
-              </div>
-              <h3 className="text-lg font-bold tracking-tight">
-                Temporary Address
-              </h3>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 relative z-10">
-              <div className="group">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 opacity-60">
-                  Country
-                </p>
-                <p className="text-sm font-semibold text-foreground">
-                  {renderAddressField(
-                    displayAddress?.temporaryAddress?.country
-                  )}
-                </p>
-              </div>
-              <div className="group">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 opacity-60">
-                  State / Province
-                </p>
-                <p className="text-sm font-semibold text-foreground">
-                  {renderAddressField(displayAddress?.temporaryAddress?.state)}
-                </p>
-              </div>
-              <div className="group">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 opacity-60">
-                  City / Town
-                </p>
-                <p className="text-sm font-semibold text-foreground">
-                  {renderAddressField(displayAddress?.temporaryAddress?.city)}
-                </p>
-              </div>
-              <div className="group sm:col-span-2">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 opacity-60">
-                  Locality / Area
-                </p>
-                <p className="text-sm font-semibold text-foreground">
-                  {renderAddressField(
-                    displayAddress?.temporaryAddress?.locality
-                  )}
-                </p>
-              </div>
-            </div>
-          </div>
+          {/* Address Sections */}
+          <AddressCard
+            title="Permanent Address"
+            iconName="home"
+            address={displayAddress?.permanentAddress}
+          />
+          <AddressCard
+            title="Temporary Address"
+            iconName="map-pin"
+            address={displayAddress?.temporaryAddress}
+          />
         </div>
 
         {/* Sidebar Info */}
