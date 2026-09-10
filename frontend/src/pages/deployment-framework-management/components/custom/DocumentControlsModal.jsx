@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import ControlsPanel from "@/components/custom/ControlsPanel";
 import { ModalHeader, ControlModal } from "@/components/custom/modal";
+import UpdateSectionModal from "@/components/custom/modal/UpdateSectionModal";
 import { toast } from "sonner";
 import {
   addDocumentControl,
   updateDocumentControl,
   deleteDocumentControl,
+  updateDeploymentFrameworkSection,
 } from "@/services/deploymentFrameworkService";
 
 export default function DocumentControlsModal({
@@ -16,11 +18,11 @@ export default function DocumentControlsModal({
   frameworkId,
   packageVersion,
   onSuccess,
-  onEditSection,
 }) {
   const [localDocument, setLocalDocument] = useState(initialDocument);
   const [editingControl, setEditingControl] = useState(null);
   const [deletingControl, setDeletingControl] = useState(null);
+  const [sectionToEdit, setSectionToEdit] = useState(null);
   const [globalSearch, setGlobalSearch] = useState("");
 
   useEffect(() => {
@@ -101,13 +103,12 @@ export default function DocumentControlsModal({
       );
       if (response.success && response.data) {
         toast.success(response.message || "Control updated successfully");
-
-        const { control } = response.data;
+        const updatedControl = response.data.control;
         const updatedControlsData = controlsData.map((section) => ({
           ...section,
           controls: (section.controls || []).map((c) =>
-            c.id === control.id || c._uiKey === editingControl._uiKey
-              ? { ...c, ...control }
+            c.id === updatedControl.id || c._uiKey === updatedControl._uiKey
+              ? updatedControl
               : c
           ),
         }));
@@ -181,6 +182,47 @@ export default function DocumentControlsModal({
     }
   };
 
+  const handleEditSectionSubmit = async (updatedSection) => {
+    try {
+      const response = await updateDeploymentFrameworkSection(
+        frameworkId,
+        packageVersion,
+        updatedSection.id,
+        { name: updatedSection.name }
+      );
+      if (response.success) {
+        toast.success(response.message || "Section updated successfully");
+        const newName = updatedSection.name;
+
+        const updatedControlsData = controlsData.map((section) =>
+          String(section.id) === String(updatedSection.id) ? { ...section, name: newName } : section
+        );
+
+        setLocalDocument((prev) => ({
+          ...prev,
+          aiExtraction: {
+            ...prev.aiExtraction,
+            controls: {
+              ...prev.aiExtraction.controls,
+              controls_data: updatedControlsData,
+            },
+          },
+        }));
+
+        if (onSuccess) {
+          onSuccess();
+        }
+
+        setSectionToEdit(null);
+      } else {
+        toast.error(response.message || "Failed to update section");
+      }
+    } catch (error) {
+      console.error("Update section error:", error);
+      toast.error(error?.message || "Failed to update section");
+    }
+  };
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -204,7 +246,7 @@ export default function DocumentControlsModal({
               onAdd={handleAddControl}
               onEdit={(control) => setEditingControl(control)}
               onDelete={(control) => setDeletingControl(control)}
-              onEditSection={onEditSection}
+              onEditSection={(section) => setSectionToEdit(section)}
               globalSearch={globalSearch}
             />
           </div>
@@ -229,6 +271,15 @@ export default function DocumentControlsModal({
           control={deletingControl}
           onConfirm={handleDeleteSubmit}
           onCancel={() => setDeletingControl(null)}
+        />
+      )}
+
+      {sectionToEdit && (
+        <UpdateSectionModal
+          open={!!sectionToEdit}
+          onCancel={() => setSectionToEdit(null)}
+          onSave={handleEditSectionSubmit}
+          section={sectionToEdit}
         />
       )}
     </>

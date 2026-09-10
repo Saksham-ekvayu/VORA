@@ -12,7 +12,6 @@ import { useAuth } from "@/context/authContext/useAuth";
 import {
   getDeploymentFrameworkPackageByVersion,
   downloadDeploymentFrameworkReport,
-  updateDeploymentFrameworkSection,
 } from "@/services/deploymentFrameworkService";
 import { toast } from "sonner";
 import LoadingSpinner from "@/components/custom/Loader/LoadingSpinner";
@@ -37,7 +36,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ControlsPanel from "@/components/custom/ControlsPanel";
-import UpdateSectionModal from "@/components/custom/modal/UpdateSectionModal";
 import AnalysisActions from "./components/AnalysisActions";
 import { useAssignedFrameworks } from "@/hooks/useAssignedFrameworks";
 import { useStatusPolling } from "@/hooks/useStatusPolling";
@@ -155,7 +153,6 @@ export default function ComparisonGapAnalysis() {
   const [framework, setFramework] = useState(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
-  const [sectionToEdit, setSectionToEdit] = useState(null);
 
   const fetchDetails = useCallback(
     async (showSpinner = true) => {
@@ -221,34 +218,6 @@ export default function ComparisonGapAnalysis() {
       (pkg) => pkg.packageVersion === packageVersion
     );
   }, [framework, packageVersion]);
-
-  const handleEditSection = (section) => {
-    setSectionToEdit(section);
-  };
-
-  const handleEditSectionSave = async (updatedSection) => {
-    if (!framework || !activePackage) return;
-    try {
-      const response = await updateDeploymentFrameworkSection(
-        framework.id || id,
-        activePackage.packageVersion,
-        updatedSection.id,
-        { name: updatedSection.name }
-      );
-      if (response.success) {
-        toast.success(response.message || "Section updated successfully");
-        fetchDetails(true);
-        setSectionToEdit(null);
-      }
-    } catch (error) {
-      console.error("Update section error:", error);
-      toast.error(error?.message || "Failed to update section");
-    }
-  };
-
-  const handleEditSectionCancel = () => {
-    setSectionToEdit(null);
-  };
 
   const comparisonData = activePackage?.comparison || null;
   const gapAnalysisData = activePackage?.gapAnalysis || null;
@@ -465,7 +434,6 @@ export default function ComparisonGapAnalysis() {
               showActions={showAuditorActions}
               onExtractionTriggered={handleExtractionTriggered}
               onSuccess={() => fetchDetails(false)}
-              onEditSection={handleEditSection}
             />
           </div>
         </TabsContent>
@@ -515,7 +483,6 @@ export default function ComparisonGapAnalysis() {
                     ) || 0
                   }
                   canModify={canModifyPackage}
-                  onEditSection={handleEditSection}
                   showApplicability={false}
                   globalSearch={globalSearch}
                 />
@@ -631,14 +598,6 @@ export default function ComparisonGapAnalysis() {
           </div>
         </TabsContent>
       </Tabs>
-
-      {sectionToEdit && (
-        <UpdateSectionModal
-          section={sectionToEdit}
-          onSave={handleEditSectionSave}
-          onCancel={handleEditSectionCancel}
-        />
-      )}
     </div>
   );
 }
