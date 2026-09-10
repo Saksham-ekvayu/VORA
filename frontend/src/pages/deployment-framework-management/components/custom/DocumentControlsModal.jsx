@@ -102,7 +102,7 @@ export default function DocumentControlsModal({
         updatedData
       );
       if (response.success && response.data) {
-        toast.success(response.message || "Control updated successfully");
+        toast.success(response.message);
         const updatedControl = response.data.control;
         const updatedControlsData = controlsData.map((section) => ({
           ...section,
@@ -147,7 +147,7 @@ export default function DocumentControlsModal({
       );
 
       if (response.success) {
-        toast.success(response.message || "Control deleted successfully");
+        toast.success(response.message);
 
         const updatedControlsData = controlsData.map((section) => ({
           ...section,
@@ -191,7 +191,7 @@ export default function DocumentControlsModal({
         { name: updatedSection.name }
       );
       if (response.success) {
-        toast.success(response.message || "Section updated successfully");
+        toast.success(response.message);
         const newName = updatedSection.name;
 
         const updatedControlsData = controlsData.map((section) =>
