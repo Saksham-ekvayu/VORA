@@ -521,36 +521,50 @@ async def update_deployment_framework_section(
         if target_package.status == "live" or (target_package.expertReview and target_package.expertReview.status == "approved"):
             return error("Cannot edit sections in an approved or live package", 403)
 
-        if not target_package.mergeDocument:
-            return not_found(FRAMEWORK_SERVICE_MESSAGES["PACKAGE_MERGE_DOCUMENT_NOT_FOUND"])
+        if not getattr(target_package, "documents", None):
+            return error(f"No documents found in package {package_version}", 404)
 
-        package_merge = (
-            await session.execute(
-                select(DeploymentPackageMerge).where(
-                    DeploymentPackageMerge.id == str(target_package.mergeDocument)
-                )
-            )
-        ).scalar_one_or_none()
-        if not package_merge:
-            return not_found(FRAMEWORK_SERVICE_MESSAGES["PACKAGE_MERGE_DOCUMENT_NOT_FOUND"])
+        target_section = None
+        updated_any = False
 
-        merge_data = dict(package_merge.controls or {})
-        controls_data = list(merge_data.get("controls_data") or [])
+        # Update the section name in all individual document extractions in this package
+        for doc in target_package.documents:
+            extraction_id = doc.get("aiExtraction") if isinstance(doc, dict) else getattr(doc, "aiExtraction", None)
+            if extraction_id:
+                extraction_obj = await session.get(DocumentExtraction, str(extraction_id))
+                if extraction_obj and extraction_obj.aiExtraction:
+                    doc_ai_data = dict(extraction_obj.aiExtraction)
+                    doc_controls = doc_ai_data.get("controls", {})
+                    doc_controls_data = doc_controls.get("controls_data", [])
+                    
+                    updated = False
+                    for s in doc_controls_data:
+                        if str(s.get("id")) == str(section_id):
+                            s["name"] = name.strip()
+                            updated = True
+                            if not target_section:
+                                target_section = s
+                    
+                    if updated:
+                        doc_controls["controls_data"] = doc_controls_data
+                        doc_ai_data["controls"] = doc_controls
+                        extraction_obj.aiExtraction = doc_ai_data
+                        flag_modified(extraction_obj, "aiExtraction")
+                        updated_any = True
 
-        target_section = next((s for s in controls_data if s.get("id") == section_id), None)
-        if not target_section:
-            return error(f"Section with ID {section_id} not found in package {package_version}", 404)
-
-        target_section["name"] = body.name.strip()
-
-        merge_data["controls_data"] = controls_data
-        package_merge.controls = merge_data
-        flag_modified(package_merge, "controls")
+        if not updated_any or not target_section:
+            return error(f"Section with ID {section_id} not found in any document in package {package_version}", 404)
 
         framework.updatedAt = _utcnow()
 
         return success(
-            {"section": target_section, "packageVersion": package_version},
+            {
+                "section": {
+                    "id": target_section.get("id"),
+                    "name": target_section.get("name"),
+                }, 
+                "packageVersion": package_version
+            },
             f"Section {section_id} updated successfully in package {package_version}",
         )
 

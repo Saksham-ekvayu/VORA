@@ -16,6 +16,7 @@ export default function DocumentControlsModal({
   frameworkId,
   packageVersion,
   onSuccess,
+  onEditSection,
 }) {
   const [localDocument, setLocalDocument] = useState(initialDocument);
   const [editingControl, setEditingControl] = useState(null);
@@ -203,6 +204,7 @@ export default function DocumentControlsModal({
               onAdd={handleAddControl}
               onEdit={(control) => setEditingControl(control)}
               onDelete={(control) => setDeletingControl(control)}
+              onEditSection={onEditSection}
               globalSearch={globalSearch}
             />
           </div>

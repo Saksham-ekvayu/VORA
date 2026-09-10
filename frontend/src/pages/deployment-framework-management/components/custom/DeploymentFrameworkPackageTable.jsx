@@ -27,6 +27,7 @@ export default function DeploymentFrameworkPackageTable({
   showViewAction = true,
   onExtractionTriggered,
   onSuccess,
+  onEditSection,
 }) {
   const [uploadingFileId, setUploadingFileId] = useState(null);
   const [viewingDocument, setViewingDocument] = useState(null);
@@ -260,6 +261,7 @@ export default function DeploymentFrameworkPackageTable({
           frameworkId={frameworkId}
           packageVersion={preReleasePackage?.packageVersion}
           onSuccess={onSuccess}
+          onEditSection={onEditSection}
         />
       )}
     </div>

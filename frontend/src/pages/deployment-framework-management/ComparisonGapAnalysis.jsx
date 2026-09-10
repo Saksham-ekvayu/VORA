@@ -465,6 +465,7 @@ export default function ComparisonGapAnalysis() {
               showActions={showAuditorActions}
               onExtractionTriggered={handleExtractionTriggered}
               onSuccess={() => fetchDetails(false)}
+              onEditSection={handleEditSection}
             />
           </div>
         </TabsContent>
