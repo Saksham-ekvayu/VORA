@@ -10,6 +10,7 @@ import ApproveFrameworkModal from "./components/ApproveFrameworkModal";
 import RejectFrameworkModal from "./components/RejectFrameworkModal";
 import UpdateFrameworkModal from "./components/UpdateFrameworkModal";
 import { ControlModal, DeleteFrameworkModal } from "@/components/custom/modal";
+import UpdateSectionModal from "@/components/custom/modal/UpdateSectionModal";
 import {
   downloadFrameworkFile,
   getFrameworkById,
@@ -21,6 +22,7 @@ import {
   updateFrameworkControl,
   updateFrameworkControlWeightage,
   addFrameworkControl,
+  updateFrameworkSection,
   deleteFramework,
   downloadFrameworkReportPdf,
 } from "@/services/frameworkService";
@@ -75,6 +77,7 @@ function FrameworkDetail() {
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [expandedVersions, setExpandedVersions] = useState(new Set());
   const [controlToEdit, setControlToEdit] = useState(null);
+  const [sectionToEdit, setSectionToEdit] = useState(null);
   const [controlToDelete, setControlToDelete] = useState(null);
   const [frameworkToDelete, setFrameworkToDelete] = useState(null);
   const [downloading, setDownloading] = useState(false);
@@ -320,6 +323,45 @@ function FrameworkDetail() {
 
   const handleEditControlCancel = () => {
     setControlToEdit(null);
+  };
+
+  const handleEditSection = (section) => {
+    setSectionToEdit(section);
+  };
+
+  const handleEditSectionSave = async (updatedSection) => {
+    const currentFile = framework.fileVersions.some(
+      (file) => file.fileVersion === framework.currentFileVersion
+    );
+
+    if (!currentFile) {
+      toast.error("Current file version not found");
+      return;
+    }
+
+    try {
+      const response = await updateFrameworkSection(
+        framework.id,
+        framework.currentFileVersion,
+        updatedSection.id,
+        {
+          name: updatedSection.name,
+        }
+      );
+
+      if (response.success) {
+        toast.success(response.message);
+        fetchFrameworkDetails(true);
+        setSectionToEdit(null);
+      }
+    } catch (error) {
+      console.error("Update section error:", error);
+      throw error;
+    }
+  };
+
+  const handleEditSectionCancel = () => {
+    setSectionToEdit(null);
   };
 
   const handleDeleteControl = (control) => {
@@ -827,6 +869,7 @@ function FrameworkDetail() {
                             ver.aiExtraction.controls.total_sections
                           }
                           onEdit={handleEditControl}
+                          onEditSection={handleEditSection}
                           onDelete={handleDeleteControl}
                           onAdd={handleAddControl}
                           onUpdateWeightage={handleUpdateWeightage}
@@ -890,6 +933,15 @@ function FrameworkDetail() {
           control={controlToEdit}
           onSave={handleEditControlSave}
           onCancel={handleEditControlCancel}
+        />
+      )}
+
+      {/* Edit Section Modal */}
+      {sectionToEdit && (
+        <UpdateSectionModal
+          section={sectionToEdit}
+          onSave={handleEditSectionSave}
+          onCancel={handleEditSectionCancel}
         />
       )}
 

@@ -481,6 +481,105 @@ async def bulk_update_deployment_package_points_path(
         )
 
 
+@router.patch("/{id}/packages/{packageVersion}/sections/{sectionId}")
+async def update_deployment_framework_section(
+    id: str,
+    ctx: Annotated[RequestContext, Depends(get_context)],
+    package_version: Annotated[str, Path(alias="packageVersion")],
+    section_id: Annotated[str, Path(alias="sectionId")],
+    body: Annotated[dict, Body(...)],
+):
+    logger.info(
+        f"[UPDATE-SECTION] Updating section | id={id} | package_version={package_version} | section_id={section_id} | user_id={ctx.user.id}"
+    )
+    user = ctx.user
+    name = body.get("name")
+
+    if not name:
+        return error("Section name is required", 400)
+
+    async with session_scope() as session:
+        framework = (
+            await session.execute(
+                select(DeploymentFramework).where(
+                    DeploymentFramework.id == str(id),
+                    DeploymentFramework.tenantId == ctx.tenant_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not framework:
+            return not_found(_RESOURCE_DEPLOYMENT_FRAMEWORK)
+
+        packages = coerce_packages(framework.packages)
+        target_package = next((p for p in packages if p.packageVersion == package_version), None)
+        if not target_package:
+            return not_found(_RESOURCE_PACKAGE_VERSION)
+
+        if user.role not in ["auditor", "customer-admin"]:
+            return error(
+                FRAMEWORK_SERVICE_MESSAGES.get(
+                    "YOU_DON_T_HAVE_PERMISSION_TO_MODIFY_THIS", "You don't have permission to modify this"
+                ),
+                403,
+            )
+
+        if target_package.status == "live" or (
+            target_package.expertReview and target_package.expertReview.status == "approved"
+        ):
+            return error("Cannot edit sections in an approved or live package", 403)
+
+        if not getattr(target_package, "documents", None):
+            return error(f"No documents found in package {package_version}", 404)
+
+        target_section = None
+        updated_any = False
+
+        # Update the section name in all individual document extractions in this package
+        for doc in target_package.documents:
+            extraction_id = (
+                doc.get("aiExtraction") if isinstance(doc, dict) else getattr(doc, "aiExtraction", None)
+            )
+            if extraction_id:
+                extraction_obj = await session.get(DocumentExtraction, str(extraction_id))
+                if extraction_obj and extraction_obj.aiExtraction:
+                    doc_ai_data = dict(extraction_obj.aiExtraction)
+                    doc_controls = doc_ai_data.get("controls", {})
+                    doc_controls_data = doc_controls.get("controls_data", [])
+
+                    updated = False
+                    for s in doc_controls_data:
+                        if str(s.get("id")) == str(section_id):
+                            s["name"] = name.strip()
+                            updated = True
+                            if not target_section:
+                                target_section = s
+
+                    if updated:
+                        doc_controls["controls_data"] = doc_controls_data
+                        doc_ai_data["controls"] = doc_controls
+                        extraction_obj.aiExtraction = doc_ai_data
+                        flag_modified(extraction_obj, "aiExtraction")
+                        updated_any = True
+
+        if not updated_any or not target_section:
+            return error(
+                f"Section with ID {section_id} not found in any document in package {package_version}", 404
+            )
+
+        framework.updatedAt = _utcnow()
+
+        return success(
+            {
+                "section": {
+                    "id": target_section.get("id"),
+                    "name": target_section.get("name"),
+                },
+                "packageVersion": package_version,
+            },
+            f"Section {section_id} updated successfully in package {package_version}",
+        )
+
+
 # ─── GET /:id ────────────────────────────────────────────────────────────────
 
 
@@ -1861,6 +1960,8 @@ async def update_document_control(
         # Update control properties
         found_control["name"] = control_data.get("name", found_control.get("name"))
         found_control["description"] = control_data.get("description", found_control.get("description"))
+        if "weightage" in control_data:
+            found_control["weightage"] = control_data.get("weightage")
 
         # Update deployment points
         raw_points = control_data.get("deployment_points", found_control.get("deployment_points", []))

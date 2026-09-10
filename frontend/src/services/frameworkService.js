@@ -355,6 +355,27 @@ export function getApprovedFrameworkById(id) {
   return apiRequest(`${FRAMEWORK_BASE}/approved-frameworks/${id}`, true);
 }
 
+/**
+ * Update a section in a file version
+ * PATCH /:id/file-versions/:fileVersion/sections/:sectionId
+ */
+export function updateFrameworkSection(
+  frameworkId,
+  fileVersion,
+  sectionId,
+  sectionData
+) {
+  return apiRequest(
+    `${FRAMEWORK_BASE}/${frameworkId}/file-versions/${fileVersion}/sections/${sectionId}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sectionData),
+    },
+    true
+  );
+}
+
 export default {
   getExpertDashboardAnalytics,
   uploadFramework,
@@ -369,6 +390,7 @@ export default {
   deleteFrameworkControl,
   updateFrameworkControl,
   updateFrameworkControlWeightage,
+  updateFrameworkSection,
   getApprovedFrameworks,
   getApprovedFrameworkById,
 };

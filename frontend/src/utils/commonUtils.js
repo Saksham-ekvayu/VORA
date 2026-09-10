@@ -215,12 +215,15 @@ export const statusVariantMap = {
   returned: COLOR_DESTRUCTIVE,
   live: COLOR_GREEN,
   superseded: COLOR_BLUE,
+  revoked: COLOR_DESTRUCTIVE,
+  archived: COLOR_DESTRUCTIVE,
 };
 
 export const typeVariantMap = {
   "pre-release": COLOR_AMBER,
   "in-review": COLOR_AMBER,
   deployed: COLOR_BLUE,
+  archived: COLOR_DESTRUCTIVE,
 };
 
 export const packageTypeColorMap = {

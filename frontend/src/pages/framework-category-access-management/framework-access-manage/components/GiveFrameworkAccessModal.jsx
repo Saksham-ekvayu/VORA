@@ -35,10 +35,11 @@ export default function GiveFrameworkAccessModal({
       <tr
         key={user.id}
         onClick={() => handleUserSelect(user)}
-        className={`cursor-pointer transition-all duration-200 hover:bg-muted/80 ${selectedUser?.id === user.id
-          ? "bg-primary/10 border-l-4 border-primary"
-          : "border-l-4 border-transparent"
-          }`}
+        className={`cursor-pointer transition-all duration-200 hover:bg-muted/80 ${
+          selectedUser?.id === user.id
+            ? "bg-primary/10 border-l-4 border-primary"
+            : "border-l-4 border-transparent"
+        }`}
       >
         <td className="px-3 py-2 w-[80%]">
           <div className="flex items-center gap-2">
@@ -65,10 +66,11 @@ export default function GiveFrameworkAccessModal({
         <tr
           key={framework.id}
           onClick={() => handleFrameworkSelect(framework)}
-          className={`cursor-pointer transition-all duration-200 hover:bg-muted/50 ${isSelected
-            ? "bg-primary/10 border-l-4 border-primary"
-            : "border-l-4 border-transparent"
-            }`}
+          className={`cursor-pointer transition-all duration-200 hover:bg-muted/50 ${
+            isSelected
+              ? "bg-primary/10 border-l-4 border-primary"
+              : "border-l-4 border-transparent"
+          }`}
         >
           <td className="px-3 py-2 align-top">
             <div className="flex items-start gap-2">

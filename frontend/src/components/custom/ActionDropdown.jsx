@@ -37,7 +37,12 @@ function ActionDropdown({ actions = [] }) {
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" title="Actions" className="hover:bg-accent">
+        <Button
+          variant="ghost"
+          size="icon"
+          title="Actions"
+          className="hover:bg-accent"
+        >
           <Icon name="more-vertical" size="16px" />
         </Button>
       </DropdownMenuTrigger>

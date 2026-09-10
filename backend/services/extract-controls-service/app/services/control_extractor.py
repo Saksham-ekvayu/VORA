@@ -1488,6 +1488,8 @@ def _control_entry(ctrl: dict, idx: int, resource_type: str) -> tuple[str, dict,
             "name": name.lower() if name else ctrl_id,
             "description": description,
             "deployment_points": _parse_deployment_points(raw_points),
+            "weightage": ctrl.get("weightage", 10),
+            "remark": str(ctrl.get("remark", "")),
         },
         str(ctrl.get("Section_name") or "").strip(),
     )
@@ -1506,6 +1508,8 @@ def _sub_control_entries(ctrl_id: str, ordered_ids: list[str], control_by_id: di
                 "name": sub_obj["name"],
                 "description": sub_obj["description"],
                 "deployment_points": sub_obj["deployment_points"],
+                "weightage": sub_obj.get("weightage", 10),
+                "remark": sub_obj.get("remark", ""),
             }
         )
         logger.debug(f"[STRUCTURE] {other_id} -> sub-control of {ctrl_id}")
@@ -1547,6 +1551,8 @@ def _build_structure_root(
         "name": ctrl_obj["name"],
         "description": ctrl_obj["description"],
         "deployment_points": ctrl_obj["deployment_points"],
+        "weightage": ctrl_obj.get("weightage", 10),
+        "remark": ctrl_obj.get("remark", ""),
     }
     sub_controls = _sub_control_entries(ctrl_id, ordered_ids, control_by_id)
     if sub_controls:

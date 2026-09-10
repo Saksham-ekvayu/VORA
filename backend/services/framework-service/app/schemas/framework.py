@@ -40,3 +40,7 @@ class UpdateControlBody(BaseModel):
 
 class UpdateControlWeightageBody(BaseModel):
     weightage: float
+
+
+class UpdateSectionBody(BaseModel):
+    name: str

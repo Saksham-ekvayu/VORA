@@ -155,16 +155,16 @@ export default function DualSelectionModal({
                 </h3>
                 {selectSingle
                   ? selectedLeft && (
-                    <span className="text-xs text-green-800 bg-green-100 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full font-medium">
-                      Selected: {selectedLeft.name}
-                    </span>
-                  )
+                      <span className="text-xs text-green-800 bg-green-100 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full font-medium">
+                        Selected: {selectedLeft.name}
+                      </span>
+                    )
                   : selectedLeft.length > 0 && (
-                    <span className="text-xs text-green-800 bg-green-100 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full font-medium">
-                      Selected: {selectedLeft.length} customer
-                      {selectedLeft.length === 1 ? "" : "s"}
-                    </span>
-                  )}
+                      <span className="text-xs text-green-800 bg-green-100 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full font-medium">
+                        Selected: {selectedLeft.length} customer
+                        {selectedLeft.length === 1 ? "" : "s"}
+                      </span>
+                    )}
               </div>
               <div className="border border-border rounded bg-background">
                 <div className="p-3 border-b border-border bg-muted/30">
@@ -184,7 +184,9 @@ export default function DualSelectionModal({
                         </th>
                       </tr>
                     </thead>
-                    <tbody className={`divide-y divide-border transition-opacity duration-200 ${leftList.loading && leftList.items.length > 0 ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
+                    <tbody
+                      className={`divide-y divide-border transition-opacity duration-200 ${leftList.loading && leftList.items.length > 0 ? "opacity-50 pointer-events-none" : "opacity-100"}`}
+                    >
                       <ModalTableBody
                         loading={leftList.loading}
                         items={leftList.items}
@@ -272,7 +274,9 @@ export default function DualSelectionModal({
                         </th>
                       </tr>
                     </thead>
-                    <tbody className={`divide-y divide-border transition-opacity duration-200 ${rightList.loading && rightList.items.length > 0 ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
+                    <tbody
+                      className={`divide-y divide-border transition-opacity duration-200 ${rightList.loading && rightList.items.length > 0 ? "opacity-50 pointer-events-none" : "opacity-100"}`}
+                    >
                       <ModalTableBody
                         loading={rightList.loading}
                         items={rightList.items}
