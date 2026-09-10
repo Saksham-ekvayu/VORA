@@ -311,7 +311,7 @@ function Framework() {
           },
         ],
       },
-      {
+      isExpert(user.role) && {
         type: "button",
         label: "Add Framework",
         icon: "plus",

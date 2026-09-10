@@ -80,12 +80,13 @@ async def get_all_framework_assignments(
     search: Annotated[str | None, Query()] = None,
     assignment_status: Annotated[str | None, Query(alias="assignmentStatus")] = None,
     finalization_status: Annotated[str | None, Query(alias="finalizationStatus")] = None,
+    tenant_id_query: Annotated[str | None, Query(alias="tenantId")] = None,
     page: Annotated[int | None, Query()] = None,
     limit: Annotated[int, Query()] = 10,
     sort_by: Annotated[str | None, Query(alias="sortBy")] = None,
     sort_order: Annotated[str | None, Query(alias="sortOrder")] = None,
 ):
-    tenant_id = ctx.tenant_id
+    tenant_id = ctx.tenant_id or tenant_id_query
 
     filter_result = helper.build_assignment_base_filters(tenant_id, assignment_status, finalization_status)
     if filter_result.get("invalidField") == "assignmentStatus":

@@ -9,6 +9,8 @@ import {
   Customers,
   CustomerDetails,
   UserDetails,
+  FrameworkDetail,
+  Framework,
 } from "../utils/routeImports";
 
 const adminRoutes = createProtectedRoutes([
@@ -35,6 +37,12 @@ const adminRoutes = createProtectedRoutes([
     key: "framework-assignment",
     path: "/framework-assignments",
     component: FrameworkAssignment,
+  },
+  { key: "frameworks", path: "/frameworks", component: Framework },
+  {
+    key: "framework-detail",
+    path: "/frameworks/:id",
+    component: FrameworkDetail,
   },
 ]);
 
