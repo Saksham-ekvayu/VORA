@@ -487,7 +487,7 @@ async def update_deployment_framework_section(
     ctx: Annotated[RequestContext, Depends(get_context)],
     package_version: Annotated[str, Path(alias="packageVersion")],
     section_id: Annotated[str, Path(alias="sectionId")],
-    body: dict = Body(...),
+    body: Annotated[dict, Body(...)],
 ):
     logger.info(
         f"[UPDATE-SECTION] Updating section | id={id} | package_version={package_version} | section_id={section_id} | user_id={ctx.user.id}"
