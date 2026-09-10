@@ -109,7 +109,8 @@ export default function DocumentControlsModal({
         const updatedControlsData = controlsData.map((section) => ({
           ...section,
           controls: (section.controls || []).map((c) =>
-            c.id === updatedControl.id || (c._uiKey && c._uiKey === editingControl._uiKey)
+            c.id === updatedControl.id ||
+            (c._uiKey && c._uiKey === editingControl._uiKey)
               ? { ...c, ...updatedControl }
               : c
           ),
@@ -154,7 +155,8 @@ export default function DocumentControlsModal({
         const updatedControlsData = controlsData.map((section) => ({
           ...section,
           controls: (section.controls || []).map((c) =>
-            c.id === updatedControl.id || (c._uiKey && c._uiKey === control._uiKey)
+            c.id === updatedControl.id ||
+            (c._uiKey && c._uiKey === control._uiKey)
               ? { ...c, ...updatedControl }
               : c
           ),
@@ -240,7 +242,9 @@ export default function DocumentControlsModal({
         const newName = updatedSection.name;
 
         const updatedControlsData = controlsData.map((section) =>
-          String(section.id) === String(updatedSection.id) ? { ...section, name: newName } : section
+          String(section.id) === String(updatedSection.id)
+            ? { ...section, name: newName }
+            : section
         );
 
         setLocalDocument((prev) => ({

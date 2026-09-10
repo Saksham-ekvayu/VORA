@@ -885,17 +885,20 @@ export default function ControlsPanel({
               <h3 className="font-bold text-foreground truncate">
                 {activeSection?.name ?? "—"}
               </h3>
-              {canModify && !showApplicability && activeSection && !!onEditSection && (
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  className="h-6 w-6 text-muted-foreground hover:text-foreground shrink-0"
-                  onClick={() => onEditSection?.(activeSection)}
-                  title="Update Section Name"
-                >
-                  <Icon name="edit" size="14px" />
-                </Button>
-              )}
+              {canModify &&
+                !showApplicability &&
+                activeSection &&
+                !!onEditSection && (
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    className="h-6 w-6 text-muted-foreground hover:text-foreground shrink-0"
+                    onClick={() => onEditSection?.(activeSection)}
+                    title="Update Section Name"
+                  >
+                    <Icon name="edit" size="14px" />
+                  </Button>
+                )}
             </div>
             <div className="flex items-center gap-1.5 shrink-0 ml-2">
               <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-primary/15 text-primary whitespace-nowrap">

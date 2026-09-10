@@ -126,9 +126,9 @@ const MergeButton = ({ state, onMerge }) => {
   const isDisabled =
     state.viewContext === "detail"
       ? state.isAssignedFrameworkRevoked ||
-      !state.isAssignedFrameworkFinalized ||
-      state.isMergeCurrentlyRunning ||
-      !state.areAllDocumentsExtracted
+        !state.isAssignedFrameworkFinalized ||
+        state.isMergeCurrentlyRunning ||
+        !state.areAllDocumentsExtracted
       : state.isMergeCurrentlyRunning || !state.areAllDocumentsExtracted;
 
   return (
@@ -156,7 +156,8 @@ const MergeButton = ({ state, onMerge }) => {
 const DetailViewActions = ({ state, actions, userRole }) => {
   const showAuditorActions = isAuditor(userRole);
   const isExpert = isInternalExpert(userRole);
-  const showApproveReturn = isExpert && state.expertReviewStatus === "requested";
+  const showApproveReturn =
+    isExpert && state.expertReviewStatus === "requested";
 
   let analysisButtonText = "Run Analysis";
   if (state.isAnalysisCurrentlyRunning) {
@@ -176,14 +177,18 @@ const DetailViewActions = ({ state, actions, userRole }) => {
           <Button
             variant="default"
             size="xs"
-            onClick={() => state.setExpertReviewModal({ open: true, action: "approve" })}
+            onClick={() =>
+              state.setExpertReviewModal({ open: true, action: "approve" })
+            }
           >
             <Icon name="check" size={12} className="mr-1" /> Approve
           </Button>
           <Button
             variant="destructive"
             size="xs"
-            onClick={() => state.setExpertReviewModal({ open: true, action: "return" })}
+            onClick={() =>
+              state.setExpertReviewModal({ open: true, action: "return" })
+            }
           >
             <Icon name="x" size={12} className="mr-1" /> Return
           </Button>
@@ -192,10 +197,9 @@ const DetailViewActions = ({ state, actions, userRole }) => {
 
       {showAuditorActions && (
         <>
-          {
-            !state.isExpertReviewApproved &&
+          {!state.isExpertReviewApproved && (
             <MergeButton state={state} onMerge={actions.handleMergeControls} />
-          }
+          )}
           {!state.isCurrentPackageLive && !state.isExpertReviewApproved && (
             <Button
               size="xs"
@@ -429,7 +433,13 @@ const AnalysisActions = ({
 
   switch (viewContext) {
     case "detail":
-      return <DetailViewActions state={state} actions={actions} userRole={user?.role} />;
+      return (
+        <DetailViewActions
+          state={state}
+          actions={actions}
+          userRole={user?.role}
+        />
+      );
     case "comparison-header": {
       const showApproveReturn = isExpert && expertReviewStatus === "requested";
       if (!showApproveReturn) return null;
@@ -438,14 +448,18 @@ const AnalysisActions = ({
           <Button
             variant="default"
             size="sm"
-            onClick={() => setExpertReviewModal({ open: true, action: "approve" })}
+            onClick={() =>
+              setExpertReviewModal({ open: true, action: "approve" })
+            }
           >
             <Icon name="check" size={13} className="mr-1" /> Approve
           </Button>
           <Button
             variant="destructive"
             size="sm"
-            onClick={() => setExpertReviewModal({ open: true, action: "return" })}
+            onClick={() =>
+              setExpertReviewModal({ open: true, action: "return" })
+            }
           >
             <Icon name="x" size={13} className="mr-1" /> Return
           </Button>
