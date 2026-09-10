@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import ControlsPanel from "@/components/custom/ControlsPanel";
 import { ModalHeader, ControlModal } from "@/components/custom/modal";
@@ -29,15 +29,17 @@ export default function DocumentControlsModal({
     setLocalDocument(initialDocument);
   }, [initialDocument]);
 
-  if (!isOpen || !localDocument) return null;
+  const controlsData = useMemo(() => {
+    return localDocument?.aiExtraction?.controls?.controls_data || [];
+  }, [localDocument?.aiExtraction?.controls?.controls_data]);
 
-  const controlsData =
-    localDocument?.aiExtraction?.controls?.controls_data || [];
   const totalSections =
     localDocument?.aiExtraction?.controls?.total_sections ||
     controlsData.length;
   const totalControls =
     localDocument?.aiExtraction?.controls?.total_controls || 0;
+
+  if (!isOpen || !localDocument) return null;
 
   const handleAddControl = async (newControl) => {
     try {
@@ -134,6 +136,49 @@ export default function DocumentControlsModal({
       }
     } catch (error) {
       toast.error(error.message || "Error updating control");
+    }
+  };
+
+  const handleWeightageChange = async (control, weightage) => {
+    try {
+      const response = await updateDocumentControl(
+        frameworkId,
+        packageVersion,
+        localDocument.fileId,
+        control.id || control._uiKey,
+        { weightage }
+      );
+      if (response.success && response.data) {
+        toast.success(response.message || "Weightage updated successfully");
+        const updatedControl = response.data.control;
+        const updatedControlsData = controlsData.map((section) => ({
+          ...section,
+          controls: (section.controls || []).map((c) =>
+            c.id === updatedControl.id || (c._uiKey && c._uiKey === control._uiKey)
+              ? { ...c, ...updatedControl }
+              : c
+          ),
+        }));
+
+        setLocalDocument((prev) => ({
+          ...prev,
+          aiExtraction: {
+            ...prev.aiExtraction,
+            controls: {
+              ...prev.aiExtraction.controls,
+              controls_data: updatedControlsData,
+            },
+          },
+        }));
+
+        if (onSuccess) {
+          onSuccess();
+        }
+      } else {
+        toast.error(response.message || "Failed to update weightage");
+      }
+    } catch (error) {
+      toast.error(error.message || "Error updating weightage");
     }
   };
 
@@ -248,6 +293,7 @@ export default function DocumentControlsModal({
               onDelete={(control) => setDeletingControl(control)}
               onEditSection={(section) => setSectionToEdit(section)}
               globalSearch={globalSearch}
+              onUpdateWeightage={handleWeightageChange}
             />
           </div>
         </DialogContent>

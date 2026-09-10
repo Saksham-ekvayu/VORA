@@ -1949,6 +1949,8 @@ async def update_document_control(
         # Update control properties
         found_control["name"] = control_data.get("name", found_control.get("name"))
         found_control["description"] = control_data.get("description", found_control.get("description"))
+        if "weightage" in control_data:
+            found_control["weightage"] = control_data.get("weightage")
 
         # Update deployment points
         raw_points = control_data.get("deployment_points", found_control.get("deployment_points", []))
