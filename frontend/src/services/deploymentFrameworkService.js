@@ -448,6 +448,26 @@ export function deleteDocumentControl(
   );
 }
 
+/**
+ * Update deployment framework section
+ */
+export function updateDeploymentFrameworkSection(
+  frameworkId,
+  packageVersion,
+  sectionId,
+  data
+) {
+  return apiRequest(
+    `${FRAMEWORK_BASE}/${frameworkId}/packages/${packageVersion}/sections/${sectionId}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    },
+    true
+  );
+}
+
 export default {
   getDeploymentFrameworkById,
   getDeploymentFrameworkPackageByVersion,
@@ -477,4 +497,5 @@ export default {
   addDocumentControl,
   updateDocumentControl,
   deleteDocumentControl,
+  updateDeploymentFrameworkSection,
 };

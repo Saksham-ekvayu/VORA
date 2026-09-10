@@ -481,6 +481,80 @@ async def bulk_update_deployment_package_points_path(
         )
 
 
+@router.patch("/{id}/packages/{packageVersion}/sections/{sectionId}")
+async def update_deployment_framework_section(
+    id: str,
+    ctx: Annotated[RequestContext, Depends(get_context)],
+    package_version: Annotated[str, Path(alias="packageVersion")],
+    section_id: Annotated[str, Path(alias="sectionId")],
+    body: dict = Body(...),
+):
+    logger.info(
+        f"[UPDATE-SECTION] Updating section | id={id} | package_version={package_version} | section_id={section_id} | user_id={ctx.user.id}"
+    )
+    user = ctx.user
+    name = body.get("name")
+
+    if not name:
+        return error("Section name is required", 400)
+
+    async with session_scope() as session:
+        framework = (
+            await session.execute(
+                select(DeploymentFramework).where(
+                    DeploymentFramework.id == str(id),
+                    DeploymentFramework.tenantId == ctx.tenant_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not framework:
+            return not_found(_RESOURCE_DEPLOYMENT_FRAMEWORK)
+
+        packages = coerce_packages(framework.packages)
+        target_package = next((p for p in packages if p.packageVersion == package_version), None)
+        if not target_package:
+            return not_found(_RESOURCE_PACKAGE_VERSION)
+
+        if user.role not in ["auditor", "customer-admin"]:
+            return error(FRAMEWORK_SERVICE_MESSAGES.get("YOU_DON_T_HAVE_PERMISSION_TO_MODIFY_THIS", "You don't have permission to modify this"), 403)
+
+        if target_package.status == "live" or (target_package.expertReview and target_package.expertReview.status == "approved"):
+            return error("Cannot edit sections in an approved or live package", 403)
+
+        if not target_package.mergeDocument:
+            return not_found(FRAMEWORK_SERVICE_MESSAGES["PACKAGE_MERGE_DOCUMENT_NOT_FOUND"])
+
+        package_merge = (
+            await session.execute(
+                select(DeploymentPackageMerge).where(
+                    DeploymentPackageMerge.id == str(target_package.mergeDocument)
+                )
+            )
+        ).scalar_one_or_none()
+        if not package_merge:
+            return not_found(FRAMEWORK_SERVICE_MESSAGES["PACKAGE_MERGE_DOCUMENT_NOT_FOUND"])
+
+        merge_data = dict(package_merge.controls or {})
+        controls_data = list(merge_data.get("controls_data") or [])
+
+        target_section = next((s for s in controls_data if s.get("id") == section_id), None)
+        if not target_section:
+            return error(f"Section with ID {section_id} not found in package {package_version}", 404)
+
+        target_section["name"] = body.name.strip()
+
+        merge_data["controls_data"] = controls_data
+        package_merge.controls = merge_data
+        flag_modified(package_merge, "controls")
+
+        framework.updatedAt = _utcnow()
+
+        return success(
+            {"section": target_section, "packageVersion": package_version},
+            f"Section {section_id} updated successfully in package {package_version}",
+        )
+
+
 # ─── GET /:id ────────────────────────────────────────────────────────────────
 
 
