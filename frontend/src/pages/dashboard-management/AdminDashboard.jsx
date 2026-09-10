@@ -102,7 +102,7 @@ export default function AdminDashboard() {
       path: `/profiles?role=${ROLE_EXPERT}`,
     },
     {
-      label: "TOTAL EXPERT FRAMEWORK ACCESS",
+      label: "TOTAL EXPERT-FRAMEWORK ACCESS",
       value: stats.totalApprovedFrameworkAccess || 0,
       iconColor: "text-emerald-500",
       iconBg: "bg-emerald-500/10",
@@ -111,7 +111,7 @@ export default function AdminDashboard() {
       path: "/framework-access",
     },
     {
-      label: "TOTAL CUSTOMERS",
+      label: "TOTAL CUSTOMERS/ORGANIZATIONS",
       value: stats.totalCustomers || 0,
       iconColor: "text-indigo-500",
       iconBg: "bg-indigo-500/10",
@@ -120,7 +120,7 @@ export default function AdminDashboard() {
       path: "/customers",
     },
     {
-      label: "TOTAL CUSTOMER ASSIGNED FRAMEWORKS",
+      label: "TOTAL CUSTOMER-FRAMEWORK ASSIGNMENTS",
       value: stats.totalAssignedFrameworks || 0,
       iconColor: "text-amber-500",
       iconBg: "bg-amber-500/10",
@@ -138,7 +138,7 @@ export default function AdminDashboard() {
       path: "/framework-categories",
     },
     {
-      label: "TOTAL FRAMEWORKS",
+      label: "TOTAL INDUSTRY FRAMEWORKS",
       value: stats.totalFrameworks || 0,
       iconColor: "text-purple-500",
       iconBg: "bg-purple-500/10",
@@ -146,24 +146,24 @@ export default function AdminDashboard() {
       icon: "framework",
       path: "/frameworks",
     },
-    {
-      label: "TOTAL DEPLOYMENT FRAMEWORKS",
-      value: stats.totalDeploymentFrameworks || 0,
-      iconColor: "text-cyan-500",
-      iconBg: "bg-cyan-500/10",
-      borderColor: "border-cyan-500/40",
-      icon: "cloud-upload",
-      path: "/deployment-frameworks",
-    },
-    {
-      label: "TOTAL DEPLOYMENT DOCUMENTS",
-      value: stats.totalDeploymentDocuments || 0,
-      iconColor: "text-pink-500",
-      iconBg: "bg-pink-500/10",
-      borderColor: "border-pink-500/40",
-      icon: "document",
-      path: "/deployment-documents",
-    },
+    // {
+    //   label: "TOTAL DEPLOYMENT FRAMEWORKS",
+    //   value: stats.totalDeploymentFrameworks || 0,
+    //   iconColor: "text-cyan-500",
+    //   iconBg: "bg-cyan-500/10",
+    //   borderColor: "border-cyan-500/40",
+    //   icon: "cloud-upload",
+    //   path: "/deployment-frameworks",
+    // },
+    // {
+    //   label: "TOTAL DEPLOYMENT DOCUMENTS",
+    //   value: stats.totalDeploymentDocuments || 0,
+    //   iconColor: "text-pink-500",
+    //   iconBg: "bg-pink-500/10",
+    //   borderColor: "border-pink-500/40",
+    //   icon: "document",
+    //   path: "/deployment-documents",
+    // },
   ];
 
   return (
@@ -211,7 +211,7 @@ export default function AdminDashboard() {
           </div>
         }
       >
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {metrics.map((m) => (
             <StatCard
               key={m.label}

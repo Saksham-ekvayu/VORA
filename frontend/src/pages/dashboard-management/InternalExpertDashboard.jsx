@@ -229,7 +229,7 @@ export default function InternalExpertDashboard() {
               iconColor="text-primary"
               iconBg="bg-primary/10"
               borderColor="border-primary/40"
-              title="Pending Review Framework"
+              title="Requested Framework"
               navigation="/deployment-frameworks?requestReviewStatus=requested"
             >
               {isLoading || !dashboardData ? (
@@ -311,7 +311,7 @@ export default function InternalExpertDashboard() {
               </Button>
             }
           >
-            <CardContent className="p-0">
+            <CardContent className="p-0 -m-2">
               <Table className="w-full text-sm">
                 <TableHeader>
                   <TableRow className="border-b border-border/60 bg-muted/40 text-left text-xs font-medium text-muted-foreground">

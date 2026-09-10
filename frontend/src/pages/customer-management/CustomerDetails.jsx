@@ -26,10 +26,19 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import DataTable from "@/components/data-table/DataTable";
 import { useTableData } from "@/components/data-table/hooks/useTableData";
 import UserAvatar from "@/components/custom/UserAvatar";
-import { isAdmin } from "@/utils/commonUtils";
+import { isAdmin, getAssignmentStatusFilterLabel } from "@/utils/commonUtils";
 import { useAuth } from "@/context/authContext/useAuth";
-
-const renderAddressField = (value) => value || "N/A";
+import AddressCard from "@/components/custom/AddressCard";
+import {
+  getFrameworkAssignments,
+  revokeFrameworkAssignment,
+  assignFrameworksToCustomers,
+} from "@/services/adminService";
+import AssignFrameworkToCustomerModal from "./components/AssignFrameworkToCustomerModal";
+import AssignmentViewModal from "@/pages/framework-category-access-management/framework-assignment-manage/components/AssignmentViewModal";
+import RevokeAssignmentModal from "@/pages/framework-category-access-management/framework-assignment-manage/components/RevokeAssignmentModal";
+import ActionDropdown from "@/components/custom/ActionDropdown";
+import FrameworkMiniCard from "@/components/custom/FrameworkMiniCard";
 
 export default function CustomerDetails() {
   const { id } = useParams();
@@ -44,6 +53,18 @@ export default function CustomerDetails() {
     isOpen: false,
     user: null,
   });
+
+  const [viewModalState, setViewModalState] = useState({
+    isOpen: false,
+    assignment: null,
+  });
+
+  const [revokeModalState, setRevokeModalState] = useState({
+    isOpen: false,
+    assignment: null,
+  });
+
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
 
   // Reusable hook to handle the dynamic breadcrumb/header title
   usePageTitle(id, "Customer Details");
@@ -88,7 +109,91 @@ export default function CustomerDetails() {
     defaultSortOrder: "desc",
     emptyMessage: "No users found",
     onError: handleError,
+    prefix: "users_",
   });
+
+  const fetchCustomerAssignments = useCallback(
+    async (params) => {
+      if (!customer?.tenantId) return { data: [], pagination: {}, message: "" };
+      const response = await getFrameworkAssignments({
+        ...params,
+        tenantId: customer.tenantId,
+      });
+      if (response?.success) {
+        return {
+          data: response.data || [],
+          pagination: response.pagination || {},
+          message: response.message,
+        };
+      }
+      throw new Error(response?.message || "Failed to load assignments.");
+    },
+    [customer?.tenantId]
+  );
+
+  const {
+    data: assignmentsData,
+    loading: assignmentsLoading,
+    error: assignmentsError,
+    emptyMessage: assignmentsEmptyMessage,
+    pagination: assignmentsPagination,
+    searchTerm: assignmentsSearchTerm,
+    sortConfig: assignmentsSortConfig,
+    onSearch: handleAssignmentsSearch,
+    onSort: handleAssignmentsSort,
+    onFilterChange: handleAssignmentsFilterChange,
+    refetch: assignmentsRefetch,
+  } = useTableData(fetchCustomerAssignments, {
+    defaultLimit: 5,
+    defaultSortBy: "createdAt",
+    defaultSortOrder: "desc",
+    emptyMessage: "No framework assignments found",
+    additionalDeps: [customer?.tenantId],
+    prefix: "assignments_",
+  });
+
+  const handleRevokeAssignment = async () => {
+    try {
+      const assignment = revokeModalState.assignment;
+      const customerId = assignment?.customer?.id || id;
+      const frameworkId = assignment?.frameworkId;
+
+      if (!customerId || !frameworkId) {
+        toast.error("Invalid assignment record. Cannot revoke.");
+        return;
+      }
+
+      const response = await revokeFrameworkAssignment(customerId, frameworkId);
+      toast.success(response.message);
+      setRevokeModalState({ isOpen: false, assignment: null });
+      assignmentsRefetch();
+    } catch (e) {
+      toast.error(e.message);
+      throw e;
+    }
+  };
+
+  const handleReassignAssignment = async (row) => {
+    try {
+      const customerId = row?.customer?.id || id;
+      const tenantId = row?.tenantId || customer.tenantId;
+      const frameworkId = row?.frameworkId;
+
+      if (!customerId || !tenantId || !frameworkId) {
+        toast.error("Invalid assignment record. Cannot reassign.");
+        return;
+      }
+
+      const response = await assignFrameworksToCustomers(customerId, tenantId, [
+        frameworkId,
+      ]);
+      toast.success(response.message);
+      assignmentsRefetch();
+    } catch (err) {
+      toast.error(err.message);
+      console.error(err);
+    }
+  };
 
   const handleCopyTenantId = (tenantId) => {
     if (!tenantId) return;
@@ -238,6 +343,61 @@ export default function CustomerDetails() {
     },
   ];
 
+  const assignmentColumns = [
+    {
+      key: "frameworkName",
+      label: "Framework",
+      sortable: false,
+      render: (value, row) => (
+        <FrameworkMiniCard
+          name={row?.frameworkName}
+          description={row?.frameworkVersion}
+        />
+      ),
+    },
+    {
+      key: "status",
+      label: "Status",
+      sortable: false,
+      render: (value) => <CustomBadge status={value} />,
+    },
+    {
+      key: "assignment.assignedBy",
+      label: "Assigned By",
+      sortable: false,
+      render: (value, row) =>
+        row.assignment?.assignedBy?.name ? (
+          <UserMiniCard
+            name={row.assignment.assignedBy.name}
+            email={row.assignment.assignedBy.email}
+            avatar={row.assignment.assignedBy.avatar}
+          />
+        ) : (
+          <span className="text-muted-foreground text-sm">—</span>
+        ),
+    },
+    {
+      key: "assignment.assignedAt",
+      label: "Assigned On",
+      sortable: false,
+      render: (value, row) =>
+        row.assignment?.assignedAt ? (
+          <div className="flex items-center gap-2">
+            <Icon
+              name="calendar"
+              size="14px"
+              className="text-muted-foreground"
+            />
+            <span className="text-sm whitespace-nowrap">
+              {formatDateWithMonthNameAndTime(row.assignment.assignedAt)}
+            </span>
+          </div>
+        ) : (
+          <span className="text-muted-foreground text-sm">—</span>
+        ),
+    },
+  ];
+
   const renderActions = (row) => (
     <div className="flex justify-center">
       <Button
@@ -267,6 +427,71 @@ export default function CustomerDetails() {
         onClick: () => setCreateAdminOpen(true),
       },
     ].filter(Boolean);
+  };
+
+  const getAssignmentHeaderActions = () => {
+    const urlParams = new URLSearchParams(globalThis.location.search);
+    const assignmentFrameworkStatusFilter =
+      urlParams.get("assignments_assignmentStatus") || "";
+
+    return [
+      {
+        type: "dropdown",
+        label: getAssignmentStatusFilterLabel(assignmentFrameworkStatusFilter),
+        triggerClassName: "w-fit",
+        options: [
+          {
+            label: "All Status",
+            onClick: () =>
+              handleAssignmentsFilterChange("assignmentStatus", ""),
+          },
+          ...["assigned", "revoked"].map((s, idx) => ({
+            label: s,
+            onClick: () => handleAssignmentsFilterChange("assignmentStatus", s),
+            separatorBefore: idx === 0,
+          })),
+        ],
+      },
+      {
+        type: "button",
+        label: "Assign Frameworks",
+        icon: "plus",
+        onClick: () => setAssignModalOpen(true),
+      },
+    ];
+  };
+
+  const renderAssignmentActions = (row) => {
+    const actions = [
+      {
+        id: `view-${row.id}`,
+        label: "View Details",
+        icon: "eye",
+        onClick: () => setViewModalState({ isOpen: true, assignment: row }),
+      },
+    ];
+
+    if (row.status === "assigned") {
+      actions.push({
+        id: `revoke-${row.id}`,
+        label: "Revoke Assignment",
+        icon: "ban",
+        variant: "destructive",
+        onClick: () => setRevokeModalState({ isOpen: true, assignment: row }),
+      });
+    }
+
+    if (row.status === "revoked") {
+      actions.push({
+        id: `reassign-${row.id}`,
+        label: "Reassign Framework",
+        icon: "refresh",
+        variant: "primary",
+        onClick: () => handleReassignAssignment(row),
+      });
+    }
+
+    return <ActionDropdown actions={actions} />;
   };
 
   return (
@@ -363,15 +588,29 @@ export default function CustomerDetails() {
                   </span>
                   <span className="flex items-center gap-2 text-muted-foreground font-medium">
                     <Icon
+                      name="phone"
+                      size="14px"
+                      className="text-primary/70"
+                    />
+                    <PhoneDisplay value={customer.secondaryPhone} />
+                  </span>
+                  <span className="flex items-center gap-2 text-muted-foreground font-medium">
+                    <Icon
                       name="calendar"
                       size="14px"
                       className="text-primary/70"
                     />
                     Registered{" "}
-                    {formatDateWithMonthNameAndTime(
-                      customer.createdAt,
-                      "MMM YYYY"
-                    )}
+                    {formatDateWithMonthNameAndTime(customer.createdAt)}
+                  </span>
+                  <span className="flex items-center gap-2 text-muted-foreground font-medium">
+                    <Icon
+                      name="calendar"
+                      size="14px"
+                      className="text-primary/70"
+                    />
+                    Last Sync{" "}
+                    {formatDateWithMonthNameAndTime(customer.updatedAt)}
                   </span>
                 </div>
               </div>
@@ -381,174 +620,49 @@ export default function CustomerDetails() {
       </div>
 
       {/* Main Grid Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Left column: Address & Users */}
-        <div className="lg:col-span-2 space-y-4">
-          {/* Addresses Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Permanent Address */}
-            <div className="p-4 rounded border border-border bg-card shadow-lg relative overflow-hidden border-l-4 border-l-primary/80">
-              <div className="flex items-center gap-2 mb-4 pb-2 border-b border-border/40">
-                <div className="p-1 rounded bg-primary/10 text-primary flex items-center justify-center">
-                  <Icon name="home" size="16px" />
-                </div>
-                <h3 className="font-bold text-foreground">Permanent Address</h3>
-              </div>
-              <div className="space-y-2.5 text-sm">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest block opacity-70">
-                    Locality
-                  </span>
-                  <span className="font-semibold text-foreground wrap-break-words">
-                    {renderAddressField(
-                      customer.address?.permanentAddress?.locality
-                    )}
-                  </span>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest block opacity-70">
-                      City
-                    </span>
-                    <span className="font-semibold text-foreground truncate block">
-                      {renderAddressField(
-                        customer.address?.permanentAddress?.city
-                      )}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest block opacity-70">
-                      State
-                    </span>
-                    <span className="font-semibold text-foreground truncate block">
-                      {renderAddressField(
-                        customer.address?.permanentAddress?.state
-                      )}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest block opacity-70">
-                      Country
-                    </span>
-                    <span className="font-semibold text-foreground truncate block">
-                      {renderAddressField(
-                        customer.address?.permanentAddress?.country
-                      )}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
+      {/* Left column: Address & Users */}
+      <div className="lg:col-span-1 space-y-4">
+        {/* Addresses Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Permanent Address */}
+          <AddressCard
+            title="Permanent Address"
+            iconName="home"
+            address={customer.address?.permanentAddress}
+          />
 
-            {/* Temporary Address */}
-            <div className="p-4 rounded border border-border bg-card shadow-lg relative overflow-hidden border-l-4 border-l-primary/80">
-              <div className="flex items-center gap-2 mb-4 pb-2 border-b border-border/40">
-                <div className="p-1 rounded bg-primary/10 text-primary flex items-center justify-center">
-                  <Icon name="building" size="16px" />
-                </div>
-                <h3 className="font-bold text-foreground">Temporary Address</h3>
-              </div>
-              <div className="space-y-2.5 text-sm">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest block opacity-70">
-                    Locality
-                  </span>
-                  <span className="font-semibold text-foreground wrap-break-words">
-                    {renderAddressField(
-                      customer.address?.temporaryAddress?.locality
-                    )}
-                  </span>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest block opacity-70">
-                      City
-                    </span>
-                    <span className="font-semibold text-foreground truncate block">
-                      {renderAddressField(
-                        customer.address?.temporaryAddress?.city
-                      )}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest block opacity-70">
-                      State
-                    </span>
-                    <span className="font-semibold text-foreground truncate block">
-                      {renderAddressField(
-                        customer.address?.temporaryAddress?.state
-                      )}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest block opacity-70">
-                      Country
-                    </span>
-                    <span className="font-semibold text-foreground truncate block">
-                      {renderAddressField(
-                        customer.address?.temporaryAddress?.country
-                      )}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* Temporary Address */}
+          <AddressCard
+            title="Temporary Address"
+            iconName="map-pin"
+            address={customer.address?.temporaryAddress}
+          />
 
-          {/* Associated Users Table Card */}
-          <div className="rounded border border-border bg-card shadow-xl overflow-hidden border-t-4 border-t-primary/80">
-            <div className="p-4 border-b border-border bg-muted/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <div className="p-1 rounded bg-primary/10 text-primary flex items-center justify-center">
-                  <Icon name="users" size="16px" />
-                </div>
-                <h3 className="font-extrabold text-foreground">
-                  Associated Tenant Users ({pagination?.totalItems || 0})
-                </h3>
-              </div>
-            </div>
-
-            <DataTable
-              entityName="Users"
-              columns={columns}
-              data={usersData}
-              loading={loading}
-              onSearch={handleSearch}
-              onSort={handleSort}
-              sortConfig={sortConfig}
-              searchTerm={searchTerm}
-              pagination={pagination}
-              searchPlaceholder="Search users by name and email..."
-              emptyMessage={emptyMessage}
-              renderActions={renderActions}
-              headerActions={getHeaderActions()}
-              error={tableError}
-            />
-          </div>
-        </div>
-
-        {/* Right column: Sidebar Info */}
-        <div className="space-y-4">
           {/* Tenant Details Card */}
           <div className="p-4 rounded border border-border bg-card shadow-lg relative overflow-hidden border-l-4 border-l-primary/80">
-            <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-4 pb-1 border-b border-border/40">
-              Tenant Administration
-            </h4>
+            <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border/40">
+              <div className="p-1 rounded bg-primary/10 text-primary flex items-center justify-center">
+                <Icon name="building" size="16px" />
+              </div>
+              <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
+                Tenant Administration
+              </h3>
+            </div>
 
-            <div className="space-y-4 text-sm">
+            <div className="space-y-2 text-sm">
               {/* Tenant ID block */}
-              <div>
-                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest block opacity-70 mb-1">
-                  Tenant ID
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="shrink-0 text-[10px] uppercase font-bold text-muted-foreground tracking-widest opacity-70">
+                  Tenant ID :
                 </span>
-                <div className="flex items-center justify-between p-2 rounded bg-muted/30 border border-border/60">
-                  <code className="text-xs font-bold text-primary mr-2 select-all uppercase">
+                <div className="min-w-0 flex flex-1 items-center justify-between gap-2">
+                  <code className="min-w-0 text-xs font-bold text-primary select-all uppercase truncate">
                     {customer.tenantId}
                   </code>
                   <button
                     type="button"
                     onClick={() => handleCopyTenantId(customer.tenantId)}
-                    className="p-1 rounded text-muted-foreground hover:text-primary hover:bg-muted transition cursor-pointer"
+                    className="shrink-0 px-1 rounded text-muted-foreground hover:text-primary hover:bg-muted transition cursor-pointer"
                     title="Copy Tenant ID"
                   >
                     <Icon name="copy" size="14px" />
@@ -556,72 +670,85 @@ export default function CustomerDetails() {
                 </div>
               </div>
 
-              {/* Secondary Phone if available */}
-              {customer.secondaryPhone && (
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest block opacity-70 mb-0.5">
-                    Secondary Phone
-                  </span>
-                  <span className="font-semibold text-foreground">
-                    <PhoneDisplay value={customer.secondaryPhone} />
-                  </span>
-                </div>
-              )}
-
               {/* Created By details */}
-              {customer.createdBy?.userId && (
+              {customer.createdBy?.user?.id && (
                 <div className="pt-3 border-t border-border/40">
                   <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest block opacity-70 mb-2">
                     Registered By Authority
                   </span>
                   <div className="p-2 rounded bg-muted/10 border border-border/30">
                     <UserMiniCard
-                      name={customer.createdBy.userId.name}
-                      email={customer.createdBy.userId.email}
-                      avatar={customer.createdBy.userId.avatar}
+                      name={customer.createdBy.user.name}
+                      email={customer.createdBy.user.email}
+                      avatar={customer.createdBy.user.avatar}
                     />
                   </div>
                 </div>
               )}
             </div>
           </div>
+        </div>
 
-          {/* Audit / Timeline Card */}
-          <div className="p-4 rounded border border-border bg-card shadow-lg relative overflow-hidden border-l-4 border-l-primary/80">
-            <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-3 pb-1 border-b border-border/40">
-              System Logs & History
-            </h4>
-
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded bg-green-500/10 text-green-600 flex items-center justify-center shrink-0">
-                  <Icon name="calendar" size="14px" />
-                </div>
-                <div className="min-w-0">
-                  <span className="text-[9px] uppercase font-bold text-muted-foreground tracking-tighter block leading-none">
-                    Created On
-                  </span>
-                  <span className="text-xs font-semibold text-foreground truncate block">
-                    {formatDateWithMonthNameAndTime(customer.createdAt)}
-                  </span>
-                </div>
+        {/* Associated Users Table Card */}
+        <div className="rounded border border-border bg-card shadow-xl overflow-hidden border-t-4 border-t-primary/80">
+          <div className="p-4 border-b border-border bg-muted/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1 rounded bg-primary/10 text-primary flex items-center justify-center">
+                <Icon name="users" size="16px" />
               </div>
-
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
-                  <Icon name="refresh" size="14px" />
-                </div>
-                <div className="min-w-0">
-                  <span className="text-[9px] uppercase font-bold text-muted-foreground tracking-tighter block leading-none">
-                    Last Dynamic Sync
-                  </span>
-                  <span className="text-xs font-semibold text-foreground truncate block">
-                    {formatDateWithMonthNameAndTime(customer.updatedAt)}
-                  </span>
-                </div>
-              </div>
+              <h3 className="font-extrabold text-foreground">
+                Associated Tenant Users ({pagination?.totalItems || 0})
+              </h3>
             </div>
           </div>
+
+          <DataTable
+            entityName="Users"
+            columns={columns}
+            data={usersData}
+            loading={loading}
+            onSearch={handleSearch}
+            onSort={handleSort}
+            sortConfig={sortConfig}
+            searchTerm={searchTerm}
+            pagination={pagination}
+            searchPlaceholder="Search users by name and email..."
+            emptyMessage={emptyMessage}
+            renderActions={renderActions}
+            headerActions={getHeaderActions()}
+            error={tableError}
+          />
+        </div>
+
+        {/* Assignments Table Card */}
+        <div className="rounded border border-border bg-card shadow-xl overflow-hidden border-t-4 border-t-primary/80">
+          <div className="p-4 border-b border-border bg-muted/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1 rounded bg-primary/10 text-primary flex items-center justify-center">
+                <Icon name="file-text" size="16px" />
+              </div>
+              <h3 className="font-extrabold text-foreground">
+                Assigned Frameworks ({assignmentsPagination?.totalItems || 0})
+              </h3>
+            </div>
+          </div>
+
+          <DataTable
+            entityName="Assignments"
+            columns={assignmentColumns}
+            data={assignmentsData}
+            loading={assignmentsLoading}
+            onSearch={handleAssignmentsSearch}
+            onSort={handleAssignmentsSort}
+            sortConfig={assignmentsSortConfig}
+            searchTerm={assignmentsSearchTerm}
+            pagination={assignmentsPagination}
+            headerActions={getAssignmentHeaderActions()}
+            renderActions={renderAssignmentActions}
+            searchPlaceholder="Search frameworks..."
+            emptyMessage={assignmentsEmptyMessage}
+            error={assignmentsError}
+          />
         </div>
       </div>
 
@@ -651,6 +778,35 @@ export default function CustomerDetails() {
           onCancel={() => setDeleteModalState({ isOpen: false, user: null })}
           onConfirm={handleDeleteUser}
           user={deleteModalState.user}
+        />
+      )}
+
+      {viewModalState.isOpen && viewModalState.assignment && (
+        <AssignmentViewModal
+          assignment={viewModalState.assignment}
+          onClose={() => setViewModalState({ isOpen: false, assignment: null })}
+        />
+      )}
+
+      {assignModalOpen && (
+        <AssignFrameworkToCustomerModal
+          isOpen={assignModalOpen}
+          customer={customer}
+          onSuccess={() => {
+            setAssignModalOpen(false);
+            assignmentsRefetch();
+          }}
+          onClose={() => setAssignModalOpen(false)}
+        />
+      )}
+
+      {revokeModalState.isOpen && revokeModalState.assignment && (
+        <RevokeAssignmentModal
+          assignment={revokeModalState.assignment}
+          onConfirm={handleRevokeAssignment}
+          onCancel={() =>
+            setRevokeModalState({ isOpen: false, assignment: null })
+          }
         />
       )}
     </div>

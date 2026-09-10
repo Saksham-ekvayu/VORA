@@ -172,6 +172,7 @@ export function getFrameworkAssignments({
   sortBy = "createdAt",
   sortOrder = "desc",
   assignmentStatus = "",
+  tenantId = "",
 } = {}) {
   const params = new URLSearchParams({
     page: page.toString(),
@@ -180,6 +181,7 @@ export function getFrameworkAssignments({
     ...(sortBy && { sortBy }),
     ...(sortOrder && { sortOrder }),
     ...(assignmentStatus && { assignmentStatus }),
+    ...(tenantId && { tenantId }),
   });
   return apiRequest(
     `${ASSIGNMENT_BASE}/assignments?${params.toString()}`,

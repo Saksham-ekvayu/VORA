@@ -92,7 +92,7 @@ const ALL_NAV_ITEMS = [
     description: "Explore frameworks",
     icon: "framework",
     path: "/frameworks",
-    roles: [ROLE_EXPERT],
+    roles: [ROLE_EXPERT, ROLE_ADMIN],
   },
   {
     id: "framework-categories",

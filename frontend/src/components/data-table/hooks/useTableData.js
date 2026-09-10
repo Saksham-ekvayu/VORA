@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
 /**
@@ -23,6 +23,7 @@ export function useTableData(fetchFunction, options = {}) {
     emptyMessage: defaultEmptyMessage = "No data found",
     onError,
     additionalDeps = [],
+    prefix = "",
   } = options;
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -50,119 +51,131 @@ export function useTableData(fetchFunction, options = {}) {
 
   /* ---------------- URL SYNC ---------------- */
   useEffect(() => {
-    const page = Number.parseInt(searchParams.get("page")) || 1;
-    const search = searchParams.get("search") || "";
-    const sortBy = searchParams.get("sortBy") || defaultSortBy;
-    const sortOrder = searchParams.get("sortOrder") || defaultSortOrder;
-    const limit = Number.parseInt(searchParams.get("limit")) || defaultLimit;
+    const page = Number.parseInt(searchParams.get(`${prefix}page`)) || 1;
+    const search = searchParams.get(`${prefix}search`) || "";
+    const sortBy = searchParams.get(`${prefix}sortBy`) || defaultSortBy;
+    const sortOrder =
+      searchParams.get(`${prefix}sortOrder`) || defaultSortOrder;
+    const limit =
+      Number.parseInt(searchParams.get(`${prefix}limit`)) || defaultLimit;
 
     setPagination((p) => ({ ...p, currentPage: page, limit }));
     setSearchTerm(search);
     setSortConfig({ sortBy, sortOrder });
-  }, [searchParams, defaultSortBy, defaultSortOrder, defaultLimit]);
+  }, [searchParams, defaultSortBy, defaultSortOrder, defaultLimit, prefix]);
+
+  const queryParamsObj = useMemo(() => {
+    const page = Number.parseInt(searchParams.get(`${prefix}page`)) || 1;
+    const search = searchParams.get(`${prefix}search`) || "";
+    const sortBy = searchParams.get(`${prefix}sortBy`) || defaultSortBy;
+    const sortOrder =
+      searchParams.get(`${prefix}sortOrder`) || defaultSortOrder;
+    const limit =
+      Number.parseInt(searchParams.get(`${prefix}limit`)) || defaultLimit;
+
+    const params = { page, limit, search, sortBy, sortOrder };
+
+    for (const [key, value] of searchParams.entries()) {
+      if (prefix && key.startsWith(prefix)) {
+        const strippedKey = key.slice(prefix.length);
+        if (
+          !["page", "search", "sortBy", "sortOrder", "limit"].includes(
+            strippedKey
+          )
+        ) {
+          params[strippedKey] = value;
+        }
+      } else if (
+        !prefix &&
+        !["page", "search", "sortBy", "sortOrder", "limit"].includes(key)
+      ) {
+        params[key] = value;
+      }
+    }
+    return params;
+  }, [searchParams, prefix, defaultLimit, defaultSortBy, defaultSortOrder]);
+
+  // Used to prevent unnecessary refetches when unrelated search params change
+  const queryParamsString = JSON.stringify(queryParamsObj);
 
   /* ---------------- FETCH DATA ---------------- */
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const fetchData = useCallback(
+    async (paramsToFetch) => {
+      setLoading(true);
 
-    // Read values directly from URL params to avoid stale state
-    const page = Number.parseInt(searchParams.get("page")) || 1;
-    const search = searchParams.get("search") || "";
-    const sortBy = searchParams.get("sortBy") || defaultSortBy;
-    const sortOrder = searchParams.get("sortOrder") || defaultSortOrder;
-    const limit = Number.parseInt(searchParams.get("limit")) || defaultLimit;
+      try {
+        setError(null);
+        const res = await fetchFunction(paramsToFetch);
 
-    // Build query params object
-    const queryParams = {
-      page,
-      limit,
-      search,
-      sortBy,
-      sortOrder,
-    };
+        setData(res.data || []);
 
-    // Add any additional query params from URL
-    for (const [key, value] of searchParams.entries()) {
-      if (!["page", "search", "sortBy", "sortOrder", "limit"].includes(key)) {
-        queryParams[key] = value;
+        // Handle empty message
+        if (res.message && res.data?.length === 0) {
+          setEmptyMessage(res.message);
+        } else if (paramsToFetch.search && res.data?.length === 0) {
+          setEmptyMessage(`No results found for "${paramsToFetch.search}"`);
+        } else {
+          setEmptyMessage(defaultEmptyMessage);
+        }
+
+        // Update pagination
+        setPagination((p) => ({
+          ...p,
+          currentPage: paramsToFetch.page,
+          limit: paramsToFetch.limit,
+          totalPages: res.pagination?.totalPages || 1,
+          totalItems: res.pagination?.totalItems || 0,
+          hasPrevPage: paramsToFetch.page > 1,
+          hasNextPage: paramsToFetch.page < (res.pagination?.totalPages || 1),
+        }));
+
+        return res.data || [];
+      } catch (err) {
+        const errorMessage = err.message || "Failed to load data";
+
+        if (onError) {
+          onError(err);
+        }
+
+        setData([]);
+        setError(errorMessage);
+        setEmptyMessage(errorMessage);
+        return [];
+      } finally {
+        setLoading(false);
       }
-    }
-
-    try {
-      setError(null);
-      const res = await fetchFunction(queryParams);
-
-      setData(res.data || []);
-
-      // Handle empty message
-      if (res.message && res.data?.length === 0) {
-        setEmptyMessage(res.message);
-      } else if (search && res.data?.length === 0) {
-        setEmptyMessage(`No results found for "${search}"`);
-      } else {
-        setEmptyMessage(defaultEmptyMessage);
-      }
-
-      // Update pagination
-      setPagination((p) => ({
-        ...p,
-        currentPage: page,
-        limit,
-        totalPages: res.pagination?.totalPages || 1,
-        totalItems: res.pagination?.totalItems || 0,
-        hasPrevPage: page > 1,
-        hasNextPage: page < (res.pagination?.totalPages || 1),
-      }));
-
-      return res.data || [];
-    } catch (err) {
-      const errorMessage = err.message || "Failed to load data";
-
-      if (onError) {
-        onError(err);
-      }
-
-      setData([]);
-      setError(errorMessage);
-      setEmptyMessage(errorMessage);
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    searchParams,
-    fetchFunction,
-    defaultEmptyMessage,
-    defaultSortBy,
-    defaultSortOrder,
-    defaultLimit,
-    onError,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    ...additionalDeps,
-  ]);
+    },
+    [
+      fetchFunction,
+      defaultEmptyMessage,
+      onError,
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      ...additionalDeps,
+    ]
+  );
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchData(JSON.parse(queryParamsString));
+  }, [fetchData, queryParamsString]);
 
   /* ---------------- HANDLERS ---------------- */
   const handlePageChange = useCallback(
     (page) => {
       const p = new URLSearchParams(searchParams);
-      p.set("page", page);
+      p.set(`${prefix}page`, page);
       setSearchParams(p);
     },
-    [searchParams, setSearchParams]
+    [searchParams, setSearchParams, prefix]
   );
 
   const handleSearch = useCallback(
     (term) => {
       const p = new URLSearchParams(searchParams);
-      term ? p.set("search", term) : p.delete("search");
-      p.set("page", "1");
+      term ? p.set(`${prefix}search`, term) : p.delete(`${prefix}search`);
+      p.set(`${prefix}page`, "1");
       setSearchParams(p);
     },
-    [searchParams, setSearchParams]
+    [searchParams, setSearchParams, prefix]
   );
 
   const handleSort = useCallback(
@@ -173,39 +186,41 @@ export function useTableData(fetchFunction, options = {}) {
           : "asc";
 
       const p = new URLSearchParams(searchParams);
-      p.set("sortBy", key);
-      p.set("sortOrder", order);
-      p.set("page", "1");
+      p.set(`${prefix}sortBy`, key);
+      p.set(`${prefix}sortOrder`, order);
+      p.set(`${prefix}page`, "1");
       setSearchParams(p);
 
       setSortConfig({ sortBy: key, sortOrder: order });
     },
-    [sortConfig, searchParams, setSearchParams]
+    [sortConfig, searchParams, setSearchParams, prefix]
   );
 
   const handleFilterChange = useCallback(
     (filterKey, filterValue) => {
       const p = new URLSearchParams(searchParams);
-      filterValue ? p.set(filterKey, filterValue) : p.delete(filterKey);
-      p.set("page", "1");
+      filterValue
+        ? p.set(`${prefix}${filterKey}`, filterValue)
+        : p.delete(`${prefix}${filterKey}`);
+      p.set(`${prefix}page`, "1");
       setSearchParams(p);
     },
-    [searchParams, setSearchParams]
+    [searchParams, setSearchParams, prefix]
   );
 
   const handleLimitChange = useCallback(
     (newLimit) => {
       const p = new URLSearchParams(searchParams);
-      p.set("limit", newLimit);
-      p.set("page", "1"); // Reset to first page when changing limit
+      p.set(`${prefix}limit`, newLimit);
+      p.set(`${prefix}page`, "1"); // Reset to first page when changing limit
       setSearchParams(p);
     },
-    [searchParams, setSearchParams]
+    [searchParams, setSearchParams, prefix]
   );
 
   const refetch = useCallback(() => {
-    return fetchData();
-  }, [fetchData]);
+    return fetchData(JSON.parse(queryParamsString));
+  }, [fetchData, queryParamsString]);
 
   return {
     // Data

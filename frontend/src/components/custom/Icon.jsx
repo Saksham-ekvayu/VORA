@@ -96,7 +96,7 @@ import {
   MdPowerSettingsNew,
   MdList,
   MdBook,
-  MdWork,
+  // MdWork,
   MdLocationOn,
   MdLayers,
   MdInbox,
@@ -147,7 +147,7 @@ import { RiRobot2Fill } from "react-icons/ri";
 
 import { IoKeySharp } from "react-icons/io5";
 import { IoIosSend, IoMdCloseCircle } from "react-icons/io";
-import { RotateCcw, Undo2, Award } from "lucide-react";
+import { RotateCcw, Undo2, Award, Shield } from "lucide-react";
 
 // Icon mapping from old names to React Icons components
 const iconMap = {
@@ -287,7 +287,7 @@ const iconMap = {
   // Compliance/Audit specific
   audit: MdSearch,
   compliance: MdVerifiedUser,
-  framework: MdWork,
+  framework: Shield,
   report: HiOutlineClipboardList,
 
   // File type icons
