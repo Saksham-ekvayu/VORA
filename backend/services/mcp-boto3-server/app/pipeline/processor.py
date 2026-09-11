@@ -12,7 +12,9 @@ import logging
 from app.collectors.collector_manager import collect_files
 from app.db.queries import (
     get_framework_merge,
+    get_deployment_document_by_hash,
     get_live_framework,
+    get_pending_or_failed_extractions,
     is_processed,
     mark_processed,
     save_deployment_document,
@@ -27,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 def run_pipeline(source: str = "local"):
     asyncio.run(_run_pipeline(source))
+    
 
 
 async def _run_pipeline(source: str):
