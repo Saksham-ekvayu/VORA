@@ -19,6 +19,7 @@ from vora_shared.models import (
     DeploymentDocument,
     DeploymentFramework,
     DeploymentPackageMerge,
+    DocumentExtraction,
     ProcessedFile,
     SourceConfig,
     SourceCredential,
@@ -327,3 +328,33 @@ async def get_framework_merge(db: AsyncSession, merge_id: str):
         "status": merge.status,
         "file_hashes": merge.fileHashes,
     }
+
+
+
+async def get_pending_or_failed_extractions(db: AsyncSession):
+    """
+    Return every document_extractions row whose status is 'pending' or
+    'failed' (i.e. not yet 'extracted'), so those documents can be
+    retried against AI extraction.
+    """
+    result = await db.execute(select(DocumentExtraction))
+    extractions = result.scalars().all()
+
+    pending_or_failed = []
+    for extraction in extractions:
+        data = extraction.aiExtraction or {}
+        status = data.get("status")
+
+        if status in ("pending", "failed"):
+            document = data.get("document", {})
+            pending_or_failed.append(
+                {
+                    "extraction_id": extraction.id,
+                    "file_hash": extraction.fileHash,
+                    "status": status,
+                    "file_url": document.get("fileUrl"),
+                    "original_file_name": document.get("originalFileName"),
+                }
+            )
+
+    return pending_or_failed
